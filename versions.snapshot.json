@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-10-09T06:31:24.487Z",
+  "packages": {
+    "aws-cdk-lib": {
+      "dist-tags": {
+        "latest": "2.273.0"
+      },
+      "time": {
+        "2.273.0": "2026-10-08T20:05:24.284Z"
+      }
+    },
+    "aws-cdk": {
+      "dist-tags": {
+        "latest": "2.1145.0"
+      },
+      "time": {
+        "2.1145.0": "2026-10-08T01:01:12.221Z"
+      }
+    },
+    "@aws-cdk/toolkit-lib": {
+      "dist-tags": {
+        "latest": "1.43.0"
+      },
+      "time": {
+        "1.43.0": "2026-10-08T00:58:46.362Z"
+      }
+    },
+    "@aws-cdk/cloud-assembly-schema": {
+      "dist-tags": {
+        "latest": "55.0.0"
+      },
+      "time": {
+        "55.0.0": "2026-10-08T00:51:15.334Z"
+      }
+    }
+  }
+}

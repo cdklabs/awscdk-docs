@@ -1,0 +1,350 @@
+/*
+ * Navbar layout, superseding an earlier arrangement.
+ *
+ * 1. The language slider takes the LEADING slot — the position the
+ *    search box used to occupy, right after the site title. VitePress
+ *    renders the layout slots after its own controls, so the slider
+ *    (mounted in nav-bar-content-after) is repositioned with flex
+ *    `order`. The overrides only apply when the slider actually renders
+ *    (`:has()`), so the single-language build — where the slider is
+ *    absent — keeps the stock layout untouched.
+ *
+ * 2. The search box moves to the CENTER of the nav row: it keeps the
+ *    pagefind plugin's `flex: 1` (so it owns the space between the
+ *    slider and the right-hand controls) and centers its trigger button
+ *    inside that region.
+ *
+ * 3. The appearance controls sit behind the gear-icon Settings
+ *    dropdown (SettingsMenu.vue) at the right end of the row. An earlier
+ *    layout had inlined the picker here; once it was doubled into two
+ *    tri-state groups, six icon buttons crowded the centered search, so
+ *    they were moved back into the dropdown.
+ *
+ * 4. The medium-view duplicate appearance switch is removed: between
+ *    768px and 1279px VitePress shows the "extra navigation" (…)
+ *    flyout, which embeds its own VPSwitchAppearance next to the one we
+ *    already render — hide the flyout's appearance item so exactly one
+ *    appearance control (the Settings dropdown's picker) is reachable at
+ *    every breakpoint. The stock navbar/nav-screen switches are already
+ *    hidden in theme-picker.css.
+ *
+ * 5. The nav row's geometry does not depend on whether the page has a
+ *    sidebar. VitePress keys four geometry rules on its own
+ *    `has-sidebar` class, which insets the row's left edge to the sidebar
+ *    width on generated pages and to `32px + title width` everywhere
+ *    else — a 97px difference here. Because item 1 puts the slider in the
+ *    leading slot, that inset showed up as controls MOVING between the
+ *    home page and a reference page. The non-sidebar pages are brought
+ *    onto the full-width geometry below.
+ *
+ * These rules live here (not custom.css) because custom.css is
+ * constrained by tests to pure :root / .dark variable overrides.
+ */
+
+/* --- One nav geometry on every page --- */
+/* VitePress stamps `has-sidebar` on .VPNavBar when the page resolves a
+ * sidebar (frontmatter.sidebar !== false && sidebar.length > 0 &&
+ * layout !== 'home'), and switches .wrapper padding, .container max-width,
+ * .title positioning and .content padding on it. In this repo that is true
+ * for /api/** and false for BOTH / (layout: home) and /skills (themeConfig
+ * .sidebar is keyed only on /api/), so the selector must be
+ * `:not(.has-sidebar)` — keying on the `home` class alone would miss
+ * /skills.
+ *
+ * The values below mirror VitePress's own has-sidebar values so the two
+ * page types resolve to the same left inset, `var(--vp-sidebar-width)`
+ * (320px here, widened from the stock 272px in api-sidebar.css). No
+ * `!important` is needed: `.VPNavBar:not(.has-sidebar) .content` is (0,3,0)
+ * against the stock scoped `.content[data-v-…]` at (0,2,0), and it loses to
+ * `.VPNavBar.has-sidebar .content[data-v-…]` at (0,4,0), so reference pages
+ * keep the stock rule they already match. The .title selector uses the
+ * child chain because these rules are unscoped: a bare descendant `.title`
+ * would also match the anchor inside VPNavBarTitle.
+ *
+ * Deliberately NOT gated on `:has(> .language-toggle)` like the rules in
+ * the section below: this is page geometry, not control arrangement, so it
+ * applies to the single-language build too, where it simply keeps the bar
+ * the same shape on every page. Do not "harmonize" the gating.
+ *
+ * Also excluded: the stock `.divider { padding-left:
+ * var(--vp-sidebar-width) }` and the `VPNavBarTitle.has-sidebar .title`
+ * bottom border. Those two read as the title lane joining the sidebar rail
+ * that continues below it on a reference page; on / and /skills there is no
+ * rail, so they would leave an orphaned rule fragment ending at the title's
+ * width with a gap to 320px instead of one continuous line under the bar.
+ * The section further down turns both rules off on the sidebar pages as
+ * well, so the line is one element on every page. */
+@media (min-width: 960px) {
+  .VPNavBar:not(.has-sidebar) .wrapper {
+    padding: 0;
+  }
+
+  .VPNavBar:not(.has-sidebar) .container {
+    max-width: 100%;
+  }
+
+  .VPNavBar:not(.has-sidebar) > .wrapper > .container > .title {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    padding: 0 32px;
+    width: var(--vp-sidebar-width);
+    height: var(--vp-nav-height);
+    background-color: transparent;
+  }
+
+  .VPNavBar:not(.has-sidebar) .content {
+    position: relative;
+    z-index: 1;
+    padding-right: 32px;
+    padding-left: var(--vp-sidebar-width);
+  }
+}
+
+/* Past the layout max width both page types gain the same centering
+ * offset, so the 1440px tier has to be mirrored as well or the inset
+ * diverges again above 1440px. */
+@media (min-width: 1440px) {
+  .VPNavBar:not(.has-sidebar) > .wrapper > .container > .title {
+    padding-left: max(32px, calc((100% - (var(--vp-layout-max-width) - 64px)) / 2));
+    width: calc((100% - (var(--vp-layout-max-width) - 64px)) / 2 + var(--vp-sidebar-width) - 32px);
+  }
+
+  .VPNavBar:not(.has-sidebar) .content {
+    padding-right: calc((100vw - var(--vp-layout-max-width)) / 2 + 32px);
+    padding-left: calc((100vw - var(--vp-layout-max-width)) / 2 + var(--vp-sidebar-width));
+  }
+}
+
+/* --- One divider under the bar on every page --- */
+/* One element draws the line: the stock inset is off and the title lane's
+ * border cleared, on the sidebar pages too. Both tiers, matching the tiers
+ * the stock rules use. `!important` because those rules carry Vue's scoping
+ * attribute at (0,4,0), which an unscoped selector naming the same two
+ * classes cannot reach. */
+@media (min-width: 960px) {
+  .VPNavBar.has-sidebar .divider {
+    padding-left: 0 !important;
+  }
+
+  .VPNavBarTitle.has-sidebar .title {
+    border-bottom-color: transparent !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .VPNavBar.has-sidebar .divider {
+    padding-left: 0 !important;
+  }
+}
+
+/* --- The home button keeps the page background off the landing page --- */
+/* Above 960px the lane carries the page background and changes to it in one
+ * step. `!important` clears the scoping attribute the stock declarations carry
+ * at (0,4,0). */
+@media (min-width: 960px) {
+  .VPNavBar .title {
+    transition: none !important;
+  }
+
+  .VPNavBar:not(.home) .title {
+    background-color: var(--vp-c-bg) !important;
+  }
+}
+
+/* The site title holds the secondary text color in every state; the nav
+ * links keep their own brand-color hover. */
+.VPNavBarTitle .title,
+.VPNavBarTitle .title:hover,
+.VPNavBarTitle .title:active,
+.VPNavBarTitle .title:focus,
+.VPNavBarTitle .title:focus-visible {
+  color: var(--vp-c-text-2);
+}
+
+/* Dark mode: flatten the gray mark to black, then invert it to white. */
+.dark .VPNavBarTitle .logo {
+  filter: brightness(0) invert(1);
+}
+
+/* `.search` is the class VPNavBar passes to its search component — it
+ * survives the pagefind plugin's aliasing of VPNavBarSearch.vue to its
+ * own .blog-search component (which is why .VPNavBarSearch must NOT be
+ * the selector here). The plugin's `flex: 1` is kept: it makes the
+ * search own the middle region; centering the trigger inside it is what
+ * places the search visually mid-row. The plugin's 32px left padding
+ * would skew that centering, so it moves onto the slider instead (the
+ * slider now provides the gap from the site title that the search's
+ * padding used to). */
+@media (min-width: 768px) {
+  .VPNavBar .content-body > .language-toggle {
+    order: -2;
+    /* 10px (was the search's 32px padding): the doubled theme picker
+     * needs the row's spare width more than the title gap —
+     * the segments themselves stay at the 24px WCAG 2.5.8 minimum, so
+     * the width comes out of chrome like this margin instead. */
+    margin-left: 10px;
+  }
+
+  .VPNavBar .content-body:has(> .language-toggle) > .search {
+    order: -1;
+    justify-content: center;
+    padding-left: 0;
+  }
+}
+
+/* Medium breakpoint (where VitePress itself compacts the navbar into
+ * the "extra" flyout): take the active segment's text label out of the
+ * painted row so the slider is abbreviations-only and a 3+ language build
+ * never overflows. Visually hidden rather than display:none, so the label
+ * keeps supplying the checked segment's full accessible name at this width
+ * (the .search-tip rule below gets the same treatment for the same reason). */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .VPNavBar .language-toggle .language-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .VPNavBar .content-body > .language-toggle {
+    margin-left: 4px;
+  }
+
+  /* With the five-language set the abbreviations-only slider
+   * alone no longer keeps the row inside the viewport at ~1000px: compact the
+   * search button to its magnifier icon (VitePress's own narrow-viewport
+   * treatment). The "Search" text is visually hidden (not display:none)
+   * so it keeps supplying the button's accessible name; the
+   * keyboard-shortcut hint is decorative and dropped outright. */
+  .VPNavBar .content-body:has(> .language-toggle) > .search .search-tip {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .VPNavBar .content-body:has(> .language-toggle) > .search .metaKey {
+    display: none;
+  }
+
+  .VPNavBar .language-toggle .language-option {
+    padding: 2px 4px;
+  }
+}
+
+/* --- Medium-view duplicate appearance switch --- */
+.VPNavBarExtra .item.appearance {
+  display: none !important;
+}
+
+/* Collapse the now-empty flyout group so no stray divider remains. */
+.VPNavBarExtra .group:has(> .item.appearance) {
+  display: none !important;
+}
+
+/* --- Settings dropdown placement --- */
+.VPNavBar .content-body > .SettingsMenu {
+  margin-left: 8px;
+}
+
+/* --- aws-cdk-lib version badge --- */
+/* Low-emphasis, compact, and on the same 40px baseline as the search
+ * trigger and the other nav controls — a second baseline here would show
+ * up as a half-pixel wobble across the row. Colors come from the
+ * VitePress brand tokens so both themes and the code-theme override stay
+ * consistent; nothing is hard-coded. */
+.VPNavBar .content-body > .version-badge {
+  margin-left: 8px;
+}
+
+.version-badge {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--vp-c-text-2);
+  transition: color 0.25s, background-color 0.25s;
+}
+
+.version-badge:hover {
+  color: var(--vp-c-text-1);
+  background-color: var(--vp-c-default-soft);
+}
+
+/* Below 960px the title is a flex item in the same row as the controls, and
+ * the row's controls need 623px on their own. The title yields the space and
+ * truncates rather than pushing the controls beyond the viewport. */
+@media (max-width: 959px) {
+  .VPNavBar .container > .title {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .VPNavBarTitle .title {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .VPNavBarTitle .title > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* From 960px the title is the fixed sidebar lane, so the row cannot borrow
+ * from it; 960-974px falls 15px short. The badge and the gear give up their
+ * 8px gaps across the medium band (the badge has its own 8px padding) and
+ * the row fits at 960px with 1px to spare. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .VPNavBar .content-body > .version-badge,
+  .VPNavBar .content-body > .SettingsMenu {
+    margin-left: 0;
+  }
+}
+
+/* Mobile keeps the version in the top row, ahead of search, on a 44px touch
+ * target. */
+@media (max-width: 767px) {
+  .VPNavBar .content-body > .version-badge {
+    order: -1;
+    display: flex;
+    height: 44px;
+    padding: 0 4px;
+    margin-left: 0;
+  }
+}
+
+/* Narrow viewports: the hamburger nav screen carries the remaining controls
+ * instead (theme picker row + full-width language slider). */
+@media (max-width: 767px) {
+  .VPNavBar .content-body > .SettingsMenu,
+  .VPNavBar .language-toggle {
+    display: none;
+  }
+}
+
+/* Mobile nav screen: the language slider as a full-width row above the
+ * theme picker row (see theme-picker.css for the picker's row). */
+.VPNavScreen .language-toggle {
+  margin-top: 12px;
+  width: 100%;
+  justify-content: center;
+}

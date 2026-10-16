@@ -1,0 +1,13 @@
+/* Home page feature-card glyphs.
+ *
+ * The cards inline lucide SVGs from `docs/index.md` frontmatter. `color`
+ * rather than `stroke`, because those SVGs paint with
+ * `stroke="currentColor"`; and the brand variable rather than a literal,
+ * because --vp-c-brand-1 already differs per palette, so one declaration is
+ * correct in both.
+ */
+.VPFeature .icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--vp-c-brand-1);
+}

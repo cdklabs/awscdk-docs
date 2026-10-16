@@ -1,0 +1,31 @@
+/**
+ * Right-hand "On this page" outline: show full headers.
+ *
+ * VitePress ships `.outline-link` as a single line clipped with an
+ * ellipsis (`white-space: nowrap; overflow: hidden; text-overflow:
+ * ellipsis`). Generated API pages have long member headings (method and
+ * property signatures), so most outline entries were truncated and
+ * unreadable. Override to wrap onto multiple lines with a compact
+ * line-height instead.
+ *
+ * Scoped to the desktop aside outline (`.VPDocAsideOutline`) only — the
+ * main sidebar nav, the mobile local-nav outline dropdown,
+ * and body content are untouched.
+ */
+
+.VPDocAsideOutline .outline-link {
+  /* Wrap instead of truncating: undo nowrap and the ellipsis clipping. */
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+
+  /* Long unbroken identifiers (e.g. fromBucketAttributes) break within
+     the column instead of overflowing it horizontally. */
+  overflow-wrap: anywhere;
+
+  /* The default 32px line-height doubled as per-entry spacing; wrapped
+     entries need a compact line box plus explicit padding so each entry
+     stays dense yet visually grouped. */
+  line-height: 1.3;
+  padding: 5px 0;
+}

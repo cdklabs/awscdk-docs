@@ -1,0 +1,201 @@
+{
+  "name": "@cdklabs/awscdk-docs",
+  "description": "The AWS CDK API Reference Documentation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cdklabs/awscdk-docs.git"
+  },
+  "scripts": {
+    "build": "projen build",
+    "bump": "projen bump",
+    "bump:releasable-commits": "projen bump:releasable-commits",
+    "cdk:pin": "projen cdk:pin",
+    "check-licenses": "projen check-licenses",
+    "clobber": "projen clobber",
+    "compile": "projen compile",
+    "default": "projen default",
+    "docs:a11y": "projen docs:a11y",
+    "docs:agent-readiness": "projen docs:agent-readiness",
+    "docs:baseline": "projen docs:baseline",
+    "docs:build": "projen docs:build",
+    "docs:build:sharded": "projen docs:build:sharded",
+    "docs:dev": "projen docs:dev",
+    "docs:dist:install": "projen docs:dist:install",
+    "docs:e2e": "projen docs:e2e",
+    "docs:generate": "projen docs:generate",
+    "docs:lighthouse": "projen docs:lighthouse",
+    "docs:merge": "projen docs:merge",
+    "docs:preview": "projen docs:preview",
+    "docs:typecheck": "projen docs:typecheck",
+    "eject": "projen eject",
+    "eslint": "projen eslint",
+    "modules:apply": "projen modules:apply",
+    "modules:plan": "projen modules:plan",
+    "modules:pr-body": "projen modules:pr-body",
+    "package": "projen package",
+    "post-compile": "projen post-compile",
+    "post-upgrade": "projen post-upgrade",
+    "pre-compile": "projen pre-compile",
+    "release": "projen release",
+    "test": "projen test",
+    "test:watch": "projen test:watch",
+    "third-party-licenses": "projen third-party-licenses",
+    "unbump": "projen unbump",
+    "upgrade": "projen upgrade",
+    "upgrade-cdklabs-projen-project-types": "projen upgrade-cdklabs-projen-project-types",
+    "upgrade-dev-deps": "projen upgrade-dev-deps",
+    "versions:apply": "projen versions:apply",
+    "versions:plan": "projen versions:plan",
+    "versions:pr-body": "projen versions:pr-body",
+    "watch": "projen watch",
+    "projen": "projen"
+  },
+  "devDependencies": {
+    "@aws-cdk/app-staging-synthesizer-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-amplify-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-applicationsignals-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-apprunner-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-bedrock-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-cloud9-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-codestar-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-dsql-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-ec2-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-elasticache-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-gamelift-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-glue-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-imagebuilder-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-iot-actions-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-iot-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-iotevents-actions-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-iotevents-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-ivs-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-kinesisanalytics-flink-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-lambda-go-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-lambda-python-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-location-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-mediaconnect-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-medialive-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-mediapackagev2-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-msk-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-neptune-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-pipes-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-pipes-enrichments-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-pipes-sources-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-pipes-targets-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-redshift-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-route53resolver-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-s3objectlambda-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-s3tables-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-sagemaker-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/aws-servicecatalogappregistry-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/cfn-property-mixins": "2.273.0",
+    "@aws-cdk/integ-tests-alpha": "2.273.0-alpha.0",
+    "@aws-cdk/metrics-facade-alpha": "2.273.0-alpha.0",
+    "@axe-core/playwright": "^4.13.0",
+    "@jest/globals": "^30.5.1",
+    "@jsii/spec": "^1.141.0",
+    "@playwright/test": "^1.64.0",
+    "@stylistic/eslint-plugin": "^2",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.6.5",
+    "@typescript-eslint/eslint-plugin": "^8",
+    "@typescript-eslint/parser": "^8",
+    "aws-cdk-lib": "2.273.0",
+    "botvisibility": "^3.0.0",
+    "cdklabs-projen-project-types": "^0.6.17",
+    "commit-and-tag-version": "^13",
+    "constructs": "^10.0.0",
+    "eslint": "^9",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import": "^2.32.0",
+    "htmlparser2": "^12.0.0",
+    "jest": "^30.5.2",
+    "jest-junit": "^17",
+    "license-checker": "^25.0.1",
+    "lighthouse": "^13.4.0",
+    "projen": "^0.104.4",
+    "ts-jest": "^29.4.14",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@shikijs/engine-javascript": "^2.1.0",
+    "@vueuse/core": "^12.8.2",
+    "lucide-static": "^0.542.0",
+    "markdown-it-mathjax3": "^4",
+    "pagefind": "^1.5.2",
+    "shiki": "^2.1.0",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-pagefind": "^0.4.25",
+    "vue": "^3.5.43"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "onFail": "ignore"
+    }
+  },
+  "main": "lib/index.js",
+  "license": "Apache-2.0",
+  "version": "0.0.0",
+  "jest": {
+    "coverageProvider": "v8",
+    "testMatch": [
+      "<rootDir>/@(src|test)/**/*(*.)@(spec|test).ts?(x)",
+      "<rootDir>/@(src|test)/**/__tests__/**/*.ts?(x)",
+      "<rootDir>/@(projenrc)/**/*(*.)@(spec|test).ts?(x)",
+      "<rootDir>/@(projenrc)/**/__tests__/**/*.ts?(x)"
+    ],
+    "clearMocks": true,
+    "collectCoverage": true,
+    "coverageReporters": [
+      "json",
+      "lcov",
+      "clover",
+      "cobertura",
+      "text"
+    ],
+    "coverageDirectory": "coverage",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/test/e2e/"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/test/e2e/"
+    ],
+    "watchPathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "reporters": [
+      "default",
+      [
+        "jest-junit",
+        {
+          "outputDirectory": "test-reports"
+        }
+      ]
+    ],
+    "transform": {
+      "^.+\\.[t]sx?$": [
+        "ts-jest",
+        {
+          "tsconfig": "test/tsconfig.json",
+          "useESM": true
+        }
+      ]
+    },
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ]
+  },
+  "types": "lib/index.d.ts",
+  "private": true,
+  "type": "module",
+  "//": "~~ Generated by projen. To modify, edit .projenrc.ts and run \"npx projen\"."
+}

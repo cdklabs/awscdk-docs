@@ -1,0 +1,313 @@
+/**
+ * Styling for the lazy-loaded API sidebar. Uses VitePress theme
+ * variables so it matches the native sidebar in both light and dark mode and
+ * inside the mobile drawer (the component renders in the VPSidebar slot).
+ */
+
+/* CDK type names are long: widen the sidebar column a measured
+   amount over VitePress's 272px default. Desktop only — below 960px the
+   sidebar is a fixed-width mobile drawer that ignores this variable. All
+   layout offsets (content column, navbar) derive from the same variable,
+   so they stay consistent. */
+@media (min-width: 960px) {
+  :root {
+    --vp-sidebar-width: 320px;
+  }
+}
+
+@media (min-width: 960px) {
+  :root .VPSidebar {
+    top: calc(var(--vp-layout-top-height, 0px) + var(--vp-nav-height));
+    padding-top: 0;
+  }
+
+  :root .VPSidebar .curtain {
+    display: none;
+  }
+}
+
+/* Keep the filter, jump control and favorites pinned while the tree scrolls.
+   `top: 0` pins the block to the scrollport's content edge at both breakpoints:
+   the desktop scrollport begins below the navbar, while the drawer keeps its
+   own top padding. The background stays opaque as tree rows scroll under it. */
+.VPSidebar .sidebar-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--vp-sidebar-bg-color);
+}
+
+/* The mobile drawer has no `.curtain` — VitePress scopes that to >=960px — so
+   tree rows would show through the aside's top padding above the pinned block.
+   Mask it from the block's own top edge: `bottom: 100%` needs no padding value
+   and the aside's own overflow clips the height. */
+@media (max-width: 959px) {
+  .VPSidebar .sidebar-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 50vh;
+    background-color: var(--vp-sidebar-bg-color);
+  }
+}
+
+
+.VPSidebar .group:has(> .VPSidebarItem:empty) {
+  display: none;
+}
+.api-sidebar {
+  margin-top: 0;
+}
+
+.api-sidebar-status {
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+.api-sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Indentation is capped at ONE level: the Framework /
+   Services section headers (depth 0) and the service groups directly
+   under them (depth 1) sit flush, and everything beneath a service --
+   resource groups, kind groups, and the types themselves -- shares a
+   single 14px indent instead of compounding per nesting level. The
+   service→type relationship stays visually clear via the one indent
+   plus the group headers/carets, while long type names keep the
+   horizontal space reclaimed by the widened column. */
+.api-sidebar-item {
+  --api-sidebar-depth: 0;
+}
+
+
+.api-sidebar-section:first-child {
+  margin-top: 0;
+}
+/* Fixed structural sections: Framework / Services render as
+   non-collapsible headers, visually set apart like the static
+   "API Reference" heading -- uppercase, letter-spaced, with a divider
+   between consecutive sections. */
+.api-sidebar-section {
+  margin-top: 4px;
+}
+
+.api-sidebar-section + .api-sidebar-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.api-sidebar-section-title {
+  margin: 0 0 4px;
+  padding: 2px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-1);
+}
+
+.api-sidebar-group,
+.api-sidebar-link {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  padding: 5px 4px;
+  padding-left: calc(min(max(var(--api-sidebar-depth) - 1, 0), 1) * 14px);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--vp-c-text-2);
+  border-radius: 4px;
+  transition: color 0.25s, background-color 0.25s;
+  /* Long type names wrap onto extra lines instead of being cut off.
+     `anywhere` lets an unbreakable identifier split
+     mid-word as a last resort so the column never overflows. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.api-sidebar-group {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+
+/* Kind groups (Constructs / Mixins / Facades / Traits / Others) hold a
+   resource's supporting types (the constructs are listed
+   directly). De-emphasize them so the RESOURCE groups above read as the
+   dominant level of the tree.
+
+   Keyed on the group's own marker, not on tree depth: `data-depth="3"` meant
+   "is a kind group" only while every section nested exactly four levels, and
+   a section with at most one resource now drops its resource wrapper,
+   so its kind groups sit a level higher. A depth-keyed rule rendered
+   the same `Others` heading two different ways depending on how many
+   resources its section happened to have. */
+.api-sidebar-item[data-kind-group] > .api-sidebar-group {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vp-c-text-2);
+}
+
+/* Leaf links render no caret, so pad them by the caret's 16px width: with
+   the capped single indent every label under a service -- group
+   headers and type links alike -- lines up in one text column instead of
+   links sitting left of their own group's label. */
+.api-sidebar-link {
+  padding-left: calc(min(max(var(--api-sidebar-depth) - 1, 0), 1) * 14px + 16px);
+}
+
+.api-sidebar-group:hover,
+.api-sidebar-link:hover {
+  color: var(--vp-c-brand-1);
+}
+
+/* Active page: a distinct accent treatment -- brand color on
+   a soft brand background -- instead of font-weight, which made the
+   selected entry read as a header.
+   The brand-2 step, not brand-1: the soft layer composites to #f6e7cf over
+   the page surface, where brand-1 is only 4.12:1. 5.82:1 here. */
+.api-sidebar-link.active {
+  color: var(--vp-c-brand-2);
+  background-color: var(--vp-c-brand-soft);
+}
+
+.api-sidebar-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  /* Pin the caret to the FIRST text line (1.5 line-height at 14px), so
+     it stays aligned with the label even when a long name wraps, and
+     the open/closed rotation spins around the glyph's own center
+     (the caret sat visibly off-line). */
+  height: calc(1em * 1.5);
+  align-self: flex-start;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+  color: var(--vp-c-text-3);
+}
+
+.api-sidebar-caret.open {
+  transform: rotate(90deg);
+}
+
+.api-sidebar-text {
+  /* Show the full name: wrap, never ellipsize. min-width: 0
+     lets the flex item shrink below its intrinsic (unbroken-word) width
+     so wrapping actually kicks in inside the flex row. */
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+
+.api-sidebar-link.locate-flash {
+  animation: locate-current 800ms ease-in-out;
+}
+
+@keyframes locate-current {
+  0%, 40%, 80%, 100% { box-shadow: none; }
+  20%, 60% { box-shadow: 0 0 0 3px var(--vp-c-brand-soft); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .api-sidebar-link.locate-flash {
+    animation: none;
+    outline: 2px solid var(--vp-c-brand-1);
+  }
+}
+/* Focus ring for keyboard navigation (a11y). */
+.api-sidebar-group:focus-visible,
+.api-sidebar-link:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* The leaf's NAME, split out from the link so the level tag beside it
+   is a sibling rather than part of the name's own text run.
+   Carries the same wrap rules as the group button's label: the name must
+   shrink and wrap beside the tag instead of forcing the row wider. */
+.api-sidebar-name {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Construct level tag: L1/L2/L3 before a construct's name.
+   `--vp-c-text-2`, not the dimmer `--vp-c-text-3` the caret above uses: this
+   tag is `aria-hidden`, so it is the only sighted channel for the level and
+   owes the full 4.5:1. Height is `14px * 1.5` and not `1em * 1.5`, which
+   would resolve against the tag's own 10px. Measured ratios in the ADR. */
+.api-sidebar-level {
+  flex-shrink: 0;
+  margin-right: 6px;
+  padding: 0 4px;
+  /* Fixed minimum width so L1/L2/L3 are the same width from the BOX rather
+   * than from the font rendering tabular figures. 22px covers
+   * Inter's measured 20.53px content-plus-padding and the system-sans
+   * fallback's 21.73px, so the tags stay equal when Inter has not loaded or
+   * the subset lacks `tnum`. `tabular-nums` below is kept as a second line
+   * of defense, not as the mechanism. */
+  min-width: 22px;
+  height: calc(14px * 1.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--vp-c-text-2);
+  background-color: var(--vp-c-default-soft);
+  border-radius: 3px;
+}
+
+/* The glyph is generated from `data-level` so it is styling, not link text:
+   the link's visible text is then the construct name alone, which the
+   accessible name starts with (WCAG 2.5.3). */
+.api-sidebar-level::before {
+  content: attr(data-level);
+}
+
+/* The level's own foreground, from the same `--cdk-badge-l*` triples the H1
+   badge and the hover preview use, so the three surfaces agree
+   on which hue means which level. Only the FOREGROUND: the chip stays
+   `--vp-c-default-soft`, keeping the tag quiet against the tree per the
+   sidebar-tag ADR, so these hues are measured against the sidebar surface
+   rather than against the badge backgrounds they were drawn for. Ratios are
+   pinned in `test/theme.test.ts`. */
+.api-sidebar-level[data-level='L1'] {
+  color: var(--cdk-badge-l1-text);
+}
+
+.api-sidebar-level[data-level='L2'] {
+  color: var(--cdk-badge-l2-text);
+}
+
+.api-sidebar-level[data-level='L3'] {
+  color: var(--cdk-badge-l3-text);
+}
+
+/* On the active row the tag follows the accent, and uses `--vp-c-brand-2`
+   because the chip's soft layer sits between `--vp-c-brand-1` and the
+   brand-tinted row, dropping it below AA in light. Ratios in the ADR.
+   After the level rules on purpose: row state outranks level. */
+.api-sidebar-link.active .api-sidebar-level {
+  color: var(--vp-c-brand-2);
+}

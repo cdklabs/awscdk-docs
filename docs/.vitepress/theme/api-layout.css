@@ -1,0 +1,862 @@
+/* API page layout components: inheritance-chain breadcrumbs, expandable props rows, collapsible method details, and type hover tooltips. Colors are custom properties in :root (light) shadowed in .dark. */
+
+:root {
+  --api-c-type: #0550ae;
+  --api-c-badge-bg: #fff1e0;
+  --api-c-badge-text: #92400e;
+  /* Deprecated marker. Declared here AND shadowed in `.dark`
+     below: an unshadowed `:root` color wins in dark mode, a known trap.
+     The strikethrough on the identifier carries the deprecation
+     independently, so nothing depends on this color alone. */
+  --api-c-deprecated: #9a2c2c;
+}
+
+.dark {
+  --api-c-type: #79b8ff;
+  --api-c-badge-bg: #3b2c1a;
+  --api-c-badge-text: #ffb84d;
+  --api-c-deprecated: #ff9d9d;
+}
+
+/* ---------- Type page header bar: breadcrumb + favorite ---------- */
+
+/* One horizontal bar styled like the inheritance chain: module
+   breadcrumb on the left, the icon-only favorite control (teleported
+   in by FavoriteStar.vue) on the right. */
+.type-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background-color: var(--vp-c-bg-soft);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8125rem;
+  color: var(--vp-c-text-2);
+}
+
+.type-breadcrumb p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* The favorite mount point sits at the right edge of the bar. */
+.type-breadcrumb > :last-child {
+  margin-left: auto;
+}
+
+/* The renderer follows every dot with a `<wbr>`, so a long trail wraps after
+   a dot; this only splits a segment that cannot fit on a line by itself. It
+   must be `anywhere`, not `break-word`: the trail is a flex item, and only
+   `anywhere` shrinks its min-content width so the line can wrap at all. */
+.breadcrumb-trail {
+  overflow-wrap: anywhere;
+}
+
+/* The separator in the DOM is a bare `.` with no whitespace, so the gaps a
+   reader sees are padding: selection copies the dots, not the spacing. Every
+   segment kind needs it, including an unlinked structural one. */
+.type-breadcrumb a,
+.type-breadcrumb strong,
+.breadcrumb-segment,
+.breadcrumb-ellipsis {
+  padding-inline: 3px;
+}
+
+.type-breadcrumb a {
+  color: var(--vp-c-text-2);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.type-breadcrumb a:hover {
+  color: var(--vp-c-brand-1);
+  text-decoration-style: solid;
+}
+
+.type-breadcrumb strong {
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+/* Collapsed middle segments keep their labels as text so a selection still
+   copies the whole FQN; the ellipsis is painted instead of written. */
+.breadcrumb-ellipsis {
+  color: var(--vp-c-text-3);
+  cursor: help;
+  font-size: 0;
+}
+
+.breadcrumb-ellipsis::after {
+  content: '…';
+  font-size: 0.8125rem;
+}
+
+.breadcrumb-fav {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+/* ---------- API kind badge: one row, one color per kind ---------- */
+
+/* VitePress 1.6.4 ships `.vp-doc h1 > .VPBadge { margin-top: 4px;
+   vertical-align: top }` on top of `.VPBadge { transform: translateY(-2px) }`.
+   This override was added when the badge shared the H1 with the source chip
+   under `vertical-align: middle`, ~9px apart otherwise; that chip later moved
+   into the type-metadata block, so the badge is now alone in the line
+   box. The override STAYS, and not by inertia: dropping it hands the badge
+   back VitePress's `translateY(-2px)` + `vertical-align: top`, which lifts it
+   off the text baseline it now has to sit on by itself. Measured, not assumed
+   — the e2e badge-alignment assertion is what holds it.
+
+   The selector carries `.api-badge` for two reasons: it outranks
+   VitePress's own `.vp-doc h1 > .VPBadge` whatever order the stylesheets
+   land in, and it confines the override to API type pages — a `<Badge>` in
+   hand-written prose keeps the stock treatment. */
+.vp-doc h1 > .VPBadge.api-badge {
+  margin-top: 0;
+  vertical-align: middle;
+  transform: none;
+}
+
+/* Per-kind colors. `<Badge>` only accepts info|tip|warning|danger, so the
+   kind travels as an extra class merged onto the component's root span by
+   Vue's attribute fallthrough, and these rules restate all three color
+   properties to beat `.VPBadge.tip` / `.VPBadge.info`.
+
+   The hues are this repo's own, not VitePress ramps: the palette needs
+   eight mutually distinct kinds and the theme's amber `--vp-c-brand-*` /
+   `--vp-c-tip-*` override collapses two of the stock ramps into one hue, so
+   there were never eight to draw from. Every pair below is pinned for WCAG
+   AA in both schemes by `test/theme.test.ts`. */
+:root {
+  --cdk-badge-l1-bg: #fef3c7;
+  --cdk-badge-l1-text: #854d0e;
+  --cdk-badge-l1-border: #fcd34d;
+  --cdk-badge-l2-bg: #dbeafe;
+  --cdk-badge-l2-text: #1e40af;
+  --cdk-badge-l2-border: #93c5fd;
+  --cdk-badge-l3-bg: #dcfce7;
+  --cdk-badge-l3-text: #166534;
+  --cdk-badge-l3-border: #86efac;
+  --cdk-badge-mixin-bg: #f3e8ff;
+  --cdk-badge-mixin-text: #6b21a8;
+  --cdk-badge-mixin-border: #d8b4fe;
+  --cdk-badge-facade-bg: #ccfbf1;
+  --cdk-badge-facade-text: #115e59;
+  --cdk-badge-facade-border: #5eead4;
+  --cdk-badge-struct-bg: #fce7f3;
+  --cdk-badge-struct-text: #9d174d;
+  --cdk-badge-struct-border: #f9a8d4;
+  --cdk-badge-interface-bg: #e0e7ff;
+  --cdk-badge-interface-text: #3730a3;
+  --cdk-badge-interface-border: #a5b4fc;
+  --cdk-badge-enum-bg: #ffedd5;
+  --cdk-badge-enum-text: #9a3412;
+  --cdk-badge-enum-border: #fdba74;
+}
+
+/* Every light value is shadowed here. An unshadowed `:root` color wins in
+   dark mode — the same trap the brand ramp hits — which
+   would leave dark-mode badges as near-black text on a pale tint. */
+.dark {
+  --cdk-badge-l1-bg: #422006;
+  --cdk-badge-l1-text: #fcd34d;
+  --cdk-badge-l1-border: #854d0e;
+  --cdk-badge-l2-bg: #172554;
+  --cdk-badge-l2-text: #93c5fd;
+  --cdk-badge-l2-border: #1e40af;
+  --cdk-badge-l3-bg: #052e16;
+  --cdk-badge-l3-text: #86efac;
+  --cdk-badge-l3-border: #166534;
+  --cdk-badge-mixin-bg: #2e1065;
+  --cdk-badge-mixin-text: #d8b4fe;
+  --cdk-badge-mixin-border: #6b21a8;
+  --cdk-badge-facade-bg: #042f2e;
+  --cdk-badge-facade-text: #5eead4;
+  --cdk-badge-facade-border: #115e59;
+  --cdk-badge-struct-bg: #500724;
+  --cdk-badge-struct-text: #f9a8d4;
+  --cdk-badge-struct-border: #9d174d;
+  --cdk-badge-interface-bg: #1e1b4b;
+  --cdk-badge-interface-text: #a5b4fc;
+  --cdk-badge-interface-border: #3730a3;
+  --cdk-badge-enum-bg: #431407;
+  --cdk-badge-enum-text: #fdba74;
+  --cdk-badge-enum-border: #9a3412;
+}
+
+.VPBadge.api-badge.api-badge-l1 {
+  background-color: var(--cdk-badge-l1-bg);
+  color: var(--cdk-badge-l1-text);
+  border-color: var(--cdk-badge-l1-border);
+}
+
+.VPBadge.api-badge.api-badge-l2 {
+  background-color: var(--cdk-badge-l2-bg);
+  color: var(--cdk-badge-l2-text);
+  border-color: var(--cdk-badge-l2-border);
+}
+
+.VPBadge.api-badge.api-badge-l3 {
+  background-color: var(--cdk-badge-l3-bg);
+  color: var(--cdk-badge-l3-text);
+  border-color: var(--cdk-badge-l3-border);
+}
+
+.VPBadge.api-badge.api-badge-mixin {
+  background-color: var(--cdk-badge-mixin-bg);
+  color: var(--cdk-badge-mixin-text);
+  border-color: var(--cdk-badge-mixin-border);
+}
+
+.VPBadge.api-badge.api-badge-facade {
+  background-color: var(--cdk-badge-facade-bg);
+  color: var(--cdk-badge-facade-text);
+  border-color: var(--cdk-badge-facade-border);
+}
+
+.VPBadge.api-badge.api-badge-struct {
+  background-color: var(--cdk-badge-struct-bg);
+  color: var(--cdk-badge-struct-text);
+  border-color: var(--cdk-badge-struct-border);
+}
+
+.VPBadge.api-badge.api-badge-interface {
+  background-color: var(--cdk-badge-interface-bg);
+  color: var(--cdk-badge-interface-text);
+  border-color: var(--cdk-badge-interface-border);
+}
+
+.VPBadge.api-badge.api-badge-enum {
+  background-color: var(--cdk-badge-enum-bg);
+  color: var(--cdk-badge-enum-text);
+  border-color: var(--cdk-badge-enum-border);
+}
+
+/* ---------- Type hierarchy bar (extends chain + implemented interfaces) ---------- */
+
+/* One surface for every relationship a type has, upward and downward.
+   The previous revision kept the downward list in a second
+   container and relied on a grouped selector to stop the two drifting; both
+   directions are now rows of THIS block, so there is nothing left to keep in
+   sync — including under the responsive override below, which is why that
+   override needs only this one selector. */
+.inheritance-chain {
+  margin: 16px 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background-color: var(--vp-c-bg-soft);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8125rem;
+  /* A column of rows: the breadcrumb line first, then one row per relation. */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* The breadcrumb keeps the flex row it always had, for the `\203a` separators. */
+.inheritance-chain .chain-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Relation rows flow as TEXT, not as flex items. Measured, not assumed: as a
+   flex row the label took an entire line to itself and every name became a
+   flex item with its own gap, which cut the usable width to roughly forty
+   characters a line and made a row run to nearly five lines instead of the
+   two the design asks for. Inline flow lets the names sit after the label and
+   wrap like the prose they read as.
+   The gutter in the design is the border, not a literal `|` character: a
+   pipe would be announced by a screen reader on every row. */
+.inheritance-chain .chain-row {
+  display: block;
+  padding-left: 10px;
+  border-left: 2px solid var(--vp-c-divider);
+}
+
+/* A row's names are a real list, so assistive tech announces the item
+   count and boundaries. It must still FLOW as text —
+   the two-line clamp depends on it — so the list and its items render
+   inline with the theme's `.vp-doc` list padding and per-item margins
+   reset. That styling is exactly what makes WebKit drop native list
+   semantics from the accessibility tree, which is why the emitter
+   re-asserts `role="list"`/`"listitem"` explicitly. */
+.inheritance-chain .chain-list {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inheritance-chain .chain-list > li {
+  display: inline;
+  margin: 0;
+}
+
+.inheritance-chain .chain-sep {
+  color: var(--vp-c-text-3);
+  user-select: none;
+}
+
+/* Link vocabulary shared by both views — deliberately NOT scoped to a
+   container, so a change here cannot reach one view and miss the other. */
+a.chain-item {
+  color: var(--vp-c-brand-1);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+a.chain-item:hover {
+  text-decoration-style: solid;
+}
+
+.inheritance-chain .chain-current {
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+.inheritance-chain .chain-label {
+  /* text-2, not text-3: #929295 is 2.82:1 on the page surfaces. */
+  color: var(--vp-c-text-2);
+  font-style: italic;
+  margin-right: 2px;
+}
+
+/* Per-row overflow disclosure. A SIBLING of the visible names,
+   never their wrapper: nesting the names inside the summary would make the
+   links nested interactive content, the exact violation removed earlier.
+
+   Separated from the last visible name by the margin. Without it the row
+   rendered `Domain+ 2,507 more` — structurally correct, two lines exactly,
+   every test green, and wrong on the page. A margin rather than emitted
+   whitespace, so the separator cannot end up inside the Pagefind-ignored
+   text or be collapsed away by the markdown pipeline.
+
+   No such separator is needed on the OPEN state, and that is measured
+   rather than assumed: a `<details>` element's revealed content is
+   block-level even when the element itself is `display: inline`, so the
+   names begin their own line below the control and never sit beside it. */
+.inheritance-chain .chain-more {
+  display: inline;
+  margin-left: 6px;
+}
+
+.inheritance-chain .chain-more > summary {
+  /* `.vp-doc summary` carries a 16px vertical margin, which would push the
+     control off the row's baseline (the same rule caught the names too). */
+  margin: 0;
+  display: inline;
+  cursor: pointer;
+  list-style: none;
+  color: var(--vp-c-text-2);
+}
+
+.inheritance-chain .chain-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The `[+]` convention the property rows settled on, not the
+   native triangle. */
+.inheritance-chain .chain-more > summary::before {
+  content: "+ ";
+  color: var(--vp-c-text-3);
+}
+
+/* A hex escape consumes ONE following whitespace character as its
+   terminator, so `"\2212 "` is the bare `−` and the control changed shape
+   when opened. `\20` IS the space, escaped so nothing is left to consume —
+   both states carry the same gap. */
+.inheritance-chain .chain-more[open] > summary::before {
+  content: "\2212\20";
+}
+
+.inheritance-chain .chain-more > summary:hover {
+  color: var(--vp-c-brand-1);
+}
+
+/* ---------- Type metadata: provenance rows under the hierarchy bar ---------- */
+
+/* A definition list, deliberately NOT the metadata table that
+   a type page once carried: it renders only
+   the facts a type actually has, so there is no empty shell, and it carries
+   provenance the description cannot state as prose.
+
+   The grid is row-count-agnostic on purpose. A fourth metadata point is one
+   more `<dt>`/`<dd>` pair and needs no rule here, so nothing in this section
+   may key off position — no `nth-child`, no `:first-child`/`:last-child`
+   edges. Encoding "there are exactly three rows" as a position proxy is the
+   defect that once reached main.
+
+   Visually rhymes with `.inheritance-chain` above (soft surface, 8px radius,
+   mono, 0.8125rem) because the two blocks are one header region read top to
+   bottom. */
+.type-metadata {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  align-items: baseline;
+  margin: 16px 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background-color: var(--vp-c-bg-soft);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8125rem;
+}
+
+.type-metadata-label {
+  color: var(--vp-c-text-2);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.type-metadata-value {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* VitePress styles prose code as a padded, tinted pill through
+   `.vp-doc :not(pre,h1,h2,h3,h4,h5,h6) > code`, whose specificity (0,1,2)
+   beats a bare `.type-metadata-value code` (0,1,1), so without the prefix
+   these declarations lose and the values render as pills at 0.875em.
+   `.vp-doc` restores the class count (0,2,1) so these win. Inside the block the value IS the
+   text, so it needs no chip of its own. */
+.vp-doc .type-metadata-value code {
+  background-color: transparent;
+  padding: 0;
+  font-size: inherit;
+  /* A linked value takes the anchor's color rather than the prose-code
+     color, so the link affordance governs the text a reader actually sees. */
+  color: inherit;
+}
+
+/* The source link has to read as a link at rest, not only on hover — a
+   deliberate decision, re-homed from `.vp-doc h1 a.header-tag` rather than dropped
+   with the chip. brand-2, not brand-1: this sits on `--vp-c-bg-soft`, a
+   surface darker than the page, where brand-1 measures only 4.22:1; brand-2
+   is 5.95:1 light and 8.17:1 dark. The underline carries the affordance on
+   its own, so nothing depends on color alone. */
+.type-metadata-value a {
+  color: var(--vp-c-brand-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* `Generated code` is a `<span>`, not a link, and keeps the plain gray
+   treatment — that difference is the whole point, exactly as it was for the
+   two chips this block replaces. */
+.type-metadata-generated {
+  color: var(--vp-c-text-2);
+}
+
+/* ---------- Member rows: properties and methods ----------
+
+   One row shape for both sections: a header line, a summary line, then either
+   short prose inline or a labeled disclosure. The container carries no box —
+   the border, radius and `overflow: hidden` it used to have added chrome
+   without adding meaning — so rows are separated by a single divider and the
+   last one has none. */
+
+.props-table,
+.methods-table {
+  margin: 12px 0;
+}
+
+.member-list .member-row {
+  border-bottom: 1px solid var(--vp-c-divider);
+  padding: 7px 0;
+}
+
+.member-list .member-row:last-child {
+  border-bottom: none;
+}
+
+/* A row navigated to by its permalink is tinted briefly so the landing is
+   visible; the id lives on the row, so the whole member highlights. */
+.member-list .member-row:target {
+  background-color: var(--vp-c-bg-soft);
+}
+
+/* The header line wraps rather than clamping: it holds a full method
+   signature, which cannot be truncated without hiding a parameter. */
+.member-list .member-line {
+  /* Positioning context for the permalink in the left gutter. */
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 12px;
+  row-gap: 2px;
+  min-width: 0;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.875rem;
+}
+
+.member-name,
+.member-signature {
+  font-family: var(--vp-font-family-mono);
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  background-color: transparent;
+  padding: 0;
+}
+
+/* The member row's signature palette. The identifier carries the weight and
+   every other token recedes, so the least important pieces of a long signature
+   — a parameter default, the `// chainable` annotation — cannot outshout the
+   name. `.sig-keyword` is deliberately absent: the inline emitter never emits
+   one. `api-layout.test.ts` pins this set, because a token silently falling
+   through to the container's own weight and color is exactly how three of them
+   were missed. */
+.member-signature .sig-name {
+  font-weight: 600;
+}
+
+.member-signature .sig-param,
+.member-signature .sig-punct,
+.member-signature .sig-type,
+.member-signature .type-param,
+.member-signature .sig-default,
+.member-signature .sig-fluent {
+  font-weight: 400;
+}
+
+/* Parameter names and punctuation recede so the linked types stay legible
+   inside a long signature. */
+.member-signature .sig-param,
+.member-signature .sig-punct {
+  color: var(--vp-c-text-2);
+}
+
+/* A bare type (a primitive, or a named type with no generated page) takes the
+   same color as a linked one below — the same token must not render in two
+   colors inside one signature. */
+.member-signature .sig-type {
+  color: var(--api-c-type);
+}
+
+/* Generic parameters (T, K, V) stay distinct from concrete types. */
+.member-signature .type-param {
+  color: var(--sig-c-type-param);
+  font-style: italic;
+}
+
+/* Annotations on the signature rather than part of it. */
+.member-signature .sig-default,
+.member-signature .sig-fluent {
+  color: var(--vp-c-text-2);
+  font-style: italic;
+}
+
+/* Strikethrough marks the identifier ONLY — never the parameters, the return
+   type or the anchor. Divider-weight decoration so it reads as a mark rather
+   than a scribble. */
+.member-name-deprecated {
+  text-decoration: line-through 1px;
+  text-decoration-color: var(--vp-c-divider);
+}
+
+.member-signature.member-name-deprecated .sig-name {
+  text-decoration: line-through 1px;
+  text-decoration-color: var(--vp-c-divider);
+}
+
+.member-signature.member-name-deprecated {
+  text-decoration: none;
+}
+
+.member-type {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8125rem;
+  color: var(--api-c-type);
+}
+
+.member-type a,
+.member-signature a.sig-type {
+  color: var(--api-c-type);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.member-type a:hover,
+.member-signature a.sig-type:hover {
+  color: var(--vp-c-brand-1);
+  text-decoration-style: solid;
+}
+
+/* A long translated spelling (Python's `int | float` for jsii `number`, a
+   nested Java generic) would otherwise take the header line's whole width.
+   `inline-block` rather than a flex item on purpose: making the
+   variant wrapper a flex container blockifies the name `code` beside it,
+   whose height then comes from line-height instead of the font. */
+.member-list .member-type {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+/* The name and its type are adjacent inline boxes inside one variant, so the
+   row's `column-gap` never separates them; 8px reads as one unit next to the
+   12px between row items. */
+.member-list .member-name {
+  margin-right: 8px;
+}
+
+/* With 2+ languages the row's flex child is the variant span, not the name or
+   type inside it: `nowrap` keeps the pair from breaking apart. */
+.member-list .member-line > .lang-variant {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* The clamp is deliberately narrower than the emitter's own
+   INLINE_DEFAULT_BUDGET: the default is the least important thing on the header
+   line and must not crowd the name and type. Widening it to match the budget
+   would double the worst case this exists to bound, so recovery is the `title`
+   the emitter puts on the span instead — the same answer `.member-type` got.
+   This is monospace, so `ch` and characters count the same. */
+.member-default {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8125rem;
+  /* --vp-c-text-3 is a placeholder-weight gray and misses the AA 4.5:1 floor
+     at this size; text-2 is the muted-but-readable step. Checked by the
+     axe-core audit, which failed on this element before the change. */
+  color: var(--vp-c-text-2);
+  max-width: 16ch;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* `required` is muted italic text, not a pill: the amber badge it replaces
+   outweighed the member name beside it. */
+.member-required,
+.member-static {
+  font-family: var(--vp-font-family-base);
+  font-style: italic;
+  font-size: 0.75rem;
+  /* Same AA floor as .member-default above. */
+  color: var(--vp-c-text-2);
+}
+
+.member-deprecated {
+  font-family: var(--vp-font-family-base);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--api-c-deprecated);
+}
+
+/* Revealed on row hover or focus, but ALWAYS in the tab order and always
+   carrying its accessible name — `visibility` would take it out of the
+   sequence, and `display: none` would hide it from assistive technology. */
+.member-permalink {
+  /* Out of flow in the left gutter, the same offset the theme gives its heading
+     anchors, so the row's content starts at the content edge and never shifts
+     as the glyph fades in and out. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-left: -0.87em;
+  font-family: var(--vp-font-family-mono);
+  /* Same AA floor again. axe cannot flag this one — it is transparent until
+     hover or focus — so it is fixed on the same grounds rather than on a
+     report. */
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.member-list .member-row:hover .member-permalink,
+.member-permalink:focus,
+.member-permalink:focus-visible {
+  opacity: 1;
+}
+
+.member-permalink:hover {
+  color: var(--vp-c-brand-1);
+}
+
+/* The summary is no longer clamped: the one-line clamp once added
+   existed because the summary shared a line with the name, type and
+   badge, and it no longer does. It wraps. */
+.member-summary {
+  color: var(--vp-c-text-2);
+  font-size: 0.8125rem;
+  margin-top: 2px;
+}
+
+/* Short extra prose renders inline — no left rule, no indent, no control. */
+.member-extra,
+.member-details {
+  color: var(--vp-c-text-2);
+  font-size: 0.875rem;
+}
+
+.member-extra p,
+.member-details p {
+  margin: 6px 0;
+}
+
+/* ---------- Disclosure control, shared by both sections ----------
+
+   Declared ONCE for both: a page teaches one expand affordance,
+   and a guarantee enforced by a copy drifts the first time either side is
+   edited. The `+`/`−` glyph is gone — it was barely visible and
+   said nothing about what it opened. The label names its contents instead. */
+
+.member-disclosure > summary {
+  /* The default theme sets `.vp-doc summary { margin: 16px 0 }`, which would
+     open a gap far airier than the row it belongs to. */
+  margin: 4px 0 0;
+  display: inline-block;
+  font-family: var(--vp-font-family-base);
+  font-size: 0.8125rem;
+  /* Same AA floor as the row markers: axe reported this summary once the
+     other two were fixed, because it reports one violation per page. */
+  color: var(--vp-c-text-2);
+  cursor: pointer;
+  list-style: none;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  user-select: none;
+}
+
+.member-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.member-disclosure > summary:hover {
+  color: var(--vp-c-brand-1);
+  text-decoration-style: solid;
+}
+
+/* ---------- Type hover tooltips ---------- */
+
+.type-tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 360px;
+  padding: 10px 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background-color: var(--vp-c-bg-elv);
+  box-shadow: var(--vp-shadow-3);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.type-tooltip[aria-hidden="true"] {
+  display: none;
+}
+
+.type-tooltip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.type-tooltip-name {
+  font-family: var(--vp-font-family-mono);
+  color: var(--vp-c-text-1);
+}
+
+.type-tooltip-kind {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: var(--api-c-badge-bg);
+  color: var(--api-c-badge-text);
+  white-space: nowrap;
+}
+
+/* The preview's kind chip takes the construct level's own palette triple,
+   the same one the page's H1 badge wears, so a link's preview
+   and the page it points at agree on color as well as on wording. A level
+   class rather than a retint of `--api-c-badge-*`: that token is shared with
+   the REQUIRED and STATIC property chips, which are not leveled and must
+   keep their current colors. Kinds without a level keep the shared chip. */
+.type-tooltip-kind-l1 {
+  background-color: var(--cdk-badge-l1-bg);
+  color: var(--cdk-badge-l1-text);
+}
+
+.type-tooltip-kind-l2 {
+  background-color: var(--cdk-badge-l2-bg);
+  color: var(--cdk-badge-l2-text);
+}
+
+.type-tooltip-kind-l3 {
+  background-color: var(--cdk-badge-l3-bg);
+  color: var(--cdk-badge-l3-text);
+}
+
+.type-tooltip-summary {
+  margin: 6px 0 0;
+  color: var(--vp-c-text-2);
+}
+
+/* ---------- Responsive degradation ---------- */
+
+@media (max-width: 640px) {
+  .member-list .member-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* A stacked row has no single line to clamp against, so the type and the
+     default wrap rather than ellipsizing. Releasing the default
+     matters more than symmetry: its only recovery is the
+     `title` the emitter sets, and hover means nothing on touch — which is the
+     same reason `.type-tooltip` is switched off at the bottom of this block. A
+     22-character prose default like `No filtering on region` would otherwise be
+     ellipsized here with no way at all to read it, being under
+     INLINE_DEFAULT_BUDGET and so earning no `**Default:**` copy either. */
+  .member-list .member-type,
+  .member-list .member-default {
+    white-space: normal;
+    overflow: visible;
+  }
+
+  /* The type's clamp is `max-width: 100%`, which stops binding once the text
+     may wrap; the default's is a `ch` measure, which does not. */
+  .member-list .member-default {
+    max-width: none;
+  }
+
+  .member-list .member-line > .lang-variant {
+    white-space: normal;
+  }
+
+  .inheritance-chain {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+  }
+
+  /* The metadata block scales with the hierarchy bar it sits under. */
+  .type-metadata {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+  }
+
+  /* Hover tooltips have no meaning on touch viewports */
+  .type-tooltip {
+    display: none !important;
+  }
+}
