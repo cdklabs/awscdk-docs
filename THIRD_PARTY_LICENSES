@@ -193,19 +193,19 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/vitejs/vite-plugin-vue
 
-@vue/compiler-core@3.5.43
+@vue/compiler-core@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/compiler-dom@3.5.43
+@vue/compiler-dom@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/compiler-sfc@3.5.43
+@vue/compiler-sfc@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/compiler-ssr@3.5.43
+@vue/compiler-ssr@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
@@ -221,23 +221,23 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/vuejs/devtools
 
-@vue/reactivity@3.5.43
+@vue/reactivity@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/runtime-core@3.5.43
+@vue/runtime-core@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/runtime-dom@3.5.43
+@vue/runtime-dom@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/server-renderer@3.5.43
+@vue/server-renderer@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/shared@3.5.43
+@vue/shared@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
@@ -725,7 +725,7 @@ vitepress-plugin-pagefind@0.4.25
   License: MIT
   Repository: https://github.com/ATQQ/sugar-blog
 
-vue@3.5.43
+vue@3.5.44
   License: MIT
   Repository: https://github.com/vuejs/core
 
