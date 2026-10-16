@@ -43,6 +43,7 @@ const project = new CdkTypeScriptProject({
   // Combined deploy + release workflow: the GitHub release is only created after the site has been published,
   // so a version tag can never point at unpublished docs. The docs build and publish jobs are added below.
   releaseWorkflowName: 'deploy-and-release',
+  minMajorVersion: 1,
 
   githubOptions: {
     projenCredentials: PROJEN_GITHUB_TOKEN,
