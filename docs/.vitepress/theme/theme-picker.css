@@ -1,0 +1,32 @@
+/*
+ * Tri-state theme controls.
+ *
+ * The custom ThemePicker — the Light/Device/Dark site picker plus the
+ * independent Light/Default/Dark code-block theme — replaces VitePress's
+ * built-in two-state appearance switch, so the stock switch is hidden in
+ * both the desktop navbar and the mobile nav screen. These rules live here
+ * (not custom.css) because custom.css is constrained by tests to pure
+ * :root / .dark variable overrides.
+ */
+
+/* Stock two-state switch: desktop navbar */
+.VPNavBarAppearance {
+  display: none !important;
+}
+
+/* Stock two-state switch: mobile hamburger nav screen */
+.VPNavScreenAppearance {
+  display: none !important;
+}
+
+/* Desktop placement: the appearance controls live inside the gear-icon
+ * Settings dropdown at the right end of the nav row (positioning rules
+ * in nav-controls.css, which also hides the navbar
+ * dropdown on narrow viewports, where the nav-screen copy in the
+ * hamburger menu takes over). */
+
+/* Mobile nav screen placement: full-width row inside the menu. */
+.VPNavScreen .ThemePicker {
+  margin-top: 12px;
+  justify-content: center;
+}
