@@ -103,7 +103,7 @@
     "@typescript-eslint/parser": "^8",
     "aws-cdk-lib": "2.273.0",
     "botvisibility": "^3.0.0",
-    "cdklabs-projen-project-types": "^0.6.17",
+    "cdklabs-projen-project-types": "^0.6.18",
     "commit-and-tag-version": "^13",
     "constructs": "^10.0.0",
     "eslint": "^9",
@@ -114,7 +114,7 @@
     "jest-junit": "^17",
     "license-checker": "^25.0.1",
     "lighthouse": "^13.4.0",
-    "projen": "^0.104.4",
+    "projen": "^0.104.8",
     "ts-jest": "^29.4.14",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3"
