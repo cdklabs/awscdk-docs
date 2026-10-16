@@ -1,0 +1,168 @@
+/* Favorite pages UI. All colors come from
+ * VitePress theme variables so light and dark mode both work. */
+
+/* Icon-only star toggle (issue #61): lives at the right edge of the
+ * breadcrumb header bar on type pages, standalone above the content on
+ * API pages without a breadcrumb. Hover/title text carries the label. */
+.favorite-star {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.favorite-star.standalone {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.favorite-star-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--vp-c-text-2);
+  line-height: 1;
+  transition:
+    color 0.25s,
+    border-color 0.25s,
+    background-color 0.25s;
+}
+
+.favorite-star-button:hover {
+  border-color: var(--vp-c-brand-1);
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-brand-1);
+}
+
+.favorite-star-button.starred {
+  color: var(--vp-c-brand-1);
+}
+
+.favorite-star-icon {
+  display: block;
+  font-family: var(--vp-font-family-base);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.favorite-star-cap {
+  color: var(--vp-c-text-2);
+  font-size: 12px;
+  font-family: var(--vp-font-family-base);
+}
+
+/* Sidebar favorites section */
+.favorites-section {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  margin-bottom: 8px;
+}
+
+/* Disclosure header (issue #95). Mirrors `.api-sidebar-group`'s shape so
+ * the section reads as part of the same tree rather than a second style of
+ * collapsible thing. */
+.favorites-toggle {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  padding: 5px 4px;
+  border-radius: 4px;
+  text-align: left;
+  transition: color 0.25s;
+}
+
+.favorites-toggle:hover .favorites-heading {
+  color: var(--vp-c-brand-1);
+}
+
+.favorites-toggle:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+}
+
+/* Same glyph, size and rotation as `.api-sidebar-caret`, pinned to the
+ * first text line so it stays aligned with the label. */
+.favorites-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: calc(1em * 1.5);
+  align-self: flex-start;
+  flex-shrink: 0;
+  color: var(--vp-c-text-3);
+  transition: transform 0.2s ease;
+}
+
+.favorites-caret.open {
+  transform: rotate(90deg);
+}
+
+.favorites-heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--vp-c-brand-1);
+  transition: color 0.25s;
+}
+
+.favorites-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.favorites-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Entry labels carry the nav tree's own scale and color token (issue #95)
+ * — they read as tree items, not as dimmer secondary text. */
+.favorites-link {
+  flex: 1;
+  overflow: hidden;
+  padding: 5px 4px;
+  padding-left: 16px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.25s;
+}
+
+.favorites-link:hover {
+  color: var(--vp-c-brand-1);
+}
+
+.favorites-link:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+}
+
+.favorites-remove {
+  flex: none;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: var(--vp-c-text-3);
+  font-size: 11px;
+  line-height: 20px;
+  transition:
+    color 0.25s,
+    background-color 0.25s;
+}
+
+.favorites-remove:hover {
+  background-color: var(--vp-c-default-soft);
+  color: var(--vp-c-text-1);
+}

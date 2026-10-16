@@ -1,0 +1,24 @@
+/**
+ * Information density for doc-body tables (issue #57).
+ *
+ * The generated type pages carry markdown tables (enum members, facts,
+ * mixin matrices) rendered with the default theme's roomy cell padding
+ * (8px 16px) and 20px block margins. Tightening the `.vp-doc` table
+ * rules puts visibly more rows per viewport without shrinking the text
+ * itself — font sizes, borders, and alignment are untouched, so
+ * legibility survives the density pass.
+ *
+ * Scope: `.vp-doc` is the rendered page body only. The sidebar
+ * (#35/#54), the aside outline (#34), and the fold-out interaction
+ * pattern are deliberately not restyled here; the fold-out padding
+ * trim lives with its component styles in api-layout.css.
+ */
+
+.vp-doc table {
+  margin: 14px 0;
+}
+
+.vp-doc th,
+.vp-doc td {
+  padding: 5px 10px;
+}

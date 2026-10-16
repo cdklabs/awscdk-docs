@@ -1,0 +1,45 @@
+/* Independent code-block theme (issue #76). */
+html[data-code-theme='light'] pre.vp-code span {
+  color: var(--shiki-light, inherit);
+}
+
+html[data-code-theme='dark'] pre.vp-code span {
+  color: var(--shiki-dark, inherit);
+}
+
+/* ---------- Code-block chrome ---------- */
+/* The block's background, plain-text color, language label, copy button
+ * and line-highlight all consume `--vp-code-*` vars that resolve from the
+ * SITE scheme (`:root` / `.dark`). A decoupled choice re-pins them at the
+ * html level: `html[data-code-theme]` (0,1,1) out-specifies both `:root`
+ * and `.dark` (0,1,0). The vars are only consumed by code blocks, so
+ * re-pinning them globally is safe. Values mirror the light/dark surface
+ * stacks — custom.css for the brand surfaces, VitePress vars.css for the
+ * neutral text/divider ramps; each is annotated with its source.
+ *
+ * Inline `code` spans in prose deliberately keep following the SITE theme:
+ * they sit inside sentences and must match the surrounding text surface.
+ * The code THEME control governs fenced blocks (`pre.vp-code`). */
+html[data-code-theme='light'] {
+  --vp-code-block-bg: #f5f4f1; /* light --vp-c-bg-alt (custom.css) */
+  --vp-code-block-color: #67676c; /* light --vp-c-text-2 (vitepress vars.css) */
+  --vp-code-lang-color: #67676c; /* light --vp-c-text-2; text-3 #929295 is only 2.82:1 here (issue #87) */
+  --vp-code-line-highlight-color: rgba(142, 150, 170, 0.14); /* light --vp-c-gray-soft */
+  --vp-code-copy-code-border-color: #e2e2e3; /* light --vp-c-divider */
+  --vp-code-copy-code-bg: #f5f4f1; /* light --vp-c-bg-soft (custom.css) */
+  --vp-code-copy-code-hover-border-color: #e2e2e3;
+  --vp-code-copy-code-hover-bg: #faf9f7; /* light --vp-c-bg (custom.css) */
+  --vp-code-copy-code-active-text: #67676c;
+}
+
+html[data-code-theme='dark'] {
+  --vp-code-block-bg: #10161f; /* dark --vp-c-bg-alt (custom.css) */
+  --vp-code-block-color: #98989f; /* dark --vp-c-text-2 (vitepress vars.css) */
+  --vp-code-lang-color: #98989f; /* dark --vp-c-text-2; text-3 #6a6a71 is only 3.4:1 here (issue #87) */
+  --vp-code-line-highlight-color: rgba(101, 117, 133, 0.16); /* dark --vp-c-gray-soft */
+  --vp-code-copy-code-border-color: #2e2e32; /* dark --vp-c-divider */
+  --vp-code-copy-code-bg: #1f2a3a; /* dark --vp-c-bg-soft (custom.css) */
+  --vp-code-copy-code-hover-border-color: #2e2e32;
+  --vp-code-copy-code-hover-bg: #161e2d; /* dark --vp-c-bg (custom.css) */
+  --vp-code-copy-code-active-text: #98989f;
+}

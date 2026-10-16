@@ -1,0 +1,9 @@
+{
+  "urls": [
+    "http://127.0.0.1:4173/",
+    "http://127.0.0.1:4173/v2/docs/aws-cdk-lib.aws_sqs-readme.html",
+    "http://127.0.0.1:4173/v2/docs/aws-cdk-lib.aws_sns.Topic.html"
+  ],
+  "numberOfRuns": 3,
+  "minScore": 0.9
+}

@@ -1,0 +1,168 @@
+/**
+ * Responsive mobile layout.
+ *
+ * The VitePress default theme already provides the structural mobile
+ * behavior we need (verified against vitepress 1.6.x sources):
+ *
+ * - Sidebar drawer: `VPSidebar` slides in from the left below 960px with
+ *   a 0.25s ease transition, triggered by the `VPLocalNav` hamburger
+ *   button, with a `VPBackdrop` overlay behind it.
+ * - TOC dropdown: `VPLocalNavOutlineDropdown` renders the page outline
+ *   as a collapsible dropdown in the sticky local nav bar at the top of
+ *   the page on viewports below 1280px.
+ * - Table scroll: `.vp-doc table` is `display: block; overflow-x: auto`,
+ *   so props tables scroll horizontally instead of widening the page.
+ * - Code blocks: `.vp-doc div[class*='language-']` scrolls horizontally.
+ *
+ * This file only patches the gaps in OUR custom layer on top of that:
+ * docgen-emitted signature blocks, header badges, and the Pagefind
+ * search dialog — plus WCAG 2.5.5 touch-target sizing and a horizontal
+ * overflow guard. Colors come exclusively from VitePress theme
+ * variables, so every rule works in both light and dark mode.
+ *
+ * Breakpoints mirror the default theme: 768px (tablet) and 960px
+ * (desktop sidebar).
+ */
+
+/* ------------------------------------------------------------------ *
+ * Horizontal overflow guard
+ *
+ * No descendant may widen the page: any viewport-width regression
+ * (an unwrapped signature, a wide badge row) degrades into local
+ * scrolling instead of a page-level horizontal scrollbar.
+ * ------------------------------------------------------------------ */
+.VPDoc .container,
+.VPDoc .content {
+  min-width: 0;
+}
+
+.vp-doc {
+  overflow-wrap: break-word;
+}
+
+/* ------------------------------------------------------------------ *
+ * Docgen signature blocks
+ *
+ * `pre.signature` already scrolls horizontally (signatures.css); on
+ * touch devices give the scroll momentum, and below 768px reduce the
+ * padding so narrow screens keep more columns of actual code.
+ * ------------------------------------------------------------------ */
+pre.signature {
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  pre.signature {
+    padding: 10px 12px;
+    margin: 12px 0;
+  }
+
+  pre.signature code {
+    font-size: 0.8125em;
+  }
+
+  /* Initializer signatures are a single line on desktop (issue #61); on
+     narrow screens they wrap instead of scrolling sideways. Scoped to the
+     initializer fence container (the Pagefind-ignored div right after the
+     `## Initializer` heading, issue #70) so authored `## Example` fences
+     keep the standard horizontal scroll: an author can reflow an example,
+     but nobody can shorten a generated multi-parameter signature. */
+  h2#initializer + div[data-pagefind-ignore] pre.shiki,
+  h2#initializer + div[data-pagefind-ignore] pre.shiki code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Header badges (docgen emits <Badge> next to H1/H3 titles)
+ *
+ * Long titles plus "New in vX.Y.Z" / version badges must wrap instead
+ * of forcing the heading wider than the viewport.
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .vp-doc h1,
+  .vp-doc h2,
+  .vp-doc h3 {
+    overflow-wrap: anywhere;
+  }
+
+  .vp-doc h1 .VPBadge,
+  .vp-doc h2 .VPBadge,
+  .vp-doc h3 .VPBadge {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Touch targets (WCAG 2.5.5: >= 44x44px for interactive elements)
+ *
+ * The default theme's hamburger and TOC dropdown buttons are slightly
+ * under 44px tall on mobile; pad them up without shifting layout.
+ * Applied only below 960px so desktop pointer users keep the compact
+ * default styling.
+ * ------------------------------------------------------------------ */
+@media (max-width: 959px) {
+  .VPLocalNav .menu,
+  .VPLocalNavOutlineDropdown > button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Sidebar drawer links: comfortable tap rows. Height only: these are
+     block-level rows whose width is the drawer's (measured 247px inside a
+     311px drawer at a 375px viewport), so a 44px min-width would never
+     bind — see test/responsive.test.ts (issue 159). */
+  .VPSidebar .VPSidebarItem .item,
+  .VPSidebar .api-sidebar-group,
+  .VPSidebar .api-sidebar-link {
+    min-height: 44px;
+  }
+
+  /* Navbar hamburger (top-right on small screens) */
+  .VPNavBarHamburger {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Icon-only favorite star in the breadcrumb bar (issue #61) */
+  .favorite-star-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Pagefind search dialog (vitepress-plugin-pagefind)
+ *
+ * The plugin's dialog is width: 90% / max-width: 600px at all sizes;
+ * on small screens go full-width with safe-area padding so results
+ * are readable and the input is reachable.
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .search-dialog {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 90vh !important;
+    border-radius: 0 0 8px 8px !important;
+    margin: 0;
+    align-self: flex-start;
+  }
+
+  .search-dialog-mask {
+    align-items: flex-start !important;
+  }
+
+  .search-dialog .pagefind-ui__search-input {
+    min-height: 44px;
+    font-size: 16px; /* prevents iOS Safari zoom-on-focus */
+  }
+
+  .search-dialog .pagefind-ui__result-link {
+    display: inline-block;
+    padding: 8px 0;
+    min-height: 44px;
+  }
+}

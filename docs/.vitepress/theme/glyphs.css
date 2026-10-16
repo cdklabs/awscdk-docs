@@ -1,0 +1,42 @@
+/* Monochrome UI glyphs as CSS masks over currentColor. Vite inlines each
+ * `url()` into the stylesheet, so the geometry is fetched once with the CSS
+ * instead of riding inline on every page. A glyph is sized by its own
+ * `width`/`height`; the mask scales to fit. */
+.glyph {
+  display: inline-block;
+  flex: none;
+  background-color: currentColor;
+  mask: var(--glyph) center / contain no-repeat;
+  -webkit-mask: var(--glyph) center / contain no-repeat;
+}
+
+.glyph-sun {
+  --glyph: url("./icons/sun.svg");
+}
+.glyph-moon {
+  --glyph: url("./icons/moon.svg");
+}
+.glyph-monitor {
+  --glyph: url("./icons/monitor.svg");
+}
+.glyph-code {
+  --glyph: url("./icons/code.svg");
+}
+.glyph-link {
+  --glyph: url("./icons/link.svg");
+}
+.glyph-gear {
+  --glyph: url("./icons/gear.svg");
+}
+.glyph-clear {
+  --glyph: url("./icons/clear.svg");
+}
+.glyph-enter {
+  --glyph: url("./icons/enter.svg");
+}
+.glyph-locate {
+  --glyph: url("./icons/locate.svg");
+}
+.glyph-top {
+  --glyph: url("./icons/top.svg");
+}

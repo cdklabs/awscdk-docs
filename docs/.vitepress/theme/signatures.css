@@ -1,0 +1,102 @@
+/**
+ * Type signature blocks.
+ *
+ * Docgen emits `<pre class="signature">` blocks with syntax-classified
+ * spans and cross-reference links. Token colors are defined as custom
+ * properties in `:root` (light) and shadowed in `.dark`, so signatures
+ * stay readable in both themes.
+ */
+
+:root {
+  --sig-c-type: #0550ae;
+  --sig-c-type-param: #6f42c1;
+  --sig-c-keyword: #92400e;
+  --sig-c-muted: #57606a;
+}
+
+.dark {
+  --sig-c-type: #79b8ff;
+  --sig-c-type-param: #d2a8ff;
+  --sig-c-keyword: #ffb84d;
+  --sig-c-muted: #9aa4b2;
+}
+
+/* Block-form signatures. The docgen stopped emitting these when every member
+   became a row (issue #147), but `docs/spike/language-tabs-demo.md` writes them
+   by hand, so the block chrome and the `.signature`-scoped tokens below are
+   still live — `.sig-keyword` now ONLY through that page. Member rows style the
+   same token classes themselves, in api-layout.css. */
+pre.signature {
+  margin: 16px 0;
+  padding: 14px 18px;
+  border-radius: 8px;
+  background-color: var(--vp-c-bg-soft);
+  overflow-x: auto;
+}
+
+pre.signature code {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.875em;
+  line-height: 1.65;
+  color: var(--vp-c-text-1);
+}
+
+.signature .sig-name {
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+.signature .sig-keyword {
+  color: var(--sig-c-keyword);
+  font-weight: 600;
+}
+
+.signature .sig-param {
+  color: var(--vp-c-text-1);
+}
+
+.signature .sig-type {
+  color: var(--sig-c-type);
+}
+
+.signature a.sig-type {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.signature a.sig-type:hover {
+  color: var(--vp-c-brand-1);
+  text-decoration-style: solid;
+}
+
+/* Inline type links inside generated signature FENCES (issue #70): the
+   anchor wraps an identifier inside a Shiki token span, so it inherits
+   the token's theme color and keeps the fence visually identical to an
+   authored example — the dotted underline is the only link affordance,
+   mirroring a.sig-type above. */
+.vp-code a.code-type-link {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.vp-code a.code-type-link:hover {
+  color: var(--vp-c-brand-1);
+  text-decoration-style: solid;
+}
+
+/* Generic type parameters (T, K, V, ...) -- distinct from concrete types */
+.signature .type-param {
+  color: var(--sig-c-type-param);
+  font-style: italic;
+}
+
+.signature .sig-default,
+.signature .sig-fluent {
+  color: var(--sig-c-muted);
+  font-style: italic;
+}
+
+.signature .sig-punct {
+  color: var(--sig-c-muted);
+}

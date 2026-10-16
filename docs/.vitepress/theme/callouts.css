@@ -1,0 +1,10 @@
+/* Callout contrast (issue #87). VitePress names --vp-c-brand-1 literally for
+   links and code in note/info callouts, on the callout's tint rather than the
+   page surface: 3.77-4.21:1. A rule, not a variable override, because there is
+   nothing to re-point. brand-2 works in both modes. */
+.vp-doc .custom-block.info a,
+.vp-doc .custom-block.info code,
+.vp-doc .custom-block.note a,
+.vp-doc .custom-block.note code {
+  color: var(--vp-c-brand-2);
+}

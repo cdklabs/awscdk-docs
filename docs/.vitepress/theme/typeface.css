@@ -1,0 +1,5 @@
+/* The site ships no web font. Amazon Ember, the AWS docs typeface, is used when the reader has it installed;
+ * otherwise text falls back to the system sans-serif stack. */
+:root {
+  --vp-font-family-base: "Amazon Ember", Helvetica, Arial, sans-serif;
+}

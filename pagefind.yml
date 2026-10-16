@@ -1,0 +1,18 @@
+# Pagefind indexing configuration (issue #26).
+#
+# Loaded automatically from the working directory by every `npx pagefind`
+# invocation: the vitepress-plugin-pagefind buildEnd hook (local /
+# non-shard builds) and the deploy workflow's post-merge "Index merged
+# site with Pagefind" step both run from the repo root.
+#
+# NOTE: ranking is deliberately NOT configured here — Pagefind has no
+# `ranking` index-time key (see https://pagefind.app/docs/config-options/).
+# Ranking is a search-time option applied in the browser; the tuning
+# lives in `docs/.vitepress/theme/search-client.ts` (warmSearchIndex).
+
+# Keep parity with the selectors vitepress-plugin-pagefind passes via
+# --exclude-selectors on non-shard builds; the CI merge step previously
+# ran bare and indexed these.
+exclude_selectors:
+  - "div.aside"
+  - "a.header-anchor"
