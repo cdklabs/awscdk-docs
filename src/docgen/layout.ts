@@ -155,7 +155,7 @@ function splitToBudget(fqns: readonly string[]): { shown: string[]; hidden: stri
  * because the items render `display: inline` with `list-style: none`, which makes WebKit strip native list
  * semantics, so the markup alone would announce nothing in Safari.
  */
-function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolver): string {
+function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolver, id?: string): string {
   const { shown, hidden } = splitToBudget(fqns);
   // One formatted value for the visible text AND the accessible name:
   // WCAG 2.5.3 Label in Name requires the visible label to appear in the
@@ -178,7 +178,8 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
       + `<ul class="chain-list" role="list">${hidden.map((fqn, i) => item(fqn, i < hidden.length - 1 ? ', ' : '')).join('')}</ul>`
       + '</details></li>'
     : '';
-  return `<div class="chain-row"><span class="chain-label">${label}</span> `
+  const idAttr = id ? ` id="${escapeAttr(id)}"` : '';
+  return `<div class="chain-row"${idAttr}><span class="chain-label">${label}</span> `
     + `<ul class="chain-list" role="list">${visible}${more}</ul></div>`;
 }
 
@@ -225,22 +226,26 @@ export function renderInheritanceChain(
 
 /**
  * Hierarchy bar for interface-like types (interfaces, structs, mixins): `IBucket · extends IResource`, each parent
- * linked to its page — the same presentation as the class inheritance chain. Nothing is emitted for types without
- * parent interfaces.
+ * linked to its page — the same presentation as the class inheritance chain. A struct's `used as props by` row lists
+ * the classes whose initializer takes it as props. Nothing is emitted for a type with no relation to show.
  */
 export function renderExtendsBar(
   type: spec.InterfaceType,
   linkFor: LinkResolver,
   implementers: readonly string[] = [],
+  propsUsers: readonly string[] = [],
 ): string[] {
   const parents = type.interfaces ?? [];
-  if (parents.length === 0 && implementers.length === 0) {
+  if (parents.length === 0 && implementers.length === 0 && propsUsers.length === 0) {
     return [];
   }
   const rows = [
     parents.length > 0 ? relationRow('extends', parents, linkFor) : '',
     // The inverse of the class bar's `implements`, from the same lineage walk.
     implementers.length > 0 ? relationRow('implemented by', implementers, linkFor) : '',
+    propsUsers.length > 0
+      ? relationRow('used as props by', propsUsers, linkFor, SECTION_ANCHORS.usedAsPropsBy)
+      : '',
   ].join('');
   return [
     `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`

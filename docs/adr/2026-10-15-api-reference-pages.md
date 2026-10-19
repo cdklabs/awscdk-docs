@@ -31,8 +31,8 @@ and search filters per page, then routes by kind:
 - **Classes** (`renderClassPage`) show the hierarchy block, initializer,
   and methods/properties collected along the base-class chain.
 - **Structs** (interfaces with the `datatype` flag) show a property table
-  plus a "Used as props by" list from a reverse usage index over class
-  initializer parameters.
+  plus a `used as props by` hierarchy row from a reverse usage index over
+  class initializer parameters.
 - **Behavioral interfaces** that are not mixins show methods and properties.
 - **Enums** show a members table and a "Referenced by" list of properties
   typed by the enum.
@@ -137,11 +137,14 @@ overview pages) the Teleport is disabled and the star keeps its standalone
 
 ### One type-hierarchy block: every relation as a row
 
-All four relationships — `implements`, `extends`, `implemented by`,
-`superclass of` — render as rows of one hierarchy block under the breadcrumb,
-emitted by a single `relationRow` renderer. There is no separate
-`## Subclasses` or `## Implemented by` section and no inline-vs-section split
-by direction. `implements` lists the **full transitive closure** of
+All five relationships — `implements`, `extends`, `implemented by`,
+`superclass of`, and a struct's `used as props by` — render as rows of one
+hierarchy block under the breadcrumb, emitted by a single `relationRow`
+renderer. There is no separate `## Subclasses`, `## Implemented by` or
+`## Used as props by` section and no inline-vs-section split by direction.
+`used as props by` lists the classes whose initializer takes the struct (from
+the reverse usage index); its row keeps the `used-as-props-by` id, so deep
+links to the former section still land on it. `implements` lists the **full transitive closure** of
 interfaces reachable through class ancestors *and* interface `extends`
 (the Javadoc "All Implemented Interfaces" rule), via a memoized cycle-guarded
 resolver in `src/docgen/interfaces.ts` cached per `TypeIndex`. `superclass of`

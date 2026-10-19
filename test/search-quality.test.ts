@@ -114,8 +114,7 @@ describe('generated pages carry search relevance markup', () => {
       linkFor: () => undefined,
     });
     expect(page).toContain('# <span data-pagefind-weight="10">BucketProps</span>');
-    expect(page).toContain('## Used as props by');
-    expect(page).toMatch(/## Used as props by \{#used-as-props-by\}\n\n<div data-pagefind-ignore>/);
+    expect(page).toMatch(/<nav class="inheritance-chain"[^>]*data-pagefind-ignore>[^\n]*id="used-as-props-by"/);
   });
 });
 
