@@ -49,7 +49,7 @@ function scaffold(modules: string[], version: string, packed: Array<[string, str
     `${JSON.stringify({ name: 'scratch', version: '0.0.0', private: true }, null, 2)}\n`,
   );
   mkdirSync(join(dir, 'docs'), { recursive: true });
-  writeFileSync(join(dir, 'docs', 'construct-library.md'), '# Construct Library\n');
+  writeFileSync(join(dir, 'docs', 'aws-construct-library.md'), '# Construct Library\n');
   const jsDir = join(dir, 'dist', 'js');
   mkdirSync(jsDir, { recursive: true });
   writeFileSync(join(dir, 'dist', 'build.json'), JSON.stringify({ version, commit: 'abc123' }));

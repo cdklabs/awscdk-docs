@@ -39,7 +39,7 @@ try {
       outDir: path.join(root, 'docs', 'v2'),
       publicDir: path.join(root, 'docs', 'public'),
       overviewFile: path.join(root, 'docs', 'v2', 'index.md'),
-      overviewSourceFile: path.join(root, 'docs', 'construct-library.md'),
+      overviewSourceFile: path.join(root, 'docs', 'aws-construct-library.md'),
       // Agent-oriented twins, outside docs/ so VitePress never sees them; the shard merge overlays them once.
       agentOutDir: path.join(root, 'dist-agent-markdown'),
       ledgerFile,

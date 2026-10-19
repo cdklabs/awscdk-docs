@@ -20,7 +20,7 @@ const LINKED_TYPES: readonly [string, string, string][] = [
 ];
 
 describe('construct library overview page', () => {
-  const page = readFileSync(resolve(ROOT, 'docs/construct-library.md'), 'utf-8');
+  const page = readFileSync(resolve(ROOT, 'docs/aws-construct-library.md'), 'utf-8');
 
   test.each(LINKED_TYPES)('links the generated page for %s.%s.%s', (assembly, submodule, typeName) => {
     expect(page).toContain(`(${typePageLink(assembly, submodule, typeName)})`);
