@@ -73,6 +73,7 @@ dist-agent-markdown/
 docs/public/type-summaries.json
 docs/public/symbols.json
 docs/public/api-sidebar/
+docs/public/search/
 docs/public/versions.json
 !/.github/workflows/cdk-version-check.yml
 !/.projenrc.ts

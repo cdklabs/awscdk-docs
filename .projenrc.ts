@@ -556,6 +556,8 @@ project.gitignore.addPatterns(
   'docs/public/symbols.json',
   // Lazy-loaded API sidebar tree, generated per language
   'docs/public/api-sidebar/',
+  // Site search index, one JSON asset per build
+  'docs/public/search/',
   // Machine-readable versions endpoint, emitted at build time
   'docs/public/versions.json',
 );
