@@ -160,7 +160,7 @@ test.describe('independent code-block theme', () => {
     // one that has to sit level with the search trigger; the picker's own
     // groups live in a popover and are off the row entirely.
     await page.goto(TOPIC_PAGE);
-    const search = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
+    const search = page.locator('.VPNavBar .content-body > .search .site-search-button');
     const searchBox = await search.boundingBox();
     const trigger = page.getByRole('button', { name: 'Settings' });
     const box = await trigger.boundingBox();

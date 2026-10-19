@@ -140,7 +140,7 @@ describe('badges in generated pages', () => {
     expect(constructPage).not.toMatch(/<Badge type="info" text="constructs v/);
     expect(constructPage).not.toContain('Added in v');
     expect(constructPage).toContain('<dt class="type-metadata-label">Type last changed</dt>'
-      + '<dd class="type-metadata-value"><span class="type-metadata-changed" data-pagefind-ignore>v10.0.0 · 1 Jan 2020</span></dd>');
+      + '<dd class="type-metadata-value"><span class="type-metadata-changed">v10.0.0 · 1 Jan 2020</span></dd>');
     expect(constructPage).toContain('cdkDocsIntroducedIn: "10.0.0"');
     expect(constructPage).toContain('cdkDocsLastChangedAt: "2020-01-01T00:00:00.000Z"');
 

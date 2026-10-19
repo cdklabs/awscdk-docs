@@ -1,9 +1,9 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
-describe('Pagefind local search integration', () => {
+describe('MiniSearch site search integration', () => {
   const packageJson = JSON.parse(
     readFileSync(resolve(ROOT, 'package.json'), 'utf-8'),
   );
@@ -13,34 +13,30 @@ describe('Pagefind local search integration', () => {
   );
 
   // Config shape with no produced-output counterpart: the classification
-  // records that the search runtime and index ship in the built site.
-  test('pagefind is listed in dependencies', () => {
-    expect(packageJson.dependencies.pagefind).toBeDefined();
+  // records that the search engine ships as plain JavaScript in the built site.
+  test('minisearch is listed in dependencies and the Pagefind packages are gone', () => {
+    expect(packageJson.dependencies.minisearch).toBeDefined();
+    expect(packageJson.dependencies.pagefind).toBeUndefined();
+    expect(packageJson.dependencies['vitepress-plugin-pagefind']).toBeUndefined();
   });
 
-  test('vitepress-plugin-pagefind is listed in dependencies', () => {
-    expect(packageJson.dependencies['vitepress-plugin-pagefind']).toBeDefined();
+  test('VitePress config aliases the navbar search component to the theme dialog', () => {
+    expect(config).toMatch(/VPNavBarSearch\\\.vue\$/);
+    expect(config).toContain('theme/SearchBox.vue');
   });
 
-  test('VitePress config imports the pagefind plugin', () => {
-    expect(config).toContain(
-      'import { pagefindPlugin } from "vitepress-plugin-pagefind"',
-    );
+  test('VitePress config exposes the hashed search index asset to the theme', () => {
+    expect(config).toMatch(/\^index\\\.\[0-9a-f\]\{8\}\\\.json\$/);
+    expect(config).toContain('...searchAsset()');
   });
 
-  test('VitePress config registers pagefindPlugin in vite plugins', () => {
-    expect(config).toMatch(/plugins:\s*\[\s*pagefindPlugin\(/);
+  test('no WebAssembly search runtime is wired: no plugin, preload or config file remains', () => {
+    expect(config).not.toMatch(/pagefind/i);
+    expect(config).not.toMatch(/modulepreload/);
+    expect(existsSync(resolve(ROOT, 'pagefind.yml'))).toBe(false);
   });
 
-  test('per-shard builds defer pagefind indexing (SHARD_BUILD gate)', () => {
-    // Sharded builds render only a page subset, so per-shard
-    // indexing would be partial; indexing runs once post-merge instead.
-    expect(config).toMatch(/process\.env\.SHARD_BUILD/);
-    expect(config).toMatch(/indexingCommand/);
-  });
-
-  test('built-in MiniSearch local search is removed', () => {
+  test('built-in VitePress local search stays off; the theme dialog is the search', () => {
     expect(config).not.toMatch(/search:\s*\{\s*provider:\s*"local"/);
   });
-
 });

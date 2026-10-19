@@ -184,12 +184,13 @@ describe('favorite pages', () => {
       expect(rankFavoritesFirst(items, () => false)).toEqual(items);
     });
 
-    test('client module wraps the pagefind handle and exposes the shared store', () => {
+    test('client module exposes the shared store and the search dialog ranks favorites first', () => {
       const source = readFileSync(resolve(THEME_DIR, 'favorites-client.ts'), 'utf-8');
-      expect(source).toContain('__pagefind__');
-      expect(source).toContain('debouncedSearch');
       expect(source).toContain('__cdkDocsFavorites');
-      expect(source).toContain('rankFavoritesFirst');
+      expect(source).not.toContain('__pagefind__');
+      const searchBox = readFileSync(resolve(THEME_DIR, 'SearchBox.vue'), 'utf-8');
+      expect(searchBox).toContain('rankFavoritesFirst');
+      expect(searchBox).toContain('isFavorite');
     });
   });
 

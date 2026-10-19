@@ -101,10 +101,10 @@ describe('responsive mobile layout', () => {
 
     test('initializer fences wrap on narrow screens instead of scrolling', () => {
       // The `## Initializer` block is a Shiki fence, so the narrow-viewport
-      // wrap is scoped to the initializer's Pagefind-ignored container and
+      // wrap is scoped to the initializer's variants container and
       // example fences keep scrolling.
       const mobile = css.slice(css.indexOf('@media (max-width: 767px)'));
-      const block = mobile.match(/h2#initializer \+ div\[data-pagefind-ignore\] pre\.shiki,\s*h2#initializer \+ div\[data-pagefind-ignore\] pre\.shiki code\s*{[^}]*}/)?.[0] ?? '';
+      const block = mobile.match(/h2#initializer \+ div\.initializer-variants pre\.shiki,\s*h2#initializer \+ div\.initializer-variants pre\.shiki code\s*{[^}]*}/)?.[0] ?? '';
       expect(block).toContain('white-space: pre-wrap');
       expect(block).toContain('overflow-wrap: anywhere');
     });
@@ -136,9 +136,9 @@ describe('responsive mobile layout', () => {
     // selector in a list gets its own entry.
     test('the block is bounded and does not reach the next breakpoint', () => {
       expect(mobileNavRules.size).toBeGreaterThan(0);
-      // `.search-dialog` lives in the 767px block below this one.
-      expect(css).toContain('.search-dialog');
-      expect([...mobileNavRules.keys()]).not.toContain('.search-dialog');
+      // `pre.signature` lives in the 767px block, not this one.
+      expect(css).toContain('pre.signature');
+      expect([...mobileNavRules.keys()]).not.toContain('pre.signature');
     });
 
     test('a shared selector list yields one entry per selector', () => {
@@ -173,18 +173,19 @@ describe('responsive mobile layout', () => {
     );
   });
 
-  describe('pagefind search dialog', () => {
-    const mobile = css.slice(css.indexOf('@media (max-width: 767px)'));
+  describe('site search dialog', () => {
+    const searchCss = readFileSync(resolve(ROOT, 'docs/.vitepress/theme/site-search.css'), 'utf-8');
+    const mobile = searchCss.slice(searchCss.indexOf('@media (max-width: 767px)'));
 
     test('dialog goes full-width on small screens', () => {
-      const dialog = mobile.match(/\.search-dialog\s*{[^}]*}/)?.[0] ?? '';
-      expect(dialog).toMatch(/width:\s*100%/);
+      const dialog = mobile.match(/\.site-search-dialog\s*{[^}]*}/)?.[0] ?? '';
       expect(dialog).toMatch(/max-width:\s*none/);
+      expect(mobile).toMatch(/\.site-search-mask\s*{[^}]*padding:\s*0/);
     });
 
     test('search input uses 16px font to prevent iOS zoom-on-focus', () => {
-      const input = mobile.match(/\.pagefind-ui__search-input\s*{[^}]*}/)?.[0] ?? '';
-      expect(input).toContain('font-size: 16px');
+      expect(searchCss).toMatch(/\.site-search-input\s*{[^}]*font-size:\s*16px/);
+      expect(mobile).toMatch(/\.site-search-input\s*{[^}]*min-height:\s*44px/);
     });
   });
 

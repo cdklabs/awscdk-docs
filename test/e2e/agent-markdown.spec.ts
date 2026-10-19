@@ -28,7 +28,7 @@ test.describe('agent-oriented Markdown twin', () => {
     const body = await response.text();
     expect(body.startsWith('# Topic\n')).toBe(true);
     expect(body).toContain('```ts');
-    for (const marker of ['<LanguageTabs', 'lang-variant', '<Badge', 'data-pagefind', '<nav', '---\n']) {
+    for (const marker of ['<LanguageTabs', 'lang-variant', '<Badge', '<nav', '---\n']) {
       expect(body).not.toContain(marker);
     }
   });

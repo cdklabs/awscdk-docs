@@ -94,7 +94,7 @@ test.describe('language toggle', () => {
     await page.goto(TOPIC_PAGE);
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
     await expect(slider).toBeVisible();
-    const search = page.locator('.VPNavBar .blog-search .nav-search-btn-wait');
+    const search = page.locator('.VPNavBar .site-search-button');
     await expect(search).toBeVisible();
     const sliderBox = await slider.boundingBox();
     const searchBox = await search.boundingBox();
@@ -149,7 +149,7 @@ test.describe('language toggle', () => {
     await page.goto(TOPIC_PAGE);
 
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
-    const search = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
+    const search = page.locator('.VPNavBar .content-body > .search .site-search-button');
     await expect(search).toBeVisible();
 
     // TypeScript is the default: the longest label in the enabled set.

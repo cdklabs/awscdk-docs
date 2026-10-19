@@ -70,7 +70,7 @@ describe('symbol page generation', () => {
 
   test('plain classes get a dedicated page with hierarchy, methods, and properties', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">Duration</span> <Badge type="info" class="api-badge" text="Class" />');
+    expect(page).toContain('# Duration <Badge type="info" class="api-badge" text="Class" />');
     // Module-root type: breadcrumb links the module page only
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><strong>Duration</strong>');
     expect(page).toContain('## Methods');
@@ -86,12 +86,12 @@ describe('symbol page generation', () => {
 
   test('structs get a page with breadcrumb, expandable props, and props-users list', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">BucketProps</span> <Badge type="info" class="api-badge api-badge-struct" text="Struct" />');
+    expect(page).toContain('# BucketProps <Badge type="info" class="api-badge api-badge-struct" text="Struct" />');
     // No metadata table: the breadcrumb carries Module/FQN and the H1 badge
     // carries the Kind.
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>BucketProps</strong>');
     expect(page).not.toContain('| **Kind** |');
-    expect(page).toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
+    expect(page).toContain('<div class="props-table member-list" v-pre>');
     expect(page).toContain('<code class="member-name">versioned</code>');
     expect(page).toContain('## Used as props by');
     expect(page).toContain('- [`Bucket`](/v2/docs/aws-cdk-lib.aws_s3.Bucket)');
@@ -104,7 +104,7 @@ describe('symbol page generation', () => {
 
   test('enums get a page with a members table and referencing properties', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketEncryption.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">BucketEncryption</span> <Badge type="info" class="api-badge api-badge-enum" text="Enum" />');
+    expect(page).toContain('# BucketEncryption <Badge type="info" class="api-badge api-badge-enum" text="Enum" />');
     expect(page).toContain('| Member | Description |');
     expect(page).toContain('| <span id="kms"></span>`KMS` |');
     expect(page).toContain('## Referenced by');
@@ -163,7 +163,7 @@ describe('symbol page generation', () => {
   test('behavioral interfaces without implementors still get a page', () => {
     // ILocalBundling declares tryBundle() but no class in the assemblies implements it
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ILocalBundling.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">ILocalBundling</span> <Badge type="info" class="api-badge api-badge-interface" text="Interface" />');
+    expect(page).toContain('# ILocalBundling <Badge type="info" class="api-badge api-badge-interface" text="Interface" />');
     expect(page).not.toContain('| **Kind** |');
     expect(page).toContain('<div class="member-row" id="trybundle">');
   });

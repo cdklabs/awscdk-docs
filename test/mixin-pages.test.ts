@@ -290,7 +290,7 @@ describe('mixin page generation', () => {
 
   test('mixin page has badge, breadcrumb, methods, and implementors', () => {
     const page = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">IMixin</span> <Badge type="tip" class="api-badge api-badge-mixin" text="Mixin" />');
+    expect(page).toContain('# IMixin <Badge type="tip" class="api-badge api-badge-mixin" text="Mixin" />');
     // The breadcrumb carries what a metadata table would
     expect(page).toContain('<a href="/v2/docs/constructs-readme.html">constructs</a>.<wbr><strong>IMixin</strong>');
     expect(page).not.toContain('| **Module** |');

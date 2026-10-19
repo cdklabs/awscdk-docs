@@ -217,9 +217,8 @@ describe('exampleSection', () => {
     expect(out).toContain('<LanguageTabs :langs="[\'ts\', \'python\', \'go\']">');
     // Example variants stay HYDRATED (no v-pre): each fence compiles into a
     // Shiki div with the runtime-wired copy-code button, which v-pre would
-    // ship dead on non-canonical tabs. Pagefind still indexes only the
-    // canonical variant.
-    expect(out).toContain('<div class="lang-variant" data-lang="python" data-pagefind-ignore>');
+    // ship dead on non-canonical tabs.
+    expect(out).toContain('<div class="lang-variant" data-lang="python">');
     expect(out).not.toContain('v-pre');
     // Per-language fence ids drive Shiki highlighting (+ the copy button).
     expect(out).toContain('```ts');

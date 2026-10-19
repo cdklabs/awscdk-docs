@@ -20,7 +20,7 @@ test.describe('no in-page tab strips (generated page)', () => {
     await expect(page.locator('.lang-tabs [role="tab"]')).toHaveCount(0);
 
     // Hidden non-active variants stay in the DOM (Model B toggling and the
-    // Pagefind-ignore marking both depend on the markup being present).
+    // hidden-variant markup depends on it being present).
     const pythonVariant = page.locator('.lang-variant[data-lang="python"]').first();
     await expect(pythonVariant).toBeAttached();
     await expect(pythonVariant).toBeHidden();
@@ -169,8 +169,8 @@ test.describe('initializer signature fences (generated page)', () => {
     await page.goto(QUEUE_PAGE);
 
     // The initializer group is the variant group inside the
-    // Pagefind-ignored container that follows the ## Initializer heading.
-    const group = page.locator('h2#initializer + div[data-pagefind-ignore] .lang-tabs');
+    // initializer-variants container that follows the ## Initializer heading.
+    const group = page.locator('h2#initializer + div.initializer-variants .lang-tabs');
     await expect(group).toBeAttached();
 
     // (a) Each language variant is a real highlighted fence: Shiki
@@ -195,7 +195,7 @@ test.describe('initializer signature fences (generated page)', () => {
   test('parameter types stay linked to their pages inside the fence', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
 
-    const group = page.locator('h2#initializer + div[data-pagefind-ignore] .lang-tabs');
+    const group = page.locator('h2#initializer + div.initializer-variants .lang-tabs');
     // The retired hand-rolled renderer cross-linked every parameter type;
     // the fence path keeps that via the type-links attr the highlight hook
     // resolves into anchors — inside the Shiki token markup, on every
@@ -222,7 +222,7 @@ test.describe('initializer signature fences (generated page)', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.goto(QUEUE_PAGE);
 
-    const group = page.locator('h2#initializer + div[data-pagefind-ignore] .lang-tabs');
+    const group = page.locator('h2#initializer + div.initializer-variants .lang-tabs');
     await navSlider(page).getByRole('radio', { name: 'Python' }).click();
 
     const pyBlock = group.locator('.lang-variant[data-lang="python"] div[class*="language-"]');
@@ -244,7 +244,7 @@ test.describe('initializer signature fences (generated page)', () => {
 // Narrow-viewport wrap: a generated initializer signature has 3+ typed
 // parameters nobody can shorten, so on a phone it must WRAP instead of
 // scrolling sideways. The initializer is a Shiki fence, so the wrap rule
-// lives on the initializer's Pagefind-ignored container (responsive.css) --
+// lives on the initializer variants container (responsive.css) --
 // scoped there so authored `## Example` fences keep the standard horizontal
 // scroll.
 test.describe('initializer signature wraps on narrow viewports', () => {
@@ -253,12 +253,12 @@ test.describe('initializer signature wraps on narrow viewports', () => {
   test('initializer fence wraps; example fence keeps horizontal scroll', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
 
-    const initCode = page.locator('h2#initializer + div[data-pagefind-ignore] .lang-variant[data-lang="ts"] pre.shiki code');
+    const initCode = page.locator('h2#initializer + div.initializer-variants .lang-variant[data-lang="ts"] pre.shiki code');
     await expect(initCode).toBeVisible();
     await expect(initCode).toHaveCSS('white-space', 'pre-wrap');
 
     // Wrapping means the fence needs no sideways scroll on a 375px phone.
-    const initPre = page.locator('h2#initializer + div[data-pagefind-ignore] .lang-variant[data-lang="ts"] pre.shiki');
+    const initPre = page.locator('h2#initializer + div.initializer-variants .lang-variant[data-lang="ts"] pre.shiki');
     const overflow = await initPre.evaluate((el) => el.scrollWidth - el.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
 

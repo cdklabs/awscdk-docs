@@ -77,11 +77,11 @@ test.describe('navbar layout', () => {
 
   test('slider leads, search centers, settings trigger sits right', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
-    // The pagefind plugin replaces VPNavBarSearch with its own component;
+    // config.mts aliases VPNavBarSearch to the theme's SearchBox component;
     // the `.search` passthrough class from VPNavBar survives the swap.
     const body = page.locator('.VPNavBar .content-body');
     const search = body.locator('> .search');
-    const searchButton = search.locator('.nav-search-btn-wait');
+    const searchButton = search.locator('.site-search-button');
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
     const picker = body.locator('> .SettingsMenu');
     await expect(slider).toBeVisible();
@@ -196,7 +196,7 @@ test.describe('navbar layout', () => {
     );
     expect(scrollWidth).toBe(1280);
     const searchButton = page.locator(
-      '.VPNavBar .content-body > .search .nav-search-btn-wait',
+      '.VPNavBar .content-body > .search .site-search-button',
     );
     await expect(searchButton).toBeVisible();
     // The trigger absorbs the squeeze, so it is where a future width change
@@ -308,7 +308,7 @@ test.describe('navbar geometry is page-independent', () => {
   async function controlOrigins(page: Page) {
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
     const searchButton = page.locator(
-      '.VPNavBar .content-body > .search .nav-search-btn-wait',
+      '.VPNavBar .content-body > .search .site-search-button',
     );
     const gear = page.locator('.VPNavBar .content-body > .SettingsMenu');
     await expect(slider).toBeVisible();

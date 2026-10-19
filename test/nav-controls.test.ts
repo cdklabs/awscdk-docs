@@ -4,10 +4,9 @@ import { resolve } from 'path';
 const ROOT = resolve(import.meta.dirname, '..');
 const THEME_DIR = resolve(ROOT, 'docs/.vitepress/theme');
 
-// vitepress-plugin-pagefind hard-codes its search trigger at this height
-// with no CSS variable exposed, so the nav controls pin the same literal
-// value here rather than depending on the plugin's internal source layout.
-const PAGEFIND_SEARCH_TRIGGER_HEIGHT_PX = 40;
+// The theme's own search trigger (site-search.css) renders at this height; the
+// other nav controls pin the same literal so they share a baseline.
+const SEARCH_TRIGGER_HEIGHT_PX = 40;
 
 // Navbar layout:
 // - the language slider takes the LEADING slot, right after the site title,
@@ -76,7 +75,7 @@ describe('navbar layout', () => {
         /\.settings-trigger\s*\{[^}]*?height:\s*(\d+)px/,
       );
       expect(triggerHeight).not.toBeNull();
-      expect(Number(triggerHeight![1])).toBe(PAGEFIND_SEARCH_TRIGGER_HEIGHT_PX);
+      expect(Number(triggerHeight![1])).toBe(SEARCH_TRIGGER_HEIGHT_PX);
       expect(menu).toMatch(
         /\.settings-trigger\s*\{[^}]*box-sizing:\s*border-box/,
       );
@@ -152,7 +151,7 @@ describe('navbar layout', () => {
       // box measures nothing, which would silently reinstate the jump.
       expect(toggle).toContain('class="language-label-text"');
       expect(toggle).toMatch(
-        /class="language-label-sizer"\s+aria-hidden="true"\s+data-pagefind-ignore/,
+        /class="language-label-sizer"\s+aria-hidden="true"/,
       );
       expect(toggle).toMatch(/\.language-label \{[^}]*display: inline-grid/);
       expect(toggle).toMatch(/\.language-label-sizer \{[^}]*visibility: hidden/);
@@ -220,12 +219,12 @@ describe('navbar layout', () => {
     test('leads the nav row while the search centers', () => {
       // The slider takes the leading slot via flex ordering, where the stock
       // theme puts search;
-      // the search keeps the pagefind plugin's flex-grow and centers its
+      // the search region keeps its flex-grow and SearchBox.vue centers its
       // trigger inside the middle region. Both overrides only fire when
       // the slider actually renders (`:has()`), so the single-language
       // build keeps the stock layout. The selector is the `.search`
-      // passthrough class, NOT .VPNavBarSearch — the pagefind plugin
-      // aliases that component away.
+      // passthrough class, NOT .VPNavBarSearch — config.mts aliases
+      // that component to the theme's SearchBox.
       expect(css).toMatch(/>\s*\.language-toggle\s*\{[^}]*order:\s*-2/);
       expect(css).toMatch(
         /\.content-body:has\(>\s*\.language-toggle\)\s*>\s*\.search\s*\{[^}]*order:\s*-1/,
@@ -343,12 +342,12 @@ describe('navbar layout', () => {
     test('matches the search trigger height', () => {
       // The slider must render at the same height as the search box it
       // now sits level with. LanguageToggle.vue pins the same literal
-      // value the pagefind plugin hard-codes for its search trigger.
+      // value site-search.css gives the search trigger.
       const toggleHeight = toggle.match(
         /\.language-toggle\s*\{[^}]*?height:\s*(\d+)px/,
       );
       expect(toggleHeight).not.toBeNull();
-      expect(Number(toggleHeight![1])).toBe(PAGEFIND_SEARCH_TRIGGER_HEIGHT_PX);
+      expect(Number(toggleHeight![1])).toBe(SEARCH_TRIGGER_HEIGHT_PX);
       // border-box sizing so the 1px border doesn't add to the height.
       expect(toggle).toMatch(
         /\.language-toggle\s*\{[^}]*box-sizing:\s*border-box/,

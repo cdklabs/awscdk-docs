@@ -117,7 +117,7 @@ describe('API page layout', () => {
   describe('inheritance chain', () => {
     test('construct pages render a linked breadcrumb from root ancestor to self', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
-      expect(page).toContain('<nav class="inheritance-chain" aria-label="Type hierarchy" data-pagefind-ignore>');
+      expect(page).toContain('<nav class="inheritance-chain" aria-label="Type hierarchy">');
       // Cross-assembly root and intermediate ancestors are clickable links
       expect(page).toContain('<a class="chain-item" href="/v2/docs/constructs.Construct.html">Construct</a>');
       expect(page).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.Resource.html">Resource</a>');
@@ -287,7 +287,7 @@ describe('API page layout', () => {
   describe('member rows', () => {
     test('props render as chrome-less rows inside a v-pre container', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      expect(page).toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
+      expect(page).toContain('<div class="props-table member-list" v-pre>');
       expect(page).toContain('<code class="member-name">versioned</code>');
       // The type span also carries the full value in a `title`,
       // so match the opening tag rather than the whole of it.
@@ -497,7 +497,7 @@ describe('API page layout', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
       const propsIdx = page.indexOf('## Construct Props {#props-bucketprops}');
       expect(propsIdx).toBeGreaterThan(-1);
-      expect(page.indexOf('<div class="props-table member-list" v-pre data-pagefind-ignore>', propsIdx))
+      expect(page.indexOf('<div class="props-table member-list" v-pre>', propsIdx))
         .toBeGreaterThan(propsIdx);
     });
   });
@@ -510,7 +510,7 @@ describe('API page layout', () => {
       expect(page).toMatch(/<code class="member-signature"><span class="sig-name">grantRead<\/span>/);
       // No per-member heading and no full-width signature block.
       expect(page).not.toContain('### grantRead');
-      expect(page).not.toContain('<pre v-pre class="signature" data-pagefind-ignore>');
+      expect(page).not.toContain('<pre v-pre class="signature">');
     });
 
     test('every parameter type and the return type stays its own link', () => {
@@ -579,7 +579,7 @@ describe('API page layout', () => {
       expect(summaries['/v2/docs/aws-cdk-lib.aws_s3.Bucket']).toEqual({
         name: 'Bucket',
         // `kind` stays the classification value: `searchKind` derives the
-        // Pagefind filter from its first word, and the index tables print it.
+        // search kind filter from its first word, and the index tables print it.
         kind: 'Construct (L2)',
         // The reader-facing label and its level ride alongside for the hover
         // preview's chip, so the preview and the page's H1 badge

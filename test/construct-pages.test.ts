@@ -184,12 +184,6 @@ describe('construct detection and classification', () => {
     expect(rows[1].value).toContain('<code>CfnBucket</code>');
     expect(rows[1].value).toContain('/v2/docs/aws-cdk-lib.aws_s3.CfnBucket');
     expect(rows[2].value).toContain(sourceUrl(bucket, cdk)!);
-    // The resource type and the L1 name are unique to this page and stay
-    // searchable. `Source` is boilerplate on ~22k pages, so only that value
-    // is excluded.
-    expect(rows[0].value).not.toContain('data-pagefind-ignore');
-    expect(rows[1].value).not.toContain('data-pagefind-ignore');
-    expect(rows[2].value).toContain('data-pagefind-ignore');
   });
 
   test('typeMetadataRows omits the L1 row on an L1 and marks its source generated', () => {
@@ -201,7 +195,7 @@ describe('construct detection and classification', () => {
     expect(rows[0].value).toContain('<code>AWS::S3::Bucket</code>');
     // A generated source has no repository file: a plain marker, not a dead link.
     expect(rows[1].value).toBe(
-      '<span class="type-metadata-generated" data-pagefind-ignore>Generated code</span>',
+      '<span class="type-metadata-generated">Generated code</span>',
     );
   });
 
@@ -290,7 +284,7 @@ describe('construct detection and classification', () => {
     const rows = typeMetadataRows(ref, cdk, index, () => undefined);
     expect(rows[0].label).toBe('Stability');
     expect(rows[0].value).toBe(
-      '<a class="type-metadata-stability" data-pagefind-ignore href="/stability.html">Experimental</a>',
+      '<a class="type-metadata-stability" href="/stability.html">Experimental</a>',
     );
     // An untagged type under an experimental (alpha) assembly inherits the module's level.
     const alpha = { ...cdk, docs: { stability: spec.Stability.Experimental } };
@@ -446,7 +440,7 @@ describe('construct page generation', () => {
     // The H1 carries the name and the kind badge and nothing else: the source
     // chip belongs to the metadata block. Anchored to the end of the line, so
     // a chip creeping in fails this.
-    expect(page).toMatch(/^# <span data-pagefind-weight="10">Bucket<\/span> <Badge type="tip" class="api-badge api-badge-l2" text="L2 construct" \/> \{#class-bucket-construct\}$/m);
+    expect(page).toMatch(/^# Bucket <Badge type="tip" class="api-badge api-badge-l2" text="L2 construct" \/> \{#class-bucket-construct\}$/m);
     expect(page).not.toContain('class="header-tag"');
     // The block sits between the hierarchy bar and the example, which is the
     // specified header order.
@@ -456,7 +450,7 @@ describe('construct page generation', () => {
     expect(chain).toBeGreaterThan(-1);
     expect(metadata).toBeGreaterThan(chain);
     expect(example).toBeGreaterThan(metadata);
-    expect(page).toMatch(/<dd class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/dd>/);
+    expect(page).toMatch(/<dd class="type-metadata-value"><a class="type-metadata-source" href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/dd>/);
     // Breadcrumb module hierarchy above the H1
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>Bucket</strong>');
     // The link text carries no full file path, which would be noise
@@ -464,9 +458,8 @@ describe('construct page generation', () => {
     expect(page).toContain('## Example');
     expect(page).toContain('## Initializer');
     // Initializer is a real fenced code block so it flows through the same
-    // markdown-it -> Shiki pipeline as the example above it, wrapped in a
-    // Pagefind-ignore container so its repeated type names do not make every
-    // page using a type match a search for it. The fence
+    // markdown-it -> Shiki pipeline as the example above it, wrapped in the
+    // initializer-variants container the responsive stylesheet targets. The fence
     // info carries the inline type-link map the highlight hook turns into
     // anchors, so the parameter types stay linked to their pages.
     expect(page).toContain(
@@ -513,7 +506,7 @@ describe('construct page generation', () => {
     expect(page).not.toContain('<dt class="type-metadata-label">L1 type</dt>');
     // Generated L1 sources have no repository file: a marker, not a dead link
     // and not a silently missing fact
-    expect(page).toContain('<span class="type-metadata-generated" data-pagefind-ignore>Generated code</span>');
+    expect(page).toContain('<span class="type-metadata-generated">Generated code</span>');
   });
 
   test('L2 construct page links its backing CloudFormation resource and L1 page', () => {

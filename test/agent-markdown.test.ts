@@ -14,7 +14,7 @@ describe('withFrontmatterKey', () => {
   });
 });
 
-// A page shaped like the real emission: frontmatter, breadcrumb nav, badged H1 with a Pagefind weight span, a
+// A page shaped like the real emission: frontmatter, breadcrumb nav, badged H1, a
 // LanguageTabs block with one variant per language, inline variant spans in a table, a container and the trailing
 // hidden filter spans.
 const PAGE = [
@@ -22,7 +22,7 @@ const PAGE = [
   'title: "Bucket"',
   '---',
   '',
-  '<nav class="type-breadcrumb" aria-label="Module hierarchy" data-pagefind-ignore>',
+  '<nav class="type-breadcrumb" aria-label="Module hierarchy">',
   '',
   '<span class="breadcrumb-trail">[aws-cdk-lib](/v2/docs/aws-cdk-lib-readme).aws_s3.Bucket</span>',
   '',
@@ -30,7 +30,7 @@ const PAGE = [
   '',
   '</nav>',
   '',
-  '# <span data-pagefind-weight="10">Bucket</span> <Badge type="tip" class="api-badge api-badge-l2" text="L2" />' +
+  '# Bucket <Badge type="tip" class="api-badge api-badge-l2" text="L2" />' +
     ' <Badge type="tip" class="api-badge" text="Added in v2.200.0" />',
   '',
   'An S3 bucket with helpers.',
@@ -49,7 +49,7 @@ const PAGE = [
   '```',
   '',
   '</div>',
-  '<div class="lang-variant" data-lang="python" v-pre data-pagefind-ignore>',
+  '<div class="lang-variant" data-lang="python" v-pre>',
   '',
   '```python',
   'Bucket(scope, id, *, versioned=None)',
@@ -65,7 +65,7 @@ const PAGE = [
   '| Name | Type |',
   '| --- | --- |',
   '| <span class="lang-variant" data-lang="ts">bucketArn</span>' +
-    '<span class="lang-variant" data-lang="python" data-pagefind-ignore>bucket_arn</span> | `string` |',
+    '<span class="lang-variant" data-lang="python">bucket_arn</span> | `string` |',
   '',
   '</LanguageTabs>',
   '',
@@ -74,9 +74,6 @@ const PAGE = [
   'See [BucketProps](/v2/docs/aws-cdk-lib.aws_s3.BucketProps).',
   '',
   '</div>',
-  '',
-  '<span hidden data-pagefind-filter="module:aws-cdk-lib.aws_s3"></span>' +
-    '<span hidden data-pagefind-filter="kind:class"></span>',
   '',
 ].join('\n');
 
@@ -89,7 +86,6 @@ describe('toAgentMarkdown', () => {
     expect(markdown).not.toContain('<Badge');
     expect(markdown).not.toContain('LanguageTabs');
     expect(markdown).not.toContain('lang-variant');
-    expect(markdown).not.toContain('data-pagefind');
     expect(markdown).not.toContain('<div');
     expect(markdown).not.toContain('<span');
   });

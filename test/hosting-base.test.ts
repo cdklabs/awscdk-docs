@@ -80,9 +80,6 @@ describe('hosted path derivation', () => {
     const config = readFileSync(resolve(ROOT, 'docs/.vitepress/config.mts'), 'utf-8');
     expect(config).toContain('base: sitePaths.siteBase()');
     expect(config).toContain('outDir: sitePaths.outDir()');
-    // The Pagefind preload resolves against the same base, not a second copy
-    // of the env read (a stale copy would 404 the search engine module).
-    expect(config).toContain('`${sitePaths.siteBase()}pagefind/pagefind.js`');
     expect(config).not.toContain('process.env.DOCS_BASE ?? "/"');
   });
 });
@@ -125,17 +122,17 @@ describe('deploy workflow follows the hosted path', () => {
   // The sharded build and the verifier derive the site directory from DOCS_BASE
   // instead of a literal, so changing the hosted path in one place cannot leave
   // a step pointing at the old directory.
-  test('merging, indexing and verification all use the derived site directory', () => {
+  test('merging and verification use the derived site directory', () => {
     expect(workflow).toContain('npx projen docs:build:sharded');
     const shardBuild = readFileSync(resolve(ROOT, 'scripts/local-shard-build.sh'), 'utf-8');
     expect(shardBuild).toContain('REL_DIST="$(node -p "require(\'./scripts/site-paths.cjs\').distDir()")"');
-    expect(shardBuild).toContain('npx pagefind --site "$REL_DIST"');
+    expect(shardBuild).not.toContain('pagefind');
     expect(shardBuild).toContain('bash scripts/verify-site.sh');
     const verifySite = readFileSync(resolve(ROOT, 'scripts/verify-site.sh'), 'utf-8');
     expect(verifySite).toContain("require('./scripts/site-paths.cjs').distDir()");
     expect(verifySite).toContain('test -f "$SITE_DIST/index.html"');
     expect(verifySite).toContain('test -f "$SITE_DIST/hashmap.json"');
-    expect(verifySite).toContain('test -d "$SITE_DIST/pagefind"');
+    expect(verifySite).toContain('"$SITE_DIST"/search/index.*.json');
   });
 
   test('site verification refuses an artifact root with anything beside the hosted tree', () => {

@@ -153,28 +153,16 @@ describe('signature formatter', () => {
     expect(html).not.toContain('v-pre');
   });
 
-  /*
-   * The name is indexable and the rest is not. This is the only element
-   * carrying a method's name as text once per-member headings are gone, so
-   * excluding the whole signature — or the row line around it — takes every
-   * method name out of search. The repeated names worth excluding are TYPE
-   * names, and those are all inside the parenthesized portion.
-   */
-  test('the identifier stays outside the index exclusion, the types inside', () => {
+  test('the identifier leads and the parameter and return types follow it directly', () => {
     const html = inlineMethodSignature(method({
       name: 'grantRead',
       parameters: [{ name: 'identity', type: named('lib.IGrantable') }],
       returns: { type: named('lib.Grant') },
     }), { linkFor: noLinks });
-    const cut = html.indexOf('<span data-pagefind-ignore>');
-    expect(cut).toBeGreaterThan(-1);
-    const indexable = html.slice(0, cut);
-    const excluded = html.slice(cut);
-    expect(indexable).toBe('<span class="sig-name">grantRead</span>');
-    expect(excluded).toContain('IGrantable');
-    expect(excluded).toContain('Grant');
-    // Exactly one exclusion, and it runs to the end of the fragment.
-    expect(html.match(/data-pagefind-ignore/g)).toHaveLength(1);
+    expect(html.startsWith('<span class="sig-name">grantRead</span><span class="sig-punct">(</span>')).toBe(true);
+    expect(html).toContain('IGrantable');
+    expect(html).toContain('Grant');
+    expect(html).not.toContain('<span>');
     expect(html.endsWith('</span>')).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ import { resolve } from 'path';
 const ROOT = resolve(import.meta.dirname, '..');
 
 // ADRs are internal engineering artifacts and must not appear on the rendered site — no built /adr/ pages, so no sidebar,
-// nav, or Pagefind search exposure. The markdown files stay in the repo.
+// nav, or search index exposure. The markdown files stay in the repo.
 describe('exclude ADRs from the rendered site', () => {
   const config = readFileSync(
     resolve(ROOT, 'docs/.vitepress/config.mts'),

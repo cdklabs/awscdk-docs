@@ -592,7 +592,7 @@ describe('docgen generation', () => {
     // The bar itself survives a single-segment trail: it hosts the
     // `breadcrumb-fav` mount point FavoriteStar teleports into, so
     // dropping it would silently remove the star from overview pages.
-    expect(cdkIndex).toMatch(/<nav class="type-breadcrumb"[^>]*data-pagefind-ignore>/);
+    expect(cdkIndex).toMatch(/<nav class="type-breadcrumb"[^>]*>/);
     expect(cdkIndex).toContain('<span class="breadcrumb-fav"></span>');
     // README-backed submodule overview: package linked, submodule plain,
     // and the trail sits OUTSIDE the v-pre container so its links render.
@@ -829,7 +829,7 @@ describe('docgen generation', () => {
 
   test('type pages mark experimental types in the metadata block and stable ones not at all', () => {
     const stabilityRow = '<dt class="type-metadata-label">Stability</dt><dd class="type-metadata-value">'
-      + '<a class="type-metadata-stability" data-pagefind-ignore href="/stability.html">Experimental</a></dd>';
+      + '<a class="type-metadata-stability" href="/stability.html">Experimental</a></dd>';
     // Every type of an alpha module inherits the module's level.
     const alphaType = readFileSync(
       join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha.PythonFunction.md'),

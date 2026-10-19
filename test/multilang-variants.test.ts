@@ -78,14 +78,14 @@ describe('variant helpers', () => {
       '<span class="lang-variant" data-lang="ts"><code class="member-signature">'
       + '<span class="sig-name">grantRead</span>',
     );
-    expect(section).toContain('data-pagefind-ignore><code class="member-signature">def grant_read(');
+    expect(section).toContain('v-pre><code class="member-signature">def grant_read(');
     // The anchor is the row's own permalink rather than a heading pin, and the
     // slug is the canonical one, which is what keeps existing deep links alive.
     expect(section).toContain('<div class="member-row" id="grantread">');
     expect(section).toContain('href="#grantread"');
     // Documented parameter names transliterate; the summary stays single-copy.
     expect(section).toContain('<span class="lang-variant" data-lang="ts">`sourceBucket`</span>');
-    expect(section).toContain('data-pagefind-ignore>`source_bucket`</span>');
+    expect(section).toContain('v-pre>`source_bucket`</span>');
     expect(section.split('The bucket to read from.').length - 1).toBe(1);
 
     // Single language: today's bare output, no wrapper, no pinned anchor.
@@ -126,7 +126,7 @@ describe('variant helpers', () => {
     });
     expect(page).toContain('## Referenced by');
     expect(page).toContain('<span class="lang-variant" data-lang="ts">primaryColor</span>');
-    expect(page).toContain('data-pagefind-ignore>primary_color</span>');
+    expect(page).toContain('v-pre>primary_color</span>');
     // Enum member names have no language-specific spelling — unchanged.
     expect(page).toContain('`RED`');
   });
@@ -135,7 +135,7 @@ describe('variant helpers', () => {
     const blocks = languageVariantBlocks(['ts', 'python'], (lang) => [`content-${lang}`]).join('\n');
     expect(blocks).toContain(languageTabsOpen(['ts', 'python']));
     expect(blocks).toContain('<div class="lang-variant" data-lang="ts">');
-    expect(blocks).toContain('<div class="lang-variant" data-lang="python" v-pre data-pagefind-ignore>');
+    expect(blocks).toContain('<div class="lang-variant" data-lang="python" v-pre>');
     expect(blocks).toContain('content-ts');
     expect(blocks).toContain('content-python');
     expect(blocks).toContain('</LanguageTabs>');
@@ -143,41 +143,39 @@ describe('variant helpers', () => {
 
   // v-pre is scoped to INERT regions only: a hydrated block (the code-example
   // fences, whose Shiki output carries the runtime-wired copy-code button)
-  // must not be v-pre or the button ships dead on non-canonical tabs — while
-  // the Pagefind ignore attribute still applies.
-  test('hydrated blocks skip v-pre but keep the Pagefind ignore attribute', () => {
+  // must not be v-pre or the button ships dead on non-canonical tabs.
+  test('hydrated blocks skip v-pre', () => {
     const blocks = languageVariantBlocks(
       ['ts', 'python'],
       (lang) => [`content-${lang}`],
       { hydrated: true },
     ).join('\n');
     expect(blocks).toContain('<div class="lang-variant" data-lang="ts">');
-    expect(blocks).toContain('<div class="lang-variant" data-lang="python" data-pagefind-ignore>');
+    expect(blocks).toContain('<div class="lang-variant" data-lang="python">');
     expect(blocks).not.toContain('v-pre');
   });
 
-  // Pagefind indexes only the canonical language's variant of each region, so
-  // index size and result count stay flat per added language and a symbol
-  // never yields N near-identical hits.
-  test('only the canonical variant is indexed — blocks and spans', () => {
+  // Only the canonical variant stays hydrated; every other language's copy is
+  // inert markup the Vue compiler skips.
+  test('only the canonical variant is hydrated — blocks and spans', () => {
     expect(canonicalLanguage(['python', 'ts', 'go'])).toBe('ts');
 
     const blocks = languageVariantBlocks(['ts', 'python', 'go'], (lang) => [`content-${lang}`]).join('\n');
     expect(blocks).toContain('<div class="lang-variant" data-lang="ts">');
-    expect(blocks).not.toContain('data-lang="ts" data-pagefind-ignore');
-    expect(blocks).toContain('<div class="lang-variant" data-lang="python" v-pre data-pagefind-ignore>');
-    expect(blocks).toContain('<div class="lang-variant" data-lang="go" v-pre data-pagefind-ignore>');
+    expect(blocks).not.toContain('data-lang="ts" v-pre');
+    expect(blocks).toContain('<div class="lang-variant" data-lang="python" v-pre>');
+    expect(blocks).toContain('<div class="lang-variant" data-lang="go" v-pre>');
 
     const spans = languageVariantSpans(['ts', 'python'], (lang) => lang);
     expect(spans).toContain('<span class="lang-variant" data-lang="ts">ts</span>');
-    expect(spans).toContain('<span class="lang-variant" data-lang="python" v-pre data-pagefind-ignore>python</span>');
+    expect(spans).toContain('<span class="lang-variant" data-lang="python" v-pre>python</span>');
   });
 
   test('canonical falls back to the first enabled language when ts is disabled', () => {
     expect(canonicalLanguage(['go', 'python'])).toBe('python');
     const blocks = languageVariantBlocks(['go', 'python'], (lang) => [`content-${lang}`]).join('\n');
     expect(blocks).toContain('<div class="lang-variant" data-lang="python">');
-    expect(blocks).toContain('<div class="lang-variant" data-lang="go" v-pre data-pagefind-ignore>');
+    expect(blocks).toContain('<div class="lang-variant" data-lang="go" v-pre>');
   });
 
   test('member row signatures transliterate non-TypeScript languages', () => {
@@ -213,9 +211,9 @@ describe('variant helpers', () => {
     expect(out).not.toContain('type-links=');
     // Fences stay hydrated (no v-pre on the variant wrapper) so the Shiki
     // copy button works on the non-canonical tab too.
-    expect(out).toContain('<div class="lang-variant" data-lang="python" data-pagefind-ignore>');
-    // The whole section is excluded from the Pagefind index.
-    expect(out.startsWith('<div data-pagefind-ignore>')).toBe(true);
+    expect(out).toContain('<div class="lang-variant" data-lang="python">');
+    // The whole section sits in the container the responsive stylesheet targets.
+    expect(out.startsWith('<div class="initializer-variants">')).toBe(true);
   });
 
   test('initializer fences carry inline type links via the type-links attr', () => {
@@ -297,7 +295,7 @@ describe('multi-language page generation', () => {
     // per-language regions on a type page are spans; the block form is used
     // for fenced initializers and examples, which this page does not carry.
     expect(page).toContain('<span class="lang-variant" data-lang="ts">');
-    expect(page).toContain('<span class="lang-variant" data-lang="python" v-pre data-pagefind-ignore>');
+    expect(page).toContain('<span class="lang-variant" data-lang="python" v-pre>');
     // Python method signature is embedded in the same page.
     expect(page).toContain('def add_dependency(self');
   });
@@ -346,27 +344,19 @@ describe('multi-language page generation', () => {
       const fenceVariants = hydratedSections.join('\n').match(/<(?:div|span) class="lang-variant"[^>]*>/g) ?? [];
       for (const tag of fenceVariants) {
         expect(tag).not.toContain('v-pre');
-        if (!tag.includes('data-lang="ts"')) {
-          // …but still stay out of the Pagefind index.
-          expect(tag).toContain('data-pagefind-ignore');
-        }
       }
     }
   });
 
-  test('non-canonical variants stay out of the Pagefind index', () => {
+  test('variant markup carries no search-engine attributes', () => {
     for (const name of ['constructs.Node.md', 'constructs.Construct.md']) {
       const page = readFileSync(join(outDir, 'docs', name), 'utf-8');
-      // Every non-canonical variant element carries the ignore attribute…
       const variants = page.match(/<(?:div|span) class="lang-variant"[^>]*>/g) ?? [];
       expect(variants.length).toBeGreaterThan(0);
       for (const tag of variants) {
-        if (!tag.includes('data-lang="ts"')) {
-          expect(tag).toContain('data-pagefind-ignore');
-        }
+        expect(tag).toMatch(/^<(?:div|span) class="lang-variant" data-lang="[a-z]+"( v-pre)?>$/);
       }
-      // …and no canonical (ts) variant is ignored by the variant markup.
-      expect(page).not.toMatch(/data-lang="ts" data-pagefind-ignore/);
+      expect(page).not.toContain('data-pagefind');
     }
   });
 
@@ -412,7 +402,7 @@ describe('multi-language page generation', () => {
       '<span class="lang-variant" data-lang="ts"><code class="member-signature">'
       + '<span class="sig-name">addDependency</span>',
     );
-    expect(page).toContain('data-pagefind-ignore><code class="member-signature">def add_dependency(');
+    expect(page).toContain('v-pre><code class="member-signature">def add_dependency(');
     // …while the ANCHOR is the canonical (TS) slug, so `#member` deep links
     // survive a client-side language switch. It lives on the row's id and
     // permalink, and the slug is deliberately the canonical one, which is what
@@ -428,7 +418,7 @@ describe('multi-language page generation', () => {
   test('property rows embed per-language name/type; description stays single-copy', () => {
     const page = readFileSync(join(outDir, 'docs', 'constructs.Node.md'), 'utf-8');
     expect(page).toContain('<span class="lang-variant" data-lang="ts"><code class="member-name">defaultChild</code>');
-    expect(page).toContain('<span class="lang-variant" data-lang="python" v-pre data-pagefind-ignore><code class="member-name">default_child</code>');
+    expect(page).toContain('<span class="lang-variant" data-lang="python" v-pre><code class="member-name">default_child</code>');
   });
 
   test('initializer embeds a variant per language', () => {

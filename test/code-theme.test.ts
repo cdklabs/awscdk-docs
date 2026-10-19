@@ -4,10 +4,9 @@ import { resolve } from 'path';
 const ROOT = resolve(import.meta.dirname, '..');
 const THEME_DIR = resolve(ROOT, 'docs/.vitepress/theme');
 
-// vitepress-plugin-pagefind hard-codes its search trigger at this height
-// with no CSS variable exposed, so the nav controls pin the same literal
-// value here rather than depending on the plugin's internal source layout.
-const PAGEFIND_SEARCH_TRIGGER_HEIGHT_PX = 40;
+// The theme's own search trigger (site-search.css) renders at this height; the
+// nav controls pin the same literal so they share a baseline.
+const SEARCH_TRIGGER_HEIGHT_PX = 40;
 
 // Independent code-block theme: a second
 // tri-state control (Light / Default / Dark) decouples the code-block
@@ -70,7 +69,7 @@ describe('independent code-block theme', () => {
     test('chrome backgrounds mirror custom.css surface stacks, not free-floating literals', () => {
       // The decoupled blocks re-pin the brand SURFACE vars from custom.css.
       // Read that file's own `:root` / `.dark` values (like the 40px test
-      // reads the pagefind plugin source) so retuning a surface in
+      // reads site-search.css) so retuning a surface in
       // custom.css fails here loudly
       // instead of the decoupled blocks silently keeping stale colors.
       const brand = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
@@ -115,14 +114,14 @@ describe('independent code-block theme', () => {
     });
 
     test('both groups sit level with the 40px search trigger and slider', () => {
-      // The picker pins the same literal value the pagefind plugin
-      // hard-codes for its search trigger, exactly like LanguageToggle.vue,
+      // The picker pins the same literal value site-search.css
+      // gives the search trigger, exactly like LanguageToggle.vue,
       // so the nav controls share a baseline.
       const groupHeight = component.match(
         /\.theme-picker-group\s*\{[^}]*?height:\s*(\d+)px/,
       );
       expect(groupHeight).not.toBeNull();
-      expect(Number(groupHeight![1])).toBe(PAGEFIND_SEARCH_TRIGGER_HEIGHT_PX);
+      expect(Number(groupHeight![1])).toBe(SEARCH_TRIGGER_HEIGHT_PX);
       expect(component).toMatch(/\.theme-picker-group\s*\{[^}]*box-sizing:\s*border-box/);
       // Segments stretch to fill the track like the language slider's.
       expect(component).toMatch(/\.theme-picker-option\s*\{[^}]*align-self:\s*stretch/);

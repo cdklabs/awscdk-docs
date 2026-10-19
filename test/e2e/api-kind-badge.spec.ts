@@ -17,9 +17,8 @@ test.describe('API kind badge', () => {
     // line the name sits on.
     await page.goto(QUEUE_PAGE);
     const badge = page.locator('h1 .VPBadge');
-    const name = page.locator('h1 span[data-pagefind-weight]');
     await expect(badge).toBeVisible();
-    await expect(name).toBeVisible();
+    await expect(page.locator('h1')).toContainText('Queue');
     // The chip is gone from the title row entirely.
     await expect(page.locator('h1 .header-tag')).toHaveCount(0);
 
@@ -34,11 +33,18 @@ test.describe('API kind badge', () => {
     // put VitePress's stock declarations back inline and read it again. The
     // claim being tested is that the override improves the alignment, and this
     // is the only form of it that cannot be satisfied by the override's absence.
-    const offsets = await badge.evaluate((el, nameSel) => {
-      const nameEl = document.querySelector(nameSel)!;
+    // The title is a bare text node in the H1, so its box comes from a Range.
+    const offsets = await badge.evaluate((el) => {
+      const h1 = el.closest('h1')!;
+      const textNode = Array.from(h1.childNodes).find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent!.trim().length > 0,
+      )!;
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
+      const nameRect = () => range.getBoundingClientRect();
       const delta = () => {
         const b = el.getBoundingClientRect();
-        const n = nameEl.getBoundingClientRect();
+        const n = nameRect();
         return Math.abs((b.top + b.height / 2) - (n.top + n.height / 2));
       };
       const shipped = delta();
@@ -50,8 +56,8 @@ test.describe('API kind badge', () => {
       const stock = delta();
       style.verticalAlign = '';
       style.transform = '';
-      return { shipped, stock, restored: delta() };
-    }, 'h1 span[data-pagefind-weight]');
+      return { shipped, stock, restored: delta(), nameHeight: nameRect().height };
+    });
 
     // Removing the override moves the badge measurably further off the row.
     // Measured on this fixture: 3.25px as shipped against 5.5px stock, and
@@ -59,8 +65,7 @@ test.describe('API kind badge', () => {
     // which fails this line (verified by mutation, not assumed).
     expect(offsets.stock).toBeGreaterThan(offsets.shipped + 1.5);
     // And the shipped offset is a fraction of the line box, not a stagger.
-    const nameBox = await name.boundingBox();
-    expect(offsets.shipped).toBeLessThan(nameBox!.height / 4);
+    expect(offsets.shipped).toBeLessThan(offsets.nameHeight / 4);
     // The inline mutation was undone, so the two readings are comparable.
     expect(offsets.restored).toBeCloseTo(offsets.shipped, 1);
   });

@@ -30,8 +30,6 @@ describe('type page header bar', () => {
     expect(block).toContain(
       '<a href="/api/modules/ts/aws-cdk-lib/">aws-cdk-lib</a>.<wbr><a href="/api/modules/ts/aws-cdk-lib/aws-s3.html">aws_s3</a>.<wbr><strong>Bucket</strong>',
     );
-    // Excluded from the search index, like the table it replaces
-    expect(block).toMatch(/<nav class="type-breadcrumb"[^>]*data-pagefind-ignore>/);
     // Blank line after the closing tag so the following H1 is not
     // swallowed into the raw-HTML block.
     expect(block).toMatch(/<\/nav>\n$/);
