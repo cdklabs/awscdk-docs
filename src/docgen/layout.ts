@@ -43,13 +43,32 @@ export function escapeCell(text: string): string {
     .trim();
 }
 
+function escapeMarkdownLinkLabel(label: string): string {
+  return label.replace(/[\\[\]]/g, '\\$&');
+}
+
+function escapeMarkdownLinkTarget(target: string): string {
+  return target.replace(/[\\()]/g, '\\$&');
+}
+
+function convertInlineUrlLinks(prose: string): string {
+  return prose.replace(
+    /\{@link\s+(https?:\/\/[^\s}]+)(?:\s+([^}]*?))?\}/g,
+    (_tag, url: string, rawLabel: string | undefined) => {
+      const label = rawLabel?.trim() || url;
+      return `[${escapeMarkdownLinkLabel(label)}](${escapeMarkdownLinkTarget(url)})`;
+    },
+  );
+}
+
 /**
- * Escape prose so raw `<` and `{` don't break Vue compilation, while
- * leaving fenced code blocks and inline code spans untouched (VitePress
- * renders those with v-pre, so they are already safe).
+ * Convert external JSDoc links, then escape prose so raw `<` and `{` don't
+ * break Vue compilation. Fenced code blocks and inline code spans stay
+ * untouched (VitePress renders those with v-pre, so they are already safe).
+ * Non-URL symbol link tags retain their existing escaped output.
  */
 export function escapeProse(text: string): string {
-  return mapProse(text, (prose) => prose
+  return mapProse(text, (prose) => convertInlineUrlLinks(prose)
     .replace(/</g, '&lt;')
     .replace(/\{/g, '&#123;')
     .replace(/\}/g, '&#125;'));
