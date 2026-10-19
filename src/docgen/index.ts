@@ -530,6 +530,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
 
     const groups = moduleGroups.get(moduleName)!;
     const rootTypes = groups.get('') ?? [];
+    // Above the H1 of every page this package owns; empty for a stable package.
+    const banner = renderExperimentalBanner(assembly);
     const submoduleNames = [...groups.keys()].filter((k) => k !== '').sort();
     // Which submodules actually get an overview page in THIS build, so a breadcrumb segment for an intermediate
     // grouping links only when there is something to link to.
@@ -562,7 +564,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         ]);
         emitPage(
           entry.link,
-          `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${page}\n\n${filters}\n`,
+          `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
           history,
         );
       }
@@ -591,6 +593,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
             examples: overview.examples,
           }),
         breadcrumb,
+        banner,
       });
       const filters = searchFilterHtml({ module: searchModule(assembly.name, sub) });
       emitOverview(subId, moduleReadmeLink(assembly.name, sub), `${page}\n\n${filters}\n`, readmeHistory(ledger, subId));
@@ -642,6 +645,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         examples: rootOverview.examples,
         // Anchored at the module itself, with no synthetic root segment above it — same trail scheme as type pages.
         breadcrumb: renderBreadcrumb([{ label: assembly.name }]),
+        banner,
         // The documented version is a fact the README cannot carry, so it is emitted here. The assembly description
         // is not: the README's own opening prose says the same thing at length, directly below.
         preamble: [`> Version ${assembly.version}`, '', ...renderSeparateInstallAlert(assembly)],
@@ -917,32 +921,46 @@ function renderTypePage(
 }
 
 /**
+ * Experimental banner for every page of an experimental (alpha) package: the module overview, each submodule
+ * overview and each type page. Emitted above the H1 so the level is the first thing a reader sees, as a VitePress
+ * `warning` custom container — the same block the separate-install alert uses, so the two read as one family.
+ * Empty for a stable package: the absence of the banner is the stable indicator.
+ *
+ * Keyed on the package, not the type: a type marked experimental inside a stable package keeps its metadata row
+ * and gets no banner, because the banner states a fact about the package the page belongs to.
+ */
+export function renderExperimentalBanner(assembly: spec.Assembly): string[] {
+  if (assembly.docs?.stability !== 'experimental') {
+    return [];
+  }
+  return [
+    '::: warning Experimental',
+    `\`${assembly.name}\` is an [**experimental**](${STABILITY_ROUTE}) (alpha) package: its API may change in any`
+      + ' release, without a major version bump.',
+    ':::',
+    '',
+  ];
+}
+
+/**
  * Separate-package alert for standalone (non-`aws-cdk-lib`) modules: these packages do not ship inside
- * `aws-cdk-lib`, so their module page states the extra install up front. Experimental (alpha) modules use the
- * warning container and add the API-stability caveat. Emitted as a VitePress custom container — markdown-it syntax,
- * so no raw-HTML/Vue-compile concerns in the sharded build.
+ * `aws-cdk-lib`, so their module page states the extra install up front. Emitted as a VitePress custom container —
+ * markdown-it syntax, so no raw-HTML/Vue-compile concerns in the sharded build. The API-stability caveat is not
+ * repeated here: the experimental banner above the title carries it.
  */
 export function renderSeparateInstallAlert(assembly: spec.Assembly): string[] {
   if (assembly.name === 'aws-cdk-lib') {
     return [];
   }
-  const experimental = assembly.docs?.stability === 'experimental';
   const pipName = assembly.targets?.python?.distName;
-  const lines = [
-    `::: ${experimental ? 'warning' : 'info'} Separate package`,
+  return [
+    '::: info Separate package',
     `\`${assembly.name}\` is not part of \`aws-cdk-lib\` — install it separately:`,
     '',
     ...codeFence([`npm install ${assembly.name}`, ...(pipName ? [`pip install ${pipName}`] : [])].join('\n'), 'sh'),
+    ':::',
+    '',
   ];
-  if (experimental) {
-    lines.push(
-      '',
-      `This module is [**experimental**](${STABILITY_ROUTE}) (alpha): its API may change in any release, without a`
-        + ' major version bump.',
-    );
-  }
-  lines.push(':::', '');
-  return lines;
 }
 
 /**
@@ -995,28 +1013,31 @@ function upstreamKey(url: string | undefined): readonly string[] {
 }
 
 /**
- * Canonical line order for an overview page: `frontmatter → breadcrumb → heading → body`. Routing every overview
- * page through one function keeps the breadcrumb above the H1, matching type pages.
+ * Canonical line order for an overview page: `frontmatter → breadcrumb → banner → heading → body`. Routing every
+ * overview page through one function keeps the breadcrumb and the experimental banner above the H1, matching type
+ * pages.
  *
- * The first two parts are order-critical rather than stylistic:
+ * The first parts are order-critical rather than stylistic:
  *
  * - Frontmatter must be the very first thing in the file or VitePress does not parse it, silently losing
  *   `outline: false`.
- * - The breadcrumb is a `<nav>` block and contributes no heading, so placing it first leaves the H1 as the page's
- *   first heading — which VitePress derives the page title from when no `title:` is declared. Overview pages rely on
- *   that inference; the crumb must not become the first heading.
+ * - The breadcrumb is a `<nav>` block and the banner a custom container; neither contributes a heading, so placing
+ *   them first leaves the H1 as the page's first heading — which VitePress derives the page title from when no
+ *   `title:` is declared. Overview pages rely on that inference; the crumb must not become the first heading.
  *
  * Callers pass the breadcrumb already rendered, so it stays outside any `v-pre` container the body introduces.
  */
 function overviewPage(parts: {
   frontmatter?: readonly string[];
   breadcrumb?: readonly string[];
+  banner?: readonly string[];
   heading: string;
   body?: readonly string[];
 }): string[] {
   return [
     ...(parts.frontmatter ?? []),
     ...(parts.breadcrumb ?? []),
+    ...(parts.banner ?? []),
     parts.heading,
     '',
     ...(parts.body ?? []),
@@ -1034,6 +1055,7 @@ function renderModuleIndex(
     // no synthetic root segment. The bar is still emitted for a single-segment trail because it hosts the
     // `breadcrumb-fav` mount point the favorite star teleports into.
     breadcrumb: renderBreadcrumb([{ label: assembly.name }]),
+    banner: renderExperimentalBanner(assembly),
     heading: `# ${assembly.name}`,
     body: [`> Version ${assembly.version}`, '', assembly.description ?? '', ''],
   });
@@ -1087,6 +1109,8 @@ export interface OverviewPageOptions {
   readonly readme?: string;
   /** Pre-rendered breadcrumb, emitted above the H1. */
   readonly breadcrumb?: string[];
+  /** Pre-rendered experimental banner, emitted between the breadcrumb and the H1. */
+  readonly banner?: readonly string[];
   readonly examples?: ReadmeExampleOptions;
   /**
    * Markdown emitted directly after the H1, above the README body — for
@@ -1150,12 +1174,13 @@ export function overviewReadme(
  * survives fence-aware escaping and still reaches Vue.
  */
 export function renderOverviewPage(options: OverviewPageOptions): string {
-  const { title, types, breadcrumb = [], examples, preamble = [], sections = [] } = options;
+  const { title, types, breadcrumb = [], banner = [], examples, preamble = [], sections = [] } = options;
   const body = options.readme ? prepareReadme(options.readme) : '';
   if (!body) {
     return overviewPage({
       frontmatter: overviewFrontmatter(['outline: false', ...upstreamKey(options.upstreamEditUrl)]),
       breadcrumb,
+      banner,
       heading: `# ${title}`,
       body: [...preamble, ...sections, ...renderTypeTable(types), ''],
     }).join('\n');
@@ -1172,6 +1197,7 @@ export function renderOverviewPage(options: OverviewPageOptions): string {
   const lines: string[] = overviewPage({
     frontmatter: overviewFrontmatter([...upstreamKey(options.upstreamEditUrl)]),
     breadcrumb,
+    banner,
     heading,
   });
   // Above the README body: a packaging/stability caveat is worthless below

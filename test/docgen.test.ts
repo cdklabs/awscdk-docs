@@ -777,14 +777,14 @@ describe('docgen generation', () => {
       join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha-readme.md'),
       'utf-8',
     );
-    // Experimental module: warning container + stability caveat + both installs.
-    expect(alphaIndex).toContain('::: warning Separate package');
+    // Both installs, in the same info container every standalone package gets; the stability caveat lives in the
+    // banner above the title, not here.
+    expect(alphaIndex).toContain('::: info Separate package');
     expect(alphaIndex).toContain('npm install @aws-cdk/aws-lambda-python-alpha');
     expect(alphaIndex).toContain('pip install aws-cdk.aws-lambda-python-alpha');
-    // The caveat links the guide that explains the level; VitePress prefixes the site base on render.
-    expect(alphaIndex).toContain('This module is [**experimental**](/stability) (alpha)');
+    expect(alphaIndex).not.toContain('This module is [**experimental**]');
 
-    // Stable standalone module: info container, no stability caveat.
+    // Stable standalone module: same container, no stability wording anywhere.
     const constructsIndex = readFileSync(
       join(outDir, 'docs', 'constructs-readme.md'),
       'utf-8',
@@ -795,6 +795,39 @@ describe('docgen generation', () => {
     // The core library needs no separate install.
     const cdkIndex = readFileSync(join(outDir, 'docs', 'aws-cdk-lib-readme.md'), 'utf-8');
     expect(cdkIndex).not.toContain('Separate package');
+  });
+
+  test('every page of an alpha package opens with the experimental banner above its title', () => {
+    const banner = '::: warning Experimental\n'
+      + '`@aws-cdk/aws-lambda-python-alpha` is an [**experimental**](/stability) (alpha) package: its API may change in'
+      + ' any release, without a major version bump.\n:::';
+    // The package overview: banner between the breadcrumb and the README's own H1.
+    const alphaIndex = readFileSync(
+      join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha-readme.md'),
+      'utf-8',
+    );
+    expect(alphaIndex).toContain(banner);
+    expect(alphaIndex.indexOf('</nav>')).toBeLessThan(alphaIndex.indexOf(banner));
+    expect(alphaIndex.indexOf(banner)).toBeLessThan(alphaIndex.indexOf('# Amazon Lambda Python Library'));
+    // A type page of the same package: banner above the H1, which still follows the frontmatter and breadcrumb.
+    const alphaType = readFileSync(
+      join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha.PythonFunction.md'),
+      'utf-8',
+    );
+    expect(alphaType.startsWith('---\ntitle: "PythonFunction"\n---\n')).toBe(true);
+    expect(alphaType).toContain(banner);
+    expect(alphaType.indexOf(banner)).toBeLessThan(alphaType.search(/^# /m));
+    // Stable pages carry no banner: neither the stable library nor a stable standalone package, and not even a
+    // type that is itself marked experimental inside the stable library — the banner is about the package.
+    for (const file of [
+      'aws-cdk-lib-readme.md',
+      'aws-cdk-lib.aws_s3.Bucket.md',
+      'aws-cdk-lib.interfaces.aws_s3.IBucketRef.md',
+      'constructs-readme.md',
+      'constructs.Construct.md',
+    ]) {
+      expect(readFileSync(join(outDir, 'docs', file), 'utf-8')).not.toContain('::: warning Experimental');
+    }
   });
 
   test('type pages mark experimental types in the metadata block and stable ones not at all', () => {

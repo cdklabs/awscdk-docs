@@ -65,7 +65,7 @@ describe('per-module overview kinds end to end', () => {
     // Order-sensitive: an alpha README opens with its OWN install
     // instructions, so a packaging/stability caveat below the whole README
     // is a caveat the reader meets after acting on it.
-    const alert = page.indexOf('::: warning Separate package');
+    const alert = page.indexOf('::: info Separate package');
     const firstReadmeHeading = page.search(/^## /m);
     expect(alert).toBeGreaterThan(-1);
     expect(firstReadmeHeading).toBeGreaterThan(-1);
@@ -126,7 +126,7 @@ describe('per-module overview kinds end to end', () => {
     // README supplies the whole body including its heading).
     expect(page).toContain('## What are constructs?');
     // …but the alpha package's own sections and types, not constructs'.
-    expect(page).toContain('::: warning Separate package');
+    expect(page).toContain('::: info Separate package');
     expect(page).toContain('`PythonFunction`');
     expect(page).not.toContain('`Construct`');
     // The source module's own page is untouched.
