@@ -517,6 +517,31 @@ describe('docgen generation', () => {
     ]);
   });
 
+  test('omits synthetic mixin submodule overview pages while keeping their type pages', () => {
+    // The mixin package's submodules carry only mixin types and ship no upstream README, so their generated
+    // `…-readme` overview is noise: it must not be written, and nothing may link to it.
+    const mixinReadmePages = readdirSync(join(outDir, 'docs')).filter(
+      (name) => name.startsWith('@aws-cdk_cfn-property-mixins.') && name.endsWith('-readme.md'),
+    );
+    expect(mixinReadmePages).toEqual([]);
+
+    // The mixin TYPE pages in that submodule still render.
+    expect(
+      existsSync(join(outDir, 'docs', '@aws-cdk_cfn-property-mixins.aws_lambda.CfnFunctionPropsMixin.md')),
+    ).toBe(true);
+
+    // The mixin package root overview no longer links the removed submodule readmes.
+    const mixinRoot = readFileSync(join(outDir, 'docs', '@aws-cdk_cfn-property-mixins-readme.md'), 'utf-8');
+    expect(mixinRoot).not.toContain('-readme.html');
+
+    // A real submodule with its own upstream README keeps its overview page untouched.
+    expect(existsSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'))).toBe(true);
+
+    // No sidebar entry points a mixin submodule's types at a readme page that was never written.
+    const sidebar = readFileSync(join(outDir, 'sidebar.json'), 'utf-8');
+    expect(sidebar).not.toContain('@aws-cdk_cfn-property-mixins.aws_lambda-readme');
+  });
+
   test('submodule start page renders the README above the type preview list', () => {
     const s3Page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
     // README's own H1 is the page's first HEADING, so it is still the
