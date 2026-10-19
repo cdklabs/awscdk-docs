@@ -797,6 +797,36 @@ describe('docgen generation', () => {
     expect(cdkIndex).not.toContain('Separate package');
   });
 
+  test('type pages of an alpha package open with the experimental banner above the title', () => {
+    const banner = '::: warning Experimental\n'
+      + '`@aws-cdk/aws-lambda-python-alpha` is an [**experimental**](/stability) (alpha) package: its API may change in'
+      + ' any release, without a major version bump.\n:::';
+    // Banner between the breadcrumb and the H1; the frontmatter still opens the file.
+    const alphaType = readFileSync(
+      join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha.PythonFunction.md'),
+      'utf-8',
+    );
+    expect(alphaType.startsWith('---\ntitle: "PythonFunction"\n---\n')).toBe(true);
+    expect(alphaType).toContain(banner);
+    expect(alphaType.indexOf('</nav>')).toBeLessThan(alphaType.indexOf(banner));
+    expect(alphaType.indexOf(banner)).toBeLessThan(alphaType.search(/^# /m));
+    // The module overview carries the README's own notice and the install alert, so no banner there.
+    const alphaIndex = readFileSync(
+      join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha-readme.md'),
+      'utf-8',
+    );
+    expect(alphaIndex).not.toContain('::: warning Experimental');
+    // Stable pages carry no banner: neither the stable library nor a stable standalone package, and not even a
+    // type that is itself marked experimental inside the stable library — the banner is about the package.
+    for (const file of [
+      'aws-cdk-lib.aws_s3.Bucket.md',
+      'aws-cdk-lib.interfaces.aws_s3.IBucketRef.md',
+      'constructs.Construct.md',
+    ]) {
+      expect(readFileSync(join(outDir, 'docs', file), 'utf-8')).not.toContain('::: warning Experimental');
+    }
+  });
+
   test('type pages mark experimental types in the metadata block and stable ones not at all', () => {
     const stabilityRow = '<dt class="type-metadata-label">Stability</dt><dd class="type-metadata-value">'
       + '<a class="type-metadata-stability" data-pagefind-ignore href="/stability.html">Experimental</a></dd>';

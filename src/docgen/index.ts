@@ -530,6 +530,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
 
     const groups = moduleGroups.get(moduleName)!;
     const rootTypes = groups.get('') ?? [];
+    // Above the H1 of every type page this package owns; empty for a stable package.
+    const banner = renderExperimentalBanner(assembly);
     const submoduleNames = [...groups.keys()].filter((k) => k !== '').sort();
     // Which submodules actually get an overview page in THIS build, so a breadcrumb segment for an intermediate
     // grouping links only when there is something to link to.
@@ -562,7 +564,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         ]);
         emitPage(
           entry.link,
-          `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${page}\n\n${filters}\n`,
+          `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
           history,
         );
       }
@@ -914,6 +916,30 @@ function renderTypePage(
     return renderEnumPage({ type, assembly, index, usage, linkFor, languages, emitExamples, history });
   }
   return [`# ${entry.name}`, '', entry.summary, ''].join('\n');
+}
+
+/**
+ * Experimental banner for every type page of an experimental (alpha) package, emitted above the H1 so the level is
+ * the first thing a reader sees. A VitePress `warning` custom container — the same block the separate-install alert
+ * uses, so the two read as one family. Empty for a stable package: the absence of the banner is the stable indicator.
+ *
+ * Type pages only: the module overview already opens with the package README's own experimental notice and the
+ * separate-install alert, so a third box there would repeat them.
+ *
+ * Keyed on the package, not the type: a type marked experimental inside a stable package keeps its metadata row
+ * and gets no banner, because the banner states a fact about the package the page belongs to.
+ */
+export function renderExperimentalBanner(assembly: spec.Assembly): string[] {
+  if (assembly.docs?.stability !== 'experimental') {
+    return [];
+  }
+  return [
+    '::: warning Experimental',
+    `\`${assembly.name}\` is an [**experimental**](${STABILITY_ROUTE}) (alpha) package: its API may change in any`
+      + ' release, without a major version bump.',
+    ':::',
+    '',
+  ];
 }
 
 /**
