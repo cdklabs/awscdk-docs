@@ -171,17 +171,27 @@
   font-size: 12px;
 }
 
-/* Narrow screens: the trigger shrinks to its icon and the dialog fills the width. */
-@media (max-width: 767px) {
-  .site-search-button-text,
+/* The nav row shares its width with the language slider, the version badge and the settings gear. Below the
+ * widest breakpoint the trigger drops its keyboard hint, and below the sidebar breakpoint its label too, so the
+ * gear still ends inside the viewport (test/e2e/nav-controls.spec.ts measures this at 768, 800 and 960px). */
+@media (max-width: 1279px) {
   .site-search-keys {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .site-search-button-text {
     display: none;
   }
 
   .site-search-button {
     padding: 0 8px;
   }
+}
 
+/* Narrow screens: the dialog fills the width. */
+@media (max-width: 767px) {
   .site-search-mask {
     padding: 0;
     align-items: flex-start;
