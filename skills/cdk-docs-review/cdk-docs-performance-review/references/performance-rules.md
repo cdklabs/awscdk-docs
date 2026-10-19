@@ -14,8 +14,9 @@ multiplied by ~21k.
 - **Detection method (doc-absent detail):** measure the per-page byte delta on a median fixture page and
   multiply by the page count; state both numbers.
 
-**[PERF-BUILD-SHARD-PAGEFIND] (BLOCKING)**: Pagefind indexing re-enabled per shard, or the `SHARD_BUILD=1`
-no-op bypassed. Per-shard indexes are partial and the work repeats in the merge.
+**[PERF-BUILD-SHARD-SEARCH] (BLOCKING)**: A search indexing pass added to the per-shard or merge steps. The
+search index is one JSON asset docgen writes once before the shards; nothing in the build should index pages
+again.
 
 **[PERF-BUILD-PER-PAGE-WORK] (RECOMMENDED)**: New work inside a per-page loop (docgen render, `transformHtml`,
 a VitePress hook) that recomputes something constant across pages: re-reading a file, re-parsing the
@@ -63,10 +64,11 @@ API pages need it. (doc-absent detail) Check the built chunk graph, not the impo
 
 ## Search
 
-**[PERF-SEARCH-INDEX-GROWTH] (RECOMMENDED)**: New indexed text repeated on many pages (boilerplate,
-language variants, source paths) that inflates the Pagefind index and dilutes ranking. Wrap it in
-`data-pagefind-ignore` via `PAGEFIND_IGNORE` in `src/docgen/search.ts`. Removing real content from the
-index is the agent-support dimension's concern, not this one.
+**[PERF-SEARCH-INDEX-GROWTH] (RECOMMENDED)**: New fields, longer summaries or extra entries per page added to
+the search index (`src/docgen/search.ts`) that grow the JSON asset every reader downloads on first search. The
+asset carries one short entry per page; raising `SUMMARY_MAX_CHARS` or indexing page bodies needs a measured
+size before and after. Removing real content from the index is the agent-support dimension's concern, not
+this one.
 
 ## Measurement
 

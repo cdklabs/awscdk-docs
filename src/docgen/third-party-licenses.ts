@@ -53,7 +53,7 @@ function repositoryUrl(value: unknown): string | undefined {
   }
 }
 
-// Platform builds (esbuild, rollup, pagefind binaries) differ per machine, so they would make the file churn.
+// Platform builds (esbuild, rollup binaries) differ per machine, so they would make the file churn.
 function isPlatformSpecific(record: LicenseCheckerRecord): boolean {
   if (typeof record.path !== 'string') {
     return false;

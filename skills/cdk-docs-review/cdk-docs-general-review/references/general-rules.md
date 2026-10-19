@@ -66,7 +66,7 @@ rule 6: "All code changes must include tests." A test that cannot fail does not 
 depends on it. Applied at branch granularity.
 
 **[GEN-TEST-MISSING-E2E] (BLOCKING)**: `AGENTS.md` rule 7: an interactive theme feature (type-ahead filter,
-lazy API sidebar, type tooltips, favorites, feedback widget, language switcher, Pagefind search) changed
+lazy API sidebar, type tooltips, favorites, feedback widget, language switcher, site search) changed
 with no `test/e2e/` spec added or extended, "because Jest unit tests never load the rendered site."
 
 - **Conditional (doc-absent detail):** an e2e spec on the fixture that cannot see the change (the fixture

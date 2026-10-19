@@ -39,6 +39,9 @@ export const MAX_RESULTS = 25;
  */
 export const FIELD_BOOST = { title: 6, module: 1.5, summary: 1 } as const;
 
+/** Multiplier for a page whose title equals the query term exactly. */
+export const EXACT_TITLE_BOOST = 3;
+
 export interface ParsedSearchQuery {
   /** Query text with recognized filter tokens removed. */
   text: string;
@@ -114,6 +117,12 @@ export class SiteSearch {
         prefix: true,
         fuzzy: 0.15,
         combineWith: "AND",
+        // A page whose title IS the term (`Bucket` for `bucket`) outranks pages whose title merely contains or
+        // extends it (`BucketProps`), which prefix matching would otherwise score alike.
+        boostDocument: (_id, term, stored) => {
+          const title = String((stored as SearchDocument | undefined)?.title ?? "").toLowerCase();
+          return title === term ? EXACT_TITLE_BOOST : 1;
+        },
       },
     });
     this.engine.addAll(documents as SearchDocument[]);

@@ -4,6 +4,14 @@
 
 Accepted
 
+The full-text search sections below (engine, index relevance markup, query
+filters and warm-up, canonical-language indexing) are superseded by
+[site search with MiniSearch](./2026-10-19-minisearch-search.md): the host's
+Content Security Policy blocks WebAssembly, so Pagefind never ran in production
+and was replaced by a plain-JavaScript engine over a docgen-built index. The
+symbol type-ahead filter sections remain in force. The superseded text is kept
+as the record of the earlier design.
+
 ## Context
 
 The site needs two complementary ways to find things across hundreds of CDK

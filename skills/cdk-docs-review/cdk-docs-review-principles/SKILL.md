@@ -60,12 +60,12 @@ Every finding carries three things:
 - **Evidence**, strongest authority first: behavior you reproduced on the PR head (a build, a test run, a
   mutation that turns a test red or leaves it green, a rendered page) → the repository source at the PR
   head and at the base → `AGENTS.md` and the ADRs in `docs/adr/` → upstream documentation (VitePress,
-  Pagefind, Playwright, axe-core, WCAG, schema.org) → the linked issue and PR discussion. Prefer reproduced
+  MiniSearch, Playwright, axe-core, WCAG, schema.org) → the linked issue and PR discussion. Prefer reproduced
   behavior when sources disagree.
   **Verify before you cite.** Never post from reading the diff alone when the claim can be run. A test is
   hollow only once you have broken the code and watched the test stay green; a URL moved only once you
   have built and listed the output; a docstring is stale only once you have read it at the head commit,
-  not at the diff hunk. When a finding turns on upstream behavior (a WCAG criterion, a Pagefind attribute,
+  not at the diff hunk. When a finding turns on upstream behavior (a WCAG criterion, a MiniSearch option,
   a VitePress hook), read the upstream page and cite it in `reference`.
 - **A concrete fix**: a code example, or a question framing a specific alternative. Always offer a way
   out; never only point at the problem.

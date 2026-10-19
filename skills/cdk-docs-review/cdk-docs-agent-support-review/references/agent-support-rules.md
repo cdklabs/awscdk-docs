@@ -14,7 +14,7 @@ signal the site consults, so no page can advertise a twin that was not produced.
 the `<link rel="alternate" type="text/markdown">` and the file in `dist-agent-markdown/`.
 
 **[AGENT-TWIN-CONTENT-LOSS] (BLOCKING)**: New page content the twin transform drops: a new section, table
-or callout wrapped in markup the transform treats as structural or Pagefind plumbing. The twin "keeps
+or callout wrapped in markup the transform treats as structural plumbing. The twin "keeps
 TypeScript signatures, examples, member tables, warnings and cross-links"; an agent reading the twin
 never sees what it drops.
 
@@ -55,16 +55,17 @@ schema.org before citing.
 
 ## Search
 
-**[AGENT-SEARCH-NAMES-LOST] (BLOCKING)**: `data-pagefind-ignore` moved to wrap a member or type name,
-heading or summary, so the name stops being searchable. Ignore only the noise (parameter and return
-detail, source paths, non-canonical language variants), never the identifier a reader searches for.
+**[AGENT-SEARCH-NAMES-LOST] (BLOCKING)**: A page's entry in the search index (`src/docgen/search.ts`,
+`docs/public/search/index.<hash>.json`) loses or garbles the title, kind, module or summary a reader searches
+for, or a page kind stops contributing an entry at all. Every type page and overview page must stay findable
+by its name.
 
-- **Detection method (doc-absent detail):** on the built fixture, run the Pagefind search for one member
-  name the change touches at base and head.
+- **Detection method (doc-absent detail):** on the built fixture, open the search dialog and query one type
+  name the change touches at base and head; compare the first result.
 
-**[AGENT-SEARCH-VARIANT-INDEXED] (RECOMMENDED)**: A non-canonical language variant left indexed, so search
-returns the same member four times. `src/docgen/variants.ts` marks non-canonical variants
-`data-pagefind-ignore`.
+**[AGENT-SEARCH-SUMMARY-NOISE] (RECOMMENDED)**: Markup, language variants or boilerplate leaking into the
+plain-text `summary` field, so the index carries HTML or repeated text instead of the page's first paragraph.
+`searchSummary` strips inline HTML and markdown and truncates on a word boundary; keep new emitters behind it.
 
 ## Content
 

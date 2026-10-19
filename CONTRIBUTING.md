@@ -81,7 +81,7 @@ A PR that adds or changes an **interactive theme feature** must add or extend a
 browser test in `test/e2e/`. This covers anything with client-side behavior a
 user drives in the browser — the type-ahead symbol filter, the lazy API
 sidebar, type hover tooltips, favorites, the feedback widget, the language
-switcher, and Pagefind search. Unit tests of the docgen/build pipeline cannot
+switcher, and site search. Unit tests of the docgen/build pipeline cannot
 catch these regressions because they never load the rendered site; a misplaced
 NavFilter and broken `/api/modules/` navigation both reached
 `main` for exactly this reason.
