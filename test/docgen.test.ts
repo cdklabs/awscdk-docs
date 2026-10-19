@@ -435,7 +435,7 @@ describe('docgen generation', () => {
       packageRoot: ROOT,
       languages: ['ts', 'python'],
       overviewFile,
-      overviewSourceFile: join(ROOT, 'docs', 'construct-library.md'),
+      overviewSourceFile: join(ROOT, 'docs', 'aws-construct-library.md'),
     });
   });
 
@@ -454,7 +454,7 @@ describe('docgen generation', () => {
 
   test('the API root renders the authored construct-library overview', () => {
     const overview = readFileSync(overviewFile, 'utf-8');
-    const authored = readFileSync(join(ROOT, 'docs', 'construct-library.md'), 'utf-8');
+    const authored = readFileSync(join(ROOT, 'docs', 'aws-construct-library.md'), 'utf-8');
     expect(overview).toBe(authored);
     expect(overview).toContain('# AWS Construct Library');
     expect(overview).toContain('## Construct levels');

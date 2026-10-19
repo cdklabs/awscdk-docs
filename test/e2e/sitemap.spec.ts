@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { API_OVERVIEW, SKILLS_PAGE, TOPIC_PAGE } from './fixture.js';
+import { API_OVERVIEW, CONSTRUCT_LIBRARY_PAGE, SKILLS_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // `/sitemap.xml` is a crawler's one authoritative list of every page. It is served as XML, every `<loc>` is an
 // absolute URL under the public site prefix, and the authored pages sit in it next to the generated ones.
@@ -20,7 +20,7 @@ test.describe('sitemap', () => {
     for (const loc of locs) expect(loc.startsWith(SITE)).toBe(true);
     expect(new Set(locs).size).toBe(locs.length);
 
-    for (const page of [TOPIC_PAGE, API_OVERVIEW, SKILLS_PAGE]) {
+    for (const page of [TOPIC_PAGE, API_OVERVIEW, SKILLS_PAGE, CONSTRUCT_LIBRARY_PAGE]) {
       expect(locs).toContain(new URL(page.replace(/^\//, ''), SITE).href);
     }
     // The home page is the bare site URL, and the canonical tree carries no language query variants.
@@ -31,7 +31,8 @@ test.describe('sitemap', () => {
   test('excluded sources and the Markdown twins stay out of it', async ({ request }) => {
     const body = await (await request.get('/sitemap.xml')).text();
     expect(body).not.toContain('/adr/');
-    expect(body).not.toContain('construct-library.html');
+    // The rewritten overview source is served only at its /v2/docs/ address, never at the site root.
+    expect(body).not.toContain(`<loc>${SITE}aws-construct-library.html</loc>`);
     expect(body).not.toMatch(/<loc>[^<]*\.md<\/loc>/);
   });
 });
