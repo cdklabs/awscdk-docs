@@ -1,7 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { DefaultTheme, HeadConfig, UserConfigFn } from "vitepress";
-import { pagefindPlugin } from "vitepress-plugin-pagefind";
 import sitePaths from "../../scripts/site-paths.cjs";
 import { resolveLucideIcon } from "./feature-icons";
 import { API_ROOT, SITE_TITLE, VERSIONS_ROUTE } from "../../src/site-routes";
@@ -145,6 +144,14 @@ function apiSidebarAssets(): { apiSidebarAsset: string; symbolsAsset: string } {
   return { apiSidebarAsset: named("sidebar"), symbolsAsset: named("symbols") };
 }
 
+// The site search index docgen writes to docs/public/search/, named by its content hash like the sidebar assets.
+// Empty when docgen has not run (dev server without generated docs): the search dialog then reports no index.
+function searchAsset(): { searchAsset: string } {
+  const dir = fileURLToPath(new URL("../public/search", import.meta.url));
+  const files = existsSync(dir) ? readdirSync(dir) : [];
+  return { searchAsset: files.find((file) => /^index\.[0-9a-f]{8}\.json$/.test(file)) ?? "" };
+}
+
 // Typed as UserConfigFn rather than wrapped in `defineConfig`: the helper only accepts a plain
 // UserConfig, so it cannot type the async factory this config has to be (the highlighter is awaited).
 const config: UserConfigFn<DefaultTheme.Config> = async () => ({
@@ -213,7 +220,7 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   ignoreDeadLinks: true,
 
   // ADRs stay in the repo but are excluded from the rendered site: no /adr/ pages are built, so they never
-  // appear in the sidebar, nav, or Pagefind index. The spike proof pages (docs/spike/) are excluded on the
+  // appear in the sidebar, nav, or search index. The spike proof pages (docs/spike/) are excluded on the
   // deployed shard build only (SHARD_BUILD=1); the e2e fixture build sets neither SHARD_BUILD nor DOCS_BASE
   // and still needs the page for test/e2e/language-tabs.spec.ts.
   srcExclude: ["adr/**", ...(process.env.SHARD_BUILD ? ["spike/**"] : [])],
@@ -264,16 +271,7 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
     return injectSiteStamp(code, { version: cdkVersion ?? "", generatedAt });
   },
 
-  // Preload the Pagefind engine module so the eager warm-up in theme/search-client.ts resolves from cache
-  // instead of a cold network fetch. DOCS_BASE-aware like the plugin's own loader.
   head: [
-    [
-      "link",
-      {
-        rel: "modulepreload",
-        href: `${sitePaths.siteBase()}pagefind/pagefind.js`,
-      },
-    ],
     // Re-apply a stored decoupled code-theme choice before first paint, mirroring VitePress's appearance
     // bootstrap, so a reload never flashes the wrong code colors. Storage key is CODE_THEME_KEY in
     // theme/code-theme.ts; 'auto' (code follows the site theme) is the absence of the attribute, so only
@@ -294,20 +292,17 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   ],
 
   vite: {
-    // Pagefind static search: indexes the built site and replaces the default navbar search component.
-    // During a sharded build (SHARD_BUILD=1) each shard renders only a subset of pages, so per-shard indexing
-    // would be partial. Keep the plugin (so `virtual:pagefind` still resolves) but no-op its indexing command;
-    // the merge step runs `npx pagefind --site <dist>` once over the merged tree.
-    plugins: [
-      pagefindPlugin({
-        // Hint the query-scoping tokens: `module:` / `kind:` are parsed client-side (theme/search-client.ts)
-        // into Pagefind filters that docgen emits on every API page.
-        placeholder: "Search (e.g. bucket module:aws-s3 kind:construct)",
-        ...(process.env.SHARD_BUILD
-          ? { indexingCommand: 'echo "[shard build] pagefind indexing deferred to post-merge step"' }
-          : {}),
-      }),
-    ],
+    resolve: {
+      alias: [
+        // Site search: the theme's own MiniSearch-backed dialog takes the slot VitePress reserves for its navbar
+        // search component, so it keeps the default layout's `.search` region (see nav-controls.css) without a
+        // `themeConfig.search` provider. The index it queries is the JSON asset docgen writes to docs/public/search/.
+        {
+          find: /^.*\/VPNavBarSearch\.vue$/,
+          replacement: fileURLToPath(new URL("./theme/SearchBox.vue", import.meta.url)),
+        },
+      ],
+    },
 
     build: {
       // Vite gzips every emitted asset just to log its compressed size; with ~21k pages that is wasted CI CPU.
@@ -332,6 +327,8 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
 
     // Consumed by ApiSidebar and NavFilter. Chunk filenames are absent by design: the skeleton names its own.
     ...apiSidebarAssets(),
+    // Consumed by SearchBox: the hashed name of the search index asset.
+    ...searchAsset(),
 
     nav: [
       { text: "API Reference", link: API_ROOT },

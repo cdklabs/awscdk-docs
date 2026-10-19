@@ -113,9 +113,9 @@ const project = new CdkTypeScriptProject({
     '@shikijs/engine-javascript@^2.1.0',
     // Renders GitHub ```math fences in jsii READMEs into the pages' markup.
     'markdown-it-mathjax3@^4',
-    // Static local search: the index and the pagefind.js runtime ship in the output.
-    'pagefind',
-    'vitepress-plugin-pagefind',
+    // Static local search: a plain-JavaScript engine over the JSON index docgen writes, so it runs under a
+    // Content Security Policy that forbids WebAssembly.
+    'minisearch@^7',
     // Generic UI glyphs for the home page feature cards: concept icons no brand set covers. SVGs are inlined
     // into the rendered pages.
     'lucide-static@^0.542.0',
@@ -299,9 +299,9 @@ project.addTask('docs:preview', {
 
 // Browser e2e suite. Playwright drives the built site in a real Chromium, covering the interactive theme
 // features the Jest unit suite cannot reach (type-ahead filter, language switcher, favorites, feedback widget,
-// hover tooltips, Pagefind search, lazy API sidebar). The full site is too heavy to rebuild per run, so the
+// hover tooltips, site search, lazy API sidebar). The full site is too heavy to rebuild per run, so the
 // task builds a small fixture: full docs:generate, pruned to a couple of services, then a single-shot VitePress
-// build with Pagefind indexing. Not part of the default `build` task — too slow/heavy, runs in its own workflow.
+// build. Not part of the default `build` task — too slow/heavy, runs in its own workflow.
 // The fixture site carries the agent Markdown twins like the deployed site does, so the footer link and its
 // alternate-link head tag point at files that resolve under test.
 const OVERLAY_AGENT_MARKDOWN =
@@ -597,7 +597,7 @@ const NOT_YET_RELEASED = "needs.release.outputs.tag_exists != 'true'";
 const DOCS_STREAM = 'awscdk-docs';
 
 // Single build job on a self-hosted CodeBuild runner: builds every shard in parallel on one large machine, then
-// merges, indexes with Pagefind and verifies, all inside docs:build:sharded. This is the required `build` check.
+// merges and verifies, all inside docs:build:sharded. This is the required `build` check.
 combined.addJob('build', {
   runsOn: ['codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}'],
   permissions: {

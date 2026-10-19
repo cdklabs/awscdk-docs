@@ -18,7 +18,6 @@ import JumpToCurrent from "./JumpToCurrent.vue";
 import NavFilter from "./NavFilter.vue";
 import NotFound from "./NotFound.vue";
 import PageFooterLinks from "./PageFooterLinks.vue";
-import { warmSearchIndex } from "./search-client";
 import SettingsMenu from "./SettingsMenu.vue";
 import SiteFooter from "./SiteFooter.vue";
 import BackToTop from "./BackToTop.vue";
@@ -36,6 +35,7 @@ import "./api-sidebar.css";
 import "./theme-picker.css";
 import "./code-theme.css";
 import "./nav-controls.css";
+import "./site-search.css";
 import "./outline.css";
 import "./home-features.css";
 import "./callouts.css";
@@ -83,10 +83,6 @@ const theme: Theme = {
     initCodeTheme();
     installTypeTooltips();
     installFavoritesSearchBoost();
-    // Eagerly initialize Pagefind: the plugin's own idle loader leaves a window
-    // where the first search silently returns an empty result. Runs after the
-    // favorites trap so the warmed handle still gets filters + boosting.
-    warmSearchIndex();
   },
 };
 

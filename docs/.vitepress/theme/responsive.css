@@ -15,10 +15,10 @@
  * - Code blocks: `.vp-doc div[class*='language-']` scrolls horizontally.
  *
  * This file only patches the gaps in OUR custom layer on top of that:
- * docgen-emitted signature blocks, header badges, and the Pagefind
- * search dialog — plus WCAG 2.5.5 touch-target sizing and a horizontal
- * overflow guard. Colors come exclusively from VitePress theme
- * variables, so every rule works in both light and dark mode.
+ * docgen-emitted signature blocks and header badges — plus WCAG 2.5.5
+ * touch-target sizing and a horizontal overflow guard. Colors come
+ * exclusively from VitePress theme variables, so every rule works in both
+ * light and dark mode.
  *
  * Breakpoints mirror the default theme: 768px (tablet) and 960px
  * (desktop sidebar).
@@ -64,12 +64,12 @@ pre.signature {
 
   /* Initializer signatures are a single line on desktop; on
      narrow screens they wrap instead of scrolling sideways. Scoped to the
-     initializer fence container (the Pagefind-ignored div right after the
-     `## Initializer` heading) so authored `## Example` fences
+     initializer fence container (the `initializer-variants` div right after
+     the `## Initializer` heading) so authored `## Example` fences
      keep the standard horizontal scroll: an author can reflow an example,
      but nobody can shorten a generated multi-parameter signature. */
-  h2#initializer + div[data-pagefind-ignore] pre.shiki,
-  h2#initializer + div[data-pagefind-ignore] pre.shiki code {
+  h2#initializer + div.initializer-variants pre.shiki,
+  h2#initializer + div.initializer-variants pre.shiki code {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
@@ -134,35 +134,3 @@ pre.signature {
   }
 }
 
-/* ------------------------------------------------------------------ *
- * Pagefind search dialog (vitepress-plugin-pagefind)
- *
- * The plugin's dialog is width: 90% / max-width: 600px at all sizes;
- * on small screens go full-width with safe-area padding so results
- * are readable and the input is reachable.
- * ------------------------------------------------------------------ */
-@media (max-width: 767px) {
-  .search-dialog {
-    width: 100% !important;
-    max-width: none !important;
-    max-height: 90vh !important;
-    border-radius: 0 0 8px 8px !important;
-    margin: 0;
-    align-self: flex-start;
-  }
-
-  .search-dialog-mask {
-    align-items: flex-start !important;
-  }
-
-  .search-dialog .pagefind-ui__search-input {
-    min-height: 44px;
-    font-size: 16px; /* prevents iOS Safari zoom-on-focus */
-  }
-
-  .search-dialog .pagefind-ui__result-link {
-    display: inline-block;
-    padding: 8px 0;
-    min-height: 44px;
-  }
-}

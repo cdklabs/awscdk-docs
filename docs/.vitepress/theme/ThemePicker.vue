@@ -186,10 +186,9 @@ onMounted(() => {
   padding: 2px 1px;
   background-color: var(--vp-c-bg-alt);
   /* Same rendered height as the adjacent search trigger and language
-   * slider so the three controls share a baseline. The pagefind plugin
-   * hard-codes `height: 40px` on `.nav-search-btn-wait` with no CSS
-   * variable, so the value is pinned here and guarded by a regression
-   * test that reads the plugin's source. */
+   * slider so the three controls share a baseline: `.site-search-button`
+   * is 40px in site-search.css, pinned here and guarded by a regression
+   * test (test/nav-controls.test.ts). */
   box-sizing: border-box;
   height: 40px;
 }

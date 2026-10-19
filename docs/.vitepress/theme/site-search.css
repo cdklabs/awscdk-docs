@@ -1,0 +1,203 @@
+/*
+ * Site search: the navbar trigger and the modal dialog SearchBox.vue renders.
+ *
+ * The trigger lives in the `.search` region VPNavBar reserves for its search
+ * component (SearchBox.vue is aliased over VPNavBarSearch.vue in config.mts), so
+ * nav-controls.css's centering of that region applies unchanged. The dialog is
+ * teleported to <body> and styled with the theme's own variables so it follows
+ * light/dark and custom palettes.
+ */
+
+.site-search {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+}
+
+.site-search-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--vp-c-bg-alt);
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  font-weight: 500;
+  transition: border-color 0.25s, background-color 0.25s;
+}
+
+.site-search-button:hover,
+.site-search-button:focus-visible {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-text-1);
+}
+
+.site-search-glyph {
+  width: 16px;
+  height: 16px;
+}
+
+.site-search-keys,
+.site-search-close kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-3);
+  font-family: var(--vp-font-family-base);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.site-search-mask {
+  position: fixed;
+  inset: 0;
+  z-index: var(--vp-z-index-layout-top, 200);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  background: var(--vp-backdrop-bg-color, rgba(0, 0, 0, 0.6));
+}
+
+.site-search-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  max-height: 76vh;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  box-shadow: var(--vp-shadow-3);
+  overflow: hidden;
+}
+
+.site-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.site-search-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--vp-c-text-1);
+  font-size: 16px;
+  outline: none;
+}
+
+.site-search-input::placeholder {
+  color: var(--vp-c-text-3);
+}
+
+.site-search-close {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+
+.site-search-results {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.site-search-result + .site-search-result {
+  margin-top: 2px;
+}
+
+.site-search-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-search-result.active .site-search-link {
+  background: var(--vp-c-default-soft);
+}
+
+.site-search-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.site-search-meta {
+  display: flex;
+  gap: 8px;
+  align-self: center;
+  color: var(--vp-c-text-3);
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.site-search-summary {
+  grid-column: 1 / -1;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.site-search-empty,
+.site-search-hint {
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+}
+
+.site-search-hint code {
+  font-size: 12px;
+}
+
+/* Narrow screens: the trigger shrinks to its icon and the dialog fills the width. */
+@media (max-width: 767px) {
+  .site-search-button-text,
+  .site-search-keys {
+    display: none;
+  }
+
+  .site-search-button {
+    padding: 0 8px;
+  }
+
+  .site-search-mask {
+    padding: 0;
+    align-items: flex-start;
+  }
+
+  .site-search-dialog {
+    max-width: none;
+    max-height: 90vh;
+    border-radius: 0 0 8px 8px;
+  }
+
+  .site-search-input {
+    min-height: 44px; /* prevents iOS Safari zoom-on-focus */
+  }
+
+  .site-search-link {
+    min-height: 44px;
+  }
+}

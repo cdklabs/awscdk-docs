@@ -9,9 +9,9 @@
  *    (`:has()`), so the single-language build — where the slider is
  *    absent — keeps the stock layout untouched.
  *
- * 2. The search box moves to the CENTER of the nav row: it keeps the
- *    pagefind plugin's `flex: 1` (so it owns the space between the
- *    slider and the right-hand controls) and centers its trigger button
+ * 2. The search box moves to the CENTER of the nav row: the search
+ *    region keeps `flex: 1` (so it owns the space between the slider and
+ *    the right-hand controls) and SearchBox.vue centers its trigger button
  *    inside that region.
  *
  * 3. The appearance controls sit behind the gear-icon Settings
@@ -169,14 +169,11 @@
 }
 
 /* `.search` is the class VPNavBar passes to its search component — it
- * survives the pagefind plugin's aliasing of VPNavBarSearch.vue to its
- * own .blog-search component (which is why .VPNavBarSearch must NOT be
- * the selector here). The plugin's `flex: 1` is kept: it makes the
- * search own the middle region; centering the trigger inside it is what
- * places the search visually mid-row. The plugin's 32px left padding
- * would skew that centering, so it moves onto the slider instead (the
- * slider now provides the gap from the site title that the search's
- * padding used to). */
+ * survives config.mts aliasing VPNavBarSearch.vue to the theme's own
+ * SearchBox.vue (which is why .VPNavBarSearch must NOT be the selector
+ * here). `flex: 1` on the region makes the search own the middle region;
+ * centering the trigger inside it is what places the search visually
+ * mid-row. The slider provides the gap from the site title. */
 @media (min-width: 768px) {
   .VPNavBar .content-body > .language-toggle {
     order: -2;

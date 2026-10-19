@@ -13,7 +13,7 @@ fail() { echo "::error::$*" >&2; exit 1; }
 
 test -f "$SITE_DIST/index.html" || fail "$SITE_DIST/index.html missing — merge did not complete"
 test -f "$SITE_DIST/hashmap.json" || fail "$SITE_DIST/hashmap.json missing — client-side navigation would break"
-test -d "$SITE_DIST/pagefind" || fail "$SITE_DIST/pagefind missing — search index not generated"
+ls "$SITE_DIST"/search/index.*.json >/dev/null 2>&1 || fail "$SITE_DIST/search/index.<hash>.json missing — search index not generated"
 
 # The publishing target takes no loose files at the artifact root.
 if [ "$BASE" != "/" ]; then

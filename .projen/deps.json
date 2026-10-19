@@ -341,7 +341,8 @@
       "type": "runtime"
     },
     {
-      "name": "pagefind",
+      "name": "minisearch",
+      "version": "^7",
       "type": "runtime"
     },
     {
@@ -351,10 +352,6 @@
     },
     {
       "name": "vitepress",
-      "type": "runtime"
-    },
-    {
-      "name": "vitepress-plugin-pagefind",
       "type": "runtime"
     },
     {

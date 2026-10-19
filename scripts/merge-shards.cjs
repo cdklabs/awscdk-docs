@@ -15,9 +15,6 @@
 // `--agent-markdown <dir>` overlays the agent-oriented Markdown twins docgen wrote (a site tree of `.md` files
 // beside the `.html` pages they mirror) exactly once, after the shards. They never pass through VitePress, so this
 // is the only step that puts them in the site.
-//
-// Pagefind is not run here — shard builds skip indexing (SHARD_BUILD=1) and the caller runs
-// `npx pagefind --site <outDir>` once over the merged tree.
 'use strict';
 const fs = require('fs');
 const path = require('path');

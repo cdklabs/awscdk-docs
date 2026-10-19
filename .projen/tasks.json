@@ -578,7 +578,7 @@
             "--peer",
             "--no-deprecated",
             "--dep=prod",
-            "--filter=@vueuse/core,pagefind,vitepress,vitepress-plugin-pagefind,vue"
+            "--filter=@vueuse/core,vitepress,vue"
           ]
         },
         {
@@ -592,10 +592,9 @@
             "@vueuse/core",
             "lucide-static",
             "markdown-it-mathjax3",
-            "pagefind",
+            "minisearch",
             "shiki",
             "vitepress",
-            "vitepress-plugin-pagefind",
             "vue"
           ]
         },

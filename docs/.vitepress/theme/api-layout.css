@@ -336,7 +336,7 @@ a.chain-item:hover {
    Separated from the last visible name by the margin. Without it the row
    rendered `Domain+ 2,507 more` — structurally correct, two lines exactly,
    every test green, and wrong on the page. A margin rather than emitted
-   whitespace, so the separator cannot end up inside the Pagefind-ignored
+   whitespace, so the separator cannot end up inside the rendered
    text or be collapsed away by the markdown pipeline.
 
    No such separator is needed on the OPEN state, and that is measured

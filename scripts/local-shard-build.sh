@@ -181,9 +181,8 @@ AGENT_MARKDOWN=()
 node scripts/merge-shards.cjs "$REL_DIST" "${AGENT_MARKDOWN[@]}" "${MERGE_SOURCES[@]}"
 
 if [ -n "$SINGLE" ]; then
-  echo "Single-shard build: skipping Pagefind and site verification (both need the full site)."
+  echo "Single-shard build: skipping site verification (needs the full site)."
 else
-  npx pagefind --site "$REL_DIST"
   bash scripts/verify-site.sh
 fi
 

@@ -1,53 +1,43 @@
-// Search warm-up and query-scoped filters.
+// Site search: MiniSearch over the JSON index docgen writes at build time.
 //
-// Warm-up: the Pagefind plugin loads `/pagefind/pagefind.js` on
-// `requestIdleCallback` and only then calls `init()`. Until it is warm, the
-// first query after a cold page load appears to return no results.
-// `warmSearchIndex()` closes that window by importing and initializing pagefind
-// immediately on client mount.
+// Search runs as plain JavaScript in the browser — no WebAssembly — so it works
+// under a Content Security Policy that forbids `wasm-unsafe-eval`. The index is
+// one static asset (`/search/index.<hash>.json`, one entry per API page) fetched
+// on the first search and indexed client-side; the engine and the index are then
+// cached for the rest of the session.
 //
-// Filters: docgen tags every API page with `module:` / `kind:` Pagefind filters,
-// but the plugin's search UI always passes empty options. `withQueryFilters()`
-// wraps the search handle to parse `module:aws-s3` / `kind:construct` tokens out
-// of the query text and forward them as real Pagefind filters.
+// Filters: `module:aws-s3` / `kind:construct` tokens in the query text are
+// parsed out and applied as exact-match filters on the entries' `module` and
+// `kind` fields, so queries can be scoped (`bucket module:aws-s3 kind:construct`).
+import MiniSearch from "minisearch";
 
-interface SearchHandleLike {
-  search?(text: string | null, options?: SearchOptions): Promise<unknown>;
-  debouncedSearch?(
-    text: string | null,
-    options?: SearchOptions,
-    delay?: number,
-  ): Promise<unknown>;
-  init?(): unknown;
-  options?(config: Record<string, unknown>): Promise<unknown>;
+/** One indexed page, as docgen wrote it (see `SearchIndexEntry` in src/docgen/search.ts). */
+export interface SearchDocument {
+  readonly link: string;
+  readonly title: string;
+  readonly kind: string;
+  readonly module: string;
+  readonly summary: string;
 }
+
+/** One ranked result. */
+export interface SearchHit extends SearchDocument {
+  readonly score: number;
+}
+
+/** Filter keys recognized in the query text. Unknown keys stay in the text. */
+const FILTER_KEYS = new Set(["module", "kind"]);
+
+/** Most results a query returns; the dialog shows them all. */
+export const MAX_RESULTS = 25;
 
 /**
- * Search-time ranking tuned for API reference docs, where the signal is "this
- * page IS about the term" (weighted title match) rather than "this page mentions
- * the term often":
- *   - termSimilarity up:   exact word matches rank above longer extensions.
- *   - termFrequency down:  a page mentioning a term many times is not much more
- *     relevant than one defining it once.
- *   - termSaturation down: repeated mentions saturate quickly.
- * See https://pagefind.app/docs/ranking/.
- *
- * This is a search-time Pagefind option (`pagefind.options()`), so it must be
- * applied here on the loaded module before searches run.
+ * Field boosts, tuned for an API reference where the signal is "this page IS
+ * about the term" (its title names it) rather than "this page mentions the
+ * term": a title hit outranks any summary hit, and the module slug counts a
+ * little so `s3` surfaces the S3 pages before pages that merely mention S3.
  */
-export const SEARCH_RANKING = {
-  termSimilarity: 3.0,
-  termFrequency: 0.4,
-  termSaturation: 1.2,
-} as const;
-
-interface SearchOptions {
-  filters?: Record<string, string[]>;
-  [key: string]: unknown;
-}
-
-/** Filter keys docgen emits on API pages. Unknown keys stay in the text. */
-const FILTER_KEYS = new Set(["module", "kind"]);
+export const FIELD_BOOST = { title: 6, module: 1.5, summary: 1 } as const;
 
 export interface ParsedSearchQuery {
   /** Query text with recognized filter tokens removed. */
@@ -76,97 +66,111 @@ export function parseSearchQuery(raw: string): ParsedSearchQuery {
   return { text: rest.join(" "), filters };
 }
 
-function mergeOptions(
-  options: SearchOptions | undefined,
-  filters: Record<string, string[]>,
-): SearchOptions {
-  if (Object.keys(filters).length === 0) {
-    return options ?? {};
-  }
-  return { ...options, filters: { ...options?.filters, ...filters } };
+/** Whether a document satisfies every parsed filter (each filter key accepts any of its listed values). */
+export function matchesFilters(doc: SearchDocument, filters: Record<string, string[]>): boolean {
+  return Object.entries(filters).every(([key, values]) => {
+    const actual = key === "module" ? doc.module : key === "kind" ? doc.kind : undefined;
+    return actual !== undefined && values.includes(actual.toLowerCase());
+  });
 }
 
 /**
- * Wrap a Pagefind handle so `search`/`debouncedSearch` understand
- * `module:` / `kind:` query tokens. A query that is ONLY filter tokens
- * searches with `null` text, which Pagefind treats as "all pages
- * matching the filters".
+ * MiniSearch tokenizer tuned for API identifiers: splits on whitespace and
+ * punctuation like the default, and additionally breaks camelCase so that
+ * `PythonFunction` is found by `function` and `BucketProps` by `props`. The
+ * whole identifier is kept as a token too, so an exact name still matches best.
  */
-export function withQueryFilters<T extends SearchHandleLike>(handle: T): T {
-  if (!handle || typeof handle !== "object") {
-    return handle;
+export function tokenize(text: string): string[] {
+  const tokens: string[] = [];
+  for (const word of text.split(/[\s\-_/.,:;()[\]{}<>"'`|@#&*+=!?]+/)) {
+    if (!word) {
+      continue;
+    }
+    tokens.push(word);
+    const parts = word.split(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/);
+    if (parts.length > 1) {
+      tokens.push(...parts);
+    }
   }
-  const wrapped: T = { ...handle };
-  if (typeof handle.search === "function") {
-    wrapped.search = (text, options) => {
-      const parsed = parseSearchQuery(text ?? "");
-      return handle.search!.call(
-        handle,
-        parsed.text || null,
-        mergeOptions(options, parsed.filters),
-      );
-    };
-  }
-  if (typeof handle.debouncedSearch === "function") {
-    wrapped.debouncedSearch = (text, options, delay) => {
-      const parsed = parseSearchQuery(text ?? "");
-      return handle.debouncedSearch!.call(
-        handle,
-        parsed.text || null,
-        mergeOptions(options, parsed.filters),
-        delay,
-      );
-    };
-  }
-  return wrapped;
+  return tokens;
 }
 
 /**
- * Eagerly load and initialize Pagefind on client mount instead of waiting for
- * the plugin's idle callback. Assigning to `window.__pagefind__` goes through the
- * favorites-client property trap, so the handle still gets query filters +
- * favorites boosting. Import failure (dev server: no built index) is ignored.
+ * A loaded search index: the MiniSearch engine plus the documents it was built
+ * from, so a filter-only query ("module:aws-s3") can list pages without a term.
  */
-export function warmSearchIndex(): void {
-  // `globalThis` keeps this module compilable under the repo's node-only tsconfig;
-  // at runtime the check is equivalent to a `window` SSR guard.
-  const win = globalThis as unknown as {
-    document?: {
-      querySelector(selector: string): { href?: string | null } | null;
-    };
-    __cdkDocsSearchWarm?: boolean;
-    __pagefind__?: unknown;
-  };
-  const doc = win.document;
-  if (!doc || win.__cdkDocsSearchWarm) {
-    return;
-  }
-  win.__cdkDocsSearchWarm = true;
-  // Import the same base-prefixed URL that config.mts preloads, so under a
-  // `DOCS_BASE=/cdk-docs/` build the warm-up resolves the real
-  // `/cdk-docs/pagefind/pagefind.js` from the modulepreload cache instead of
-  // 404ing on `/pagefind/pagefind.js`. Reading the href off the preload <link>
-  // reuses that base and compiles under the repo's CommonJS tsconfig. The "/"
-  // fallback only matters if the hint is ever dropped.
-  const preload = doc.querySelector(
-    'link[rel="modulepreload"][href$="pagefind/pagefind.js"]',
-  );
-  // Variable specifier: Vite skips analysis (@vite-ignore) and tsc does not try
-  // to resolve the virtual path Pagefind emits at build time.
-  const pagefindModule =
-    (preload && preload.href) || "/pagefind/pagefind.js";
-  import(/* @vite-ignore */ pagefindModule)
-    .then(async (module: SearchHandleLike) => {
-      // The plugin's idle loader may have won the race; keep its handle.
-      if (!win.__pagefind__) {
-        win.__pagefind__ = module;
-      }
-      // Ranking must be set before init(); it applies to every search on this
-      // handle (the plugin's own loader never calls options()).
-      await module.options?.({ ranking: SEARCH_RANKING });
-      module.init?.();
-    })
-    .catch(() => {
-      /* no built index (dev server) — the inline fallback still applies */
+export class SiteSearch {
+  private readonly engine: MiniSearch<SearchDocument>;
+
+  constructor(readonly documents: readonly SearchDocument[]) {
+    this.engine = new MiniSearch<SearchDocument>({
+      idField: "link",
+      fields: ["title", "summary", "module"],
+      storeFields: ["link", "title", "kind", "module", "summary"],
+      tokenize,
+      processTerm: (term) => term.toLowerCase(),
+      searchOptions: {
+        boost: FIELD_BOOST,
+        prefix: true,
+        fuzzy: 0.15,
+        combineWith: "AND",
+      },
     });
+    this.engine.addAll(documents as SearchDocument[]);
+  }
+
+  /** Ranked hits for a raw query, filter tokens applied; empty for an empty query. */
+  search(raw: string, limit = MAX_RESULTS): SearchHit[] {
+    const { text, filters } = parseSearchQuery(raw);
+    const hasFilters = Object.keys(filters).length > 0;
+    if (!text) {
+      if (!hasFilters) {
+        return [];
+      }
+      // Filter-only browse: every page matching the filters, titles in order.
+      return this.documents
+        .filter((doc) => matchesFilters(doc, filters))
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .slice(0, limit)
+        .map((doc) => ({ ...doc, score: 0 }));
+    }
+    const results = this.engine.search(text, {
+      filter: hasFilters ? (result) => matchesFilters(result as unknown as SearchDocument, filters) : undefined,
+    });
+    return results.slice(0, limit).map((result) => ({
+      link: result.link as string,
+      title: result.title as string,
+      kind: result.kind as string,
+      module: result.module as string,
+      summary: result.summary as string,
+      score: result.score,
+    }));
+  }
+}
+
+let loading: Promise<SiteSearch> | undefined;
+
+/**
+ * Fetch and index the search asset once per session. `url` is the site-absolute,
+ * base-prefixed path of the JSON index; an empty url means docgen has not run
+ * (dev server without generated docs) and yields an empty index.
+ */
+export function loadSiteSearch(url: string): Promise<SiteSearch> {
+  if (!loading) {
+    loading = (async () => {
+      if (!url) {
+        return new SiteSearch([]);
+      }
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`search index ${url}: HTTP ${response.status}`);
+      }
+      const documents = (await response.json()) as SearchDocument[];
+      return new SiteSearch(documents);
+    })().catch((error) => {
+      loading = undefined;
+      throw error;
+    });
+  }
+  return loading;
 }

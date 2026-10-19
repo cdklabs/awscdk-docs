@@ -115,7 +115,6 @@ onMounted(initLanguageState);
           :key="`sizer-${sizer}`"
           class="language-label-sizer"
           aria-hidden="true"
-          data-pagefind-ignore
           >{{ LANGUAGE_LABELS[sizer] }}</span
         >
       </span>
@@ -133,10 +132,8 @@ onMounted(initLanguageState);
   padding: 2px;
   background-color: var(--vp-c-bg-alt);
   /* Same rendered height as the adjacent search trigger so the two sit on a
-   * common baseline. The pagefind plugin hard-codes `height: 40px` on
-   * `.nav-search-btn-wait` (no CSS variable exposes it), so the value is pinned
-   * here and guarded by a regression test (test/nav-controls.test.ts) that reads
-   * the plugin's source. */
+   * common baseline: `.site-search-button` is 40px in site-search.css, and a
+   * regression test (test/nav-controls.test.ts) keeps the two values equal. */
   box-sizing: border-box;
   height: 40px;
 }

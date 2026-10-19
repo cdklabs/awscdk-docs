@@ -13,6 +13,9 @@
 .glyph-sun {
   --glyph: url("./icons/sun.svg");
 }
+.glyph-search {
+  --glyph: url("./icons/search.svg");
+}
 .glyph-moon {
   --glyph: url("./icons/moon.svg");
 }

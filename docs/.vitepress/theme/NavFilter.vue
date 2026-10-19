@@ -2,8 +2,8 @@
 // Navbar symbol filter. Typing narrows the API sidebar in place — the query is
 // published into the shared `sidebarFilterQuery` state consumed by ApiSidebar.vue;
 // there is no popup. Enter jumps to the best-ranked symbol match from the
-// generated symbol index, fetched lazily on first focus. Distinct from
-// Pagefind full-text search.
+// generated symbol index, fetched lazily on first focus. Distinct from the
+// site search dialog (SearchBox.vue).
 import { useData, useRouter, withBase } from "vitepress";
 import { computed, ref, watch } from "vue";
 import { apiSidebarAsset } from "./api-sidebar";

@@ -55,7 +55,7 @@ export function normalizePath(path: string): string {
 }
 
 /**
- * Base-agnostic page path for an arbitrary URL (e.g. a Pagefind result
+ * Base-agnostic page path for an arbitrary URL (e.g. a search result
  * URL that includes the site base). Returns undefined for non-API URLs.
  */
 export function apiPathFrom(url: string): string | undefined {
