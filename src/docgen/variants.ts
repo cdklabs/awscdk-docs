@@ -8,7 +8,6 @@ import {
   translateInitializer,
 } from './languages.js';
 import { pageHref } from './links.js';
-import { ignoreBlock, PAGEFIND_IGNORE } from './search.js';
 import { SignatureOptions } from './signatures.js';
 
 /**
@@ -35,8 +34,7 @@ export function isMultiLanguage(languages: readonly Language[]): boolean {
 
 /**
  * The canonical language for a set of enabled languages: the site default when enabled, else the first enabled
- * language in canonical order. Search indexing keys off this: only the canonical variant of each region is indexed
- * by Pagefind, so the index carries one language's identifiers per symbol regardless of how many the page embeds.
+ * language in canonical order.
  */
 export function canonicalLanguage(languages: readonly Language[]): Language {
   const langs = orderedLanguages(languages);
@@ -44,8 +42,7 @@ export function canonicalLanguage(languages: readonly Language[]): Language {
 }
 
 /**
- * Attributes for one `.lang-variant` element. Non-canonical variants carry `data-pagefind-ignore` so Pagefind
- * indexes each region once — in the canonical language — instead of once per enabled language.
+ * Attributes for one `.lang-variant` element.
  */
 function variantAttrs(lang: Language, canonical: Language, hydrated = false): string {
   // A non-canonical INERT variant is static transliterated markup shown or hidden purely by the `<LanguageTabs>`
@@ -57,11 +54,9 @@ function variantAttrs(lang: Language, canonical: Language, hydrated = false): st
   //
   // `v-pre` is scoped to inert regions ONLY: a variant whose markup the theme wires up at runtime — the `## Example`
   // fenced code blocks, which compile into Shiki `language-<lang>` divs with the copy-code button — must stay
-  // hydrated (`hydrated: true`), or the button ships dead on every non-canonical tab. The Pagefind ignore attribute
-  // applies to every non-canonical variant either way.
-  const ignore = lang === canonical ? '' : ` ${PAGEFIND_IGNORE}`;
+  // hydrated (`hydrated: true`), or the button ships dead on every non-canonical tab.
   const pre = lang === canonical || hydrated ? '' : ' v-pre';
-  return `class="lang-variant" data-lang="${lang}"${pre}${ignore}`;
+  return `class="lang-variant" data-lang="${lang}"${pre}`;
 }
 
 /** Opening tag of a `<LanguageTabs>` group for the given languages. */
@@ -160,8 +155,9 @@ export function memberAnchor(name: string): string {
  * indistinguishable. The fence inherits the shared memoized `markdown.highlight` hook, the `vp-code` class, `v-pre`
  * on the `<pre>`, and VitePress's copy button.
  *
- * The whole section stays out of the Pagefind index via the surrounding `ignoreBlock`, which excludes every
- * language's signature.
+ * The variants sit in an `initializer-variants` container: the responsive stylesheet targets it to let the single-line
+ * signatures wrap on narrow screens while authored example fences keep scrolling. The blank lines around the content
+ * keep markdown-it parsing the fences as markdown inside the raw-HTML container.
  *
  * `hydrated: true` for the same reason as the example fences: the Shiki output carries the runtime-wired copy-code
  * button, which `v-pre` on the variant wrapper would ship dead on non-canonical tabs.
@@ -181,13 +177,18 @@ export function initializerSignatureVariants(
   const params = [...(type.initializer?.parameters ?? [])];
   const links = typeLinksAttr(params, options.linkFor);
   const fenceInfo = (lang: Language) => `${FENCE_LANG[lang]}${links ? ` ${links}` : ''}`;
-  return ignoreBlock(
-    languageVariantBlocks(
+  return [
+    '<div class="initializer-variants">',
+    '',
+    ...languageVariantBlocks(
       languages,
       (lang) => codeFence(translateInitializer(type.name, params, lang), fenceInfo(lang)),
       { hydrated: true },
     ),
-  );
+    '',
+    '</div>',
+    '',
+  ];
 }
 
 /**

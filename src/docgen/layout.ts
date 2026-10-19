@@ -13,7 +13,6 @@ import {
   translateTypeRef,
 } from './languages.js';
 import { pageHref } from './links.js';
-import { PAGEFIND_IGNORE } from './search.js';
 import {
   LinkResolver,
   inlineMethodSignature,
@@ -217,7 +216,7 @@ export function renderInheritanceChain(
   ].join('');
   return [
     // Breadcrumbs repeat ancestor type names on every page; keep them out of the search index.
-    `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`
+    '<nav class="inheritance-chain" aria-label="Type hierarchy">'
     + `<div class="chain-line">${items.join(sep)}</div>${rows}</nav>`,
     '',
   ];
@@ -243,7 +242,7 @@ export function renderExtendsBar(
     implementers.length > 0 ? relationRow('implemented by', implementers, linkFor) : '',
   ].join('');
   return [
-    `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`
+    '<nav class="inheritance-chain" aria-label="Type hierarchy">'
     + `<div class="chain-line"><span class="chain-item chain-current">${escHtml(type.name)}</span></div>`
     + rows
     + '</nav>',
@@ -351,10 +350,7 @@ export function renderExpandableProps(
     return ['_No properties._', ''];
   }
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  // Props tables are the main source of incidental search matches: a `bucket: IBucket` type cell makes the page
-  // match `bucket`. Symbol lookup is served by the sidebar type-ahead filter, so the whole table stays out of the
-  // Pagefind index.
-  const lines: string[] = [`<div class="props-table member-list" v-pre ${PAGEFIND_IGNORE}>`];
+  const lines: string[] = ['<div class="props-table member-list" v-pre>'];
   for (const prop of props) {
     lines.push(...renderPropRow(prop, linkFor, languages, options.anchorPrefix));
   }

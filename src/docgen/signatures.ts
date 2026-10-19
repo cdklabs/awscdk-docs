@@ -2,7 +2,6 @@ import * as spec from '@jsii/spec';
 import { escapeAttr, escapeHtml as esc, removeAll } from './escape.js';
 import { Language, translateTypeRefParts } from './languages.js';
 import { pageHref } from './links.js';
-import { PAGEFIND_IGNORE } from './search.js';
 
 /** Resolves a type FQN to its dedicated-page link, if it has one. */
 export type LinkResolver = (fqn: string) => string | undefined;
@@ -200,13 +199,6 @@ function returnFragment(method: spec.Method, options: SignatureOptions): Fragmen
  * to align inside and its literal newlines would break the row's flow. Every
  * parameter type and the return type stays its own link, which is the point —
  * each gets its own hover card.
- *
- * The parameter and return portion is excluded from the Pagefind index and the
- * identifier is NOT. Repeated type names are what made a page match `bucket`,
- * and this is now the only element carrying a method's name as
- * indexable text — the `###` heading that used to carry it is gone, and
- * the symbol index lists types rather than members, so excluding the whole
- * signature would make a method name unfindable by any route.
  */
 export function inlineMethodSignature(method: spec.Method, options: SignatureOptions): string {
   const params = method.parameters ?? [];
@@ -217,8 +209,7 @@ export function inlineMethodSignature(method: spec.Method, options: SignatureOpt
     span('sig-punct', ')'),
     returnFragment(method, options),
   );
-  return span('sig-name', method.name).html
-    + `<span ${PAGEFIND_IGNORE}>${rest.html}</span>`;
+  return span('sig-name', method.name).html + rest.html;
 }
 
 /**

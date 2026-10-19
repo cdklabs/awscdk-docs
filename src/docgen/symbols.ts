@@ -22,7 +22,6 @@ import {
 } from './layout.js';
 import { collectMethods, collectProperties } from './mixins.js';
 import { RosettaTablet } from './rosetta.js';
-import { ignoreBlock, weightedTitle } from './search.js';
 import { CONSTRUCTS_SECTION, CORE_SECTION, isConstructsPackage, isCore, sectionName, serviceSubmodule, SidebarEntry } from './sidebar.js';
 import { LinkResolver } from './signatures.js';
 import { initializerSignatureVariants, languageVariantSpans, wrapLanguageTabs } from './variants.js';
@@ -166,7 +165,7 @@ export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): str
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const badge = options.badge ?? { text: 'Class', type: 'info' };
   const kindClass = badge.kindClass ? ` ${badge.kindClass}` : '';
-  const lines = [`# ${weightedTitle(type.name)} <Badge type="${badge.type}" class="api-badge${kindClass}" text="${badge.text}" />`, ''];
+  const lines = [`# ${type.name} <Badge type="${badge.type}" class="api-badge${kindClass}" text="${badge.text}" />`, ''];
   lines.push(...renderDescription(type));
   // Implemented interfaces render inside the hierarchy bar.
   lines.push(...renderInheritanceChain(type, index, linkFor, options.subclasses?.get(type.fqn) ?? []));
@@ -184,7 +183,7 @@ export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): str
 export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>): string {
   const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-struct" text="Struct" />`, ''];
+  const lines = [`# ${type.name} <Badge type="info" class="api-badge api-badge-struct" text="Struct" />`, ''];
   lines.push(...renderDescription(type));
   lines.push(...renderExtendsBar(type, linkFor));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
@@ -200,7 +199,7 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
 export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceType>): string {
   const { type, assembly, index, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-interface" text="Interface" />`, ''];
+  const lines = [`# ${type.name} <Badge type="info" class="api-badge api-badge-interface" text="Interface" />`, ''];
   lines.push(...renderDescription(type));
   // `implemented by` is a row of the hierarchy bar, not a section of its own: it is the inverse of the class bar's
   // `implements`, so it belongs beside `extends`.
@@ -218,7 +217,7 @@ export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceTyp
 export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): string {
   const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-enum" text="Enum" />`, ''];
+  const lines = [`# ${type.name} <Badge type="info" class="api-badge api-badge-enum" text="Enum" />`, ''];
   lines.push(...renderDescription(type));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
@@ -239,15 +238,15 @@ export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): strin
   const refs = usage.enumRefs.get(type.fqn) ?? [];
   if (refs.length > 0) {
     lines.push(anchoredHeading(2, 'Referenced by', SECTION_ANCHORS.referencedBy), '');
-    // Cross-reference list: excluded from the search index. The referencing property names are language-variant;
-    // the owning type names are language-stable.
-    lines.push(...wrapLanguageTabs(languages, ignoreBlock(refs.map((r) => {
+    // Cross-reference list. The referencing property names are language-variant; the owning type names are
+    // language-stable.
+    lines.push(...wrapLanguageTabs(languages, [...refs.map((r) => {
       const prop = languageVariantSpans(
         languages,
         (lang) => translatePropertyName(r.propertyName, lang),
       );
       return `- ${fqnLink(r.ownerFqn, linkFor)}.${prop}`;
-    }))));
+    }), '']));
   }
   return lines.join('\n');
 }
@@ -296,8 +295,7 @@ function renderFqnList(title: string, id: string, fqns: string[], linkFor: LinkR
   if (fqns.length === 0) {
     return [];
   }
-  // Cross-reference lists repeat type names from other pages; keep them out of the Pagefind index.
-  return [anchoredHeading(2, title, id), '', ...ignoreBlock(fqns.map((fqn) => `- ${fqnLink(fqn, linkFor)}`))];
+  return [anchoredHeading(2, title, id), '', ...fqns.map((fqn) => `- ${fqnLink(fqn, linkFor)}`), ''];
 }
 
 // ─── Navbar Type-Ahead Filter Index ───────────────────────────────────────────

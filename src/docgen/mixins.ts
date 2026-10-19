@@ -17,7 +17,6 @@ import {
   renderMethodsSection,
   renderTypeMetadata,
 } from './layout.js';
-import { weightedTitle } from './search.js';
 
 /**
  * Mixin FQN -> FQNs of classes implementing it, sorted.
@@ -278,7 +277,7 @@ export interface MixinPageOptions {
 export function renderMixinPage(options: MixinPageOptions): string {
   const { type, assembly, index, mixins, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const lines: string[] = [`# ${weightedTitle(type.name)} <Badge type="tip" class="api-badge api-badge-mixin" text="Mixin" />`, ''];
+  const lines: string[] = [`# ${type.name} <Badge type="tip" class="api-badge api-badge-mixin" text="Mixin" />`, ''];
 
   // Merged description: tagline + remarks, no `## Overview`.
   lines.push(...renderDescription(type));

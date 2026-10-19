@@ -18,7 +18,6 @@ import { pageHref } from './links.js';
 import { RosettaTablet } from './rosetta.js';
 import { formatDateOnly } from '../page-history.js';
 import { STABILITY_ROUTE } from '../site-routes.js';
-import { PAGEFIND_IGNORE, weightedTitle } from './search.js';
 import { LinkResolver, shortName } from './signatures.js';
 import { initializerSignatureVariants } from './variants.js';
 
@@ -185,9 +184,6 @@ export function typeStability(type: spec.Type, assembly: spec.Assembly): spec.St
  *
  * Stability renders only for experimental types, matching the module page, which warns on experimental modules and
  * says nothing on stable ones; the value links to the guide that explains what the level means.
- *
- * The `Source` value carries `data-pagefind-ignore` so file paths and `Generated code` markers do not compete
- * with real prose in the index; the CloudFormation and L1 values are indexed so the resource name stays searchable.
  */
 export function typeMetadataRows(
   type: spec.Type,
@@ -200,7 +196,7 @@ export function typeMetadataRows(
   if (typeStability(type, assembly) === spec.Stability.Experimental) {
     rows.push({
       label: 'Stability',
-      value: `<a class="type-metadata-stability" ${PAGEFIND_IGNORE} href="${escapeAttr(pageHref(STABILITY_ROUTE))}">`
+      value: `<a class="type-metadata-stability" href="${escapeAttr(pageHref(STABILITY_ROUTE))}">`
         + 'Experimental</a>',
     });
   }
@@ -225,13 +221,13 @@ export function typeMetadataRows(
   if (url && loc) {
     rows.push({
       label: 'Source',
-      value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(url)}"`
+      value: `<a class="type-metadata-source" href="${escapeAttr(url)}"`
         + ` target="_blank" rel="noopener"><code>${escapeVueText(loc.filename)}</code></a>`,
     });
   } else if (isGeneratedSource(type)) {
     rows.push({
       label: 'Source',
-      value: `<span class="type-metadata-generated" ${PAGEFIND_IGNORE}>Generated code</span>`,
+      value: '<span class="type-metadata-generated">Generated code</span>',
     });
   }
   // The release the type's shape last changed in, dated by that release — never raised by the site-wide revision
@@ -239,7 +235,7 @@ export function typeMetadataRows(
   if (history.lastChangedIn && history.lastChangedAt) {
     rows.push({
       label: 'Type last changed',
-      value: `<span class="type-metadata-changed" ${PAGEFIND_IGNORE}>v${escapeVueText(history.lastChangedIn)}`
+      value: `<span class="type-metadata-changed">v${escapeVueText(history.lastChangedIn)}`
         + ` · ${formatDateOnly(history.lastChangedAt)}</span>`,
     });
   }
@@ -304,7 +300,7 @@ export function renderConstructPage(options: ConstructPageOptions): string {
   const badge = level
     ? ` <Badge type="tip" class="api-badge api-badge-${level.toLowerCase()}" text="${constructLevelLabel(level)}" />`
     : '';
-  const lines: string[] = [`# ${weightedTitle(type.name)}${badge}`, ''];
+  const lines: string[] = [`# ${type.name}${badge}`, ''];
 
   // Merged description: tagline + remarks as one continuous block, no `## Overview` row. The CloudFormation backing
   // resource is a row of the metadata block below.

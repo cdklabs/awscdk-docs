@@ -1,8 +1,8 @@
 /**
  * Agent-oriented Markdown: a second rendering of every generated API page with the site chrome removed.
  *
- * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
- * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
+ * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components,
+ * `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
  * consume: the canonical (TypeScript) variant only; headings, prose, fenced code, tables and links preserved;
  * member lists rewritten as bullet lists; everything that exists for the browser dropped.

@@ -9,6 +9,6 @@ export function assetHash(content: string): string {
 }
 
 /** Filename a served asset is written under: its own content decides the name, so changed content changes the URL. */
-export function hashedAssetName(base: string, content: string): string {
-  return `${base}.${assetHash(content)}.js`;
+export function hashedAssetName(base: string, content: string, ext = 'js'): string {
+  return `${base}.${assetHash(content)}.${ext}`;
 }

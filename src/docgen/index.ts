@@ -50,7 +50,7 @@ import {
 } from './overviews.js';
 import { upstreamReadmeUrl } from './provenance.js';
 import { ExampleTranslations, loadTablet, RosettaTablet } from './rosetta.js';
-import { searchFilterHtml, searchKind, searchModule } from './search.js';
+import { buildSearchIndex, MODULE_KIND, SearchIndexEntry, searchKind, searchModule, searchSummary } from './search.js';
 import { buildServiceSidebar, renameChunks, SidebarEntry, SidebarItem, splitSidebarChunks } from './sidebar.js';
 import { buildSubclassIndex } from './subclasses.js';
 import {
@@ -453,6 +453,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
 
   const sidebarEntries: SidebarEntry[] = [];
 
+  const searchEntries: SearchIndexEntry[] = [];
+
   if (options.overviewFile) {
     const primary = assemblies.get(config.modules[0])!;
     fs.mkdirSync(path.dirname(options.overviewFile), { recursive: true });
@@ -506,7 +508,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
             summary: entry.summary,
             // Reader-facing label and level for the preview's kind chip, from the SAME helper the H1 badge uses so
             // the two surfaces cannot drift. `kind` is left alone because it is a classification value, not a label:
-            // `searchKind` derives the Pagefind filter from its first word. `level` is the canonical `ConstructLevel`
+            // `searchKind` derives the search `kind:` filter from its first word. `level` is the canonical `ConstructLevel`
             // — the same form the sidebar nav data emits — so one field name never means two things. Emitted only for
             // leveled constructs.
             ...(entry.level
@@ -544,11 +546,13 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         // No package + version tag: the package is already in the breadcrumb and the version is site-wide; the
         // `Added in` badge is `emitPage`'s, from the ledger.
         const history = typeHistory(ledger, entry.type.fqn);
-        // Pagefind `module:`/`kind:` filters so search queries can be scoped, e.g.
-        // `bucket module:aws-s3 kind:construct`.
-        const filters = searchFilterHtml({
-          module: searchModule(assembly.name, submodule),
+        // One search-index entry per page; `module:`/`kind:` query tokens filter on these two fields.
+        searchEntries.push({
+          link: entry.link,
+          title: entry.name,
           kind: searchKind(entry.kind),
+          module: searchModule(assembly.name, submodule),
+          summary: searchSummary(entry.summary),
         });
         const page = renderPage(
           entry, assembly, typeIndex, mixinIndex, usageIndex, linkFor, languageIds, tablet,
@@ -564,7 +568,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         ]);
         emitPage(
           entry.link,
-          `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
+          `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n`,
           history,
         );
       }
@@ -594,8 +598,14 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           }),
         breadcrumb,
       });
-      const filters = searchFilterHtml({ module: searchModule(assembly.name, sub) });
-      emitOverview(subId, moduleReadmeLink(assembly.name, sub), `${page}\n\n${filters}\n`, readmeHistory(ledger, subId));
+      searchEntries.push({
+        link: moduleReadmeLink(assembly.name, sub),
+        title: subId,
+        kind: MODULE_KIND,
+        module: searchModule(assembly.name, sub),
+        summary: searchSummary(overview.generated ? undefined : overview.readme),
+      });
+      emitOverview(subId, moduleReadmeLink(assembly.name, sub), `${page}\n`, readmeHistory(ledger, subId));
     }
 
     // Sidebar entries: one per type, grouped by service later
@@ -625,6 +635,13 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     // alert, then the module README, then the submodule links and the root type list. `kind: 'generated'` opts back
     // in to the artificial index page.
     const rootOverview = resolveOverview(assembly.name);
+    searchEntries.push({
+      link: moduleLink,
+      title: assembly.name,
+      kind: MODULE_KIND,
+      module: searchModule(assembly.name, ''),
+      summary: searchSummary(rootOverview.generated ? assembly.description : rootOverview.readme),
+    });
     if (rootOverview.generated) {
       emitOverview(assembly.name, moduleLink, renderModuleIndex(assembly, rootTypes, submoduleNames), readmeHistory(ledger, assembly.name));
     } else {
@@ -689,6 +706,16 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     const symbolsFile = path.join(apiSidebarDir, hashedAssetName('symbols', symbolsBody));
     fs.writeFileSync(symbolsFile, symbolsBody);
     written.push(symbolsFile);
+
+    // Site search index under docs/public/search/: one JSON document the theme fetches on first search and queries
+    // with MiniSearch in the browser. Docgen runs once before the shards, so every shard ships the same asset.
+    const searchDir = path.join(options.publicDir, 'search');
+    fs.rmSync(searchDir, { recursive: true, force: true });
+    fs.mkdirSync(searchDir, { recursive: true });
+    const searchBody = JSON.stringify(buildSearchIndex(searchEntries));
+    const searchFile = path.join(searchDir, hashedAssetName('index', searchBody, 'json'));
+    fs.writeFileSync(searchFile, searchBody);
+    written.push(searchFile);
   }
 
   // Site-scoped `llms.txt` at the root of the twin tree, so the overlay that places the twins into the site places

@@ -1,6 +1,5 @@
 import { escapeAttr, escapeVueText } from './escape.js';
 import { pageHref } from './links.js';
-import { PAGEFIND_IGNORE } from './search.js';
 
 /** One segment of the breadcrumb rendered above a type page's H1. */
 export interface BreadcrumbSegment {
@@ -27,7 +26,6 @@ const DOT = '.<wbr>';
  * Breadcrumb-style module hierarchy rendered above the symbol H1:
  * `aws-cdk-lib . aws_s3 . Bucket`, each ancestor linking to its module or submodule page. Labels and links are
  * emitted as escaped HTML, so a label is never read as markdown or Vue syntax and a link is always a page href.
- * Excluded from the Pagefind index.
  *
  * Segments join on a real `.` with no surrounding whitespace, so selecting the trail copies the type's FQN
  * verbatim; the visual spacing around each dot comes from segment padding, which selection does not see.
@@ -45,9 +43,9 @@ export function renderBreadcrumb(segments: readonly BreadcrumbSegment[]): string
     return [];
   }
   // Blank lines let markdown-it parse the inner lines as markdown
-  // (links) inside the raw-HTML container — same pattern as ignoreBlock.
+  // (links) inside the raw-HTML container.
   return [
-    `<nav class="type-breadcrumb" aria-label="Module hierarchy" ${PAGEFIND_IGNORE}>`,
+    '<nav class="type-breadcrumb" aria-label="Module hierarchy">',
     '',
     `<span class="breadcrumb-trail">${crumbParts(segments).join(DOT)}</span>`,
     '',
