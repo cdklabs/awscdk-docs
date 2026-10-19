@@ -36,12 +36,12 @@ stable guarantee and the alpha package is deprecated.
 
 ## How the level is shown
 
-Every page of an experimental package — the module overview, its submodules and
-each of its types — opens with an **Experimental** banner above the page title.
-The banner names the package, says that its API may change in any release
-without a major version bump, and links here. An experimental type also shows
-**Stability: Experimental** in the metadata block at the top of its page. Stable
-pages show no banner and no stability indicator.
+Every type page of an experimental package opens with an **Experimental** banner
+above the page title. The banner names the package, says that its API may change
+in any release without a major version bump, and links here. An experimental type
+also shows **Stability: Experimental** in the metadata block at the top of its
+page. The module's own page opens with a warning that says the same. Stable pages
+show no banner and no stability indicator.
 
 The level is read from the published package metadata: a type's own declared
 stability when it has one, otherwise the stability of the module it belongs to.
