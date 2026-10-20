@@ -11,6 +11,7 @@ import { canonicalHead } from "./canonical";
 import { structuredDataHead } from "./structured-data";
 import { siteOverridesHead } from "./site-overrides";
 import { injectSiteStamp } from "../../src/site-stamp";
+import { hashmapCacheBuster, resolveBuildId } from "./hashmap-cache-buster";
 import { docsSiteUrl, readVersionSnapshot, VERSION_SNAPSHOT_FILE } from "../../src/docgen/versions";
 import { assertValidVersion } from "../../src/docgen/version-format";
 import { createHighlighter } from "shiki";
@@ -253,8 +254,9 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   },
 
   // Extract the page hashmap + site metadata into one shared cached JS chunk instead of inlining ~500KB into
-  // every page's HTML, which pushed the Pages artifact over GitHub Pages' 1GB limit. Client-side navigation is
-  // unaffected: the router still fetches the complete `hashmap.json` at load.
+  // every page's HTML, which pushed the Pages artifact over GitHub Pages' 1GB limit. A shard's chunk holds only its
+  // own pages, so a link into another shard falls back to fetching the complete `hashmap.json`, cache-busted per
+  // build by the plugin below.
   metaChunk: true,
 
   // The build stamp (src/site-stamp.ts) in every page's <head>: the one place a downstream republisher rewrites the
@@ -307,6 +309,7 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
           ? { indexingCommand: 'echo "[shard build] pagefind indexing deferred to post-merge step"' }
           : {}),
       }),
+      hashmapCacheBuster(resolveBuildId()),
     ],
 
     build: {

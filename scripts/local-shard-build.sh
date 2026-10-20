@@ -132,7 +132,10 @@ TMP_PARENT="${TMPDIR:-/tmp}"
 TMP_PARENT="${TMP_PARENT%/}/cdk-docs-shards"
 mkdir -p "$TMP_PARENT"
 WORK="$(mktemp -d "$TMP_PARENT/run.XXXXXX")"
-export ROOT WORK TOTAL HEAP
+# One build id for every shard: it is baked into the shared router chunk as the hashmap.json cache buster, and the
+# shard workspaces are not git checkouts, so they cannot derive it themselves.
+DOCS_BUILD_ID="${DOCS_BUILD_ID:-$(git -C "$ROOT" rev-parse HEAD)}"
+export ROOT WORK TOTAL HEAP DOCS_BUILD_ID
 
 if [ -n "$SINGLE" ]; then
   echo "Plan: single shard $SHARD_I of $TOTAL${HEAP:+, heap ${HEAP}MB}, base ${DOCS_BASE:-/}"
