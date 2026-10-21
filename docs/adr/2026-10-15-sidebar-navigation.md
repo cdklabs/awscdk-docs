@@ -98,6 +98,34 @@ Framework with no list to maintain. The tree marks both roots
 `collapsed: false` and `ApiSidebar` seeds its expansion set from the
 pre-opened roots, so the reader lands on the familiar section list.
 
+### Curated Framework top level
+
+The Framework root no longer lists every framework module as a peer. Its top
+level is an editorial allow list kept as data in
+`src/docgen/framework-nav.ts` (`FRAMEWORK_NAV`), shown in list order:
+`aws-cdk-lib`, Custom Resources, Testing, Triggers, `constructs`. This
+replaces only the flat, alphabetical top level; which modules count as
+Framework is still the naming convention above, so a new framework module
+needs no list entry to appear. A flat list of a dozen-plus package names
+buried the handful of modules most readers look for under internals such as
+`cloud_assembly_schema` and `cx_api`.
+
+- Every unlisted framework module nests under its package root when that
+  root is listed (`aws-cdk-lib.pipelines` under `aws-cdk-lib`), else under
+  `defaultParent` (`aws-cdk-lib`, which adopts the `@aws-cdk/*` framework
+  packages). Nested modules follow the parent's own kind groups, sorted
+  unscoped-alphabetical with `@`-scoped packages last, and keep their own
+  Overview link and types, so no page leaves the nav. Their page stems join
+  the parent's `modules`, so the served skeleton still finds the chunk for
+  every page. A listed module the build does not document is skipped; with
+  no listed parent available, an unlisted module stays on the top level.
+- A friendly label is display only: `text` stays the package-qualified
+  module name (`aws-cdk-lib.assertions`), so links, group keys and collapse
+  memory are unchanged, and the in-sidebar filter matches the label as well
+  as the module name.
+- The list is editorial and has to be maintained when a module should be
+  promoted or renamed; that cost is accepted for a short, readable top level.
+
 ### Structural submodules rolled into their owning service
 
 `serviceSubmodule()` normalizes `aws-cdk-lib`'s structural submodules in the

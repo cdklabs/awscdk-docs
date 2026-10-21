@@ -386,6 +386,21 @@ describe('filterSidebarTree', () => {
   test('no terms keeps every node', () => {
     expect(filterSidebarTree(tree, [], matcher)).toEqual(tree);
   });
+
+  test('a friendly section label matches as well as the module name behind it', () => {
+    const framework: ApiSidebarNode[] = [
+      {
+        text: 'aws-cdk-lib.assertions',
+        label: 'Testing',
+        items: [{ text: 'Template', link: '/api/aws-cdk-lib/assertions/template' }],
+      },
+      { text: 'aws-cdk-lib.triggers', label: 'Triggers', items: [{ text: 'Trigger', link: '/t' }] },
+    ];
+    const find = (query: string) => filterSidebarTree(framework, splitTerms(query), matcher).map((n) => n.text);
+    expect(find('testing')).toEqual(['aws-cdk-lib.assertions']);
+    expect(find('assertions')).toEqual(['aws-cdk-lib.assertions']);
+    expect(find('testing template')).toEqual(['aws-cdk-lib.assertions']);
+  });
 });
 
 describe('sidebar width and name wrapping', () => {

@@ -61,9 +61,9 @@ test.describe('sidebar labels on a multi-language build', () => {
   });
 });
 
-// Framework group headings are package-qualified module names.
+// The Framework top level is the curated allow list; promoted modules show friendly labels.
 test.describe('Framework section headings', () => {
-  test('reads package-qualified module names, aws-cdk-lib first and constructs after the submodules', async ({ page }) => {
+  test('reads the curated top level: aws-cdk-lib first, friendly labels, constructs last', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     await expect(page.locator('.api-sidebar-nav')).toBeVisible();
 
@@ -77,21 +77,10 @@ test.describe('Framework section headings', () => {
       .allInnerTexts();
     const labels = headings.map((t) => t.trim());
 
-    expect(labels.length).toBeGreaterThan(1);
-    // Core reads as the bare package name, and leads.
-    expect(labels[0]).toBe('aws-cdk-lib');
+    expect(labels).toEqual(['aws-cdk-lib', 'Custom Resources', 'Testing', 'Triggers', 'constructs']);
     expect(labels).not.toContain('Core');
-    // Submodules are package-qualified, not service-style title case.
-    expect(labels).toContain('aws-cdk-lib.assertions');
-    expect(labels).not.toContain('Assertions');
-    // `constructs` stays `constructs`, but the rank-1 pin is gone: it now
-    // sorts after every `aws-cdk-lib.*` heading.
-    expect(labels).toContain('constructs');
-    const submodules = labels.filter((l) => l.startsWith('aws-cdk-lib.'));
-    expect(submodules.length).toBeGreaterThan(0);
-    expect(labels.indexOf('constructs')).toBeGreaterThan(labels.lastIndexOf(submodules[submodules.length - 1]));
-    // Structural submodules surface no heading of their own.
-    expect(labels).not.toContain('aws-cdk-lib.interfaces');
-    expect(labels.filter((l) => l.endsWith('.mixins'))).toEqual([]);
+    // Unlisted modules nest under aws-cdk-lib instead of crowding the top level.
+    expect(labels).not.toContain('aws-cdk-lib.pipelines');
+    expect(labels).not.toContain('aws-cdk-lib.cx_api');
   });
 });

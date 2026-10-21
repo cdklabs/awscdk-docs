@@ -8,6 +8,7 @@
  */
 
 import { ConstructLevel } from './constructs.js';
+import { FRAMEWORK_NAV, FrameworkNav } from './framework-nav.js';
 import { Language, translateTypeName } from './languages.js';
 import { assemblyDocId } from './links.js';
 import { byLevelThenName } from './ordering.js';
@@ -538,7 +539,7 @@ export function buildServiceSidebar(
       text: FRAMEWORK_SECTION,
       section: true,
       collapsed: false,
-      items: sectionItems(framework, frameworkSectionCompare, flatSections),
+      items: curateFramework(sectionItems(framework, frameworkSectionCompare, flatSections), framework),
     });
   }
   if (services.size > 0) {
@@ -550,6 +551,58 @@ export function buildServiceSidebar(
     });
   }
   return top;
+}
+
+/**
+ * Apply the editorial {@link FRAMEWORK_NAV} list to the Framework sections: listed sections form the top level in
+ * list order (a friendly `label` changes the display only; `text` stays the module name), and every other section
+ * nests under its package root when that root is listed, else under `defaultParent`. A nested section keeps its own
+ * Overview link and types, follows its parent's own groups, and its page stems join the parent's `modules`, so the
+ * served skeleton still maps every page to the chunk that holds it. A listed section the build does not document is
+ * skipped; with no listed parent available, unlisted sections stay on the top level so nothing leaves the nav.
+ */
+function curateFramework(
+  sections: readonly SidebarItem[],
+  entries: ReadonlyMap<string, readonly SidebarEntry[]>,
+  nav: FrameworkNav = FRAMEWORK_NAV,
+): SidebarItem[] {
+  const byName = new Map(sections.map((s) => [s.text, s]));
+  const listed = nav.topLevel.filter((e) => byName.has(e.section));
+  const listedNames = new Set(listed.map((e) => e.section));
+  const children = new Map<string, SidebarItem[]>();
+  const orphans: SidebarItem[] = [];
+  for (const section of sections) {
+    if (listedNames.has(section.text)) {
+      continue;
+    }
+    const root = entries.get(section.text)?.[0]?.assemblyName;
+    const parent = root !== undefined && listedNames.has(root)
+      ? root
+      : listedNames.has(nav.defaultParent)
+        ? nav.defaultParent
+        : undefined;
+    if (parent === undefined) {
+      orphans.push(section);
+      continue;
+    }
+    const list = children.get(parent) ?? [];
+    list.push(section);
+    children.set(parent, list);
+  }
+  const top = listed.map((e): SidebarItem => {
+    const section = byName.get(e.section)!;
+    const nested = (children.get(e.section) ?? []).sort((a, b) => frameworkSectionCompare(a.text, b.text));
+    const modules = [...new Set([...(section.modules ?? []), ...nested.flatMap((c) => c.modules ?? [])])].sort(
+      (a, b) => a.localeCompare(b),
+    );
+    return {
+      ...section,
+      ...(e.label !== undefined ? { label: e.label } : {}),
+      modules,
+      items: [...(section.items ?? []), ...nested],
+    };
+  });
+  return [...top, ...orphans];
 }
 
 /** Sorted, distinct page-id stems (`<docId>[.<submodule>]`) of a section's entries. */

@@ -70,7 +70,10 @@ describe('API page layout', () => {
       expect(tree.map((t: { text: string }) => t.text)).toEqual(['Framework', 'Services']);
       expect(tree[0].items[0].text).toBe('aws-cdk-lib');
       const frameworkSections = tree[0].items.map((s: { text: string }) => s.text);
-      expect(frameworkSections).toContain('aws-cdk-lib.pipelines');
+      // `aws-cdk-lib.pipelines` is not on the curated top level: it nests under `aws-cdk-lib`, whose skeleton
+      // node lists its page stem so the chunk is still found.
+      expect(frameworkSections).not.toContain('aws-cdk-lib.pipelines');
+      expect(tree[0].items[0].modules).toContain('aws-cdk-lib.pipelines');
       expect(frameworkSections).not.toContain('Pipelines');
       expect(frameworkSections.some((s: string) => s.startsWith('S3'))).toBe(false);
       const serviceSections = tree[1].items.map((s: { text: string }) => s.text);
