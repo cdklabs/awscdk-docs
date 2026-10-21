@@ -34,22 +34,57 @@ import {
  * static.
  */
 
+interface InlineUrlEscapers {
+  readonly plain: (text: string) => string;
+  readonly label: (text: string) => string;
+  readonly target: (text: string) => string;
+}
+
+const PROSE_LINK_ESCAPERS: InlineUrlEscapers = {
+  plain: (text) => text,
+  label: (text) => text.replace(/[\\[\]]/g, '\\$&'),
+  target: (text) => text.replace(/[\\()]/g, '\\$&'),
+};
+
+const CELL_LINK_ESCAPERS: InlineUrlEscapers = {
+  // Markdown table cells need pipes escaped too. Escape each original
+  // delimiter once, without doubling link-syntax escapes added below.
+  plain: (text) => text.replace(/[\\|]/g, '\\$&'),
+  label: (text) => text.replace(/[\\[\]|]/g, '\\$&'),
+  target: (text) => text.replace(/[\\()|]/g, '\\$&'),
+};
+
+function convertInlineUrlLinks(
+  prose: string,
+  escapers: InlineUrlEscapers = PROSE_LINK_ESCAPERS,
+): string {
+  const pattern = /\{@link\s+(https?:\/\/[^\s}]+)(?:\s+([^}]*?))?\}/g;
+  let converted = '';
+  let end = 0;
+  for (const match of prose.matchAll(pattern)) {
+    const index = match.index;
+    const url = match[1];
+    const label = match[2]?.trim() || url;
+    converted += escapers.plain(prose.slice(end, index));
+    converted += `[${escapers.label(label)}](${escapers.target(url)})`;
+    end = index + match[0].length;
+  }
+  return converted + escapers.plain(prose.slice(end));
+}
+
 export function escapeCell(text: string): string {
-  return escapeVueText(text.replace(/\s+/g, ' '))
-    // markdown table cells: escape `\` before inserting `\|`, otherwise a
-    // pre-existing backslash could neutralize the pipe escape
-    .replace(/\\/g, '\\\\')
-    .replace(/\|/g, '\\|')
-    .trim();
+  const collapsed = text.replace(/\s+/g, ' ');
+  return escapeVueText(convertInlineUrlLinks(collapsed, CELL_LINK_ESCAPERS)).trim();
 }
 
 /**
- * Escape prose so raw `<` and `{` don't break Vue compilation, while
- * leaving fenced code blocks and inline code spans untouched (VitePress
- * renders those with v-pre, so they are already safe).
+ * Convert external JSDoc links, then escape prose so raw `<` and `{` don't
+ * break Vue compilation. Fenced code blocks and inline code spans stay
+ * untouched (VitePress renders those with v-pre, so they are already safe).
+ * Non-URL symbol link tags retain their existing escaped output.
  */
 export function escapeProse(text: string): string {
-  return mapProse(text, (prose) => prose
+  return mapProse(text, (prose) => convertInlineUrlLinks(prose)
     .replace(/</g, '&lt;')
     .replace(/\{/g, '&#123;')
     .replace(/\}/g, '&#125;'));

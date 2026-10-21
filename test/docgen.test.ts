@@ -2,12 +2,62 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { convertMathFences, generateDocs, loadConfig, renderApiOverviewPage, renderOverviewPage, submoduleSegments, TypeEntry } from '../src/docgen/index.js';
+import { escapeCell, escapeProse } from '../src/docgen/layout.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
 // Overview/index pages open with frontmatter suppressing the redundant
 // right-hand outline; a blank line then the page heading follow.
 const OUTLINE_OFF = '---\noutline: false\n---\n\n';
+
+describe('escapeProse inline links', () => {
+  test('converts an external URL with a multi-word label', () => {
+    expect(escapeProse('{@link https://example.com/docs VPC guide and examples}')).toBe(
+      '[VPC guide and examples](https://example.com/docs)',
+    );
+  });
+
+  test('uses a bare external URL as its label', () => {
+    expect(escapeProse('{@link https://example.com/docs}')).toBe(
+      '[https://example.com/docs](https://example.com/docs)',
+    );
+  });
+
+  test('leaves symbol link tags unchanged', () => {
+    expect(escapeProse('{@link aws-cdk-lib.aws_ec2.Vpc}')).toBe(
+      '&#123;@link aws-cdk-lib.aws_ec2.Vpc&#125;',
+    );
+  });
+
+  test('escapes parentheses in URL targets', () => {
+    expect(escapeProse('{@link https://en.wikipedia.org/wiki/Foo_(bar) Foo}')).toBe(
+      '[Foo](https://en.wikipedia.org/wiki/Foo_\\(bar\\))',
+    );
+  });
+
+  test('escapes brackets in labels so they cannot forge a nested link', () => {
+    expect(escapeProse('{@link https://example.com [evil](javascript:alert(1))}')).toBe(
+      '[\\[evil\\](javascript:alert(1))](https://example.com)',
+    );
+  });
+
+  test('leaves non-HTTP schemes as escaped text', () => {
+    expect(escapeProse('{@link javascript:alert(1) x}')).toBe(
+      '&#123;@link javascript:alert(1) x&#125;',
+    );
+  });
+
+  test('converts links in returns and default table cells before pipe escaping', () => {
+    expect(escapeCell('{@link https://example.com/a_(b) [A] | B}')).toBe(
+      '[\\[A\\] \\| B](https://example.com/a_\\(b\\))',
+    );
+  });
+
+  test('leaves inline code spans untouched', () => {
+    const link = '`{@link https://example.com/docs VPC guide}`';
+    expect(escapeProse(link)).toBe(link);
+  });
+});
 
 describe('renderOverviewPage', () => {
   const types: TypeEntry[] = [
