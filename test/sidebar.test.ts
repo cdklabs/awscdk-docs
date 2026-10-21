@@ -176,6 +176,10 @@ describe('serviceSubmodule', () => {
     expect(serviceSubmodule('aws_ecs.mixins')).toBe('aws_ecs');
   });
 
+  test('the bare mixins submodule folds to the module root', () => {
+    expect(serviceSubmodule('mixins')).toBe('');
+  });
+
   test('service and feature submodules pass through unchanged', () => {
     expect(serviceSubmodule('aws_s3')).toBe('aws_s3');
     expect(serviceSubmodule('aws_s3_deployment')).toBe('aws_s3_deployment');
@@ -325,6 +329,20 @@ describe('assemblyOwner', () => {
       '/api/modules/ts/aws-cdk-aws-lambda-python-alpha/',
       '/api/modules/ts/aws-cdk-lib/aws-lambda',
     ]);
+  });
+
+  test('a standalone service package\'s bare mixins submodule folds into its Services section', () => {
+    const sidebar = buildServiceSidebar([
+      entry({
+        name: 'KnowledgeBaseEmbeddingsModel',
+        kind: 'Mixin',
+        assemblyName: '@aws-cdk/aws-bedrock-alpha',
+        submodule: 'mixins',
+        indexLink: '/api/modules/ts/aws-cdk-aws-bedrock-alpha/mixins',
+      }),
+    ]);
+    expect(sidebar.map((s) => s.text)).toEqual([SERVICES_SECTION]);
+    expect(sidebar[0].items!.map((s) => s.text)).toEqual(['Bedrock']);
   });
 
   test('standalone non-service packages become their own Framework section', () => {
