@@ -472,6 +472,10 @@ function propRowHtml(
     );
   }
   if (!prop.optional) {
+    // A distinct badge, not muted inline text: a reader skimming a long props
+    // table must be able to spot the mandatory properties at a glance. The
+    // badge styling lives on the `.member-required` rule; the class also lets a
+    // test assert the required row carries it while optional rows do not.
     parts.push('<span class="member-required">required</span>');
   }
   if (prop.static) {
