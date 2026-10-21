@@ -630,9 +630,20 @@ function overviewItems(entries: SidebarEntry[], languages: readonly Language[]):
       byLink.set(e.indexLink, e);
     }
   }
+  // The primary aws-cdk-lib service module leads, then the existing stable
+  // canonical-package and link order handles every related overview.
   const chosen = [...byLink.entries()].sort(([aLink, a], [bLink, b]) => {
+    const primary = (e: SidebarEntry) => {
+      const [prefix, service, ...suffix] = e.submodule.split('_');
+      return e.assemblyName === 'aws-cdk-lib'
+        && (prefix === 'aws' || prefix === 'alexa')
+        && service !== undefined
+        && suffix.length === 0
+        ? 0
+        : 1;
+    };
     const canonical = (e: SidebarEntry) => (e.assemblyName === 'aws-cdk-lib' ? 0 : 1);
-    return canonical(a) - canonical(b) || aLink.localeCompare(bLink);
+    return primary(a) - primary(b) || canonical(a) - canonical(b) || aLink.localeCompare(bLink);
   });
   const multiple = chosen.length > 1;
   const shortLabel = (e: SidebarEntry) => e.submodule || e.assemblyName;
