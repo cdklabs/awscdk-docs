@@ -347,18 +347,18 @@ export function isServiceSubmodule(submodule: string): boolean {
 }
 
 /**
- * Structural submodule name segments. `interfaces.*` mirrors the parent package tree and `<service>.mixins` holds a
- * service's mixin types; neither is an AWS service or CDK feature, so neither may surface as its own navigation
- * branch. The jsii assembly does not flag these groupings — they are regular submodules — so detection is by their
- * reserved names.
+ * Structural submodule name segments. `interfaces.*` mirrors the parent package tree and `mixins` holds mixin types,
+ * either as `<service>.mixins` or as a bare `mixins` submodule of a standalone package; neither is an AWS service or
+ * CDK feature, so neither may surface as its own navigation branch. The jsii assembly does not flag these groupings —
+ * they are regular submodules — so detection is by their reserved names.
  */
 const STRUCTURAL_PREFIX = 'interfaces';
-const STRUCTURAL_SUFFIX = '.mixins';
+const STRUCTURAL_SUFFIX = 'mixins';
 
 /**
  * The service/feature submodule that owns a (possibly structural) submodule's types. Strips the structural
  * `interfaces.` mirror prefix and the per-service `.mixins` suffix so `interfaces.aws_s3` and `aws_s3.mixins` both
- * resolve to `aws_s3`, and the bare `interfaces` submodule resolves to the module root (Core). Non-structural
+ * resolve to `aws_s3`, and the bare `interfaces` and `mixins` submodules resolve to the module root. Non-structural
  * submodules pass through unchanged. Grouping only; page URLs and cross-reference links are untouched.
  */
 export function serviceSubmodule(submodule: string): string {
@@ -368,8 +368,10 @@ export function serviceSubmodule(submodule: string): string {
   } else if (owner.startsWith(`${STRUCTURAL_PREFIX}.`)) {
     owner = owner.slice(STRUCTURAL_PREFIX.length + 1);
   }
-  if (owner.endsWith(STRUCTURAL_SUFFIX)) {
-    owner = owner.slice(0, -STRUCTURAL_SUFFIX.length);
+  if (owner === STRUCTURAL_SUFFIX) {
+    owner = '';
+  } else if (owner.endsWith(`.${STRUCTURAL_SUFFIX}`)) {
+    owner = owner.slice(0, -(STRUCTURAL_SUFFIX.length + 1));
   }
   return owner;
 }
