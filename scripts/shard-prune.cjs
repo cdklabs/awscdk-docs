@@ -24,7 +24,7 @@
 // sets, the complete sidebar/symbols data ships with every shard, and cross-page links are plain hrefs.
 // Sub-units are derived from the lexicographically sorted file list, so the plan stays a pure function of the
 // generated tree and SHARD_TOTAL. Everything else — hand-written pages, the package overview, and the complete
-// api-sidebar assets and type-summaries.json — is left intact in every shard.
+// api-sidebar assets, including the type-summary lookup — is left intact in every shard.
 //
 // Env: SHARD_INDEX (0-based), SHARD_TOTAL (>=1).
 'use strict';

@@ -74,14 +74,14 @@ const theme: Theme = {
       // client router's fallback for a page module it cannot load.
       "not-found": () => h(NotFound),
     }),
-  enhanceApp({ app }) {
+  enhanceApp({ app, siteData }) {
     // Client-side language tabs sharing one global language state. Registered
     // globally because generated markdown pages instantiate them directly.
     app.component("LanguageTabs", LanguageTabs);
     // Re-apply a stored decoupled code-block theme choice at client boot.
     // No-op on the server and when the code theme follows the site theme.
     initCodeTheme();
-    installTypeTooltips();
+    installTypeTooltips(siteData.value.themeConfig.typeSummariesAsset ?? "");
     installFavoritesSearchBoost();
     // Eagerly initialize Pagefind: the plugin's own idle loader leaves a window
     // where the first search silently returns an empty result. Runs after the

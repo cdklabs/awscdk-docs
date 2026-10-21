@@ -550,11 +550,9 @@ project.gitignore.addPatterns(
   'docs/v2/',
   // Agent-oriented Markdown twins of the generated pages, overlaid onto the built site by the shard merge
   'dist-agent-markdown/',
-  // Type-summary lookup for hover tooltips
-  'docs/public/type-summaries.json',
   // Symbol index for the navbar type-ahead filter
   'docs/public/symbols.json',
-  // Lazy-loaded API sidebar tree, generated per language
+  // Lazy-loaded API sidebar tree, symbol index and type-summary lookup, all content-hashed
   'docs/public/api-sidebar/',
   // Machine-readable versions endpoint, emitted at build time
   'docs/public/versions.json',

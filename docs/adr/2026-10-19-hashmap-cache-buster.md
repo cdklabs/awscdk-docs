@@ -1,4 +1,4 @@
-# Cache-bust the hashmap.json fallback fetch
+# Version the runtime-fetched JSON indexes per build
 
 ## Status
 Accepted
@@ -17,6 +17,10 @@ reload brings a fresh metadata chunk.
 The file cannot carry a content hash in its name: the router fetches a hard-coded path, and upstream relies on that
 path staying fixed so a page left open across a deploy can still find the new map.
 
+The hover-tooltip lookup, `type-summaries.json`, had the same fixed name and the same one-day cache. A stale copy
+leaves types added since the cached copy without a tooltip and shows outdated summaries. Unlike `hashmap.json`, it
+is only fetched by this site's own theme code, which can be told any name.
+
 ## Decision
 A Vite plugin (`docs/.vitepress/hashmap-cache-buster.ts`) rewrites the router's fetch to
 `hashmap.json?v=<build id>` during the build. The build id is `DOCS_BUILD_ID` when set, otherwise the checked-out
@@ -25,12 +29,20 @@ into the shared router chunk and the shard workspaces are not git checkouts. A s
 the plugin fails the build if the router is not transformed, so a VitePress upgrade that moves the fetch cannot
 silently drop the buster.
 
+The type-summary lookup moves to `api-sidebar/type-summaries.<hash>.js`, named by its own content like the sidebar
+skeleton and the symbol index beside it. The VitePress config reads the hashed name off the generated directory and
+passes it through `themeConfig.typeSummariesAsset`, and the tooltip code fetches that name. Every shard generates the
+identical file, so all shards agree on the name.
+
 ## Consequences
-- A deploy changes the query, so a cached map from an earlier deploy is never reused. Builds of the same commit share
-  a URL, which is correct because they produce the same map.
+- A deploy changes the `hashmap.json` query, so a cached map from an earlier deploy is never reused. Builds of the same
+  commit share a URL, which is correct because they produce the same map.
 - The file and its unhashed URL stay in place, so the upstream new-deploy retry still works for pages loaded before
   this change.
 - A page left open across a deploy runs the old router and asks for the old query. This only matters if the hosting
   keeps serving that URL from cache; the upstream retry has the same limitation.
 - The plugin depends on the exact fetch expression in VitePress's `client/app/router.js`, pinned by a unit test
   against the installed version.
+- The type-summary lookup only gets a new URL when its content changes, so its roughly 5 MB is not re-downloaded for
+  releases that do not touch it, and it could be cached as immutable. It is served with a `.js` extension like the
+  other api-sidebar assets, so the hosting applies the TTL it gives scripts.

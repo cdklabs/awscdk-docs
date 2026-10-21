@@ -100,8 +100,8 @@ export interface GenerateOptions {
   /** Languages to generate (overrides config). Defaults to all LANGUAGES. */
   readonly languages?: Language[];
   /**
-   * VitePress public directory. When set, a `type-summaries.json` lookup and a content-hashed symbol index are
-   * written there for client-side hover tooltips and the navbar type-ahead filter.
+   * VitePress public directory. When set, content-hashed api-sidebar assets, a symbol index and a type-summary lookup
+   * are written there for the lazy sidebar, the navbar type-ahead filter and the hover tooltips.
    */
   readonly publicDir?: string;
   /** File path for the generated API-root page. */
@@ -492,6 +492,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
   const linkFor = (fqn: string) => pageLinks.get(fqn);
 
   // Type-summary lookup for hover tooltips: keyed by page link so the client can resolve any cross-reference anchor.
+  // Written with the api-sidebar assets below, under a content-hashed name.
+  let summariesBody: string | undefined;
   if (options.publicDir) {
     const summaries: Record<
       string,
@@ -516,10 +518,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         }
       }
     }
-    fs.mkdirSync(options.publicDir, { recursive: true });
-    const summariesFile = path.join(options.publicDir, 'type-summaries.json');
-    fs.writeFileSync(summariesFile, JSON.stringify(summaries));
-    written.push(summariesFile);
+    summariesBody = JSON.stringify(summaries);
   }
 
   for (const moduleName of config.modules) {
@@ -659,7 +658,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
   written.push(sidebarFile);
 
   // Served static assets under docs/public/api-sidebar/: sidebar.<hash>.js is the skeleton (section nodes without
-  // items), chunks/<name>.<hash>.js holds one section's items, and symbols.<hash>.js is the navbar type-ahead index.
+  // items), chunks/<name>.<hash>.js holds one section's items, symbols.<hash>.js is the navbar type-ahead index, and
+  // type-summaries.<hash>.js is the hover-tooltip lookup.
   // One tree serves every language; the theme fetches the skeleton once per session plus the chunks it needs, instead
   // of VitePress inlining the ~21.9k-entry tree into every page.
   if (options.publicDir) {
@@ -687,6 +687,10 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     const symbolsFile = path.join(apiSidebarDir, hashedAssetName('symbols', symbolsBody));
     fs.writeFileSync(symbolsFile, symbolsBody);
     written.push(symbolsFile);
+
+    const summariesFile = path.join(apiSidebarDir, hashedAssetName('type-summaries', summariesBody!));
+    fs.writeFileSync(summariesFile, summariesBody!);
+    written.push(summariesFile);
   }
 
   // Site-scoped `llms.txt` at the root of the twin tree, so the overlay that places the twins into the site places

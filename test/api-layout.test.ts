@@ -1,7 +1,8 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { hashedAssetPath } from './hashed-assets.js';
+import { assetHash } from '../src/docgen/asset-hash.js';
 import { generateDocs } from '../src/docgen/index.js';
 import { renderExpandableProps, renderTypeMetadata, TypeMetadataRow } from '../src/docgen/layout.js';
 
@@ -572,10 +573,11 @@ describe('API page layout', () => {
   });
 
   describe('type-summary tooltips', () => {
-    test('docgen writes a type-summaries.json lookup to the public dir', () => {
-      const file = join(publicDir, 'type-summaries.json');
-      expect(existsSync(file)).toBe(true);
+    test('docgen writes a content-hashed type-summary lookup beside the api-sidebar assets', () => {
+      const file = hashedAssetPath(join(publicDir, 'api-sidebar'), 'type-summaries');
       const summaries = JSON.parse(readFileSync(file, 'utf-8'));
+      expect(file.endsWith(`type-summaries.${assetHash(readFileSync(file, 'utf-8'))}.js`)).toBe(true);
+      expect(existsSync(join(publicDir, 'type-summaries.json'))).toBe(false);
       expect(summaries['/v2/docs/aws-cdk-lib.aws_s3.Bucket']).toEqual({
         name: 'Bucket',
         // `kind` stays the classification value: `searchKind` derives the
@@ -608,7 +610,7 @@ describe('API page layout', () => {
       const bare = mkdtempSync(join(tmpdir(), 'api-layout-bare-'));
       try {
         generateDocs({ modules: ['constructs'] }, { outDir: join(bare, 'modules'), packageRoot: ROOT, languages: ['ts'] });
-        expect(existsSync(join(bare, 'type-summaries.json'))).toBe(false);
+        expect(readdirSync(bare)).toEqual(['modules']);
       } finally {
         rmSync(bare, { recursive: true, force: true });
       }
@@ -669,9 +671,10 @@ describe('API page layout', () => {
       expect(themeEntry()).toContain('installTypeTooltips');
     });
 
-    test('tooltips fetch summaries lazily and are base-path aware', () => {
-      expect(tooltips()).toContain('type-summaries.json');
+    test('tooltips fetch summaries lazily by their hashed name and are base-path aware', () => {
+      expect(tooltips()).toContain('apiSidebarAsset(summariesAsset)');
       expect(tooltips()).toContain('withBase');
+      expect(themeEntry()).toContain('themeConfig.typeSummariesAsset');
       expect(tooltips()).toContain('role", "tooltip');
     });
 
@@ -761,7 +764,7 @@ describe('API page layout', () => {
 
     test('generated tooltip data is gitignored', () => {
       const gitignore = readFileSync(join(ROOT, '.gitignore'), 'utf-8');
-      expect(gitignore).toContain('docs/public/type-summaries.json');
+      expect(gitignore).toContain('docs/public/api-sidebar/');
     });
   });
 

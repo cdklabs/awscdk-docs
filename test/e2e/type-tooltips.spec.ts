@@ -1,13 +1,19 @@
 import { expect, test } from '@playwright/test';
-import { TOPIC_PAGE } from './fixture.js';
+import { apiSidebarAssetPath, TOPIC_PAGE } from './fixture.js';
 
 // Type-signature hover tooltips (type-tooltips.ts): hovering a
-// cross-reference link into the generated API docs fetches
-// type-summaries.json and shows an aria-correct tooltip. The summary lookup
-// is complete in the fixture, so links may point at types outside the
+// cross-reference link into the generated API docs fetches the
+// content-hashed type-summary lookup and shows an aria-correct tooltip. The
+// lookup is complete in the fixture, so links may point at types outside the
 // fixture's built pages — the tooltip only needs the lookup entry.
 test.describe('type hover tooltips', () => {
   test('hovering an API type link shows an aria-correct tooltip', async ({ page }) => {
+    const summaryRequests: string[] = [];
+    page.on('request', (request) => {
+      if (/type-summaries/.test(request.url())) {
+        summaryRequests.push(new URL(request.url()).pathname);
+      }
+    });
     await page.goto(TOPIC_PAGE);
 
     // A cross-reference link to a documented type (the Topic construct's
@@ -36,6 +42,8 @@ test.describe('type hover tooltips', () => {
     await expect(tooltip).toHaveAttribute('aria-hidden', 'false');
     await expect(tooltip.locator('.type-tooltip-name')).not.toBeEmpty();
     await expect(link).toHaveAttribute('aria-describedby', 'api-type-tooltip');
+    // The lookup comes from its content-hashed name, fetched once.
+    expect(summaryRequests).toEqual([apiSidebarAssetPath('type-summaries')]);
 
     // Moving off the link hides the tooltip again.
     await page.locator('h1').first().hover();
