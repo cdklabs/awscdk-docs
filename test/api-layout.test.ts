@@ -400,9 +400,47 @@ describe('API page layout', () => {
       expect(page).not.toContain('prop-required');
     });
 
-    test('a documented default renders in the header line', () => {
+    test('a value default renders inline in the header line', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      expect(page).toMatch(/<span class="member-default"[^>]*>= [^<]+<\/span>/);
+      // A value default (one token, within budget) renders inline as `= value`
+      // with no title and no ellipsis.
+      expect(page).toMatch(/<span class="member-default">= [^<\s]+<\/span>/);
+      // The inline chip never carries a space — a spaced default is prose and
+      // goes on its own `Default:` line instead, not in the header.
+      const inline = [...page.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)].map((m) => m[1]);
+      expect(inline.length).toBeGreaterThan(0);
+      for (const v of inline) {
+        expect(v).not.toMatch(/\s/);
+      }
+    });
+
+    /*
+     * A descriptive (prose) default is shown in full on its own always-visible
+     * line labelled `Default:`, not truncated and not behind the disclosure.
+     */
+    test('a descriptive default renders in full on a Default: line, not in the header', () => {
+      const out = renderExpandableProps(
+        [{
+          name: 'physicalName',
+          type: { primitive: 'string' },
+          optional: true,
+          docs: { default: 'Assigned by CloudFormation (recommended)' },
+        }] as any,
+        () => undefined,
+      );
+      const joined = out.join('\n');
+      // Not in the header, and not truncated anywhere.
+      expect(joined).not.toContain('member-default');
+      expect(joined).not.toContain('…');
+      // On an always-visible line (member-extra), not inside the disclosure.
+      const extraAt = joined.indexOf('class="member-extra"');
+      const detailsAt = joined.indexOf('class="member-disclosure"');
+      const defaultAt = joined.indexOf('**Default:** Assigned by CloudFormation (recommended)');
+      expect(extraAt).toBeGreaterThan(-1);
+      expect(defaultAt).toBeGreaterThan(extraAt);
+      expect(detailsAt === -1 || defaultAt < detailsAt).toBe(true);
+      // Exactly one `Default:` — no duplicate between header and body.
+      expect((joined.match(/\*\*Default:\*\*/g) ?? []).length).toBe(1);
     });
 
     /*
@@ -414,7 +452,7 @@ describe('API page layout', () => {
      */
     test('a prose-form default loses its marker rather than rendering "= -"', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      const defaults = [...page.matchAll(/<span class="member-default"[^>]*>= ([^<]+)<\/span>/g)]
+      const defaults = [...page.matchAll(/<span class="member-default">= ([^<]+)<\/span>/g)]
         .map((m) => m[1]);
       expect(defaults.length).toBeGreaterThan(0);
       for (const value of defaults) {
@@ -437,12 +475,16 @@ describe('API page layout', () => {
         ] as any,
         () => undefined,
       ).join('\n');
-      // The exact set, not three `toContain`s: a bare marker must produce NO
-      // span, and an assertion that it produces no EMPTY span cannot fail,
-      // because an unstripped `-` is not empty.
-      const shown = [...out.matchAll(/<span class="member-default"[^>]*>= ([^<]*)<\/span>/g)]
+      // Header spans carry only VALUE defaults now: `-1` qualifies (one token,
+      // no space); `- No display name` strips to `No display name`, which has
+      // spaces and is therefore prose; a bare `-` produces nothing.
+      const shown = [...out.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)]
         .map((m) => m[1]);
-      expect(shown).toEqual(['No display name', '-1']);
+      expect(shown).toEqual(['-1']);
+      // The stripped prose default shows in full on its own `Default:` line.
+      expect(out).toContain('**Default:** No display name');
+      // The bare marker earns no `Default:` line either.
+      expect((out.match(/\*\*Default:\*\*/g) ?? []).length).toBe(1);
     });
 
     /*
@@ -461,51 +503,48 @@ describe('API page layout', () => {
     });
 
     /*
-     * The header cell is clamped narrower than INLINE_DEFAULT_BUDGET, so a
-     * value between the two is ellipsized by CSS while still being short
-     * enough that no `**Default:**` copy is emitted below it. Without the
-     * `title` such a value is readable nowhere on the page — 29% of the
-     * assembly's defaults land in that band.
+     * The value-vs-prose split is keyed on internal whitespace and the inline
+     * budget. A one-token value within budget stays inline; a spaced phrase, or
+     * a token past the budget, is prose on its own full `Default:` line.
      */
-    test('a clamped default keeps its full value in a title, at every length', () => {
+    test('the value-vs-prose split decides inline chip versus full Default: line', () => {
       const prop = (name: string, dflt: string) => ({
         name,
         type: { primitive: 'string' },
         optional: true,
         docs: { default: dflt },
       });
-      // 24 characters: past the 16ch clamp, inside the 32-character budget, so
-      // the emitted TEXT is complete and only CSS truncates it.
-      const between = 'No filtering on region!!';
-      expect(between).toHaveLength(24);
-      // 40 characters: past the budget, so the text is truncated too.
-      const beyond = 'a new role is created with a long tail!!!';
-      expect(beyond.length).toBeGreaterThan(32);
+      // A spaced phrase, 24 chars: prose, shown in full, not inline.
+      const phrase = 'No filtering on region!!';
+      expect(phrase).toHaveLength(24);
+      // A single token past the 32-char budget: prose, shown in full, not inline.
+      const longToken = 'aws_cdk_lib.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE';
+      expect(longToken.length).toBeGreaterThan(32);
+      expect(longToken).not.toMatch(/\s/);
+      // A single token within budget: value, inline.
+      const value = 'RemovalPolicy.DESTROY';
       const out = renderExpandableProps(
-        [prop('region', between), prop('role', beyond)] as any,
+        [prop('region', phrase), prop('policy', longToken), prop('mode', value)] as any,
         () => undefined,
       ).join('\n');
-      const titles = [...out.matchAll(/<span class="member-default" title="([^"]*)">= ([^<]*)<\/span>/g)]
-        .map((m) => ({ title: m[1], shown: m[2] }));
-      expect(titles).toHaveLength(2);
-      // Whatever the row shows, the untruncated value is always recoverable.
-      expect(titles[0]).toEqual({ title: between, shown: between });
-      expect(titles[1].title).toBe(beyond);
-      expect(titles[1].shown.endsWith('…')).toBe(true);
-      // ...and the over-budget one ALSO repeats in full below the row.
-      expect(out).toContain(`**Default:** ${beyond}`);
+      // Only the within-budget token is an inline chip.
+      const inline = [...out.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)].map((m) => m[1]);
+      expect(inline).toEqual([value]);
+      // Both prose defaults render in full on their own line, untruncated.
+      expect(out).toContain(`**Default:** ${phrase}`);
+      expect(out).toContain(`**Default:** ${longToken}`);
+      expect(out).not.toContain('…');
     });
 
     /**
      * A jsii `@default` is a doc block, so it can span several lines and even
-     * contain a blank one. `escapeAttr` escapes quotes but not whitespace, so
-     * an uncollapsed value carried `title="…` onto the next source line: the
-     * Vue compiler then read the following text as attribute names and failed
-     * the whole page, and the blank line additionally terminates the
-     * surrounding raw-HTML block. A single-line default never exercises this,
-     * so the unit suite can be green while the docs build fails.
+     * contain a blank one. A multi-line default is prose, so it renders on its
+     * own `Default:` line; `defaultText` still collapses the block to one line
+     * first, so a blank line cannot terminate the surrounding raw-HTML block
+     * and no emitted line is left mid-markup. A single-line default never
+     * exercises this, so the unit suite can be green while the docs build fails.
      */
-    test('a multi-line default collapses, keeping the header on one line', () => {
+    test('a multi-line default collapses onto a single Default: line', () => {
       const multiline = 'Default priorities:\n\n- 100 for `SetTag`\n- 200 for `RemoveTag`';
       const out = renderExpandableProps(
         [{
@@ -516,19 +555,15 @@ describe('API page layout', () => {
         }] as any,
         () => undefined,
       );
-      // The row's header is ONE line that closes itself, which is the property
-      // the compiler needs.
+      // The header line is ONE line that closes itself, and carries no default
+      // chip (a multi-line default is prose).
       const headers = out.filter((line) => line.includes('class="member-line"'));
       expect(headers).toHaveLength(1);
       expect(headers[0].endsWith('</div>')).toBe(true);
-      // No emitted line may be left mid-attribute, so quotes pair up on every
-      // line of the block — an invariant over all of them, not a spot check.
-      for (const line of out) {
-        expect([...line].filter((c) => c === '"').length % 2).toBe(0);
-      }
-      const title = /<span class="member-default" title="([^"]*)"/.exec(headers[0]);
-      expect(title).not.toBeNull();
-      expect(title![1]).toBe('Default priorities: - 100 for `SetTag` - 200 for `RemoveTag`');
+      expect(headers[0]).not.toContain('member-default');
+      // The collapsed default is one line of prose, no raw newline survived.
+      const joined = out.join('\n');
+      expect(joined).toContain('**Default:** Default priorities: - 100 for `SetTag` - 200 for `RemoveTag`');
     });
 
     test('construct props sections use the member-row layout', () => {
