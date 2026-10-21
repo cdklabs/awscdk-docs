@@ -161,7 +161,6 @@ const emptyMessage = computed(() => {
     <button
       class="site-search-button"
       type="button"
-      aria-label="Search the documentation"
       :aria-expanded="open"
       aria-haspopup="dialog"
       @click="show()"
