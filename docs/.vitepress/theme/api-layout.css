@@ -641,11 +641,11 @@ a.chain-item:hover {
 
 /* `required` is a distinct badge, not muted text: a reader skimming a long
    props table must be able to spot the mandatory properties at a glance
-   (issue #20 / fork #8). The amber `--api-c-badge-*` pair is the shared
-   property-chip palette and is defined for light AND dark at the top of this
-   file, so the badge stays legible in both modes. The rendered markup already
-   carries the `member-required` span unconditionally, so the badge is present
-   without JavaScript. */
+   (issue #20). The amber `--api-c-badge-*` pair is the kind-chip palette,
+   reused here and defined for light AND dark at the top of this file, so the
+   badge stays legible in both modes. The rendered markup carries the
+   `member-required` span unconditionally, so the badge is present without
+   JavaScript. */
 .member-required {
   display: inline-block;
   font-family: var(--vp-font-family-base);
@@ -810,8 +810,8 @@ a.chain-item:hover {
    the same one the page's H1 badge wears, so a link's preview
    and the page it points at agree on color as well as on wording. A level
    class rather than a retint of `--api-c-badge-*`: that token is shared with
-   the REQUIRED and STATIC property chips, which are not leveled and must
-   keep their current colors. Kinds without a level keep the shared chip. */
+   the REQUIRED property chip, which is not leveled and must
+   keep its current colors. Kinds without a level keep the shared chip. */
 .type-tooltip-kind-l1 {
   background-color: var(--cdk-badge-l1-bg);
   color: var(--cdk-badge-l1-text);

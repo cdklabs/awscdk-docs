@@ -19,21 +19,20 @@ An earlier iteration had used an amber badge and then replaced it with muted
 text, on the grounds that the badge "outweighed the member name beside it".
 That reasoning optimized for the identifier over the required signal, but the
 required signal is precisely what a reader scanning for "what must I supply"
-needs to find first. Issue #20 (fork issue #8) asks to reverse that: make the
+needs to find first. Issue #20 asks to reverse that: make the
 required state a visually distinct styled marker, not plain inline text, while
 leaving which properties are required unchanged.
 
 ## Decision
 
-The required marker renders as a distinct badge. The emitter adds the shared
-property-chip class so the marker is
-`<span class="member-required member-badge">required</span>`, and the
-`.member-required` rule in `docs/.vitepress/theme/api-layout.css` styles it as a
-filled pill: the amber `--api-c-badge-bg` / `--api-c-badge-text` token pair
-(the same palette the kind badge and static chip already use), uppercase,
-weight 600, rounded corners, small padding. Those tokens are declared for both
-light and dark mode at the top of the stylesheet, so the badge stays legible in
-both themes and meets the normal contrast expectations the a11y gate checks.
+The required marker renders as a distinct badge. The marker stays
+`<span class="member-required">required</span>`, and the `.member-required`
+rule in `docs/.vitepress/theme/api-layout.css` styles it as a filled pill: the
+amber `--api-c-badge-bg` / `--api-c-badge-text` token pair (the palette the
+kind chip `.type-tooltip-kind` already uses), uppercase, weight 600, rounded
+corners, small padding. Those tokens are declared for both light and dark mode
+at the top of the stylesheet, so the badge stays legible in both themes and
+meets the normal contrast expectations the a11y gate checks.
 
 The marker is present in the built markup — the `member-required` span is
 emitted unconditionally for a non-optional property when the page is generated,
@@ -48,10 +47,11 @@ carry no required marker, so they remain clearly distinguishable.
 ## Consequences
 
 - Required properties are obvious at a glance when scanning a props table.
-- The required and kind/static chips share one palette token, so a future
-  retint stays consistent across them; the leveled kind chips override the
-  token with their own level palette and are unaffected.
+- The required chip and the kind chip read from the same `--api-c-badge-*`
+  palette token, so a future retint stays consistent across them; the leveled
+  kind chips override the token with their own level palette and are
+  unaffected.
 - `test/api-layout.test.ts` asserts on the produced output that a required
-  property renders the badge markup and the `.member-required` rule styles it
-  as a filled pill (background + rounded corners, no italic), and that an
-  optional property renders neither `member-required` nor `member-badge`.
+  property renders the `member-required` marker and the `.member-required` rule
+  styles it as a filled pill (background + rounded corners, no italic), and
+  that an optional property renders no `member-required` marker.

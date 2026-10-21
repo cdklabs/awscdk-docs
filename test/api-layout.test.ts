@@ -358,13 +358,12 @@ describe('API page layout', () => {
     test('required props render a distinct badge; optional props do not', () => {
       // FunctionProps: code, handler, and runtime are required.
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_lambda.FunctionProps.md'), 'utf-8');
-      // The required marker is its own styled badge element, present in the
-      // built markup (no client JS), carrying the shared `member-badge` chip
-      // class alongside `member-required`.
-      expect(page).toContain('<span class="member-required member-badge">required</span>');
+      // The required marker is its own styled element, present in the built
+      // markup (no client JS).
+      expect(page).toContain('<span class="member-required">required</span>');
 
       // An optional prop renders NO required marker. BucketProps.accessControl
-      // is optional; render its single row in isolation and confirm the badge
+      // is optional; render its single row in isolation and confirm the marker
       // is absent so "optional stays distinguishable from required" is pinned
       // on output, not just on the required side.
       const optionalRow = renderExpandableProps(
@@ -372,9 +371,8 @@ describe('API page layout', () => {
         () => undefined,
       ).join('\n');
       expect(optionalRow).not.toContain('member-required');
-      expect(optionalRow).not.toContain('member-badge');
 
-      // The badge is a badge in the stylesheet too: a filled chip, not the
+      // The marker is a badge in the stylesheet too: a filled chip, not the
       // former muted italic text. Assert on the `.member-required` block.
       const rules = withoutComments(
         readFileSync(resolve(import.meta.dirname, '../docs/.vitepress/theme/api-layout.css'), 'utf-8'),
