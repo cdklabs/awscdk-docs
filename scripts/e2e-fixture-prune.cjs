@@ -4,7 +4,7 @@
 //
 // The full ~21k-page site is too heavy to rebuild for every browser-test run, so the e2e suite builds a small
 // subset: a handful of aws-cdk-lib services plus the `constructs` module and the hand-written pages. The
-// complete client-side assets (type-summaries.json, and the api-sidebar/ skeleton, chunks and symbol index) are
+// complete client-side assets (the api-sidebar/ skeleton, chunks, symbol index and type-summary lookup) are
 // left intact, so the interactive features under test see the same data as in production.
 //
 // Env: E2E_FIXTURE_SERVICES — comma-separated aws-cdk-lib service dirs to keep (default: aws-sns,aws-sqs).

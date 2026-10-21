@@ -1,8 +1,9 @@
 // Hover tooltips for cross-reference links on generated API pages. Docgen writes
-// a type-summary lookup to `type-summaries.json` in the site root at build time;
-// it is fetched lazily on the first hover and cached for the session.
+// a type-summary lookup to the content-hashed `api-sidebar/type-summaries.<hash>.js`,
+// named by themeConfig; it is fetched lazily on the first hover and cached for the session.
 import { withBase } from "vitepress";
 import { API_DOCS_ROOT } from "../../../src/site-routes";
+import { apiSidebarAsset } from "./api-sidebar";
 
 interface TypeSummary {
   name: string;
@@ -21,14 +22,18 @@ type SummaryMap = Record<string, TypeSummary>;
 
 const TOOLTIP_ID = "api-type-tooltip";
 
+let summariesAsset = "";
 let loading: Promise<SummaryMap> | undefined;
 let tooltip: HTMLElement | undefined;
 let currentAnchor: HTMLAnchorElement | undefined;
 
 function loadSummaries(): Promise<SummaryMap> {
-  loading ??= fetch(withBase("/type-summaries.json"))
-    .then((res) => (res.ok ? res.json() : {}))
-    .catch(() => ({}));
+  const asset = apiSidebarAsset(summariesAsset);
+  loading ??= asset
+    ? fetch(withBase(asset))
+        .then((res) => (res.ok ? res.json() : {}))
+        .catch(() => ({}))
+    : Promise.resolve({});
   return loading;
 }
 
@@ -149,11 +154,15 @@ function handleScroll(event: Event): void {
   }
 }
 
-/** Install delegated hover/focus tooltip handlers (client only). */
-export function installTypeTooltips(): void {
+/**
+ * Install delegated hover/focus tooltip handlers (client only). `asset` is the
+ * hashed type-summary filename from themeConfig; empty means no tooltips.
+ */
+export function installTypeTooltips(asset: string): void {
   if (typeof window === "undefined") {
     return;
   }
+  summariesAsset = asset;
   document.addEventListener("mouseover", handleEnter, { passive: true });
   document.addEventListener("focusin", handleEnter);
   document.addEventListener("mouseout", handleLeave, { passive: true });

@@ -132,7 +132,19 @@ TMP_PARENT="${TMPDIR:-/tmp}"
 TMP_PARENT="${TMP_PARENT%/}/cdk-docs-shards"
 mkdir -p "$TMP_PARENT"
 WORK="$(mktemp -d "$TMP_PARENT/run.XXXXXX")"
-export ROOT WORK TOTAL HEAP
+# One build id for every shard: it is baked into the shared router chunk as the hashmap.json cache buster, and the
+# shard workspaces are not git checkouts, so they cannot derive it themselves. Prefer an explicit DOCS_BUILD_ID;
+# otherwise fall back to the checked-out commit. Guard the git call so a build from an exported tree (no .git) just
+# leaves the id empty instead of printing git's raw "fatal: not a git repository" — a non-shard local build is
+# allowed to have no id, and a shard build without one fails later with a clear message.
+if [ -z "${DOCS_BUILD_ID:-}" ]; then
+  if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    DOCS_BUILD_ID="$(git -C "$ROOT" rev-parse HEAD)"
+  else
+    DOCS_BUILD_ID=""
+  fi
+fi
+export ROOT WORK TOTAL HEAP DOCS_BUILD_ID
 
 if [ -n "$SINGLE" ]; then
   echo "Plan: single shard $SHARD_I of $TOTAL${HEAP:+, heap ${HEAP}MB}, base ${DOCS_BASE:-/}"

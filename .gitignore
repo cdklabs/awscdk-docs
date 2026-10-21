@@ -70,7 +70,6 @@ docs/.vitepress/cache/
 docs/.vitepress/.temp/
 docs/v2/
 dist-agent-markdown/
-docs/public/type-summaries.json
 docs/public/symbols.json
 docs/public/api-sidebar/
 docs/public/versions.json

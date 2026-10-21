@@ -11,6 +11,7 @@ import { canonicalHead } from "./canonical";
 import { structuredDataHead } from "./structured-data";
 import { siteOverridesHead } from "./site-overrides";
 import { injectSiteStamp } from "../../src/site-stamp";
+import { hashmapCacheBuster, resolveBuildId } from "./hashmap-cache-buster";
 import { docsSiteUrl, readVersionSnapshot, VERSION_SNAPSHOT_FILE } from "../../src/docgen/versions";
 import { assertValidVersion } from "../../src/docgen/version-format";
 import { createHighlighter } from "shiki";
@@ -135,14 +136,18 @@ const generatedAt = existsSync(snapshotPath)
   ? readVersionSnapshot(snapshotPath).generatedAt
   : "";
 
-// Names of the two api-sidebar assets the theme fetches by path. Read off the emitted directory because the
+// Names of the api-sidebar assets the theme fetches by path. Read off the emitted directory because the
 // hash is the file's own content.
-function apiSidebarAssets(): { apiSidebarAsset: string; symbolsAsset: string } {
+function apiSidebarAssets(): { apiSidebarAsset: string; symbolsAsset: string; typeSummariesAsset: string } {
   const dir = fileURLToPath(new URL("../public/api-sidebar", import.meta.url));
   const files = existsSync(dir) ? readdirSync(dir) : [];
   const named = (base: string) =>
     files.find((file) => new RegExp(`^${base}\\.[0-9a-f]{8}\\.js$`).test(file)) ?? "";
-  return { apiSidebarAsset: named("sidebar"), symbolsAsset: named("symbols") };
+  return {
+    apiSidebarAsset: named("sidebar"),
+    symbolsAsset: named("symbols"),
+    typeSummariesAsset: named("type-summaries"),
+  };
 }
 
 // Typed as UserConfigFn rather than wrapped in `defineConfig`: the helper only accepts a plain
@@ -253,8 +258,9 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   },
 
   // Extract the page hashmap + site metadata into one shared cached JS chunk instead of inlining ~500KB into
-  // every page's HTML, which pushed the Pages artifact over GitHub Pages' 1GB limit. Client-side navigation is
-  // unaffected: the router still fetches the complete `hashmap.json` at load.
+  // every page's HTML, which pushed the Pages artifact over GitHub Pages' 1GB limit. A shard's chunk holds only its
+  // own pages, so a link into another shard falls back to fetching the complete `hashmap.json`, cache-busted per
+  // build by the plugin below.
   metaChunk: true,
 
   // The build stamp (src/site-stamp.ts) in every page's <head>: the one place a downstream republisher rewrites the
@@ -307,6 +313,7 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
           ? { indexingCommand: 'echo "[shard build] pagefind indexing deferred to post-merge step"' }
           : {}),
       }),
+      hashmapCacheBuster(resolveBuildId()),
     ],
 
     build: {
@@ -330,7 +337,8 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
     // Consumed by the PageFooterLinks report-issue template.
     cdkVersion,
 
-    // Consumed by ApiSidebar and NavFilter. Chunk filenames are absent by design: the skeleton names its own.
+    // Consumed by ApiSidebar, NavFilter and the type tooltips. Chunk filenames are absent by design: the skeleton
+    // names its own.
     ...apiSidebarAssets(),
 
     nav: [
