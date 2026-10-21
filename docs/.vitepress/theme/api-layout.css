@@ -639,9 +639,29 @@ a.chain-item:hover {
   text-overflow: ellipsis;
 }
 
-/* `required` is muted italic text, not a pill: the amber badge it replaces
-   outweighed the member name beside it. */
-.member-required,
+/* `required` is a distinct badge, not muted text: a reader skimming a long
+   props table must be able to spot the mandatory properties at a glance
+   (issue #20 / fork #8). The amber `--api-c-badge-*` pair is the shared
+   property-chip palette and is defined for light AND dark at the top of this
+   file, so the badge stays legible in both modes. The rendered markup already
+   carries the `member-required` span unconditionally, so the badge is present
+   without JavaScript. */
+.member-required {
+  display: inline-block;
+  font-family: var(--vp-font-family-base);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: var(--api-c-badge-bg);
+  color: var(--api-c-badge-text);
+  white-space: nowrap;
+}
+
+/* `static` stays muted italic text: it is a minor modifier, not the
+   must-supply-this signal, and does not compete for the reader's eye. */
 .member-static {
   font-family: var(--vp-font-family-base);
   font-style: italic;
