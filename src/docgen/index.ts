@@ -492,34 +492,33 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
   const linkFor = (fqn: string) => pageLinks.get(fqn);
 
   // Type-summary lookup for hover tooltips: keyed by page link so the client can resolve any cross-reference anchor.
-  // Written with the api-sidebar assets below, under a content-hashed name.
-  let summariesBody: string | undefined;
-  if (options.publicDir) {
-    const summaries: Record<
-      string,
-      { name: string; kind: string; summary: string; label?: string; level?: string }
-    > = {};
-    for (const groups of moduleGroups.values()) {
-      for (const entries of groups.values()) {
-        for (const entry of entries) {
-          summaries[entry.link] = {
-            name: entry.name,
-            kind: entry.kind,
-            summary: entry.summary,
-            // Reader-facing label and level for the preview's kind chip, from the SAME helper the H1 badge uses so
-            // the two surfaces cannot drift. `kind` is left alone because it is a classification value, not a label:
-            // `searchKind` derives the Pagefind filter from its first word. `level` is the canonical `ConstructLevel`
-            // — the same form the sidebar nav data emits — so one field name never means two things. Emitted only for
-            // leveled constructs.
-            ...(entry.level
-              ? { label: constructLevelLabel(entry.level), level: entry.level }
-              : {}),
-          };
-        }
+  // Written with the api-sidebar assets below, under a content-hashed name. Built unconditionally — the lookup is a
+  // cheap in-memory object and keeping it a definite `string` lets the write site below use it without a non-null
+  // assertion; the file itself is only emitted when `options.publicDir` is set.
+  const summaries: Record<
+    string,
+    { name: string; kind: string; summary: string; label?: string; level?: string }
+  > = {};
+  for (const groups of moduleGroups.values()) {
+    for (const entries of groups.values()) {
+      for (const entry of entries) {
+        summaries[entry.link] = {
+          name: entry.name,
+          kind: entry.kind,
+          summary: entry.summary,
+          // Reader-facing label and level for the preview's kind chip, from the SAME helper the H1 badge uses so
+          // the two surfaces cannot drift. `kind` is left alone because it is a classification value, not a label:
+          // `searchKind` derives the Pagefind filter from its first word. `level` is the canonical `ConstructLevel`
+          // — the same form the sidebar nav data emits — so one field name never means two things. Emitted only for
+          // leveled constructs.
+          ...(entry.level
+            ? { label: constructLevelLabel(entry.level), level: entry.level }
+            : {}),
+        };
       }
     }
-    summariesBody = JSON.stringify(summaries);
   }
+  const summariesBody = JSON.stringify(summaries);
 
   for (const moduleName of config.modules) {
     const assembly = assemblies.get(moduleName)!;
@@ -688,8 +687,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     fs.writeFileSync(symbolsFile, symbolsBody);
     written.push(symbolsFile);
 
-    const summariesFile = path.join(apiSidebarDir, hashedAssetName('type-summaries', summariesBody!));
-    fs.writeFileSync(summariesFile, summariesBody!);
+    const summariesFile = path.join(apiSidebarDir, hashedAssetName('type-summaries', summariesBody));
+    fs.writeFileSync(summariesFile, summariesBody);
     written.push(summariesFile);
   }
 

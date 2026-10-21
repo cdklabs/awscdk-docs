@@ -20,8 +20,8 @@ const ROUTER_SOURCE = readFileSync(ROUTER_PATH, 'utf-8');
 describe('hashmap.json cache buster', () => {
   test('the installed router fetches hashmap.json with the build id as a query', () => {
     const out = bustHashmapFetch(ROUTER_SOURCE, 'abc123');
-    expect(out).toContain(`fetch(siteDataRef.value.base + "hashmap.json?v=abc123")`);
-    expect(out).not.toContain(`'hashmap.json'`);
+    expect(out).toContain('fetch(siteDataRef.value.base + "hashmap.json?v=abc123")');
+    expect(out).not.toContain("'hashmap.json'");
   });
 
   test('the plugin rewrites only the router module', () => {
@@ -50,7 +50,7 @@ describe('hashmap.json cache buster', () => {
   });
 
   test('a build id that is not URL- and source-safe is rejected', () => {
-    expect(() => resolveBuildId({ DOCS_BUILD_ID: `x"+alert(1)+"` }, () => '')).toThrow('DOCS_BUILD_ID must match');
+    expect(() => resolveBuildId({ DOCS_BUILD_ID: 'x"+alert(1)+"' }, () => '')).toThrow('DOCS_BUILD_ID must match');
   });
 
   test('a shard build without a build id fails, a local build without one does not', () => {

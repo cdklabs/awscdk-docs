@@ -46,3 +46,8 @@ identical file, so all shards agree on the name.
 - The type-summary lookup only gets a new URL when its content changes, so its roughly 5 MB is not re-downloaded for
   releases that do not touch it, and it could be cached as immutable. It is served with a `.js` extension like the
   other api-sidebar assets, so the hosting applies the TTL it gives scripts.
+- A tab left open across the deploy that introduces this change still runs the old theme, which fetches the
+  now-unwritten `type-summaries.json` lazily on first hover. If the deploy deletes that file from the host, such a tab
+  gets no tooltips until it is reloaded — a one-time glitch, and a tab that had already hovered a type link keeps the
+  copy it cached. The matching `hashmap.json` consequence above makes that same tab's page chunks 404 regardless, so a
+  reload is already required. From the next deploy on, the hashed name prevents this recurring.
