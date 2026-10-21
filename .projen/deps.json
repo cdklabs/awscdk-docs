@@ -2,207 +2,207 @@
   "dependencies": [
     {
       "name": "@aws-cdk/app-staging-synthesizer-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-amplify-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-applicationsignals-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-apprunner-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-bedrock-agentcore-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-bedrock-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-cloud9-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-codestar-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-dsql-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-ec2-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-elasticache-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-gamelift-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-glue-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-imagebuilder-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-iot-actions-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-iot-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-iotevents-actions-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-iotevents-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-ivs-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-kinesisanalytics-flink-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-lambda-go-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-lambda-python-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-location-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-mediaconnect-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-medialive-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-mediapackagev2-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-msk-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-neptune-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-pipes-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-pipes-enrichments-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-pipes-sources-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-pipes-targets-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-redshift-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-route53resolver-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-s3objectlambda-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-s3tables-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-sagemaker-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/aws-servicecatalogappregistry-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/cfn-property-mixins",
-      "version": "2.273.0",
+      "version": "2.274.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/integ-tests-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
       "name": "@aws-cdk/metrics-facade-alpha",
-      "version": "2.273.0-alpha.0",
+      "version": "2.274.0-alpha.0",
       "type": "build"
     },
     {
@@ -247,7 +247,7 @@
     },
     {
       "name": "aws-cdk-lib",
-      "version": "2.273.0",
+      "version": "2.274.0",
       "type": "build"
     },
     {
