@@ -186,13 +186,12 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-struct" text="Struct" />`, ''];
   lines.push(...renderDescription(type));
-  lines.push(...renderExtendsBar(type, linkFor));
+  lines.push(...renderExtendsBar(type, linkFor, [], usage.propsUsers.get(type.fqn) ?? []));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor }));
   }
   lines.push(...renderStructProps(type, index, linkFor, languages));
-  lines.push(...renderFqnList('Used as props by', SECTION_ANCHORS.usedAsPropsBy, usage.propsUsers.get(type.fqn) ?? [], linkFor));
   return lines.join('\n');
 }
 
@@ -290,14 +289,6 @@ function renderStructProps(
 ): string[] {
   const props = collectProperties(struct, index);
   return [anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages })];
-}
-
-function renderFqnList(title: string, id: string, fqns: string[], linkFor: LinkResolver): string[] {
-  if (fqns.length === 0) {
-    return [];
-  }
-  // Cross-reference lists repeat type names from other pages; keep them out of the Pagefind index.
-  return [anchoredHeading(2, title, id), '', ...ignoreBlock(fqns.map((fqn) => `- ${fqnLink(fqn, linkFor)}`))];
 }
 
 // ─── Navbar Type-Ahead Filter Index ───────────────────────────────────────────

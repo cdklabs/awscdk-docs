@@ -93,8 +93,8 @@ describe('symbol page generation', () => {
     expect(page).not.toContain('| **Kind** |');
     expect(page).toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
     expect(page).toContain('<code class="member-name">versioned</code>');
-    expect(page).toContain('## Used as props by');
-    expect(page).toContain('- [`Bucket`](/v2/docs/aws-cdk-lib.aws_s3.Bucket)');
+    expect(page).toContain('<span class="chain-label">used as props by</span>');
+    expect(page).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_s3.Bucket.html">Bucket</a>');
   });
 
   test('struct property types cross-link to documented types', () => {

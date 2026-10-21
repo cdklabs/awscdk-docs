@@ -47,8 +47,8 @@ bucket. Docgen counters this:
 
 - Wrap generated boilerplate in `data-pagefind-ignore` (via `ignoreBlock`):
   expandable props/property tables, facts/metadata tables, signatures,
-  inheritance breadcrumbs, and cross-reference lists ("Used as props by",
-  "Referenced by"). Symbol *lookup* is the type-ahead filter's job; full-text
+  the type-hierarchy block (including a struct's "used as props by" row),
+  and cross-reference lists ("Referenced by"). Symbol *lookup* is the type-ahead filter's job; full-text
   search should match pages a term is about. This also shrinks the index.
 - Weight the H1 symbol name with `data-pagefind-weight="10"` (via
   `weightedTitle`) so an exact title match ranks decisively first (Pagefind's

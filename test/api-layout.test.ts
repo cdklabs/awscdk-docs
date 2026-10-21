@@ -213,6 +213,43 @@ describe('API page layout', () => {
     });
   });
 
+  describe('struct props users', () => {
+    const hierarchy = (page: string): string => {
+      const start = page.indexOf('<nav class="inheritance-chain"');
+      return start === -1 ? '' : page.slice(start, page.indexOf('</nav>', start));
+    };
+
+    test('a struct used as props lists its consumers as a row of the hierarchy block', () => {
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.AppProps.md'), 'utf-8');
+      const block = hierarchy(page);
+      expect(block).toContain(
+        '<div class="chain-row" id="used-as-props-by"><span class="chain-label">used as props by</span>',
+      );
+      expect(block).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.App.html">App</a>');
+      expect(page).not.toContain('## Used as props by');
+    });
+
+    test('every consumer stays linked, including those behind the overflow disclosure', () => {
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+      const block = hierarchy(page);
+      const row = block.slice(block.indexOf('id="used-as-props-by"'));
+      expect(row).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_s3.Bucket.html">Bucket</a>');
+    });
+
+    test('a struct no class takes as props has no props-users row or heading', () => {
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.LifecycleConfigurationProperty.md'), 'utf-8');
+      expect(page).not.toContain('used as props by');
+      expect(page).not.toContain('Used as props by');
+      expect(page).not.toContain('used-as-props-by');
+    });
+
+    test('an interface that is not a struct gets no props-users row', () => {
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
+      expect(hierarchy(page)).toContain('<span class="chain-label">extends</span>');
+      expect(page).not.toContain('used as props by');
+    });
+  });
+
   describe('relationship views share one vocabulary', () => {
     const css = () =>
       readFileSync(resolve(import.meta.dirname, '../docs/.vitepress/theme/api-layout.css'), 'utf-8');
