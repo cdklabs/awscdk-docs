@@ -51,7 +51,14 @@ import {
 import { upstreamReadmeUrl } from './provenance.js';
 import { ExampleTranslations, loadTablet, RosettaTablet } from './rosetta.js';
 import { searchFilterHtml, searchKind, searchModule } from './search.js';
-import { buildServiceSidebar, isEventsSubmodule, renameChunks, SidebarEntry, SidebarItem, splitSidebarChunks } from './sidebar.js';
+import {
+  buildServiceSidebar,
+  isEventsSubmodule,
+  renameChunks,
+  SidebarEntry,
+  SidebarItem,
+  splitSidebarChunks,
+} from './sidebar.js';
 import { buildSubclassIndex } from './subclasses.js';
 import {
   buildSymbolIndex,
@@ -624,8 +631,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
 
     // Sidebar entries: one per type, grouped by service later
     for (const [submodule, entries] of groups) {
-      // A synthetic structural submodule (mixins, events) has no overview page, so its types index to the package root rather than a
-      // `…-readme` link that was never written.
+      // A synthetic structural submodule (mixins, events) has no overview page, so its types index to the
+      // package root rather than a `…-readme` link that was never written.
       const indexLink = submodule && emittedSubmodules.has(submodule)
         ? moduleReadmeLink(assembly.name, submodule)
         : moduleLink;
