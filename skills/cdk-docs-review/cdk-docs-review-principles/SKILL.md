@@ -7,24 +7,24 @@ description: "Shared foundation every cdk-docs review-dimension skill applies: t
 
 The shared base every cdk-docs review-dimension skill (`cdk-docs-general-review`, `cdk-docs-a11y-review`,
 `cdk-docs-performance-review`, `cdk-docs-agent-support-review`) applies, so these rules never drift. A
-dimension skill decides *what* it flags and how to calibrate it; it never redefines anything below.
+dimension skill decides _what_ it flags and how to calibrate it; it never redefines anything below.
 
 ## Severity: rate by the harm it does when it triggers
 
 Ask one question of every finding: **if this ships and a reader, an agent or the deploy reaches this path,
 what breaks, and how badly?** That answer sets the tier, not the wording and not how confident you are it
-triggers. Three tiers, keyed to the *kind* of harm:
+triggers. Three tiers, keyed to the _kind_ of harm:
 
 - **BLOCKING**: the harm is **damage**. Something concretely breaks: a public URL stops resolving, a page
   renders wrong or unescaped, content disappears from search, a gate goes green while the property it
   guards is gone, the deploy publishes a broken site. Must be fixed before merge.
-  - *Broken links.* A PR moves the generated page path so `/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html`
+  - _Broken links._ A PR moves the generated page path so `/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html`
     no longer exists. Every external deep link into the reference now 404s. Damage, so BLOCKING.
-  - *Hollow gate.* A new test passes with the feature it covers deleted. The suite reports protection the
+  - _Hollow gate._ A new test passes with the feature it covers deleted. The suite reports protection the
     repo does not have, so the next regression ships green. BLOCKING.
 - **RECOMMENDED**: the harm is **decay**. Nothing breaks today, but the change leaves a latent trap, a
   stale claim, or a maintenance cost that bites a later reader.
-  - *Stale docstring.* A comment still describes the layout the PR just replaced. Nothing renders wrong,
+  - _Stale docstring._ A comment still describes the layout the PR just replaced. Nothing renders wrong,
     but the next contributor reasons from a false premise. RECOMMENDED.
 - **OPTIONAL**: the harm is **negligible**. Pure polish: a naming choice, a tidier grouping with
   identical effect.
@@ -37,12 +37,12 @@ drop the palette.
 
 The tier is right only if you rate the harm honestly. Four ways it slips:
 
-- **Confidence is not severity.** Rate by the harm *when* the path is reached, not by how sure you are it
+- **Confidence is not severity.** Rate by the harm _when_ the path is reached, not by how sure you are it
   is reached. A concrete failure mechanism is never demoted to OPTIONAL "to be safe."
 - **Politeness is not severity.** A blocking issue raised as a gentle question still blocks.
-- **No harm, no finding.** Clean code reports nothing. A change that merely *touches* CSS, a URL or a test
+- **No harm, no finding.** Clean code reports nothing. A change that merely _touches_ CSS, a URL or a test
   is not a finding; a concrete new harm is.
-- **Only harm this PR introduces.** A pre-existing problem the PR merely moved does zero *new* harm.
+- **Only harm this PR introduces.** A pre-existing problem the PR merely moved does zero _new_ harm.
   Rate what the diff adds against the base the PR targets. When the base has moved since the PR opened
   (a gate task renamed, a file split), judge the PR at its merge result, not at its stale base.
 
@@ -140,12 +140,12 @@ Each dimension skill keeps its detailed rules in a `references/*-rules.md` looku
 shape: rows grouped by family, sorted BLOCKING → RECOMMENDED → OPTIONAL within each family, `[id]`s
 stable. A conditional severity is ONE rule: the row header carries the primary severity, the body states
 when it up- or down-tiers. A row marked `(doc-absent detail)` carries reviewer calibration the repo's own
-docs do not state, kept in full. All cdklabs/cdk-docs links reference `main`.
+docs do not state, kept in full. All cdklabs/awscdk-docs links reference `main`.
 
 ## Sources
 
-- [`AGENTS.md`](https://github.com/cdklabs/cdk-docs/blob/main/AGENTS.md): workflow rules 1-10, ADR
+- [`AGENTS.md`](https://github.com/cdklabs/awscdk-docs/blob/main/AGENTS.md): workflow rules 1-10, ADR
   format, spelling, constraints.
-- [`docs/adr/`](https://github.com/cdklabs/cdk-docs/tree/main/docs/adr): accepted decisions, in
+- [`docs/adr/`](https://github.com/cdklabs/awscdk-docs/tree/main/docs/adr): accepted decisions, in
   particular quality gates, publishing and hosting, SEO and agent discoverability.
-- [`.github/pull_request_template.md`](https://github.com/cdklabs/cdk-docs/blob/main/.github/pull_request_template.md).
+- [`.github/pull_request_template.md`](https://github.com/cdklabs/awscdk-docs/blob/main/.github/pull_request_template.md).

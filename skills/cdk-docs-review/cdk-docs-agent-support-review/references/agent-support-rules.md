@@ -2,7 +2,7 @@
 
 Rows are grouped by family: twins and index, signals, search, content, gate. See the
 `cdk-docs-review-principles` skill for the shared lookup convention. The contract these rows enforce is
-[`docs/adr/2026-10-15-seo-and-agent-discoverability.md`](https://github.com/cdklabs/cdk-docs/blob/main/docs/adr/2026-10-15-seo-and-agent-discoverability.md)
+[`docs/adr/2026-10-15-seo-and-agent-discoverability.md`](https://github.com/cdklabs/awscdk-docs/blob/main/docs/adr/2026-10-15-seo-and-agent-discoverability.md)
 (the SEO ADR below).
 
 ## Twins and index
