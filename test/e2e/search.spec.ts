@@ -47,6 +47,9 @@ test.describe('pagefind search', () => {
     await page.locator('.blog-search button').click();
     await page.locator('#search-input').fill('construct');
     await expect(page.locator('.search-dialog .link').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[command-group-heading]')).toHaveText(
+      `Top ${MAX_SEARCH_RESULTS} results`,
+    );
     await page.waitForLoadState('networkidle');
 
     expect(fragments.size).toBe(MAX_SEARCH_RESULTS);

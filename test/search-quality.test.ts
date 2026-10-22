@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'fs';
 import { join, resolve } from 'path';
 import * as spec from '@jsii/spec';
 import {
-  MAX_SEARCH_RESULTS,
+  MAX_SEARCH_CANDIDATES,
   parseSearchQuery,
   withQueryFilters,
 } from '../docs/.vitepress/theme/search-client.js';
@@ -164,27 +164,31 @@ describe('query token filters', () => {
     expect(calls[0][0]).toBeNull();
   });
 
-  test('withQueryFilters caps results before per-result data is loaded', async () => {
-    const expectedLimit = MAX_SEARCH_RESULTS;
-    const dataLoads = Array.from({ length: expectedLimit + 5 }, () => 0);
-    const results = dataLoads.map((_, index) => ({
-      data: async () => {
-        dataLoads[index] += 1;
-        return {};
-      },
-    }));
+  test('withQueryFilters caps both search paths without changing order or metadata', async () => {
+    const results = Array.from(
+      { length: MAX_SEARCH_CANDIDATES + 5 },
+      (_, index) => ({ index }),
+    );
+    const payload = {
+      results,
+      unfilteredResultCount: results.length + 100,
+      filters: { module: { 'aws-s3': 17 } },
+    };
     const handle = {
-      debouncedSearch: async (..._args: unknown[]) => ({ results }),
+      search: async (..._args: unknown[]) => payload,
+      debouncedSearch: async (..._args: unknown[]) => payload,
     };
+    const wrapped = withQueryFilters(handle);
 
-    const search = await withQueryFilters(handle).debouncedSearch!('bucket') as {
-      results: typeof results;
-    };
-    await Promise.all(search.results.map((result) => result.data()));
-
-    expect(search.results).toHaveLength(expectedLimit);
-    expect(dataLoads.slice(0, expectedLimit).every((loads) => loads === 1)).toBe(true);
-    expect(dataLoads.slice(expectedLimit).every((loads) => loads === 0)).toBe(true);
+    const searches = [
+      await wrapped.search!('bucket'),
+      await wrapped.debouncedSearch!('bucket'),
+    ];
+    for (const search of searches) {
+      expect(search.results).toEqual(results.slice(0, MAX_SEARCH_CANDIDATES));
+      expect(search.unfilteredResultCount).toBe(payload.unfilteredResultCount);
+      expect(search.filters).toBe(payload.filters);
+    }
   });
 
   test('withQueryFilters passes plain queries through untouched', async () => {

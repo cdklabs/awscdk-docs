@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { withFavoritesSearchBoost } from '../docs/.vitepress/theme/favorites-client.js';
 import {
   apiPathFrom,
   COLLAPSED_STORAGE_KEY,
@@ -12,6 +13,10 @@ import {
   StorageLike,
   writeCollapsed,
 } from '../docs/.vitepress/theme/favorites.js';
+import {
+  MAX_SEARCH_CANDIDATES,
+  MAX_SEARCH_RESULTS,
+} from '../docs/.vitepress/theme/search-client.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const THEME_DIR = resolve(ROOT, 'docs/.vitepress/theme');
@@ -182,6 +187,52 @@ describe('favorite pages', () => {
     test('rankFavoritesFirst is a no-op without favorites', () => {
       const items = ['a', 'b', 'c'];
       expect(rankFavoritesFirst(items, () => false)).toEqual(items);
+    });
+
+    test('search returns the first display results without loading candidates', async () => {
+      const dataLoads = Array.from({ length: MAX_SEARCH_CANDIDATES + 5 }, () => 0);
+      const results = dataLoads.map((_, index) => ({
+        data: async () => {
+          dataLoads[index] += 1;
+          return { url: `/v2/docs/pkg.Page${index}.html` };
+        },
+      }));
+      const handle = withFavoritesSearchBoost(
+        { debouncedSearch: async () => ({ results }) },
+        new FavoritesStore(new FakeStorage()),
+      );
+
+      const search = await handle.debouncedSearch!();
+
+      expect(search?.results).toEqual(results.slice(0, MAX_SEARCH_RESULTS));
+      expect(dataLoads.every((loads) => loads === 0)).toBe(true);
+    });
+
+    test('search can boost a favorite from the bounded candidate pool', async () => {
+      const dataLoads = Array.from({ length: MAX_SEARCH_CANDIDATES + 5 }, () => 0);
+      const results = dataLoads.map((_, index) => ({
+        data: async () => {
+          dataLoads[index] += 1;
+          return { url: `/v2/docs/pkg.Page${index}.html` };
+        },
+      }));
+      const store = new FavoritesStore(new FakeStorage());
+      store.add({ path: '/v2/docs/pkg.Page40', title: 'Page 40' });
+      const handle = withFavoritesSearchBoost(
+        { debouncedSearch: async () => ({ results }) },
+        store,
+      );
+
+      const search = await handle.debouncedSearch!();
+
+      expect(search?.results).toHaveLength(MAX_SEARCH_RESULTS);
+      expect(search?.results?.[0]).toBe(results[40]);
+      expect(
+        dataLoads.slice(0, MAX_SEARCH_CANDIDATES).every((loads) => loads === 1),
+      ).toBe(true);
+      expect(
+        dataLoads.slice(MAX_SEARCH_CANDIDATES).every((loads) => loads === 0),
+      ).toBe(true);
     });
 
     test('client module wraps the pagefind handle and exposes the shared store', () => {
