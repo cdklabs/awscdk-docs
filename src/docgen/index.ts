@@ -42,6 +42,7 @@ import { HISTORY_FRONTMATTER } from '../page-history.js';
 import { SITE_TITLE, STABILITY_ROUTE } from '../site-routes.js';
 import { buildMixinClassification, MixinIndex, renderMixinPage } from './mixins.js';
 import { byLevelThenName } from './ordering.js';
+import { withOutlineMembers } from './outline-members.js';
 import {
   assertOverviewsResolvable,
   overviewFor,
@@ -587,9 +588,13 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           ...submoduleSegments(assembly.name, submodule, emittedSubmodules),
           { label: entry.name },
         ]);
+        // The page's own member rows, listed in its frontmatter for the in-page outline (members are rows, not
+        // headings, so the heading-built outline cannot see them).
         emitPage(
           entry.link,
-          `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
+          withOutlineMembers(
+            `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
+          ),
           history,
         );
       }
