@@ -10,7 +10,7 @@
 import { ConstructLevel } from './constructs.js';
 import { FRAMEWORK_NAV, FrameworkNav } from './framework-nav.js';
 import { Language, translateTypeName } from './languages.js';
-import { assemblyDocId } from './links.js';
+import { assemblyDocId, moduleReadmeLink } from './links.js';
 import { byLevelThenName } from './ordering.js';
 
 export interface SidebarItem {
@@ -508,6 +508,8 @@ export function buildServiceSidebar(
   // Framework headings that keep Core's flat kind grouping instead of resource groups. Tracked as a set of keys
   // rather than matched against the heading text, because the heading is a package-qualified name, not a constant.
   const flatSections = new Set<string>();
+  // Framework section name -> package root overview link, for packages reached only through omitted submodules.
+  const packageRoots = new Map<string, string>();
   for (const entry of entries) {
     // Structural submodules (`interfaces.*`, `*.mixins`) roll into the service that owns their types; root types of
     // a standalone package group by an owner derived from the package name.
@@ -530,6 +532,16 @@ export function buildServiceSidebar(
     const list = sections.get(section) ?? [];
     list.push(entry);
     sections.set(section, list);
+    // A type whose submodule overview was omitted indexes its package root instead. That page belongs to the
+    // package, not to the service, so the package gets a Framework section to hold it — even when the package
+    // defines no root types of its own.
+    if (indexesPackageRoot(entry)) {
+      const home = frameworkSectionName(entry.assemblyName, '');
+      if (!framework.has(home)) {
+        framework.set(home, []);
+      }
+      packageRoots.set(home, entry.indexLink);
+    }
   }
 
   const sectionItems = (
@@ -538,17 +550,29 @@ export function buildServiceSidebar(
     flat: ReadonlySet<string>,
   ): SidebarItem[] => {
     const names = [...sections.keys()].sort(compare);
-    return names.map((name) => ({
-      text: name,
-      collapsed: true,
-      modules: sectionModules(sections.get(name)!),
-      items: [
-        ...overviewItems(sections.get(name)!, languages),
-        ...(flat.has(name)
-          ? kindGroups(sections.get(name)!, languages)
-          : resourceGroups(sections.get(name)!, languages)),
-      ],
-    }));
+    return names.map((name) => {
+      const list = sections.get(name)!;
+      const overviews = overviewItems(list, languages);
+      // The package root overview, for a package whose types all sit in omitted submodules. A package that also
+      // has root types already lists that page through its own entries, so it is added at most once.
+      const root = packageRoots.get(name);
+      const rootOverview: SidebarItem[] =
+        root !== undefined && !overviews.some((o) => o.link === root) ? [{ text: 'Overview', link: root }] : [];
+      const modules = sectionModules(list);
+      if (root !== undefined && list.length === 0) {
+        modules.push(assemblyDocId(name));
+      }
+      return {
+        text: name,
+        collapsed: true,
+        modules,
+        items: [
+          ...rootOverview,
+          ...overviews,
+          ...(flat.has(name) ? kindGroups(list, languages) : resourceGroups(list, languages)),
+        ],
+      };
+    });
   };
 
   const servicesCompare = (a: string, b: string): number => a.localeCompare(b);
@@ -686,6 +710,20 @@ function uniqueChunkName(text: string, used: Set<string>): string {
 }
 
 /**
+ * Whether a submodule type's index link is its package root overview rather than a page of its own submodule. Docgen
+ * does this for a submodule whose overview page it omitted (a synthetic mixin submodule): the link then names the
+ * package, so it must not be labeled as that submodule's Overview. Events submodules are excluded: their types index
+ * the package root too, but they surface no overview anywhere (see the fold-events-submodules decision record).
+ */
+function indexesPackageRoot(entry: SidebarEntry): boolean {
+  return (
+    entry.submodule !== '' &&
+    !isEventsSubmodule(entry.submodule) &&
+    entry.indexLink === moduleReadmeLink(entry.assemblyName)
+  );
+}
+
+/**
  * Overview links for a section: one leaf per distinct (sub)module page among the section's entries, rendered before
  * the resource/kind groups so a submodule's Overview page (e.g. `aws_s3` -> `/v2/docs/aws-cdk-lib.aws_s3-readme`)
  * is one click from the sidebar. The link is each entry's existing `indexLink` — the canonical module page path
@@ -698,6 +736,11 @@ function overviewItems(entries: SidebarEntry[], languages: readonly Language[]):
   const byLink = new Map<string, SidebarEntry>();
   for (const e of entries) {
     if (serviceSubmodule(e.submodule) !== e.submodule) {
+      continue;
+    }
+    // An omitted submodule's types index the package root; that page is listed once, in the package's own
+    // Framework section (see buildServiceSidebar), never as this section's Overview.
+    if (indexesPackageRoot(e)) {
       continue;
     }
     if (!byLink.has(e.indexLink)) {
