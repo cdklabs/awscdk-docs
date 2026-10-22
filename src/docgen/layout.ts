@@ -410,9 +410,9 @@ export function renderExpandableProps(
     return ['_No properties._', ''];
   }
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  // Property names and descriptions belong to the owning type-page search entry,
-  // matching methods without creating per-member results. Repeated property
-  // types stay out of the index via the member-type span in propRowHtml.
+  // Property names belong to the owning type-page search entry, matching
+  // methods without creating per-member results. Property descriptions and
+  // repeated types stay out of the index via their local ignore attributes.
   const lines: string[] = ['<div class="props-table member-list" v-pre>'];
   for (const prop of props) {
     lines.push(...renderPropRow(prop, linkFor, languages, options.anchorPrefix));
