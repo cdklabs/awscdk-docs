@@ -350,10 +350,11 @@ sidebar level tag. One label format, `<L> construct` from
 `constructLevelLabel()`, is built once at build time and emitted as a `label`
 field on the type's `type-summaries.json` entry (no second browser formatter).
 `TypeEntry.kind` keeps its `Construct (L2)` classification form, because
-`searchKind()` derives the Pagefind `kind:` filter from its first word. The
-preview chip takes the level's full triple via its own `.type-tooltip-kind-l{1,2,3}`
-class (not by retinting `--api-c-badge-*`, shared with REQUIRED/STATIC chips);
-the sidebar tag borrows only the foreground over its own composited
+`searchKind()` derives the Pagefind `kind:` filter from its first word. The preview chip takes its target page badge's full palette. Leveled constructs
+use `.type-tooltip-kind-l{1,2,3}`; page-badged kinds use
+`.type-tooltip-kind-{mixin,facade,struct,interface,enum}`. Both paths keep
+`--api-c-badge-*` unchanged because REQUIRED/STATIC chips share it. The
+sidebar tag borrows only the foreground over its own composited
 `--vp-c-default-soft` chip — see
 [sidebar navigation](./2026-10-15-sidebar-navigation.md).
 
