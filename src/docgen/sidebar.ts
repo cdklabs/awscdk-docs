@@ -79,6 +79,13 @@ export interface SidebarEntry {
    */
   readonly level?: ConstructLevel;
   /**
+   * CloudFormation resource type backing a construct (`AWS::EC2::VPC`), supplied by the caller from the same
+   * {@link cfnMetadata} resolution that fills the type page's metadata row — this module never derives it from a
+   * name. Constructs sharing a resource type group together whatever they are called; constructs without one fall
+   * back to name-stem grouping. Absent for every non-construct.
+   */
+  readonly resourceType?: string;
+  /**
    * The owning assembly's jsii stability is `experimental` — the `@aws-cdk/*-alpha` modules. Read from the assembly
    * by the caller, never inferred from the package name. Absent for stable assemblies.
    */
@@ -755,52 +762,98 @@ function isConstructKind(entry: SidebarEntry): boolean {
 }
 
 /**
- * Group a section's entries by resource: every construct defines a resource named by its stem (pairing L1
- * `CfnBucket` with L2 `Bucket`), and related types attach to the resource their stem names — exactly, or as the
- * longest resource that prefixes the stem at an uppercase boundary (`BucketPolicyProps` → BucketPolicy, not Bucket).
- * Types matching no resource (and types without dedicated pages) land in a service-level General group. Resource
- * groups are collapsed; kind headings inside them are pre-opened.
+ * Group a section's entries by resource. A construct that resolves a CloudFormation resource type groups by that
+ * type, so `CfnVPC`, `Vpc` and `VpcV2` (all `AWS::EC2::VPC`) share one group whatever their names; a construct that
+ * resolves none groups by its name stem as before (pairing L1 `CfnBucket` with L2 `Bucket`), and joins a typed group
+ * when its stem matches one of that group's constructs. Related types attach to the construct their stem names —
+ * exactly, or as the longest resource that prefixes the stem at an uppercase boundary (`BucketPolicyProps` →
+ * BucketPolicy, not Bucket) — and follow it into its group. Types matching no construct (and types without dedicated
+ * pages) land in a service-level General group. Resource groups are collapsed; kind headings inside them are
+ * pre-opened.
  */
 function resourceGroups(entries: SidebarEntry[], languages: readonly Language[]): SidebarItem[] {
-  const resources = new Set(
-    entries.filter(isConstructKind).map((e) => resourceStem(e.name)),
-  );
+  const constructs = entries.filter(isConstructKind);
 
-  const byResource = new Map<string, SidebarEntry[]>();
+  // Group key per construct: the resource type when known, else the stem. A stem-only construct whose stem a typed
+  // construct also carries joins that typed group instead of opening a second group under the same resource.
+  const keyByStem = new Map<string, string>();
+  for (const c of constructs) {
+    if (c.resourceType) {
+      keyByStem.set(resourceStem(c.name), c.resourceType);
+    }
+  }
+  const keyOf = (c: SidebarEntry): string => c.resourceType ?? keyByStem.get(resourceStem(c.name)) ?? resourceStem(c.name);
+  for (const c of constructs) {
+    const stem = resourceStem(c.name);
+    if (!keyByStem.has(stem)) {
+      keyByStem.set(stem, keyOf(c));
+    }
+  }
+  const stems = new Set(keyByStem.keys());
+
+  const byKey = new Map<string, SidebarEntry[]>();
   const general: SidebarEntry[] = [];
   for (const entry of entries) {
-    const resource = isConstructKind(entry)
-      ? resourceStem(entry.name)
-      : entry.link
-        ? resourceFor(entry.name, resources)
-        : undefined;
-    if (resource === undefined) {
+    let key: string | undefined;
+    if (isConstructKind(entry)) {
+      key = keyOf(entry);
+    } else if (entry.link) {
+      const stem = resourceFor(entry.name, stems);
+      key = stem === undefined ? undefined : keyByStem.get(stem);
+    }
+    if (key === undefined) {
       general.push(entry);
       continue;
     }
-    const list = byResource.get(resource) ?? [];
+    const list = byKey.get(key) ?? [];
     list.push(entry);
-    byResource.set(resource, list);
+    byKey.set(key, list);
+  }
+
+  // Two groups that would share a heading describe one resource to the reader, so they merge.
+  const byHeading = new Map<string, SidebarEntry[]>();
+  for (const [key, members] of byKey) {
+    const heading = groupHeading(key, members);
+    byHeading.set(heading, [...(byHeading.get(heading) ?? []), ...members]);
   }
 
   // A single resource wrapper carries no information: every symbol in the section already belongs to that resource,
   // so the heading restates the section name and buries its construct behind a click. Zero named resources is the
   // same condition (a section whose only group is `General`), so both collapse here.
-  if (byResource.size <= 1) {
+  if (byHeading.size <= 1) {
     return resourceItems(entries, languages);
   }
 
-  const groups: SidebarItem[] = [...byResource.keys()]
+  const groups: SidebarItem[] = [...byHeading.keys()]
     .sort((a, b) => a.localeCompare(b))
-    .map((resource) => ({
-      text: resource,
+    .map((heading) => ({
+      text: heading,
       collapsed: true,
-      items: resourceItems(byResource.get(resource)!, languages),
+      items: resourceItems(byHeading.get(heading)!, languages),
     }));
   if (general.length > 0) {
     groups.push({ text: GENERAL_GROUP, collapsed: true, items: kindGroups(general, languages) });
   }
   return groups;
+}
+
+/**
+ * Heading of one resource group. A name-keyed group is headed by its stem. A group keyed by CloudFormation resource
+ * type is headed by the name of its L2 construct: the one spelling the resource name — the last segment of the type,
+ * `AWS::EC2::VPC` → `VPC`, compared case-insensitively, so `Vpc` heads the VPC group over `VpcV2` and `Instance`
+ * heads the Instance group over `BastionHostLinux` — else the alphabetically first L2. With no L2 the heading is the
+ * resource name itself, which is also the L1's stem.
+ */
+function groupHeading(key: string, members: readonly SidebarEntry[]): string {
+  if (!key.includes('::')) {
+    return key;
+  }
+  const resourceName = key.slice(key.lastIndexOf('::') + 2);
+  const l2s = members
+    .filter((e) => isConstructKind(e) && e.level === 'L2')
+    .map((e) => e.name)
+    .sort((a, b) => a.localeCompare(b));
+  return l2s.find((n) => n.toLowerCase() === resourceName.toLowerCase()) ?? l2s[0] ?? resourceName;
 }
 
 /**

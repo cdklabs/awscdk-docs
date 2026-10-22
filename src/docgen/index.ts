@@ -7,6 +7,7 @@ import { hashedAssetName } from './asset-hash.js';
 import { buildFacadeIndex, buildTraitIndex } from './classification.js';
 import {
   buildTypeIndex,
+  cfnMetadata,
   constructLevel,
   ConstructLevel,
   constructLevelLabel,
@@ -133,6 +134,12 @@ export interface TypeEntry {
    * {@link kind}); absent for everything that is not a leveled construct.
    */
   readonly level?: ConstructLevel;
+  /**
+   * CloudFormation resource type backing a construct, from {@link cfnMetadata} — the same resolution that fills the
+   * page's metadata row. Carried so the sidebar groups constructs by the resource they provision instead of
+   * re-deriving it from a name; absent for non-constructs and for constructs that resolve no resource.
+   */
+  readonly resourceType?: string;
 }
 
 export function loadConfig(file: string): DocgenConfig {
@@ -640,6 +647,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           submodule,
           indexLink,
           ...(entry.level ? { level: entry.level } : {}),
+          ...(entry.resourceType ? { resourceType: entry.resourceType } : {}),
           ...(moduleLabels ? { moduleLabels } : {}),
           ...(experimental ? { experimental } : {}),
         });
@@ -810,9 +818,11 @@ function groupTypes(
 
     let kind = typeKind(type);
     let level: ConstructLevel | undefined;
+    let resourceType: string | undefined;
     if (spec.isClassType(type) && isConstruct(type.fqn, index)) {
       level = constructLevel(type, index);
       kind = level ? `Construct (${level})` : 'Construct';
+      resourceType = cfnMetadata(type, index)?.resourceType;
     } else if (mixins.has(type.fqn) || mixinClasses.has(type.fqn)) {
       kind = 'Mixin';
     } else if (facades.has(type.fqn)) {
@@ -835,6 +845,7 @@ function groupTypes(
       link,
       type,
       ...(level ? { level } : {}),
+      ...(resourceType ? { resourceType } : {}),
     };
     const list = groups.get(submodule) ?? [];
     list.push(entry);
