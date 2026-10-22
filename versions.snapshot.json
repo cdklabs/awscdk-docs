@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-21T06:08:43.645Z",
+  "generatedAt": "2026-10-22T06:08:29.981Z",
   "packages": {
     "aws-cdk-lib": {
       "dist-tags": {
@@ -19,18 +19,18 @@
     },
     "@aws-cdk/toolkit-lib": {
       "dist-tags": {
-        "latest": "1.44.0"
+        "latest": "1.44.1"
       },
       "time": {
-        "1.44.0": "2026-10-20T00:19:15.983Z"
+        "1.44.1": "2026-10-22T04:23:54.573Z"
       }
     },
     "@aws-cdk/cloud-assembly-schema": {
       "dist-tags": {
-        "latest": "55.1.0"
+        "latest": "55.2.0"
       },
       "time": {
-        "55.1.0": "2026-10-20T00:11:06.005Z"
+        "55.2.0": "2026-10-22T00:20:26.998Z"
       }
     }
   }
