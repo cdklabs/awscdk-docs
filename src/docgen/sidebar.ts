@@ -355,19 +355,31 @@ export function isServiceSubmodule(submodule: string): boolean {
 }
 
 /**
- * Structural submodule name segments. `interfaces.*` mirrors the parent package tree and `mixins` holds mixin types,
- * either as `<service>.mixins` or as a bare `mixins` submodule of a standalone package; neither is an AWS service or
- * CDK feature, so neither may surface as its own navigation branch. The jsii assembly does not flag these groupings —
- * they are regular submodules — so detection is by their reserved names.
+ * Structural submodule name segments. `interfaces.*` mirrors the parent package tree; `mixins` holds mixin types and
+ * `events` holds EventBridge event patterns, each either as `<service>.<suffix>` or as a bare suffix submodule of a
+ * standalone package. None is an AWS service or CDK feature, so none may surface as its own navigation branch. The
+ * jsii assembly does not flag these groupings — they are regular submodules — so detection is by their reserved
+ * names.
  */
 const STRUCTURAL_PREFIX = 'interfaces';
-const STRUCTURAL_SUFFIX = 'mixins';
+const STRUCTURAL_SUFFIXES = ['mixins', 'events'] as const;
+const EVENTS_SUFFIX = 'events';
+
+/**
+ * Whether a submodule is a generated `events` grouping (`aws_ec2.events`, or a bare `events`): the EventBridge event
+ * patterns of a service. Its types fold into the owning service like any structural submodule, and the sidebar
+ * places them by {@link resourceGroups}' events rule rather than by name.
+ */
+export function isEventsSubmodule(submodule: string): boolean {
+  return submodule === EVENTS_SUFFIX || submodule.endsWith(`.${EVENTS_SUFFIX}`);
+}
 
 /**
  * The service/feature submodule that owns a (possibly structural) submodule's types. Strips the structural
- * `interfaces.` mirror prefix and the per-service `.mixins` suffix so `interfaces.aws_s3` and `aws_s3.mixins` both
- * resolve to `aws_s3`, and the bare `interfaces` and `mixins` submodules resolve to the module root. Non-structural
- * submodules pass through unchanged. Grouping only; page URLs and cross-reference links are untouched.
+ * `interfaces.` mirror prefix and the per-service `.mixins` / `.events` suffixes so `interfaces.aws_s3`,
+ * `aws_s3.mixins` and `aws_s3.events` all resolve to `aws_s3`, and the bare `interfaces`, `mixins` and `events`
+ * submodules resolve to the module root. Non-structural submodules pass through unchanged. Grouping only; page URLs
+ * and cross-reference links are untouched.
  */
 export function serviceSubmodule(submodule: string): string {
   let owner = submodule;
@@ -376,10 +388,12 @@ export function serviceSubmodule(submodule: string): string {
   } else if (owner.startsWith(`${STRUCTURAL_PREFIX}.`)) {
     owner = owner.slice(STRUCTURAL_PREFIX.length + 1);
   }
-  if (owner === STRUCTURAL_SUFFIX) {
-    owner = '';
-  } else if (owner.endsWith(`.${STRUCTURAL_SUFFIX}`)) {
-    owner = owner.slice(0, -(STRUCTURAL_SUFFIX.length + 1));
+  for (const suffix of STRUCTURAL_SUFFIXES) {
+    if (owner === suffix) {
+      owner = '';
+    } else if (owner.endsWith(`.${suffix}`)) {
+      owner = owner.slice(0, -(suffix.length + 1));
+    }
   }
   return owner;
 }
@@ -768,7 +782,8 @@ function isConstructKind(entry: SidebarEntry): boolean {
  * when its stem matches one of that group's constructs. Related types attach to the construct their stem names —
  * exactly, or as the longest resource that prefixes the stem at an uppercase boundary (`BucketPolicyProps` →
  * BucketPolicy, not Bucket) — and follow it into its group. Types matching no construct (and types without dedicated
- * pages) land in a service-level General group. Resource groups are collapsed; kind headings inside them are
+ * pages) land in a service-level General group, as do the non-facade types of an events submodule, which never
+ * attach by name (see the events rule inside). Resource groups are collapsed; kind headings inside them are
  * pre-opened.
  */
 function resourceGroups(entries: SidebarEntry[], languages: readonly Language[]): SidebarItem[] {
@@ -794,8 +809,15 @@ function resourceGroups(entries: SidebarEntry[], languages: readonly Language[])
   const byKey = new Map<string, SidebarEntry[]>();
   const general: SidebarEntry[] = [];
   for (const entry of entries) {
+    // Events rule: a type from an events submodule is placed by what it IS, not by what it is called. A facade
+    // (`InstanceEvents`) fronts a connected resource and attaches to it through the stem match below; every other
+    // event type collects in the General group's Events heading, even when its name happens to start with a
+    // resource's stem — an event pattern class is not a type OF that resource.
+    const generalEvent = isEventsSubmodule(entry.submodule) && entry.kind !== 'Facade';
     let key: string | undefined;
-    if (isConstructKind(entry)) {
+    if (generalEvent) {
+      key = undefined;
+    } else if (isConstructKind(entry)) {
       key = keyOf(entry);
     } else if (entry.link) {
       const stem = resourceFor(entry.name, stems);
@@ -893,9 +915,10 @@ function resourceFor(name: string, resources: Set<string>): string | undefined {
 }
 
 /**
- * Partition entries into Constructs / Mixins / Facades / Traits / Others, in the design guidelines' building-block
- * order: facades are the resource-specific integration classes (`BucketGrants`), traits the service-agnostic
- * capability contracts (`IResourceWithPolicyV2` and its factory). Groups with no members are omitted. All kind
+ * Partition entries into Constructs / Mixins / Facades / Traits / Events / Others, in the design guidelines'
+ * building-block order: facades are the resource-specific integration classes (`BucketGrants`), traits the
+ * service-agnostic capability contracts (`IResourceWithPolicyV2` and its factory), events the non-facade types of an
+ * events submodule (see {@link isEventsSubmodule}). Groups with no members are omitted. All kind
  * headings start collapsed: inside a resource the constructs are already listed directly (see {@link resourceItems}),
  * so the kind groups only hold the supporting types, hidden by default.
  */
@@ -904,12 +927,17 @@ function kindGroups(
   languages: readonly Language[],
 ): SidebarItem[] {
   const collapsed = true;
+  // Non-facade types of an events submodule — the event pattern classes and their nested detail structs — form
+  // their own Events heading instead of scattering across Others by jsii kind.
+  const isEvent = (e: SidebarEntry) => isEventsSubmodule(e.submodule) && e.kind !== 'Facade';
   const constructs = entries.filter((e) => e.kind.startsWith('Construct'));
   const mixins = entries.filter((e) => e.kind === 'Mixin');
   const facades = entries.filter((e) => e.kind === 'Facade');
   const traits = entries.filter((e) => e.kind === 'Trait');
+  const events = entries.filter(isEvent);
   const others = entries.filter(
-    (e) => !e.kind.startsWith('Construct') && e.kind !== 'Mixin' && e.kind !== 'Facade' && e.kind !== 'Trait',
+    (e) => !e.kind.startsWith('Construct') && e.kind !== 'Mixin' && e.kind !== 'Facade' && e.kind !== 'Trait'
+      && !isEvent(e),
   );
 
   const groups: SidebarItem[] = [];
@@ -924,6 +952,9 @@ function kindGroups(
   }
   if (traits.length > 0) {
     groups.push({ text: 'Traits', collapsed, kindGroup: true, items: linkedItems(traits, languages) });
+  }
+  if (events.length > 0) {
+    groups.push({ text: 'Events', collapsed, kindGroup: true, items: linkedItems(events, languages) });
   }
   if (others.length > 0) {
     groups.push({ text: 'Others', collapsed, kindGroup: true, items: otherItems(others, languages) });

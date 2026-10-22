@@ -1,4 +1,4 @@
-import { assemblyOwner, buildServiceSidebar, CONSTRUCTS_SECTION, frameworkSectionCompare, frameworkSectionName, FRAMEWORK_SECTION, isConstructsPackage, isCore, isServiceSubmodule, resourceStem, sectionName, SERVICES_SECTION, serviceSubmodule, shortTypeName, SidebarEntry, SidebarItem, splitSidebarChunks } from '../src/docgen/sidebar.js';
+import { assemblyOwner, buildServiceSidebar, CONSTRUCTS_SECTION, frameworkSectionCompare, frameworkSectionName, FRAMEWORK_SECTION, isConstructsPackage, isCore, isEventsSubmodule, isServiceSubmodule, resourceStem, sectionName, SERVICES_SECTION, serviceSubmodule, shortTypeName, SidebarEntry, SidebarItem, splitSidebarChunks } from '../src/docgen/sidebar.js';
 
 function entry(overrides: Partial<SidebarEntry>): SidebarEntry {
   return {
@@ -180,6 +180,15 @@ describe('serviceSubmodule', () => {
     expect(serviceSubmodule('mixins')).toBe('');
   });
 
+  test('strips the per-service events suffix to the owning service', () => {
+    expect(serviceSubmodule('aws_dlm.events')).toBe('aws_dlm');
+    expect(serviceSubmodule('aws_ec2.events')).toBe('aws_ec2');
+  });
+
+  test('the bare events submodule folds to the module root', () => {
+    expect(serviceSubmodule('events')).toBe('');
+  });
+
   test('service and feature submodules pass through unchanged', () => {
     expect(serviceSubmodule('aws_s3')).toBe('aws_s3');
     expect(serviceSubmodule('aws_s3_deployment')).toBe('aws_s3_deployment');
@@ -191,6 +200,20 @@ describe('serviceSubmodule', () => {
     // Only the exact structural segment counts, not substrings.
     expect(serviceSubmodule('interfaces_v2')).toBe('interfaces_v2');
     expect(serviceSubmodule('aws_mixinsvc')).toBe('aws_mixinsvc');
+    expect(serviceSubmodule('aws_events')).toBe('aws_events');
+    expect(serviceSubmodule('aws_events_targets')).toBe('aws_events_targets');
+  });
+});
+
+describe('isEventsSubmodule', () => {
+  test('matches the per-service and bare events groupings only', () => {
+    expect(isEventsSubmodule('aws_ec2.events')).toBe(true);
+    expect(isEventsSubmodule('events')).toBe(true);
+    // The EventBridge service module itself is a real service, not a generated events grouping.
+    expect(isEventsSubmodule('aws_events')).toBe(false);
+    expect(isEventsSubmodule('aws_events_targets')).toBe(false);
+    expect(isEventsSubmodule('aws_ec2.mixins')).toBe(false);
+    expect(isEventsSubmodule('')).toBe(false);
   });
 });
 
@@ -861,6 +884,87 @@ describe('buildServiceSidebar', () => {
         ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
       ]));
       expect(JSON.stringify(sidebar)).not.toContain('AWS::');
+    });
+  });
+
+  describe('events submodules fold under their service', () => {
+    const PKG = '@aws-cdk/mixins-preview';
+    const ec2Event = (overrides: Partial<SidebarEntry>) =>
+      entry({
+        assemblyName: PKG,
+        submodule: 'aws_ec2.events',
+        indexLink: '/v2/docs/@aws-cdk_mixins-preview-readme',
+        kind: 'Class',
+        ...overrides,
+      });
+    const ec2 = (overrides: Partial<SidebarEntry>) =>
+      entry({ submodule: 'aws_ec2', indexLink: '/api/modules/aws-cdk-lib/aws-ec2', ...overrides });
+
+    test('an events submodule is not a section of its own and surfaces no overview', () => {
+      const sidebar = buildServiceSidebar([
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance' }),
+        ec2({ name: 'Volume', kind: 'Construct (L2)', level: 'L2', link: '/volume' }),
+        ec2Event({ name: 'EC2InstanceStateChangeNotification', link: '/ec2-instance-state-change' }),
+      ]);
+      const sections = sidebar.flatMap((top) => top.items ?? []).map((s) => s.text);
+      expect(sections).toEqual(['EC2']);
+      const ec2Section = sidebar.flatMap((top) => top.items ?? [])[0];
+      const overviews = ec2Section.items!.filter((i) => i.text.startsWith('Overview'));
+      expect(overviews.map((i) => i.link)).toEqual(['/api/modules/aws-cdk-lib/aws-ec2']);
+    });
+
+    test('a facade from the events submodule attaches to the resource it fronts', () => {
+      // `InstanceEvents.fromInstance(IInstanceRef)` is classified a Facade by the caller; the stem `Instance`
+      // places it with the Instance construct, under the resource's Facades heading.
+      const sidebar = sidebarSections([
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance' }),
+        ec2({ name: 'Volume', kind: 'Construct (L2)', level: 'L2', link: '/volume' }),
+        ec2Event({ name: 'InstanceEvents', kind: 'Facade', link: '/instance-events' }),
+      ]);
+      const instance = sidebar[0].items!.find((g) => g.text === 'Instance')!;
+      expect(instance.items!.map((g) => g.text)).toEqual(['Instance', 'Facades']);
+      expect(instance.items!.find((g) => g.text === 'Facades')!.items!.map((i) => i.link)).toEqual(['/instance-events']);
+      expect(sidebar[0].items!.map((g) => g.text)).not.toContain('General');
+    });
+
+    test('non-facade event types collect under General > Events, even when a resource stem prefixes their name', () => {
+      const sidebar = sidebarSections([
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance' }),
+        ec2({ name: 'Volume', kind: 'Construct (L2)', level: 'L2', link: '/volume' }),
+        ec2({ name: 'VolumeProps', kind: 'Struct', link: '/volume-props' }),
+        // Would attach to Instance by stem if it were an ordinary type; it is an event pattern, not an Instance type.
+        ec2Event({ name: 'InstanceStateChange', link: '/instance-state-change' }),
+        ec2Event({ name: 'EBSVolumeNotification', link: '/ebs-volume-notification' }),
+        // Nested detail struct of an event class follows its class into Events, not Others.
+        ec2Event({ name: 'EBSVolumeNotification.EBSVolumeNotificationProps', kind: 'Struct', link: '/ebs-volume-props' }),
+      ]);
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toEqual(['Overview', 'Instance', 'Volume', 'General']);
+      const instance = sidebar[0].items!.find((g) => g.text === 'Instance')!;
+      expect(instance.items!.map((i) => i.text)).toEqual(['Instance']);
+      const general = sidebar[0].items!.find((g) => g.text === 'General')!;
+      expect(general.items!.map((g) => g.text)).toEqual(['Events']);
+      const events = general.items!.find((g) => g.text === 'Events')!;
+      expect(events.kindGroup).toBe(true);
+      expect(events.items!.map((i) => i.text)).toEqual([
+        'EBSVolumeNotification', 'EBSVolumeNotification.EBSVolumeNotificationProps', 'InstanceStateChange',
+      ]);
+      // Ordinary types still attach by stem.
+      const volume = sidebar[0].items!.find((g) => g.text === 'Volume')!;
+      expect(volume.items!.find((g) => g.text === 'Others')!.items!.map((i) => i.text)).toEqual(['VolumeProps']);
+    });
+
+    test('events sit beside Others inside General and in a collapsed single-resource section', () => {
+      const sidebar = sidebarSections([
+        entry({ submodule: 'aws_dlm', indexLink: '/api/modules/aws-cdk-lib/aws-dlm', name: 'CfnLifecyclePolicy', kind: 'Construct (L1)', level: 'L1', link: '/cfn-lifecycle-policy' }),
+        entry({ submodule: 'aws_dlm', indexLink: '/api/modules/aws-cdk-lib/aws-dlm', name: 'CfnLifecyclePolicyProps', kind: 'Struct', link: '/cfn-lifecycle-policy-props' }),
+        entry({ submodule: 'aws_dlm', indexLink: '/api/modules/aws-cdk-lib/aws-dlm', name: 'UnrelatedEnum', kind: 'Enum', link: '/unrelated' }),
+        entry({ assemblyName: PKG, submodule: 'aws_dlm.events', indexLink: '/v2/docs/@aws-cdk_mixins-preview-readme', name: 'DLMPolicyStateChange', kind: 'Class', link: '/dlm-policy-state-change' }),
+      ]);
+      // One resource: the wrapper collapses, so the kind headings sit at section level.
+      expect(sidebar[0].items!.map((g) => g.text)).toEqual(['Overview', 'CfnLifecyclePolicy', 'Events', 'Others']);
+      expect(sidebar[0].items!.find((g) => g.text === 'Events')!.items!.map((i) => i.text)).toEqual(['DLMPolicyStateChange']);
+      expect(sidebar[0].items!.find((g) => g.text === 'Others')!.items!.map((i) => i.text)).toEqual(['CfnLifecyclePolicyProps', 'UnrelatedEnum']);
     });
   });
 
