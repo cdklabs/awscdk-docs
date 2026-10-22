@@ -23,6 +23,10 @@ const LONG_HREF = `/v2/docs/aws-cdk-lib.aws_sso.${LONG_NAME}.html`;
 test.describe('link hover preview', () => {
   async function preview(page: Page, link: Locator): Promise<Locator> {
     await link.scrollIntoViewIfNeeded();
+    // Chromium delivers the async scroll event just after the hover, and the
+    // theme's scroll listener hides the preview it belongs to. Let it drain
+    // first, as type-tooltips.spec.ts does.
+    await page.waitForTimeout(200);
     await link.hover();
     const tooltip = page.locator('#api-type-tooltip');
     // The first hover of the session fetches and parses the whole summary
