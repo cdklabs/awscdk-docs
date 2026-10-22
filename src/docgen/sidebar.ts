@@ -631,7 +631,8 @@ function overviewItems(entries: SidebarEntry[], languages: readonly Language[]):
     }
   }
   // The primary aws-cdk-lib service module leads, then the existing stable
-  // canonical-package and link order handles every related overview.
+  // canonical-package and link order handles every related overview. Requiring
+  // a service token keeps bare `aws` or `alexa` module names out of this tier.
   const chosen = [...byLink.entries()].sort(([aLink, a], [bLink, b]) => {
     const primary = (e: SidebarEntry) => {
       const [prefix, service, ...suffix] = e.submodule.split('_');
