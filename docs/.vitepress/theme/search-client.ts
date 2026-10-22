@@ -293,10 +293,11 @@ function renderModuleHint(text: string | undefined): void {
     return;
   }
   // The live region stays in the dialog once created, empty when there is nothing
-  // to say (the stylesheet hides it then): screen readers only announce a polite
-  // region that already existed before its text arrived, so the first message is
-  // written on the next frame, and an unchanged message is not rewritten, which
-  // would re-announce it on every keystroke.
+  // to say (the stylesheet collapses it then, keeping it in the accessibility
+  // tree): screen readers only announce a polite region that already existed
+  // before its text arrived, so the first message is written on the next frame,
+  // and an unchanged message is not rewritten, which would re-announce it on
+  // every keystroke.
   const next = text ?? "";
   let hint = dialog.querySelector(`.${MODULE_HINT_CLASS}`);
   if (!hint) {

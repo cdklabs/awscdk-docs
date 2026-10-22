@@ -357,7 +357,11 @@
   line-height: 1.5;
 }
 
-/* The live region persists empty between messages so it is announced reliably; it takes no room then. */
+/* The live region persists empty between messages so it is announced reliably. While empty it takes no
+   room but stays in the accessibility tree -- `display: none` would remove it, and a region that appears
+   and fills in the same frame is announced unreliably. */
 .search-dialog .search-module-hint:empty {
-  display: none;
+  padding: 0;
+  height: 0;
+  overflow: hidden;
 }

@@ -131,17 +131,27 @@ test.describe('pagefind search', () => {
     });
 
     test('a module that matches nothing shows close module names instead of results', async ({ page }) => {
-      await search(page, 'module:snss topic');
+      // The live region exists, empty, before its first message -- and stays in the accessibility tree
+      // (collapsed, not display:none), or a polite region appearing with its text would not be announced.
+      await search(page, 'module:sns topic');
       const hint = page.locator(`.search-dialog .${MODULE_HINT_CLASS}`);
+      await expect(page.locator('.search-dialog .link').first()).toBeVisible({ timeout: 15_000 });
+      await expect(hint).toBeAttached();
+      await expect(hint).toHaveAttribute('role', 'status');
+      await expect(hint).toHaveText('');
+      expect(await hint.evaluate((el) => getComputedStyle(el).display)).not.toBe('none');
+
+      await page.locator('#search-input').fill('module:snss topic');
       await expect(hint).toBeVisible({ timeout: 15_000 });
       await expect(hint).toContainText('No module matches module:snss');
       await expect(hint).toContainText('aws-sns');
       await expect(page.locator('.search-dialog .link')).toHaveCount(0);
-      // Correcting the token clears the hint; the live region stays, empty and hidden.
+      // Correcting the token clears the hint; the live region stays, empty and collapsed.
       await page.locator('#search-input').fill('module:sns topic');
       await expect(page.locator('.search-dialog .link').first()).toBeVisible({ timeout: 15_000 });
       await expect(hint).toHaveText('');
       await expect(hint).toBeHidden();
+      expect(await hint.evaluate((el) => getComputedStyle(el).display)).not.toBe('none');
     });
   });
 
