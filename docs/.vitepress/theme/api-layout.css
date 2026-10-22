@@ -470,8 +470,14 @@ a.chain-item:hover {
 }
 
 .member-list .member-row {
-  border-bottom: 1px solid var(--vp-c-divider);
-  padding: 7px 0;
+  /* Separator uses the stronger --vp-c-border rather than --vp-c-divider so the
+     boundary between members is clearly visible, especially in dark mode where
+     --vp-c-divider is very low contrast. Width stays 1px. Vertical padding is
+     10px (up from 7px) to give the rows more breathing room; both changes apply
+     to Properties and Methods rows, which share this selector. The density
+     contract in test/density.test.ts is updated to match (maintainer-approved). */
+  border-bottom: 1px solid var(--vp-c-border);
+  padding: 10px 0;
 }
 
 .member-list .member-row:last-child {
