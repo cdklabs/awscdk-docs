@@ -727,7 +727,7 @@ describe('API page layout', () => {
       // easy to miss, so these two headings take the base (non-mono) heading
       // font, the standard heading color, and a size/weight clearly above a
       // symbol name. rulesFor() fails outright if the rule is absent.
-      const NAME_SIZE_REM = 0.875; // .member-list .member-row font-size
+      const NAME_SIZE_REM = 0.875; // .member-list .member-line font-size
       const NAME_WEIGHT = 600; // .member-signature .sig-name font-weight
       for (const anchor of ['#properties', '#methods']) {
         const rules = rulesFor(css(), `h2${anchor}`);
