@@ -16,7 +16,7 @@ on:
   merge_group: {}
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -78,6 +78,7 @@ jobs:
           overwrite: true
     if: github.ref == 'refs/heads/main'
   build:
+    name: build-docs
     runs-on: codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: read

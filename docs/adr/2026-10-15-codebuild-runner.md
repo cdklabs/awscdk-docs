@@ -35,8 +35,9 @@ Build the site in a single `build` job of `deploy-and-release.yml` on a self-hos
   Pagefind, verifies it and packages the site as the versioned S3 zip with `scripts/package-site.sh`. Packaging
   fails when the zip exceeds 900 MB. The publish job depends on `build` directly
   ([publishing and hosting](./2026-10-15-publishing-and-hosting.md)).
-- **Required check.** `build` is the required status check, so a failed shard fails it directly with the shard's
-  log tail and nothing downstream can be skipped into a pass.
+- **Required check.** The job is named `build-docs`, and that is the required status check, so a failed shard fails
+  it directly with the shard's log tail and nothing downstream can be skipped into a pass. The name keeps it apart
+  from the `build` check of projen's `build.yml`, which is required too and would otherwise share its name.
 
 ### Trust model
 

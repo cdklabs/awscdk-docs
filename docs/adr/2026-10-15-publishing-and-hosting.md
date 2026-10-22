@@ -61,6 +61,11 @@ in `.projenrc.ts`:
 Commits whose queued runs are canceled by the concurrency group get no
 individual release; their changes land in the next successful run's changelog.
 
+Pull request runs cancel instead of queueing: a new push to a pull request
+cancels the build still running for its previous commit, which would only
+delay the latest one. Every other event keeps `cancel-in-progress` off, so
+runs on `main` are never interrupted mid-deploy.
+
 ### S3 versioned-zip target
 
 A projen component, `projenrc/s3-docs-publishing.ts` (`S3DocsPublishing`),
