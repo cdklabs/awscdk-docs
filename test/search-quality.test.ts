@@ -75,10 +75,11 @@ describe('generated pages carry search relevance markup', () => {
     });
     expect(page).toContain('# <span data-pagefind-weight="10">Bucket</span>');
     // Property names are indexable in their owning type-page entry, while
-    // property summaries, repeated types, and metadata source values stay out.
+    // property summaries, repeated types, defaults, and metadata sources stay out.
     expect(page).toContain('<div class="props-table member-list" v-pre>');
     expect(page).not.toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
     expect(page).toMatch(/<code class="member-name">\w+<\/code><span class="member-type" data-pagefind-ignore /);
+    expect(page).toMatch(/<span class="member-default" data-pagefind-ignore>/);
     expect(page).toMatch(/<div class="member-summary" data-pagefind-ignore>/);
     expect(page).toMatch(/<a class="type-metadata-source" data-pagefind-ignore [^>]*><code>aws-s3\/lib\/bucket\.ts<\/code><\/a>/);
     expect(page).toMatch(/<dd class="type-metadata-value"><a href="[^"]*aws-resource-s3-bucket\.html"[^>]*><code>AWS::S3::Bucket<\/code><\/a><\/dd>/);

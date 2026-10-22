@@ -430,10 +430,10 @@ describe('API page layout', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
       // A value default (one token, within budget) renders inline as `= value`
       // with no title and no ellipsis.
-      expect(page).toMatch(/<span class="member-default">= [^<\s]+<\/span>/);
+      expect(page).toMatch(/<span class="member-default" data-pagefind-ignore>= [^<\s]+<\/span>/);
       // The inline chip never carries a space — a spaced default is prose and
       // goes on its own `Default:` line instead, not in the header.
-      const inline = [...page.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)].map((m) => m[1]);
+      const inline = [...page.matchAll(/<span class="member-default" data-pagefind-ignore>= ([^<]*)<\/span>/g)].map((m) => m[1]);
       expect(inline.length).toBeGreaterThan(0);
       for (const v of inline) {
         expect(v).not.toMatch(/\s/);
@@ -478,7 +478,7 @@ describe('API page layout', () => {
      */
     test('a prose-form default loses its marker rather than rendering "= -"', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      const defaults = [...page.matchAll(/<span class="member-default">= ([^<]+)<\/span>/g)]
+      const defaults = [...page.matchAll(/<span class="member-default" data-pagefind-ignore>= ([^<]+)<\/span>/g)]
         .map((m) => m[1]);
       expect(defaults.length).toBeGreaterThan(0);
       for (const value of defaults) {
@@ -504,7 +504,7 @@ describe('API page layout', () => {
       // Header spans carry only VALUE defaults now: `-1` qualifies (one token,
       // no space); `- No display name` strips to `No display name`, which has
       // spaces and is therefore prose; a bare `-` produces nothing.
-      const shown = [...out.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)]
+      const shown = [...out.matchAll(/<span class="member-default" data-pagefind-ignore>= ([^<]*)<\/span>/g)]
         .map((m) => m[1]);
       expect(shown).toEqual(['-1']);
       // The stripped prose default shows in full on its own `Default:` line.
@@ -554,7 +554,7 @@ describe('API page layout', () => {
         () => undefined,
       ).join('\n');
       // Only the within-budget token is an inline chip.
-      const inline = [...out.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)].map((m) => m[1]);
+      const inline = [...out.matchAll(/<span class="member-default" data-pagefind-ignore>= ([^<]*)<\/span>/g)].map((m) => m[1]);
       expect(inline).toEqual([value]);
       // Both prose defaults render in full on their own line, untruncated.
       expect(out).toContain(`**Default:** ${phrase}`);

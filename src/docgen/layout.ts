@@ -485,7 +485,7 @@ function propRowHtml(
     // own always-visible `Default:` line below (see renderPropRow), so the
     // reader never has to expand the row to read it.
     parts.push(
-      `<span class="member-default">= ${escHtml(fullDefault)}</span>`,
+      `<span class="member-default" data-pagefind-ignore>= ${escHtml(fullDefault)}</span>`,
     );
   }
   if (!prop.optional) {
