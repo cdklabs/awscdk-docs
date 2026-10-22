@@ -18,7 +18,7 @@ and the decision records in [`docs/adr/`](../../docs/adr/).
 Install all five together, because the other four apply `cdk-docs-review-principles`.
 
 ```sh
-npx skills add cdklabs/cdk-docs --skill '*' -g
+npx skills add cdklabs/awscdk-docs --skill '*' -g
 ```
 
 `-g` installs for your user instead of into the current directory. From a cdk-docs checkout:
