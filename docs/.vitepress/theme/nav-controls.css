@@ -348,3 +348,11 @@
   width: 100%;
   justify-content: center;
 }
+
+/* Hint under the search results when a `module:` value selects no module or no results (search-client.ts). */
+.search-dialog .search-module-hint {
+  padding: 8px 16px 12px;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}

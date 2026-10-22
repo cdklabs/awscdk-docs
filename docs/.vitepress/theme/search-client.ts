@@ -9,7 +9,13 @@
 // Filters: docgen tags every API page with `module:` / `kind:` Pagefind filters,
 // but the plugin's search UI always passes empty options. `withQueryFilters()`
 // wraps the search handle to parse `module:aws-s3` / `kind:construct` tokens out
-// of the query text and forward them as real Pagefind filters.
+// of the query text and forward them as real Pagefind filters. A `module:` value
+// is forgiving: readers see `aws_s3` in the sidebar and in import paths while the
+// index stores `aws-s3`, so the typed value is normalized and then matched against
+// the module list Pagefind reports, exactly first and by word prefix otherwise.
+
+/** Pagefind's `filters()` payload: filter key -> value -> page count. */
+type FilterCounts = Record<string, Record<string, number>>;
 
 interface SearchHandleLike {
   search?(text: string | null, options?: SearchOptions): Promise<unknown>;
@@ -18,6 +24,7 @@ interface SearchHandleLike {
     options?: SearchOptions,
     delay?: number,
   ): Promise<unknown>;
+  filters?(): Promise<FilterCounts>;
   init?(): unknown;
   options?(config: Record<string, unknown>): Promise<unknown>;
 }
@@ -66,8 +73,11 @@ function limitSearchCandidates<T>(search: T): T {
   } as T;
 }
 
+/** A Pagefind filter value list, or its compound `any` form for a forgiving match. */
+type FilterValues = string[] | { any: string[] };
+
 interface SearchOptions {
-  filters?: Record<string, string[]>;
+  filters?: Record<string, FilterValues>;
   [key: string]: unknown;
 }
 
@@ -82,9 +92,20 @@ export interface ParsedSearchQuery {
 }
 
 /**
+ * Normalize a typed `module:` value to the slug shape the index stores
+ * (`searchModule` in docgen): lowercase, `_` and `/` become `-`, and a
+ * leading `@` is dropped, so `module:aws_s3`, `module:@aws-cdk/aws-s3-alpha`
+ * and `module:AWS-S3` all name what the sidebar and import paths show.
+ */
+export function normalizeModuleValue(value: string): string {
+  return value.toLowerCase().replace(/^@/, "").replace(/[/_]/g, "-");
+}
+
+/**
  * Split `module:` / `kind:` tokens out of a raw query string. Tokens
  * with an empty value ("module:") and unknown keys ("foo:bar") are left
- * in the text untouched.
+ * in the text untouched. Module values are normalized; kind values are
+ * only lowercased and match exactly.
  */
 export function parseSearchQuery(raw: string): ParsedSearchQuery {
   const filters: Record<string, string[]> = {};
@@ -93,7 +114,8 @@ export function parseSearchQuery(raw: string): ParsedSearchQuery {
     const m = /^([a-z]+):(.+)$/i.exec(word);
     const key = m?.[1].toLowerCase();
     if (m && key && FILTER_KEYS.has(key)) {
-      (filters[key] ??= []).push(m[2].toLowerCase());
+      const value = key === "module" ? normalizeModuleValue(m[2]) : m[2].toLowerCase();
+      (filters[key] ??= []).push(value);
     } else if (word) {
       rest.push(word);
     }
@@ -101,14 +123,232 @@ export function parseSearchQuery(raw: string): ParsedSearchQuery {
   return { text: rest.join(" "), filters };
 }
 
+/**
+ * Known modules a typed `module:` value selects. An exact match selects
+ * that module only. Otherwise every known module whose hyphen-separated
+ * words contain the typed words in order, each as a prefix, is selected:
+ * `s3` selects `aws-s3`, `aws-s3-assets`, `aws-s3-deployment` and
+ * `aws-s3tables-alpha`; `lambda-python` selects `aws-lambda-python-alpha`.
+ * Empty when nothing matches.
+ */
+export function matchModules(typed: string, known: readonly string[]): string[] {
+  if (known.includes(typed)) {
+    return [typed];
+  }
+  const wanted = typed.split("-").filter(Boolean);
+  if (wanted.length === 0) {
+    return [];
+  }
+  return known.filter((module) => {
+    const words = module.split("-");
+    let at = 0;
+    for (const prefix of wanted) {
+      while (at < words.length && !words[at].startsWith(prefix)) {
+        at++;
+      }
+      if (at >= words.length) {
+        return false;
+      }
+      at++;
+    }
+    return true;
+  });
+}
+
+/** Levenshtein distance, for the closest-module hint. */
+function editDistance(a: string, b: string): number {
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+/** How many close module names the no-match hint offers. */
+export const MODULE_HINT_LIMIT = 5;
+
+/**
+ * Up to {@link MODULE_HINT_LIMIT} known modules closest to a typed value
+ * that matched nothing: modules containing the typed text first, then by
+ * the smallest edit distance between the typed text and any module word.
+ */
+export function closeModules(typed: string, known: readonly string[]): string[] {
+  const score = (module: string): number => {
+    if (module.includes(typed)) {
+      return 0;
+    }
+    return Math.min(editDistance(typed, module), ...module.split("-").map((w) => editDistance(typed, w)));
+  };
+  return [...known]
+    .map((module) => ({ module, score: score(module) }))
+    .sort((a, b) => a.score - b.score || a.module.localeCompare(b.module))
+    .slice(0, MODULE_HINT_LIMIT)
+    .map((entry) => entry.module);
+}
+
+/** Resolved `module:` filters: what to pass to Pagefind, or the values nothing matched. */
+interface ModuleResolution {
+  filter?: FilterValues;
+  unmatched: string[];
+}
+
+/**
+ * Turn typed module values into Pagefind filter values against the known
+ * module list. Several typed values union. Without a known list (an engine
+ * that cannot report filters) the normalized values pass through as-is.
+ */
+function resolveModules(typed: string[], known: readonly string[] | undefined): ModuleResolution {
+  if (!known) {
+    return { filter: typed, unmatched: [] };
+  }
+  const selected = new Set<string>();
+  const unmatched: string[] = [];
+  for (const value of typed) {
+    const matches = matchModules(value, known);
+    if (matches.length === 0) {
+      unmatched.push(value);
+    }
+    for (const match of matches) {
+      selected.add(match);
+    }
+  }
+  if (selected.size === 0) {
+    return { unmatched };
+  }
+  const values = [...selected];
+  return { filter: values.length === 1 ? values : { any: values }, unmatched };
+}
+
+/** Module list the loaded engine reports, read once per handle. */
+const knownModulesByHandle = new WeakMap<object, Promise<string[] | undefined>>();
+
+function knownModules(handle: SearchHandleLike): Promise<string[] | undefined> {
+  if (typeof handle.filters !== "function") {
+    return Promise.resolve(undefined);
+  }
+  let pending = knownModulesByHandle.get(handle);
+  if (!pending) {
+    pending = handle
+      .filters()
+      .then((counts) => Object.keys(counts?.module ?? {}))
+      .catch(() => undefined);
+    knownModulesByHandle.set(handle, pending);
+  }
+  return pending;
+}
+
 function mergeOptions(
   options: SearchOptions | undefined,
-  filters: Record<string, string[]>,
+  filters: Record<string, FilterValues>,
 ): SearchOptions {
   if (Object.keys(filters).length === 0) {
     return options ?? {};
   }
   return { ...options, filters: { ...options?.filters, ...filters } };
+}
+
+/** Shape of the empty answer returned when a `module:` value selects no module. */
+const NO_MODULE_RESULT = Object.freeze({
+  results: [],
+  unfilteredResultCount: 0,
+  filters: {},
+  totalFilters: {},
+  timings: [],
+});
+
+/** Class of the hint element rendered under the search dialog's result list. */
+export const MODULE_HINT_CLASS = "search-module-hint";
+
+/**
+ * Text of the hint shown when a `module:` value selects no module, or a
+ * selection yields no results: names up to {@link MODULE_HINT_LIMIT} close modules.
+ */
+export function moduleHintText(unmatched: readonly string[], suggestions: readonly string[]): string {
+  const subject = unmatched.length > 0
+    ? `No module matches module:${unmatched.join(" module:")}.`
+    : "No results in that module.";
+  return suggestions.length > 0 ? `${subject} Try: ${suggestions.join(", ")}` : subject;
+}
+
+/**
+ * Upsert the hint under the plugin's result list, or remove it. The dialog's
+ * `.search-dialog` wrapper is plain markup the plugin never re-renders
+ * wholesale, so an appended child survives its result re-renders.
+ */
+function renderModuleHint(text: string | undefined): void {
+  const doc = (globalThis as { document?: Document }).document;
+  if (!doc) {
+    return;
+  }
+  const dialog = doc.querySelector(".search-dialog");
+  let hint = dialog?.querySelector(`.${MODULE_HINT_CLASS}`) ?? null;
+  if (!text) {
+    hint?.remove();
+    return;
+  }
+  if (!dialog) {
+    return;
+  }
+  if (!hint) {
+    hint = doc.createElement("div");
+    hint.className = MODULE_HINT_CLASS;
+    hint.setAttribute("role", "status");
+    dialog.appendChild(hint);
+  }
+  hint.textContent = text;
+}
+
+/**
+ * Resolve the parsed query against the engine: `module:` values become the
+ * Pagefind filter (exact or any-of), `kind:` stays exact. Returns `null`
+ * when a module value selected nothing -- the caller answers empty instead
+ * of searching -- and the hint text to render, if any.
+ */
+async function resolveQuery(
+  handle: SearchHandleLike,
+  raw: string,
+): Promise<{ text: string | null; filters: Record<string, FilterValues>; hint?: string; empty: boolean }> {
+  const parsed = parseSearchQuery(raw);
+  const filters: Record<string, FilterValues> = { ...parsed.filters };
+  let hint: string | undefined;
+  let empty = false;
+  if (parsed.filters.module) {
+    const known = await knownModules(handle);
+    const resolution = resolveModules(parsed.filters.module, known);
+    if (resolution.filter) {
+      filters.module = resolution.filter;
+    } else {
+      delete filters.module;
+      empty = true;
+    }
+    if (resolution.unmatched.length > 0 && known) {
+      hint = moduleHintText(resolution.unmatched, closeModules(resolution.unmatched[0], known));
+    }
+  }
+  return { text: parsed.text || null, filters, hint, empty };
+}
+
+/** After a search: a selected module that returned nothing gets the hint too. */
+async function hintForEmptyResults(
+  handle: SearchHandleLike,
+  raw: string,
+  search: unknown,
+): Promise<string | undefined> {
+  const parsed = parseSearchQuery(raw);
+  const results = (search as SearchResultLike | null)?.results;
+  if (!parsed.filters.module || !Array.isArray(results) || results.length > 0) {
+    return undefined;
+  }
+  const known = await knownModules(handle);
+  return known ? moduleHintText([], closeModules(parsed.filters.module[0], known)) : undefined;
 }
 
 /**
@@ -122,28 +362,27 @@ export function withQueryFilters<T extends SearchHandleLike>(handle: T): T {
     return handle;
   }
   const wrapped: T = { ...handle };
+  const run = async (
+    raw: string,
+    search: (text: string | null, options: SearchOptions) => Promise<unknown>,
+    options: SearchOptions | undefined,
+  ): Promise<unknown> => {
+    const query = await resolveQuery(handle, raw);
+    if (query.empty) {
+      renderModuleHint(query.hint);
+      return { ...NO_MODULE_RESULT };
+    }
+    const result = await search(query.text, mergeOptions(options, query.filters));
+    renderModuleHint(query.hint ?? (await hintForEmptyResults(handle, raw, result)));
+    return limitSearchCandidates(result);
+  };
   if (typeof handle.search === "function") {
-    wrapped.search = async (text, options) => {
-      const parsed = parseSearchQuery(text ?? "");
-      const search = await handle.search!.call(
-        handle,
-        parsed.text || null,
-        mergeOptions(options, parsed.filters),
-      );
-      return limitSearchCandidates(search);
-    };
+    wrapped.search = (text, options) =>
+      run(text ?? "", (q, o) => handle.search!.call(handle, q, o), options);
   }
   if (typeof handle.debouncedSearch === "function") {
-    wrapped.debouncedSearch = async (text, options, delay) => {
-      const parsed = parseSearchQuery(text ?? "");
-      const search = await handle.debouncedSearch!.call(
-        handle,
-        parsed.text || null,
-        mergeOptions(options, parsed.filters),
-        delay,
-      );
-      return limitSearchCandidates(search);
-    };
+    wrapped.debouncedSearch = (text, options, delay) =>
+      run(text ?? "", (q, o) => handle.debouncedSearch!.call(handle, q, o, delay), options);
   }
   return wrapped;
 }
