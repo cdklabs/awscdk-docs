@@ -46,10 +46,13 @@ is indexed and `bucket` matches thousands of pages that merely *mention* a
 bucket. Docgen counters this:
 
 - Wrap generated boilerplate in `data-pagefind-ignore` (via `ignoreBlock`):
-  expandable props/property tables, facts/metadata tables, signatures,
-  the type-hierarchy block (including a struct's "used as props by" row),
-  and cross-reference lists ("Referenced by"). Symbol *lookup* is the type-ahead filter's job; full-text
-  search should match pages a term is about. This also shrinks the index.
+  property type cells, facts/metadata tables, signatures, the type-hierarchy
+  block (including a struct's "used as props by" row), and cross-reference lists
+  ("Referenced by"). Property names stay indexable inside their existing
+  type-page entry, matching method names without creating per-member results;
+  property types and descriptions stay ignored so they cannot add incidental
+  matches. Symbol *lookup* is the type-ahead filter's job. This also shrinks the
+  index.
 - Weight the H1 symbol name with `data-pagefind-weight="10"` (via
   `weightedTitle`) so an exact title match ranks decisively first (Pagefind's
   default h1 weight is 7).

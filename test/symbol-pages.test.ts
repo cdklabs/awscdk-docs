@@ -91,7 +91,8 @@ describe('symbol page generation', () => {
     // carries the Kind.
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>BucketProps</strong>');
     expect(page).not.toContain('| **Kind** |');
-    expect(page).toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
+    expect(page).toContain('<div class="props-table member-list" v-pre>');
+    expect(page).not.toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
     expect(page).toContain('<code class="member-name">versioned</code>');
     expect(page).toContain('<span class="chain-label">used as props by</span>');
     expect(page).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_s3.Bucket.html">Bucket</a>');

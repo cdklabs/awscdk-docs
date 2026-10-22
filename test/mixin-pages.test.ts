@@ -259,8 +259,8 @@ describe('mixin property table markup', () => {
     const page = renderFixture();
     expect(page).toContain('## Properties');
     // The shared renderer puts the type in HTML text, where the entity is decoded by the browser.
-    expect(page).toContain('<span class="member-type" title="List&lt;String&gt;">List&lt;String&gt;</span>');
-    expect(page).toContain('<span class="member-type" title="Map&lt;String, String&gt;">Map&lt;String, String&gt;</span>');
+    expect(page).toContain('<span class="member-type" data-pagefind-ignore title="List&lt;String&gt;">List&lt;String&gt;</span>');
+    expect(page).toContain('<span class="member-type" data-pagefind-ignore title="Map&lt;String, String&gt;">Map&lt;String, String&gt;</span>');
   });
 });
 
