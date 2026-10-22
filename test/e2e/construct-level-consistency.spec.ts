@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   CFN_QUEUE_PAGE,
+  IMIXIN_PAGE,
   IQUEUE_PAGE,
   QUEUE_ENCRYPTION_PAGE,
   QUEUE_GRANTS_PAGE,
@@ -227,6 +228,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
         { name: 'QueueProps', suffix: '.aws_sqs.QueueProps', page: QUEUE_PROPS_PAGE },
         { name: 'IQueue', suffix: '.aws_sqs.IQueue', page: IQUEUE_PAGE },
         { name: 'QueueGrants', suffix: '.aws_sqs.QueueGrants', page: QUEUE_GRANTS_PAGE },
+        { name: 'IMixin', suffix: '.IMixin', page: IMIXIN_PAGE },
       ];
 
       for (const example of examples) {

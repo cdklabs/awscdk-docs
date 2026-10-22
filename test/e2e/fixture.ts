@@ -33,6 +33,7 @@ export const CONSTRUCT_LIBRARY_PAGE = '/v2/docs/aws-construct-library.html';
 // everything in it — the one page in the fixture with enough subclasses to
 // exercise the overflow disclosure.
 export const CONSTRUCT_PAGE = '/v2/docs/constructs.Construct.html';
+export const IMIXIN_PAGE = '/v2/docs/constructs.IMixin.html';
 
 // A spec cannot spell out a content hash, so both helpers below read the emitted directory. Lazily, so the unit
 // suite can import the constants above without a built site.
