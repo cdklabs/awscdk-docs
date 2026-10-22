@@ -819,12 +819,13 @@ a.chain-item:hover {
   white-space: nowrap;
 }
 
-/* The preview's kind chip takes the construct level's own palette triple,
-   the same one the page's H1 badge wears, so a link's preview
-   and the page it points at agree on color as well as on wording. A level
-   class rather than a retint of `--api-c-badge-*`: that token is shared with
-   the REQUIRED property chip, which is not leveled and must
-   keep its current colors. Kinds without a level keep the shared chip. */
+/* The preview's kind chip takes the target page badge's own palette,
+   so a link's preview and the page it points at agree on color as well as
+   wording. Leveled constructs keep their L1/L2/L3 classes; mixins, facades,
+   structs, interfaces, and enums use their kind classes. These rules do not
+   retint `--api-c-badge-*`: that token is shared with the REQUIRED property
+   chip, which must keep its current colors. Kinds without their own page
+   palette keep the shared chip. */
 .type-tooltip-kind-l1 {
   background-color: var(--cdk-badge-l1-bg);
   color: var(--cdk-badge-l1-text);
@@ -838,6 +839,31 @@ a.chain-item:hover {
 .type-tooltip-kind-l3 {
   background-color: var(--cdk-badge-l3-bg);
   color: var(--cdk-badge-l3-text);
+}
+
+.type-tooltip-kind-mixin {
+  background-color: var(--cdk-badge-mixin-bg);
+  color: var(--cdk-badge-mixin-text);
+}
+
+.type-tooltip-kind-facade {
+  background-color: var(--cdk-badge-facade-bg);
+  color: var(--cdk-badge-facade-text);
+}
+
+.type-tooltip-kind-struct {
+  background-color: var(--cdk-badge-struct-bg);
+  color: var(--cdk-badge-struct-text);
+}
+
+.type-tooltip-kind-interface {
+  background-color: var(--cdk-badge-interface-bg);
+  color: var(--cdk-badge-interface-text);
+}
+
+.type-tooltip-kind-enum {
+  background-color: var(--cdk-badge-enum-bg);
+  color: var(--cdk-badge-enum-text);
 }
 
 .type-tooltip-summary {

@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 export const TOPIC_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.Topic.html';
 export const QUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.Queue.html';
+export const QUEUE_PROPS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueProps.html';
+export const IQUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.IQueue.html';
+export const QUEUE_ENCRYPTION_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueEncryption.html';
 export const SQS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs-readme.html';
 // An L1. Its header chip is the "Generated code" label rather than a Source
 // link, which is the other shape the page title has to stay clean of.
@@ -30,6 +33,7 @@ export const CONSTRUCT_LIBRARY_PAGE = '/v2/docs/aws-construct-library.html';
 // everything in it — the one page in the fixture with enough subclasses to
 // exercise the overflow disclosure.
 export const CONSTRUCT_PAGE = '/v2/docs/constructs.Construct.html';
+export const IMIXIN_PAGE = '/v2/docs/constructs.IMixin.html';
 
 // A spec cannot spell out a content hash, so both helpers below read the emitted directory. Lazily, so the unit
 // suite can import the constants above without a built site.
