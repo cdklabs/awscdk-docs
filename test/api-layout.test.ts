@@ -720,6 +720,28 @@ describe('API page layout', () => {
       expect(rulesFor(css(), '.member-signature .sig-name')).toContain('font-weight: 600');
     });
 
+    test('the Properties and Methods section headers are distinct from a symbol name', () => {
+      // The `## Properties` / `## Methods` headings (h2#properties, h2#methods)
+      // sit directly above member rows whose symbol names are 0.875rem /
+      // weight 600 in the mono face. With no rule of their own the boundary is
+      // easy to miss, so these two headings take the base (non-mono) heading
+      // font, the standard heading color, and a size/weight clearly above a
+      // symbol name. rulesFor() fails outright if the rule is absent.
+      const NAME_SIZE_REM = 0.875; // .member-list .member-row font-size
+      const NAME_WEIGHT = 600; // .member-signature .sig-name font-weight
+      for (const anchor of ['#properties', '#methods']) {
+        const rules = rulesFor(css(), `h2${anchor}`);
+        expect(rules).toContain('font-family: var(--vp-font-family-base)');
+        expect(rules).toContain('color: var(--vp-c-text-1)');
+        const size = rules.match(/font-size:\s*([\d.]+)rem/);
+        const weight = rules.match(/font-weight:\s*(\d+)/);
+        expect(size).not.toBeNull();
+        expect(weight).not.toBeNull();
+        expect(Number(size![1])).toBeGreaterThan(NAME_SIZE_REM);
+        expect(Number(weight![1])).toBeGreaterThan(NAME_WEIGHT);
+      }
+    });
+
     test('annotations are italic, so they read as notes on the signature', () => {
       for (const cls of ['type-param', 'sig-default', 'sig-fluent']) {
         expect(rulesFor(css(), `.member-signature .${cls}`)).toContain('font-style: italic');
