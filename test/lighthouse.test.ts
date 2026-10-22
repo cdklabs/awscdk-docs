@@ -59,7 +59,7 @@ describe('Lighthouse performance gate', () => {
 
   describe('lighthouse invocation', () => {
     test('pins the audit shape: performance only, desktop, headless, JSON+HTML', () => {
-      const args = runner.lighthouseArgs('http://127.0.0.1:1234/', '/tmp/out');
+      const args = runner.lighthouseArgs('http://127.0.0.1:1234/', '/tmp/out', false);
       expect(args[0]).toBe('http://127.0.0.1:1234/');
       expect(args).toContain('--only-categories=performance');
       expect(args).toContain('--preset=desktop');
@@ -68,6 +68,12 @@ describe('Lighthouse performance gate', () => {
       expect(args).toContain('--output=html');
       expect(args).toContain('--output-path=/tmp/out');
       expect(args).toContain('--blocked-url-patterns=*docs.aws.amazon.com*');
+    });
+
+    test('turns off the Chrome sandbox only when running as root', () => {
+      const args = runner.lighthouseArgs('http://127.0.0.1:1234/', '/tmp/out', true);
+      expect(args).toContain('--chrome-flags=--headless=new --no-sandbox');
+      expect(args).not.toContain('--chrome-flags=--headless=new');
     });
   });
 

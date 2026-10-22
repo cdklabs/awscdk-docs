@@ -452,7 +452,7 @@ docsLighthouse.exec('node scripts/lighthouse-budget.cjs');
 project.gitignore.addPatterns('.lighthouseci/');
 
 // Dedicated workflow, separate from the sharded docs build and the accessibility gate, so a red performance
-// gate is legible on its own in the checks list. Chrome ships on the GitHub runner image, so no browser install
+// gate is legible on its own in the checks list. Chrome ships on the runner image, so no browser install
 // step is needed. Not a required check unless the team opts in via branch protection.
 const lighthouseWorkflow = project.github!.addWorkflow('docs-lighthouse');
 lighthouseWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });

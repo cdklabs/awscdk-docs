@@ -93,14 +93,16 @@ const BLOCKED_URL_PATTERNS = ['*docs.aws.amazon.com*'];
  * @param {string} outputBase path without extension; with multiple output
  *   formats Lighthouse appends `.report.json` / `.report.html` — the names
  *   the budget check globs.
+ * @param {boolean} [asRoot] Chrome refuses to start as root with its sandbox on, as on the CodeBuild runner.
  * @returns {string[]}
  */
-function lighthouseArgs(url, outputBase) {
+function lighthouseArgs(url, outputBase, asRoot = process.getuid?.() === 0) {
+  const chromeFlags = asRoot ? '--headless=new --no-sandbox' : '--headless=new';
   return [
     url,
     '--only-categories=performance',
     '--preset=desktop',
-    '--chrome-flags=--headless=new',
+    `--chrome-flags=${chromeFlags}`,
     '--output=json',
     '--output=html',
     `--output-path=${outputBase}`,
