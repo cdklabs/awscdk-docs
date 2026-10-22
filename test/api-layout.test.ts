@@ -328,12 +328,12 @@ describe('API page layout', () => {
   describe('member rows', () => {
     test('props render as chrome-less rows inside a v-pre container', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      expect(page).toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
+      expect(page).toContain('<div class="props-table member-list" v-pre>');
+      expect(page).not.toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
       expect(page).toContain('<code class="member-name">versioned</code>');
-      // The type span also carries the full value in a `title`,
-      // so match the opening tag rather than the whole of it.
-      expect(page).toContain('<span class="member-type" title=');
-      expect(page).toContain('<div class="member-summary">');
+      // Property names are indexable, while the type and body stay excluded.
+      expect(page).toContain('<span class="member-type" data-pagefind-ignore title=');
+      expect(page).toContain('<div class="member-summary" data-pagefind-ignore>');
     });
 
     test('every member row carries an id and a named permalink', () => {
@@ -361,7 +361,7 @@ describe('API page layout', () => {
       // closes before <details> opens.
       const row = page.slice(page.indexOf('<div class="member-row"'));
       expect(row).toMatch(
-        /<div class="member-line"[^>]*>[\s\S]*?<\/div>\n(?:<div class="member-summary">[\s\S]*?<\/div>\n)?(?:<div class="member-extra">[\s\S]*?<\/div>\n)?<details class="member-disclosure">/,
+        /<div class="member-line"[^>]*>[\s\S]*?<\/div>\n(?:<div class="member-summary"[^>]*>[\s\S]*?<\/div>\n)?(?:<div class="member-extra"[^>]*>[\s\S]*?<\/div>\n)?<details class="member-disclosure"[^>]*>/,
       );
       expect(page).toContain('<div class="member-details">');
     });
@@ -596,7 +596,7 @@ describe('API page layout', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
       const propsIdx = page.indexOf('## Construct Props {#props-bucketprops}');
       expect(propsIdx).toBeGreaterThan(-1);
-      expect(page.indexOf('<div class="props-table member-list" v-pre data-pagefind-ignore>', propsIdx))
+      expect(page.indexOf('<div class="props-table member-list" v-pre>', propsIdx))
         .toBeGreaterThan(propsIdx);
     });
   });
@@ -931,8 +931,8 @@ describe('API page layout', () => {
       // rather than tuning it — so it must NOT be inside the header line, and
       // must carry no clamp of its own, being free to wrap.
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      expect(page).toMatch(/<\/div>\n<div class="member-summary">/);
-      expect(page).not.toMatch(/<div class="member-line"[^>]*>[^\n]*<div class="member-summary">/);
+      expect(page).toMatch(/<\/div>\n<div class="member-summary"[^>]*>/);
+      expect(page).not.toMatch(/<div class="member-line"[^>]*>[^\n]*<div class="member-summary"[^>]*>/);
       const summary = declarations(css(), '.member-summary');
       expect(summary).not.toContain('white-space: nowrap');
       expect(summary).not.toContain('text-overflow: ellipsis');
