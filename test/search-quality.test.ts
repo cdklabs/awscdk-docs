@@ -79,11 +79,13 @@ describe('generated pages carry search relevance markup', () => {
       linkFor: () => undefined,
     });
     expect(page).toContain('# <span data-pagefind-weight="10">Bucket</span>');
-    // Props tables and the metadata block's `Source` value are excluded from
-    // the index; the CloudFormation resource type is NOT, because it names
-    // exactly one page and is what makes `AWS::S3::Bucket` find `Bucket`
-    // (the searchability the api-reference-pages ADR gained).
-    expect(page).toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
+    // Property names are indexable in their owning type-page entry, while
+    // property summaries, repeated types, defaults, and metadata sources stay out.
+    expect(page).toContain('<div class="props-table member-list" v-pre>');
+    expect(page).not.toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
+    expect(page).toMatch(/<code class="member-name">\w+<\/code><span class="member-type" data-pagefind-ignore /);
+    expect(page).toMatch(/<span class="member-default" data-pagefind-ignore>/);
+    expect(page).toMatch(/<div class="member-summary" data-pagefind-ignore>/);
     expect(page).toMatch(/<a class="type-metadata-source" data-pagefind-ignore [^>]*><code>aws-s3\/lib\/bucket\.ts<\/code><\/a>/);
     expect(page).toMatch(/<dd class="type-metadata-value"><a href="[^"]*aws-resource-s3-bucket\.html"[^>]*><code>AWS::S3::Bucket<\/code><\/a><\/dd>/);
     // Signatures are excluded, but only the header line that carries them:

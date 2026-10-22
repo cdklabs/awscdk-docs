@@ -328,12 +328,12 @@ describe('API page layout', () => {
   describe('member rows', () => {
     test('props render as chrome-less rows inside a v-pre container', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      expect(page).toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
+      expect(page).toContain('<div class="props-table member-list" v-pre>');
+      expect(page).not.toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
       expect(page).toContain('<code class="member-name">versioned</code>');
-      // The type span also carries the full value in a `title`,
-      // so match the opening tag rather than the whole of it.
-      expect(page).toContain('<span class="member-type" title=');
-      expect(page).toContain('<div class="member-summary">');
+      // Property names are indexable, while the type and body stay excluded.
+      expect(page).toContain('<span class="member-type" data-pagefind-ignore title=');
+      expect(page).toContain('<div class="member-summary" data-pagefind-ignore>');
     });
 
     test('every member row carries an id and a named permalink', () => {
@@ -361,7 +361,7 @@ describe('API page layout', () => {
       // closes before <details> opens.
       const row = page.slice(page.indexOf('<div class="member-row"'));
       expect(row).toMatch(
-        /<div class="member-line"[^>]*>[\s\S]*?<\/div>\n(?:<div class="member-summary">[\s\S]*?<\/div>\n)?(?:<div class="member-extra">[\s\S]*?<\/div>\n)?<details class="member-disclosure">/,
+        /<div class="member-line"[^>]*>[\s\S]*?<\/div>\n(?:<div class="member-summary"[^>]*>[\s\S]*?<\/div>\n)?(?:<div class="member-extra"[^>]*>[\s\S]*?<\/div>\n)?<details class="member-disclosure"[^>]*>/,
       );
       expect(page).toContain('<div class="member-details">');
     });
@@ -430,10 +430,10 @@ describe('API page layout', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
       // A value default (one token, within budget) renders inline as `= value`
       // with no title and no ellipsis.
-      expect(page).toMatch(/<span class="member-default">= [^<\s]+<\/span>/);
+      expect(page).toMatch(/<span class="member-default" data-pagefind-ignore>= [^<\s]+<\/span>/);
       // The inline chip never carries a space — a spaced default is prose and
       // goes on its own `Default:` line instead, not in the header.
-      const inline = [...page.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)].map((m) => m[1]);
+      const inline = [...page.matchAll(/<span class="member-default" data-pagefind-ignore>= ([^<]*)<\/span>/g)].map((m) => m[1]);
       expect(inline.length).toBeGreaterThan(0);
       for (const v of inline) {
         expect(v).not.toMatch(/\s/);
@@ -478,7 +478,7 @@ describe('API page layout', () => {
      */
     test('a prose-form default loses its marker rather than rendering "= -"', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      const defaults = [...page.matchAll(/<span class="member-default">= ([^<]+)<\/span>/g)]
+      const defaults = [...page.matchAll(/<span class="member-default" data-pagefind-ignore>= ([^<]+)<\/span>/g)]
         .map((m) => m[1]);
       expect(defaults.length).toBeGreaterThan(0);
       for (const value of defaults) {
@@ -504,7 +504,7 @@ describe('API page layout', () => {
       // Header spans carry only VALUE defaults now: `-1` qualifies (one token,
       // no space); `- No display name` strips to `No display name`, which has
       // spaces and is therefore prose; a bare `-` produces nothing.
-      const shown = [...out.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)]
+      const shown = [...out.matchAll(/<span class="member-default" data-pagefind-ignore>= ([^<]*)<\/span>/g)]
         .map((m) => m[1]);
       expect(shown).toEqual(['-1']);
       // The stripped prose default shows in full on its own `Default:` line.
@@ -554,7 +554,7 @@ describe('API page layout', () => {
         () => undefined,
       ).join('\n');
       // Only the within-budget token is an inline chip.
-      const inline = [...out.matchAll(/<span class="member-default">= ([^<]*)<\/span>/g)].map((m) => m[1]);
+      const inline = [...out.matchAll(/<span class="member-default" data-pagefind-ignore>= ([^<]*)<\/span>/g)].map((m) => m[1]);
       expect(inline).toEqual([value]);
       // Both prose defaults render in full on their own line, untruncated.
       expect(out).toContain(`**Default:** ${phrase}`);
@@ -596,7 +596,7 @@ describe('API page layout', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
       const propsIdx = page.indexOf('## Construct Props {#props-bucketprops}');
       expect(propsIdx).toBeGreaterThan(-1);
-      expect(page.indexOf('<div class="props-table member-list" v-pre data-pagefind-ignore>', propsIdx))
+      expect(page.indexOf('<div class="props-table member-list" v-pre>', propsIdx))
         .toBeGreaterThan(propsIdx);
     });
   });
@@ -756,6 +756,28 @@ describe('API page layout', () => {
 
     test('the identifier keeps the weight every other token gives up', () => {
       expect(rulesFor(css(), '.member-signature .sig-name')).toContain('font-weight: 600');
+    });
+
+    test('the Properties and Methods section headers are distinct from a symbol name', () => {
+      // The `## Properties` / `## Methods` headings (h2#properties, h2#methods)
+      // sit directly above member rows whose symbol names are 0.875rem /
+      // weight 600 in the mono face. With no rule of their own the boundary is
+      // easy to miss, so these two headings take the base (non-mono) heading
+      // font, the standard heading color, and a size/weight clearly above a
+      // symbol name. rulesFor() fails outright if the rule is absent.
+      const NAME_SIZE_REM = 0.875; // .member-list .member-line font-size
+      const NAME_WEIGHT = 600; // .member-signature .sig-name font-weight
+      for (const anchor of ['#properties', '#methods']) {
+        const rules = rulesFor(css(), `h2${anchor}`);
+        expect(rules).toContain('font-family: var(--vp-font-family-base)');
+        expect(rules).toContain('color: var(--vp-c-text-1)');
+        const size = rules.match(/font-size:\s*([\d.]+)rem/);
+        const weight = rules.match(/font-weight:\s*(\d+)/);
+        expect(size).not.toBeNull();
+        expect(weight).not.toBeNull();
+        expect(Number(size![1])).toBeGreaterThan(NAME_SIZE_REM);
+        expect(Number(weight![1])).toBeGreaterThan(NAME_WEIGHT);
+      }
     });
 
     test('annotations are italic, so they read as notes on the signature', () => {
@@ -931,8 +953,8 @@ describe('API page layout', () => {
       // rather than tuning it — so it must NOT be inside the header line, and
       // must carry no clamp of its own, being free to wrap.
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      expect(page).toMatch(/<\/div>\n<div class="member-summary">/);
-      expect(page).not.toMatch(/<div class="member-line"[^>]*>[^\n]*<div class="member-summary">/);
+      expect(page).toMatch(/<\/div>\n<div class="member-summary"[^>]*>/);
+      expect(page).not.toMatch(/<div class="member-line"[^>]*>[^\n]*<div class="member-summary"[^>]*>/);
       const summary = declarations(css(), '.member-summary');
       expect(summary).not.toContain('white-space: nowrap');
       expect(summary).not.toContain('text-overflow: ellipsis');

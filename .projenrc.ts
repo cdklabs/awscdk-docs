@@ -10,6 +10,12 @@ const PROJEN_GITHUB_TOKEN = github.GithubCredentials.fromPersonalAccessToken({
   environment: 'automation',
 });
 
+// Self-hosted CodeBuild GitHub Actions runner label. The run_id/run_attempt suffix makes each job claim its own
+// ephemeral runner instance. Used by the deploy build job and the PR docs gates (build, docs-e2e, docs-a11y,
+// docs-lighthouse, docs-agent-readiness) so they all run on CodeBuild instead of the GitHub-hosted ubuntu image.
+const CODEBUILD_RUNNER =
+  'codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}';
+
 // ---------------------------------------------------------------------------
 // Documented CDK ecosystem packages.
 //
@@ -25,6 +31,9 @@ const CDK_ALPHA_VERSION = CDK_PINS.cdkAlpha;
 const DOCUMENTED_ALPHA_MODULES = alphaModulesOf(DOCGEN_CONFIG.modules);
 // Released in lockstep with aws-cdk-lib, so they take its pin.
 const CDK_LIB_PACKAGES = ['@aws-cdk/cfn-property-mixins', 'aws-cdk-lib'];
+// Released in lockstep with the alpha modules (`<cdk-version>-alpha.0`) but not named `*-alpha`, so the alpha
+// module pattern does not catch them and they take the alpha pin by name here.
+const CDK_ALPHA_PACKAGES = ['@aws-cdk/mixins-preview'];
 
 // @aws-cdk/toolkit-lib ships no jsii assembly and has its own external docs site.
 // @aws-cdk/cloud-assembly-schema is re-exported as the aws-cdk-lib `cloud_assembly_schema` submodule, so
@@ -124,6 +133,7 @@ const project = new CdkTypeScriptProject({
   devDeps: [
     // Documented CDK packages: their prose is the site's content, but none of their code ships.
     ...DOCUMENTED_ALPHA_MODULES.map((name) => `${name}@${CDK_ALPHA_VERSION}`),
+    ...CDK_ALPHA_PACKAGES.map((name) => `${name}@${CDK_ALPHA_VERSION}`),
     ...CDK_LIB_PACKAGES.map((name) => `${name}@${CDK_PINS.awsCdkLib}`),
     // Docgen reads the documented packages' jsii assemblies to generate the markdown source.
     '@jsii/spec',
@@ -147,7 +157,7 @@ const project = new CdkTypeScriptProject({
 // newest release, which the nightly cdk-version-check workflow pins. Keep the upgrade tasks off those packages, so a
 // cooldown-bound upgrade cannot roll a pin back. The option is construction-only and cdklabs-projen-project-types
 // does not forward it, so it is set on the components here; the task steps read it lazily at synth.
-const CDK_PINNED_PACKAGES = [...DOCUMENTED_ALPHA_MODULES, ...CDK_LIB_PACKAGES];
+const CDK_PINNED_PACKAGES = [...DOCUMENTED_ALPHA_MODULES, ...CDK_ALPHA_PACKAGES, ...CDK_LIB_PACKAGES];
 for (const upgrade of project.components.filter((c) => c instanceof javascript.UpgradeDependencies)) {
   const options = (upgrade as unknown as { options: javascript.UpgradeDependenciesOptions }).options;
   (upgrade as unknown as { options: javascript.UpgradeDependenciesOptions }).options = {
@@ -346,7 +356,7 @@ project.gitignore.addPatterns('screenshots/');
 const docsE2eWorkflow = project.github!.addWorkflow('docs-e2e');
 docsE2eWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });
 docsE2eWorkflow.addJob('e2e', {
-  runsOn: ['ubuntu-latest'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -390,7 +400,7 @@ docsE2eWorkflow.addJob('e2e', {
 const docsA11yWorkflow = project.github!.addWorkflow('docs-a11y');
 docsA11yWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });
 docsA11yWorkflow.addJob('a11y', {
-  runsOn: ['ubuntu-latest'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -446,12 +456,12 @@ docsLighthouse.exec('node scripts/lighthouse-budget.cjs');
 project.gitignore.addPatterns('.lighthouseci/');
 
 // Dedicated workflow, separate from the sharded docs build and the accessibility gate, so a red performance
-// gate is legible on its own in the checks list. Chrome ships on the GitHub runner image, so no browser install
+// gate is legible on its own in the checks list. Chrome ships on the runner image, so no browser install
 // step is needed. Not a required check unless the team opts in via branch protection.
 const lighthouseWorkflow = project.github!.addWorkflow('docs-lighthouse');
 lighthouseWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });
 lighthouseWorkflow.addJob('lighthouse', {
-  runsOn: ['ubuntu-latest'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -507,7 +517,7 @@ project.gitignore.addPatterns('.agent-readiness/');
 const agentReadinessWorkflow = project.github!.addWorkflow('docs-agent-readiness');
 agentReadinessWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });
 agentReadinessWorkflow.addJob('agent-readiness', {
-  runsOn: ['ubuntu-latest'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -599,7 +609,7 @@ const DOCS_STREAM = 'awscdk-docs';
 // check; the name keeps it apart from the `build` check of projen's build workflow, which is also required.
 combined.addJob('build', {
   name: 'build-docs',
-  runsOn: ['codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -910,6 +920,11 @@ versionCheck.addJob('alert-on-failure', {
 const buildWorkflowFile = project.tryFindObjectFile('.github/workflows/build.yml');
 buildWorkflowFile?.addDeletionOverride('jobs.build.steps.0.with.repository');
 buildWorkflowFile?.addDeletionOverride('jobs.build.steps.0.with.ref');
+
+// Run the build check on the self-hosted CodeBuild runner, matching the docs gates. projen's BuildWorkflow has
+// no per-job runsOn option, so override the generated job. The self-mutation push-back job is left on
+// ubuntu-latest: it only runs on same-repo (non-fork) PRs and does no heavy work.
+buildWorkflowFile?.addOverride('jobs.build.runs-on', CODEBUILD_RUNNER);
 
 // The package is ESM. `type: module` makes Node read every .js in the tree as a module, and NodeNext is the
 // resolution mode that matches it, so relative imports carry the extension the emitted file will have.

@@ -55,6 +55,32 @@ test.describe('pagefind search', () => {
     expect(fragments.size).toBe(MAX_SEARCH_RESULTS);
   });
 
+  test('the built index finds member owners and keeps exact types first', async ({ page }) => {
+    await page.goto('/');
+    const results = await page.evaluate(async () => {
+      const preload = document.querySelector<HTMLLinkElement>(
+        'link[rel="modulepreload"][href$="pagefind/pagefind.js"]',
+      );
+      if (!preload) return {};
+      const pagefind = await import(/* @vite-ignore */ preload.href);
+      await pagefind.init?.();
+      const urlsFor = async (query: string) => {
+        const search = await pagefind.search(query);
+        const data = await Promise.all(search.results.map((result: { data(): Promise<{ url: string }> }) => result.data()));
+        return data.map((entry: { url: string }) => entry.url);
+      };
+      return {
+        property: await urlsFor('maxMessageSizeBytes'),
+        method: await urlsFor('addWarningV2'),
+        type: await urlsFor('Node'),
+      };
+    });
+
+    expect(results.property).toContain('/v2/docs/aws-cdk-lib.aws_sqs.QueueProps.html');
+    expect(results.method).toContain('/v2/docs/constructs.Node.html');
+    expect(results.type?.[0]).toBe('/v2/docs/constructs.Node.html');
+  });
+
   // The fixture documents aws-sns and aws-sqs; `Topic` is an SNS construct.
   test.describe('module: filter', () => {
     const search = async (page: import('@playwright/test').Page, query: string) => {

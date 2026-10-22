@@ -52,10 +52,10 @@ describe('type page information density', () => {
     });
 
     test('member row padding keeps the density gain in the inset', () => {
-      // Vertical padding stays at ~7px DELIBERATELY — tightening it to 3px
-      // reads as condensed — so the density claim lives entirely in the
-      // horizontal inset, which is gone rather than merely tighter, because
-      // neither a disclosure triangle nor a right-hand control reserves space.
+      // Vertical padding is 10px top/bottom and the horizontal inset stays 0,
+      // so the density claim lives in the zero inset (no disclosure triangle or
+      // right-hand control reserves space); the exact value bounds a future
+      // runaway.
       const css = apiLayout();
       // Scoped to the rule's OWN braces: an unbounded slice lets the match
       // slide to whatever declares a padding next, which is how a passing
@@ -65,21 +65,21 @@ describe('type page information density', () => {
       const block = css.slice(from, css.indexOf('}', from));
       const padding = block.match(/padding:\s*(\d+)px\s+(\d+)(?:px)?/);
       expect(padding).not.toBeNull();
-      expect(Number(padding![1])).toBeLessThanOrEqual(7);
+      expect(Number(padding![1])).toBe(10);
       expect(Number(padding![2])).toBe(0);
     });
 
     test('rows are separated by a divider, and the last one is not', () => {
       // The container lost its box, so the divider is the ONLY thing left
       // separating one member from the next — and a trailing border under the
-      // last row would draw a line with nothing below it. Added because
-      // deleting the border outright left every other assertion in this file
-      // and in the layout suite green: the separation was unpinned.
+      // last row would draw a line with nothing below it. The separator uses
+      // --vp-c-border, the stronger token, so it stays visible in dark mode;
+      // width 1px.
       const css = apiLayout();
       const from = css.indexOf('.member-list .member-row {');
       expect(from).toBeGreaterThan(-1);
       const row = css.slice(from, css.indexOf('}', from));
-      expect(row).toMatch(/border-bottom:\s*1px solid var\(--vp-c-divider\)/);
+      expect(row).toMatch(/border-bottom:\s*1px solid var\(--vp-c-border\)/);
 
       const lastFrom = css.indexOf('.member-list .member-row:last-child {');
       expect(lastFrom).toBeGreaterThan(-1);

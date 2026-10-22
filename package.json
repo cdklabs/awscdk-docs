@@ -92,6 +92,7 @@
     "@aws-cdk/cfn-property-mixins": "2.274.0",
     "@aws-cdk/integ-tests-alpha": "2.274.0-alpha.0",
     "@aws-cdk/metrics-facade-alpha": "2.274.0-alpha.0",
+    "@aws-cdk/mixins-preview": "2.274.0-alpha.0",
     "@axe-core/playwright": "^4.14.0",
     "@jest/globals": "^30.5.1",
     "@jsii/spec": "^1.141.0",

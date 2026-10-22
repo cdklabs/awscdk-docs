@@ -79,7 +79,8 @@ describe('agent-oriented Markdown twins', () => {
     const page = readFileSync(join(outDir, 'docs', 'constructs.Node.md'), 'utf-8');
     expect(page.startsWith('---\nagentMarkdown: "/v2/docs/constructs.Node.md"\n')).toBe(true);
     // The rest of the frontmatter survives.
-    expect(page).toContain('\ntitle: "Node"\n---');
+    expect(page).toContain('\ntitle: "Node"\n');
+    expect(page).toMatch(/\noutlineMembers: .*\n---\n/);
     expect(existsSync(join(agentOutDir, 'v2', 'docs', 'constructs.Node.md'))).toBe(true);
   });
 

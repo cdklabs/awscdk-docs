@@ -300,6 +300,17 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   ],
 
   vite: {
+    resolve: {
+      // Swap the default theme's aside outline for one that also lists a type page's members under their section
+      // headings (docs/adr/2026-10-22-outline-members.md). The documented way to override an internal theme
+      // component: VitePress imports it by path, so an alias on that path is the one seam.
+      alias: [
+        {
+          find: /^.*\/VPDocAsideOutline\.vue$/,
+          replacement: fileURLToPath(new URL("./theme/ApiDocAsideOutline.vue", import.meta.url)),
+        },
+      ],
+    },
     // Pagefind static search: indexes the built site and replaces the default navbar search component.
     // During a sharded build (SHARD_BUILD=1) each shard renders only a subset of pages, so per-shard indexing
     // would be partial. Keep the plugin (so `virtual:pagefind` still resolves) but no-op its indexing command;

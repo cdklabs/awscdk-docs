@@ -470,8 +470,13 @@ a.chain-item:hover {
 }
 
 .member-list .member-row {
-  border-bottom: 1px solid var(--vp-c-divider);
-  padding: 7px 0;
+  /* Separator uses the stronger --vp-c-border rather than the lower-contrast
+     --vp-c-divider so the boundary between members stays visible in dark mode;
+     width stays 1px. The 10px vertical padding gives the Properties and Methods
+     rows, which share this selector, room to read as separate entries while the
+     horizontal inset stays 0. */
+  border-bottom: 1px solid var(--vp-c-border);
+  padding: 10px 0;
 }
 
 .member-list .member-row:last-child {
@@ -791,7 +796,15 @@ a.chain-item:hover {
   gap: 8px;
 }
 
+/* A type name is one unbroken identifier, so a long one (a nested
+   `...Property` struct can run past 90 characters) is wider than the box.
+   As a flex item its min-width defaults to its content width, which lets it
+   paint past the box edge; `min-width: 0` lets it shrink, and
+   `overflow-wrap: anywhere` breaks it onto further lines. The name is
+   wrapped rather than truncated, so the reader always sees all of it. */
 .type-tooltip-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--vp-font-family-mono);
   color: var(--vp-c-text-1);
 }
@@ -879,4 +892,24 @@ a.chain-item:hover {
   .type-tooltip {
     display: none !important;
   }
+}
+
+/* ---------- API section headers: Properties / Methods ----------
+   These two `## Properties` / `## Methods` headings (`h2#properties`,
+   `h2#methods`, emitted by anchoredHeading in src/docgen) sit directly above
+   dense member rows whose symbol names are 0.875rem / weight 600 in the mono
+   face (the size is set on `.member-list .member-line`). With no rule of their
+   own the headings read at a size too close to the
+   symbol names below them, so the section boundary is easy to miss. Give only
+   these two headings the base (non-mono) heading font and the standard heading
+   color, clearly larger and heavier than a symbol name. Scope is deliberately
+   just #properties and #methods — other generated API headings (Example,
+   Initializer, Submodules, Types) are out of scope for this change. Monospace
+   stays on symbol names only; these headings are prose, not code. */
+.vp-doc h2#properties,
+.vp-doc h2#methods {
+  font-family: var(--vp-font-family-base);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--vp-c-text-1);
 }

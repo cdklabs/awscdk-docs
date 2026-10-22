@@ -358,6 +358,7 @@ describe('docgen config', () => {
     const config = loadConfig(join(ROOT, 'docgen.config.json'));
     expect(config.modules).toContain('aws-cdk-lib');
     expect(config.modules).toContain('constructs');
+    expect(config.modules).toContain('@aws-cdk/mixins-preview');
     expect(config.includeKinds?.['@aws-cdk/cfn-property-mixins']).toEqual(['Mixin']);
     expect(config.emitExamples?.['@aws-cdk/cfn-property-mixins']).toBe(false);
   });
@@ -592,6 +593,52 @@ describe('docgen generation', () => {
     expect(sidebar).not.toContain('@aws-cdk_cfn-property-mixins.aws_lambda-readme');
   });
 
+  test('folds events submodules under their service: facades with their resource, the rest under Events', () => {
+    const sidebar = JSON.parse(readFileSync(join(outDir, 'sidebar.json'), 'utf-8'));
+    const serviceSections = sidebar[1].items;
+    const sectionTexts = serviceSections.map((s: any) => s.text);
+    // No generated `<Service>.events` grouping surfaces as a navigation branch of its own.
+    expect(sectionTexts.filter((t: string) => /\.events$/i.test(t))).toEqual([]);
+    expect(sectionTexts).not.toContain('Dlm.events');
+
+    // Facade case: `InstanceEvents.fromInstance(IInstanceRef)` sits with the EC2 Instance resource.
+    const ec2 = serviceSections.find((s: any) => s.text === 'EC2');
+    const instance = ec2.items.find((i: any) => i.text === 'Instance');
+    const facades = instance.items.find((i: any) => i.text === 'Facades');
+    expect(facades.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'InstanceEvents', link: '/v2/docs/@aws-cdk_mixins-preview.aws_ec2.events.InstanceEvents' }),
+      ]),
+    );
+    // General case: the plain event pattern classes and their detail structs collect under General > Events, and
+    // nowhere else in the section — `EC2InstanceStateChangeNotification` is not an Instance type.
+    const general = ec2.items.find((i: any) => i.text === 'General');
+    const events = general.items.find((i: any) => i.text === 'Events');
+    const eventTexts = events.items.map((i: any) => i.text);
+    expect(eventTexts).toEqual(expect.arrayContaining(['EC2InstanceStateChangeNotification', 'EBSVolumeNotification']));
+    expect(eventTexts.some((t: string) => t.startsWith('EC2InstanceStateChangeNotification.'))).toBe(true);
+    const withoutGeneral = JSON.stringify(ec2.items.filter((i: any) => i.text !== 'General'));
+    expect(withoutGeneral).not.toContain('EC2InstanceStateChangeNotification');
+    expect(JSON.stringify(ec2.items.map((i: any) => i.text))).not.toContain('Events"');
+
+    // A single-resource service collapses its wrapper, so Events sits at section level next to Others.
+    const dlm = serviceSections.find((s: any) => s.text === 'DLM');
+    const dlmEvents = dlm.items.find((i: any) => i.text === 'Events');
+    expect(dlmEvents.items.map((i: any) => i.text)).toEqual(expect.arrayContaining(['DLMPolicyStateChange']));
+
+    // No orphaned overview: the events submodule gets no `…-readme` page, nothing links to one, and its type
+    // pages still render.
+    const eventsReadmes = readdirSync(join(outDir, 'docs')).filter(
+      (name) => name.startsWith('@aws-cdk_mixins-preview.') && name.endsWith('.events-readme.md'),
+    );
+    expect(eventsReadmes).toEqual([]);
+    expect(existsSync(join(outDir, 'docs', '@aws-cdk_mixins-preview.aws_dlm.events.DLMPolicyStateChange.md'))).toBe(true);
+    const sidebarText = JSON.stringify(sidebar);
+    expect(sidebarText).not.toContain('.events-readme');
+    const previewRoot = readFileSync(join(outDir, 'docs', '@aws-cdk_mixins-preview-readme.md'), 'utf-8');
+    expect(previewRoot).not.toContain('.events-readme.html');
+  });
+
   test('submodule start page renders the README above the type preview list', () => {
     const s3Page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
     // README's own H1 is the page's first HEADING, so it is still the
@@ -715,6 +762,32 @@ describe('docgen generation', () => {
     expect(typePage).toContain('/v2/docs/aws-cdk-lib.aws_cloudfront.experimental');
   });
 
+  test('type pages list their properties and methods for the outline, keyed by the rows\' own anchors', () => {
+    const frontmatterMembers = (page: string): Record<string, [string, string][]> | undefined => {
+      const head = page.slice(0, page.indexOf('\n---\n', 3));
+      const line = head.split('\n').find((l) => l.startsWith('outlineMembers: '));
+      return line ? JSON.parse(line.slice('outlineMembers: '.length)) : undefined;
+    };
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    const members = frontmatterMembers(bucket)!;
+    expect(members.properties).toContainEqual(['bucketarn', 'bucketArn']);
+    expect(members.methods).toContainEqual(['addtoresourcepolicy', 'addToResourcePolicy']);
+    // Only the type's own properties and its methods: the inlined BucketProps rows stay out of the outline.
+    expect(Object.keys(members).sort()).toEqual(['methods', 'properties']);
+    // Every entry points at a member row that exists on the page; no per-member heading is added.
+    for (const [anchor] of [...members.properties, ...members.methods]) {
+      expect(bucket).toContain(`<div class="member-row" id="${anchor}">`);
+      expect(bucket).not.toMatch(new RegExp(`^#+ .*\\{#${anchor}\\}$`, 'm'));
+    }
+    // The declared title stays the first frontmatter key.
+    expect(bucket.startsWith('---\ntitle: "Bucket"\n')).toBe(true);
+
+    // A struct has properties but no methods: no methods group at all.
+    const props = frontmatterMembers(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8'))!;
+    expect(props.properties.length).toBeGreaterThan(0);
+    expect(props).not.toHaveProperty('methods');
+  });
+
   test('README-backed overview pages carry their upstream edit target', () => {
     // An overview page's prose is an upstream README, so the page records that
     // file for the theme to link rather than this repo's docgen directory,
@@ -815,7 +888,8 @@ describe('docgen generation', () => {
       const page = readFileSync(join(outDir, 'docs', name), 'utf-8');
       // Frontmatter must be the very first bytes or VitePress does not
       // parse it at all, which would silently restore H1 inference.
-      expect(page.startsWith(`---\ntitle: ${JSON.stringify(title)}\n---\n`)).toBe(true);
+      // The title is the first key; the outline member list may follow it.
+      expect(page.startsWith(`---\ntitle: ${JSON.stringify(title)}\n`)).toBe(true);
       // ...and still ahead of the breadcrumb and the H1.
       const end = page.indexOf('\n---\n');
       expect(end + 5).toBeLessThan(page.indexOf('<nav class="type-breadcrumb"'));
@@ -881,7 +955,8 @@ describe('docgen generation', () => {
       join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha.PythonFunction.md'),
       'utf-8',
     );
-    expect(alphaType.startsWith('---\ntitle: "PythonFunction"\n---\n')).toBe(true);
+    expect(alphaType.startsWith('---\ntitle: "PythonFunction"\n')).toBe(true);
+    expect(alphaType.indexOf('\n---\n', 3)).toBeLessThan(alphaType.indexOf('<nav class="type-breadcrumb"'));
     expect(alphaType).toContain(banner);
     expect(alphaType.indexOf('</nav>')).toBeLessThan(alphaType.indexOf(banner));
     expect(alphaType.indexOf(banner)).toBeLessThan(alphaType.search(/^# /m));
@@ -975,6 +1050,36 @@ describe('docgen generation', () => {
     // The remaining kind groups start collapsed.
     const bucketOthers = bucket.items.find((i: any) => i.text === 'Others');
     expect(bucketOthers.collapsed).toBe(true);
+
+    // Constructs group by the CloudFormation resource they provision, not
+    // by their spelling: the L1 `CfnVPC`, the stable L2 `Vpc` and the alpha
+    // L2 `VpcV2` all back `AWS::EC2::VPC`, so EC2 shows ONE group — headed
+    // by the L2 name — and no separate `VPC` or `VpcV2` resource.
+    const ec2 = serviceSections.find((s: any) => s.text === 'EC2');
+    const ec2Groups = ec2.items.map((i: any) => i.text);
+    expect(ec2Groups).toContain('Vpc');
+    expect(ec2Groups).not.toContain('VPC');
+    expect(ec2Groups).not.toContain('VpcV2');
+    const vpc = ec2.items.find((i: any) => i.text === 'Vpc');
+    expect(vpc.items).toEqual(
+      expect.arrayContaining([
+        { text: 'Vpc', link: '/v2/docs/aws-cdk-lib.aws_ec2.Vpc', level: 'L2' },
+        { text: 'VpcV2', link: '/v2/docs/@aws-cdk_aws-ec2-alpha.VpcV2', level: 'L2' },
+        { text: 'CfnVPC', link: '/v2/docs/aws-cdk-lib.aws_ec2.CfnVPC', level: 'L1' },
+      ]),
+    );
+    // Related types follow their construct into the merged group.
+    const vpcOthers = vpc.items.find((i: any) => i.text === 'Others').items.map((i: any) => i.text);
+    expect(vpcOthers).toEqual(expect.arrayContaining(['VpcProps', 'IVpc', 'CfnVPCProps', 'VpcV2Props']));
+    // `BastionHostLinux` is tagged `@resource AWS::EC2::Instance` and sorts
+    // before `Instance`; the group is still headed by the L2 that spells the
+    // resource, and the bastion joins it.
+    expect(ec2Groups).toContain('Instance');
+    expect(ec2Groups).not.toContain('BastionHostLinux');
+    const instance = ec2.items.find((i: any) => i.text === 'Instance');
+    expect(instance.items.map((i: any) => i.text)).toEqual(
+      expect.arrayContaining(['Instance', 'BastionHostLinux', 'CfnInstance']),
+    );
 
     // Core keeps aws-cdk-lib core types in its flat kind grouping; the
     // constructs package has its own section.

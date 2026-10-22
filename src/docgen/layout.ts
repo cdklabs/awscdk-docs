@@ -363,6 +363,7 @@ function memberRow(
   summary: string | undefined,
   prose: string[],
   detail: { readonly lines: string[]; readonly labels: readonly string[] },
+  indexBody = true,
 ): string[] {
   const lines = [`<div class="member-row" id="${anchorId}">`];
   lines.push(
@@ -371,17 +372,18 @@ function memberRow(
     + memberPermalink(anchorId, label)
     + '</div>',
   );
+  const bodyIndexing = indexBody ? '' : ` ${PAGEFIND_IGNORE}`;
   if (summary) {
-    lines.push(`<div class="member-summary">${escHtml(summary.replace(/\s+/g, ' ').trim())}</div>`);
+    lines.push(`<div class="member-summary"${bodyIndexing}>${escHtml(summary.replace(/\s+/g, ' ').trim())}</div>`);
   }
   if (prose.length > 0) {
-    lines.push('<div class="member-extra">', '', ...prose, '</div>');
+    lines.push(`<div class="member-extra"${bodyIndexing}>`, '', ...prose, '</div>');
   }
   if (detail.lines.length > 0) {
     // The header line stays a SIBLING of the <details>, never inside its <summary>: nesting type links inside a
     // control is a `nested-interactive` accessibility violation.
     lines.push(
-      '<details class="member-disclosure">',
+      `<details class="member-disclosure"${bodyIndexing}>`,
       `<summary>${escHtml(disclosureLabel(detail.labels))}</summary>`,
       '<div class="member-details">',
       '',
@@ -408,10 +410,10 @@ export function renderExpandableProps(
     return ['_No properties._', ''];
   }
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  // Props tables are the main source of incidental search matches: a `bucket: IBucket` type cell makes the page
-  // match `bucket`. Symbol lookup is served by the sidebar type-ahead filter, so the whole table stays out of the
-  // Pagefind index.
-  const lines: string[] = [`<div class="props-table member-list" v-pre ${PAGEFIND_IGNORE}>`];
+  // Property names belong to the owning type-page search entry, matching
+  // methods without creating per-member results. Property descriptions and
+  // repeated types stay out of the index via their local ignore attributes.
+  const lines: string[] = ['<div class="props-table member-list" v-pre>'];
   for (const prop of props) {
     lines.push(...renderPropRow(prop, linkFor, languages, options.anchorPrefix));
   }
@@ -473,7 +475,7 @@ function propRowHtml(
     // Strikethrough marks the IDENTIFIER only — running it over the type or the anchor reads as a scribble.
     const nameClass = deprecated ? 'member-name member-name-deprecated' : 'member-name';
     return `<code class="${nameClass}">${name}</code>`
-      + `<span class="member-type" title="${escapeAttr(full)}">${withoutAnchorTooltips(type)}</span>`;
+      + `<span class="member-type" data-pagefind-ignore title="${escapeAttr(full)}">${withoutAnchorTooltips(type)}</span>`;
   });
   const parts = [nameAndType];
   const fullDefault = defaultText(prop.docs?.default);
@@ -483,7 +485,7 @@ function propRowHtml(
     // own always-visible `Default:` line below (see renderPropRow), so the
     // reader never has to expand the row to read it.
     parts.push(
-      `<span class="member-default">= ${escHtml(fullDefault)}</span>`,
+      `<span class="member-default" data-pagefind-ignore>= ${escHtml(fullDefault)}</span>`,
     );
   }
   if (!prop.optional) {
@@ -540,7 +542,8 @@ function renderPropRow(
   }
   const slug = memberAnchor(prop.name);
   const id = anchorPrefix ? `${anchorPrefix}-${slug}` : slug;
-  return memberRow(id, prop.name, header, summary, prose, { lines: detail, labels });
+  return memberRow(id, prop.name, header, summary, prose,
+    { lines: detail, labels }, false);
 }
 
 /** Own methods plus those inherited along the base-class chain, sorted. */

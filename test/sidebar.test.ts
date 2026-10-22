@@ -1,4 +1,4 @@
-import { assemblyOwner, buildServiceSidebar, CONSTRUCTS_SECTION, frameworkSectionCompare, frameworkSectionName, FRAMEWORK_SECTION, isConstructsPackage, isCore, isServiceSubmodule, resourceStem, sectionName, SERVICES_SECTION, serviceSubmodule, shortTypeName, SidebarEntry, SidebarItem, splitSidebarChunks } from '../src/docgen/sidebar.js';
+import { assemblyOwner, buildServiceSidebar, CONSTRUCTS_SECTION, frameworkSectionCompare, frameworkSectionName, FRAMEWORK_SECTION, isConstructsPackage, isCore, isEventsSubmodule, isServiceSubmodule, resourceStem, sectionName, SERVICES_SECTION, serviceSubmodule, shortTypeName, SidebarEntry, SidebarItem, splitSidebarChunks } from '../src/docgen/sidebar.js';
 
 function entry(overrides: Partial<SidebarEntry>): SidebarEntry {
   return {
@@ -180,6 +180,15 @@ describe('serviceSubmodule', () => {
     expect(serviceSubmodule('mixins')).toBe('');
   });
 
+  test('strips the per-service events suffix to the owning service', () => {
+    expect(serviceSubmodule('aws_dlm.events')).toBe('aws_dlm');
+    expect(serviceSubmodule('aws_ec2.events')).toBe('aws_ec2');
+  });
+
+  test('the bare events submodule folds to the module root', () => {
+    expect(serviceSubmodule('events')).toBe('');
+  });
+
   test('service and feature submodules pass through unchanged', () => {
     expect(serviceSubmodule('aws_s3')).toBe('aws_s3');
     expect(serviceSubmodule('aws_s3_deployment')).toBe('aws_s3_deployment');
@@ -191,6 +200,20 @@ describe('serviceSubmodule', () => {
     // Only the exact structural segment counts, not substrings.
     expect(serviceSubmodule('interfaces_v2')).toBe('interfaces_v2');
     expect(serviceSubmodule('aws_mixinsvc')).toBe('aws_mixinsvc');
+    expect(serviceSubmodule('aws_events')).toBe('aws_events');
+    expect(serviceSubmodule('aws_events_targets')).toBe('aws_events_targets');
+  });
+});
+
+describe('isEventsSubmodule', () => {
+  test('matches the per-service and bare events groupings only', () => {
+    expect(isEventsSubmodule('aws_ec2.events')).toBe(true);
+    expect(isEventsSubmodule('events')).toBe(true);
+    // The EventBridge service module itself is a real service, not a generated events grouping.
+    expect(isEventsSubmodule('aws_events')).toBe(false);
+    expect(isEventsSubmodule('aws_events_targets')).toBe(false);
+    expect(isEventsSubmodule('aws_ec2.mixins')).toBe(false);
+    expect(isEventsSubmodule('')).toBe(false);
   });
 });
 
@@ -716,6 +739,233 @@ describe('buildServiceSidebar', () => {
     const general = resources.find((g) => g.text === 'General')!;
     const others = general.items!.find((g) => g.text === 'Others')!;
     expect(others.items!.map((i) => i.text)).toEqual(['StorageClass']);
+  });
+
+  describe('grouping by CloudFormation resource type', () => {
+    const ec2 = (overrides: Partial<SidebarEntry>) =>
+      entry({ submodule: 'aws_ec2', indexLink: '/api/modules/aws-cdk-lib/aws-ec2', ...overrides });
+    const VPC = 'AWS::EC2::VPC';
+
+    test('constructs sharing a resource type land in one group whatever their names', () => {
+      // Stems differ (`VPC`, `Vpc`, `VpcV2`) so the name rule would make three groups.
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({
+          name: 'VpcV2',
+          kind: 'Construct (L2)',
+          level: 'L2',
+          link: '/vpc-v2',
+          resourceType: VPC,
+          assemblyName: '@aws-cdk/aws-ec2-alpha',
+          submodule: '',
+          experimental: true,
+        }),
+      ]));
+      expect(sidebar).toHaveLength(1);
+      expect(sidebar[0].items!.map((g) => g.text)).toEqual(['Overview', 'Sibling', 'Vpc', 'Zzsibling']);
+      const vpc = sidebar[0].items!.find((g) => g.text === 'Vpc')!;
+      // Level order (L2 before L1), alphabetical inside a tier; each leaf keeps its level tag.
+      expect(vpc.items!.map((i) => [i.text, i.level])).toEqual([
+        ['Vpc', 'L2'], ['VpcV2', 'L2'], ['CfnVPC', 'L1'],
+      ]);
+    });
+
+    test('the heading is the L2 whose name spells the resource, even when another L2 sorts first', () => {
+      // `BastionHostLinux` is tagged `@resource AWS::EC2::Instance` upstream and sorts before `Instance`.
+      const INSTANCE = 'AWS::EC2::Instance';
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'BastionHostLinux', kind: 'Construct (L2)', level: 'L2', link: '/bastion', resourceType: INSTANCE }),
+        ec2({ name: 'CfnInstance', kind: 'Construct (L1)', level: 'L1', link: '/cfn-instance', resourceType: INSTANCE }),
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance', resourceType: INSTANCE }),
+        ec2({ name: 'VpcV2', kind: 'Construct (L2)', level: 'L2', link: '/vpc-v2', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+      ]));
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toEqual(['Overview', 'Instance', 'Sibling', 'Vpc', 'Zzsibling']);
+      const instance = sidebar[0].items!.find((g) => g.text === 'Instance')!;
+      expect(instance.items!.map((i) => i.text)).toEqual(['BastionHostLinux', 'Instance', 'CfnInstance']);
+    });
+
+    test('when no L2 spells the resource, the heading is the alphabetically first L2', () => {
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'ZetaThing', kind: 'Construct (L2)', level: 'L2', link: '/zeta', resourceType: 'AWS::EC2::Widget' }),
+        ec2({ name: 'AlphaThing', kind: 'Construct (L2)', level: 'L2', link: '/alpha', resourceType: 'AWS::EC2::Widget' }),
+      ]));
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toContain('AlphaThing');
+      expect(groups).not.toContain('ZetaThing');
+      expect(groups).not.toContain('Widget');
+    });
+
+    test('with no L2 the heading is the resource name from the CloudFormation type', () => {
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+      ]));
+      expect(sidebar[0].items!.map((g) => g.text)).toEqual(['Overview', 'Sibling', 'VPC', 'Zzsibling']);
+    });
+
+    test('related types attach through the construct their stem names and follow it into the group', () => {
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({ name: 'VpcV2', kind: 'Construct (L2)', level: 'L2', link: '/vpc-v2', resourceType: VPC }),
+        ec2({ name: 'CfnVPCProps', kind: 'Struct', link: '/cfn-vpc-props' }),
+        ec2({ name: 'VpcProps', kind: 'Struct', link: '/vpc-props' }),
+        ec2({ name: 'IVpc', kind: 'Interface', link: '/ivpc' }),
+        ec2({ name: 'VpcV2Props', kind: 'Struct', link: '/vpc-v2-props' }),
+        ec2({ name: 'IVpcV2', kind: 'Interface', link: '/ivpc-v2' }),
+        ec2({ name: 'VpcLookupOptions', kind: 'Struct', link: '/vpc-lookup-options' }),
+      ]));
+      const vpc = sidebar[0].items!.find((g) => g.text === 'Vpc')!;
+      expect(vpc.items!.map((g) => g.text)).toEqual(['Vpc', 'VpcV2', 'CfnVPC', 'Others']);
+      const others = vpc.items!.find((g) => g.text === 'Others')!;
+      expect(others.items!.map((i) => i.text)).toEqual([
+        'CfnVPCProps', 'IVpc', 'IVpcV2', 'VpcLookupOptions', 'VpcProps', 'VpcV2Props',
+      ]);
+      expect(sidebar[0].items!.map((g) => g.text)).not.toContain('General');
+    });
+
+    test('constructs without a resource type keep name-stem grouping, so nothing drops out', () => {
+      const sidebar = sidebarSections([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        // No CloudFormation resource resolves for these two: they still pair by stem.
+        ec2({ name: 'CfnInstance', kind: 'Construct (L1)', level: 'L1', link: '/cfn-instance' }),
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance' }),
+        ec2({ name: 'InstanceProps', kind: 'Struct', link: '/instance-props' }),
+        ec2({ name: 'BastionHostLinux', kind: 'Construct (L2)', level: 'L2', link: '/bastion' }),
+      ]);
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toEqual(['Overview', 'BastionHostLinux', 'Instance', 'Vpc']);
+      const instance = sidebar[0].items!.find((g) => g.text === 'Instance')!;
+      expect(instance.items!.map((g) => g.text)).toEqual(['Instance', 'CfnInstance', 'Others']);
+      expect(instance.items!.find((g) => g.text === 'Others')!.items!.map((i) => i.text)).toEqual(['InstanceProps']);
+    });
+
+    test('a construct with no resource type joins the typed group whose construct shares its stem', () => {
+      // An unleveled construct spelled like a typed construct (here a legacy `Vpc` from an integration submodule that
+      // folds into the same EC2 section) must not open a second group under the same resource.
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct', link: '/vpc-legacy', submodule: 'aws_ec2_legacy' }),
+      ]));
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toEqual(['Overview', 'Sibling', 'Vpc', 'Zzsibling']);
+      const vpc = sidebar[0].items!.find((g) => g.text === 'Vpc')!;
+      expect(vpc.items!.map((i) => i.link)).toEqual(['/vpc', '/cfn-vpc', '/vpc-legacy']);
+    });
+
+    test('a name-keyed group with the same heading as a typed group merges into it', () => {
+      // The typed group has no L2, so its heading is the resource name `Bar`; the untyped L2 `Bar` (stem `Bar`,
+      // matching no typed construct's stem) would otherwise form a second `Bar` group.
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'CfnFoo', kind: 'Construct (L1)', level: 'L1', link: '/cfn-foo', resourceType: 'AWS::EC2::Bar' }),
+        ec2({ name: 'Bar', kind: 'Construct (L2)', level: 'L2', link: '/bar' }),
+      ]));
+      const bars = sidebar[0].items!.filter((g) => g.text === 'Bar');
+      expect(bars).toHaveLength(1);
+      expect(bars[0].items!.map((i) => i.text)).toEqual(['Bar', 'CfnFoo']);
+    });
+
+    test('a single typed resource collapses its wrapper like a name-keyed one', () => {
+      const sidebar = sidebarSections([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({ name: 'VpcProps', kind: 'Struct', link: '/vpc-props' }),
+      ]);
+      expect(sidebar[0].items!.map((g) => g.text)).toEqual(['Overview', 'Vpc', 'CfnVPC', 'Others']);
+    });
+
+    test('the resource type never leaks into text, label or link', () => {
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+      ]));
+      expect(JSON.stringify(sidebar)).not.toContain('AWS::');
+    });
+  });
+
+  describe('events submodules fold under their service', () => {
+    const PKG = '@aws-cdk/mixins-preview';
+    const ec2Event = (overrides: Partial<SidebarEntry>) =>
+      entry({
+        assemblyName: PKG,
+        submodule: 'aws_ec2.events',
+        indexLink: '/v2/docs/@aws-cdk_mixins-preview-readme',
+        kind: 'Class',
+        ...overrides,
+      });
+    const ec2 = (overrides: Partial<SidebarEntry>) =>
+      entry({ submodule: 'aws_ec2', indexLink: '/api/modules/aws-cdk-lib/aws-ec2', ...overrides });
+
+    test('an events submodule is not a section of its own and surfaces no overview', () => {
+      const sidebar = buildServiceSidebar([
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance' }),
+        ec2({ name: 'Volume', kind: 'Construct (L2)', level: 'L2', link: '/volume' }),
+        ec2Event({ name: 'EC2InstanceStateChangeNotification', link: '/ec2-instance-state-change' }),
+      ]);
+      const sections = sidebar.flatMap((top) => top.items ?? []).map((s) => s.text);
+      expect(sections).toEqual(['EC2']);
+      const ec2Section = sidebar.flatMap((top) => top.items ?? [])[0];
+      const overviews = ec2Section.items!.filter((i) => i.text.startsWith('Overview'));
+      expect(overviews.map((i) => i.link)).toEqual(['/api/modules/aws-cdk-lib/aws-ec2']);
+    });
+
+    test('a facade from the events submodule attaches to the resource it fronts', () => {
+      // `InstanceEvents.fromInstance(IInstanceRef)` is classified a Facade by the caller; the stem `Instance`
+      // places it with the Instance construct, under the resource's Facades heading.
+      const sidebar = sidebarSections([
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance' }),
+        ec2({ name: 'Volume', kind: 'Construct (L2)', level: 'L2', link: '/volume' }),
+        ec2Event({ name: 'InstanceEvents', kind: 'Facade', link: '/instance-events' }),
+      ]);
+      const instance = sidebar[0].items!.find((g) => g.text === 'Instance')!;
+      expect(instance.items!.map((g) => g.text)).toEqual(['Instance', 'Facades']);
+      expect(instance.items!.find((g) => g.text === 'Facades')!.items!.map((i) => i.link)).toEqual(['/instance-events']);
+      expect(sidebar[0].items!.map((g) => g.text)).not.toContain('General');
+    });
+
+    test('non-facade event types collect under General > Events, even when a resource stem prefixes their name', () => {
+      const sidebar = sidebarSections([
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance' }),
+        ec2({ name: 'Volume', kind: 'Construct (L2)', level: 'L2', link: '/volume' }),
+        ec2({ name: 'VolumeProps', kind: 'Struct', link: '/volume-props' }),
+        // Would attach to Instance by stem if it were an ordinary type; it is an event pattern, not an Instance type.
+        ec2Event({ name: 'InstanceStateChange', link: '/instance-state-change' }),
+        ec2Event({ name: 'EBSVolumeNotification', link: '/ebs-volume-notification' }),
+        // Nested detail struct of an event class follows its class into Events, not Others.
+        ec2Event({ name: 'EBSVolumeNotification.EBSVolumeNotificationProps', kind: 'Struct', link: '/ebs-volume-props' }),
+      ]);
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toEqual(['Overview', 'Instance', 'Volume', 'General']);
+      const instance = sidebar[0].items!.find((g) => g.text === 'Instance')!;
+      expect(instance.items!.map((i) => i.text)).toEqual(['Instance']);
+      const general = sidebar[0].items!.find((g) => g.text === 'General')!;
+      expect(general.items!.map((g) => g.text)).toEqual(['Events']);
+      const events = general.items!.find((g) => g.text === 'Events')!;
+      expect(events.kindGroup).toBe(true);
+      expect(events.items!.map((i) => i.text)).toEqual([
+        'EBSVolumeNotification', 'EBSVolumeNotification.EBSVolumeNotificationProps', 'InstanceStateChange',
+      ]);
+      // Ordinary types still attach by stem.
+      const volume = sidebar[0].items!.find((g) => g.text === 'Volume')!;
+      expect(volume.items!.find((g) => g.text === 'Others')!.items!.map((i) => i.text)).toEqual(['VolumeProps']);
+    });
+
+    test('events sit beside Others inside General and in a collapsed single-resource section', () => {
+      const sidebar = sidebarSections([
+        entry({ submodule: 'aws_dlm', indexLink: '/api/modules/aws-cdk-lib/aws-dlm', name: 'CfnLifecyclePolicy', kind: 'Construct (L1)', level: 'L1', link: '/cfn-lifecycle-policy' }),
+        entry({ submodule: 'aws_dlm', indexLink: '/api/modules/aws-cdk-lib/aws-dlm', name: 'CfnLifecyclePolicyProps', kind: 'Struct', link: '/cfn-lifecycle-policy-props' }),
+        entry({ submodule: 'aws_dlm', indexLink: '/api/modules/aws-cdk-lib/aws-dlm', name: 'UnrelatedEnum', kind: 'Enum', link: '/unrelated' }),
+        entry({ assemblyName: PKG, submodule: 'aws_dlm.events', indexLink: '/v2/docs/@aws-cdk_mixins-preview-readme', name: 'DLMPolicyStateChange', kind: 'Class', link: '/dlm-policy-state-change' }),
+      ]);
+      // One resource: the wrapper collapses, so the kind headings sit at section level.
+      expect(sidebar[0].items!.map((g) => g.text)).toEqual(['Overview', 'CfnLifecyclePolicy', 'Events', 'Others']);
+      expect(sidebar[0].items!.find((g) => g.text === 'Events')!.items!.map((i) => i.text)).toEqual(['DLMPolicyStateChange']);
+      expect(sidebar[0].items!.find((g) => g.text === 'Others')!.items!.map((i) => i.text)).toEqual(['CfnLifecyclePolicyProps', 'UnrelatedEnum']);
+    });
   });
 
   describe('sections with at most one resource collapse the wrapper', () => {
