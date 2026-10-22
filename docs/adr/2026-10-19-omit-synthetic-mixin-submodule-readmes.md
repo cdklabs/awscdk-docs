@@ -46,6 +46,14 @@ root instead), no entry in the package root's "Submodules" list, and no search
 entry — the four surfaces that would otherwise point at a page that was never
 written.
 
+The package root overview those types index is the package's page, not the
+service's. So the sidebar never shows it as a service's Overview entry: a
+service section lists only overview pages of its own submodules. Instead the
+package is listed once in Framework, with the package root overview as its
+Overview and any root-level types below it, and it nests under its Framework
+parent like every other unlisted package. One entry per page means one
+highlight per page.
+
 The documented mixin packaging and version pin are covered by
 `2026-10-15-docgen-sources-and-modules.md`; this decision only changes which
 overview pages that tree emits, not what it documents or how mixin type pages
@@ -60,5 +68,8 @@ render.
   sidebar, indexing the package root rather than a removed submodule overview.
 - Real submodule overviews — any submodule with its own README, or with a
   non-mixin type — are untouched, because the rule requires both conditions.
+- The package root overview has exactly one sidebar entry, in Framework, and no
+  service section repeats it, so a reader never sees a row of identical
+  Overview links that all highlight together.
 - The rule is automatic and needs no per-submodule `overviews` config; a new
   mixin submodule is covered the moment it is documented.

@@ -1,3 +1,4 @@
+import { moduleReadmeLink } from '../src/docgen/links.js';
 import { assemblyOwner, buildServiceSidebar, CONSTRUCTS_SECTION, frameworkSectionCompare, frameworkSectionName, FRAMEWORK_SECTION, isConstructsPackage, isCore, isEventsSubmodule, isServiceSubmodule, resourceStem, sectionName, SERVICES_SECTION, serviceSubmodule, shortTypeName, SidebarEntry, SidebarItem, splitSidebarChunks } from '../src/docgen/sidebar.js';
 
 function entry(overrides: Partial<SidebarEntry>): SidebarEntry {
@@ -1725,5 +1726,110 @@ describe('curated Framework top level', () => {
   test('a listed module the build does not document is skipped', () => {
     const sidebar = buildServiceSidebar([fw('aws-cdk-lib', '', 'Stack'), fw('constructs', '', 'Construct')]);
     expect(sidebar[0].items!.map((s) => s.label ?? s.text)).toEqual(['aws-cdk-lib', 'constructs']);
+  });
+});
+
+describe('packages whose submodule overviews are all omitted', () => {
+  // A synthetic mixin submodule gets no overview page, so docgen points its types' index link at the package root
+  // overview instead. That link names the package, not the service, so it is no service's Overview.
+  const MIXINS = '@aws-cdk/cfn-property-mixins';
+  const mixinRoot = moduleReadmeLink(MIXINS);
+  const mixin = (submodule: string, name: string) =>
+    entry({
+      name,
+      kind: 'Mixin',
+      assemblyName: MIXINS,
+      submodule,
+      link: `/v2/docs/@aws-cdk_cfn-property-mixins.${submodule}.${name}`,
+      indexLink: mixinRoot,
+    });
+  const lib = (submodule: string, name: string, kind = 'Construct (L1)') =>
+    entry({
+      name,
+      kind,
+      assemblyName: 'aws-cdk-lib',
+      submodule,
+      link: `/v2/docs/aws-cdk-lib.${submodule}.${name}`,
+      indexLink: moduleReadmeLink('aws-cdk-lib', submodule),
+    });
+  const fixture = (extra: SidebarEntry[] = []) =>
+    buildServiceSidebar([
+      lib('', 'Stack', 'Class'),
+      lib('aws_dlm', 'CfnLifecyclePolicy'),
+      mixin('aws_dlm', 'CfnLifecyclePolicyPropsMixin'),
+      lib('aws_devopsguru', 'CfnNotificationChannel'),
+      mixin('aws_devopsguru', 'CfnNotificationChannelPropsMixin'),
+      ...extra,
+    ]);
+  const section = (tree: SidebarItem[], top: string, text: string): SidebarItem | undefined => {
+    const find = (items: readonly SidebarItem[]): SidebarItem | undefined => {
+      for (const item of items) {
+        if (item.text === text && item.items) return item;
+        const nested = item.items ? find(item.items) : undefined;
+        if (nested) return nested;
+      }
+      return undefined;
+    };
+    return find(tree.find((t) => t.text === top)?.items ?? []);
+  };
+  const leaves = (items: readonly SidebarItem[]): SidebarItem[] =>
+    items.flatMap((item) => (item.items ? leaves(item.items) : item.link ? [item] : []));
+
+  test('a service section lists only its own Overview, not the package root', () => {
+    const dlm = section(fixture(), SERVICES_SECTION, 'DLM')!;
+    const overviews = dlm.items!.filter((i) => i.text.startsWith('Overview'));
+    expect(overviews).toEqual([{ text: 'Overview', link: moduleReadmeLink('aws-cdk-lib', 'aws_dlm') }]);
+  });
+
+  test('the service keeps its mixin types where they were', () => {
+    const dlm = section(fixture(), SERVICES_SECTION, 'DLM')!;
+    expect(leaves(dlm.items!).map((l) => l.text)).toContain('CfnLifecyclePolicyPropsMixin');
+  });
+
+  test('the package gets one Framework entry whose Overview is the package readme', () => {
+    const pkg = section(fixture(), FRAMEWORK_SECTION, MIXINS)!;
+    expect(pkg).toBeDefined();
+    expect(pkg.items).toEqual([{ text: 'Overview', link: mixinRoot }]);
+    // Nested under aws-cdk-lib like every other unlisted @aws-cdk/* package, and the readme page maps to the chunk
+    // that now shows it.
+    const top = fixture()[0].items!;
+    expect(top.map((s) => s.text)).not.toContain(MIXINS);
+    expect(top.find((s) => s.text === 'aws-cdk-lib')!.modules).toContain('@aws-cdk_cfn-property-mixins');
+  });
+
+  test('no two entries in the tree link to the same page', () => {
+    const links = leaves(fixture()).map((l) => l.link);
+    expect(links.length).toBeGreaterThan(0);
+    expect(new Set(links).size).toBe(links.length);
+  });
+
+  test('a package with root types keeps its single root Overview, added once', () => {
+    const generic = entry({
+      name: 'PropertyMergeStrategy',
+      kind: 'Class',
+      assemblyName: MIXINS,
+      submodule: '',
+      link: '/v2/docs/@aws-cdk_cfn-property-mixins.PropertyMergeStrategy',
+      indexLink: mixinRoot,
+    });
+    const pkg = section(fixture([generic]), FRAMEWORK_SECTION, MIXINS)!;
+    expect(pkg.items!.filter((i) => i.link === mixinRoot)).toEqual([{ text: 'Overview', link: mixinRoot }]);
+    expect(leaves(pkg.items!).map((l) => l.text)).toContain('PropertyMergeStrategy');
+  });
+
+  test('a submodule with an overview page of its own keeps its Overview entry', () => {
+    const own = entry({
+      name: 'FancyBucket',
+      kind: 'Construct (L3)',
+      assemblyName: MIXINS,
+      submodule: 'aws_s3',
+      link: '/v2/docs/@aws-cdk_cfn-property-mixins.aws_s3.FancyBucket',
+      indexLink: moduleReadmeLink(MIXINS, 'aws_s3'),
+    });
+    const s3 = section(fixture([lib('aws_s3', 'CfnBucket'), own]), SERVICES_SECTION, 'S3')!;
+    expect(s3.items!.filter((i) => i.text.startsWith('Overview')).map((i) => i.link)).toEqual([
+      moduleReadmeLink('aws-cdk-lib', 'aws_s3'),
+      moduleReadmeLink(MIXINS, 'aws_s3'),
+    ]);
   });
 });

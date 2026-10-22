@@ -639,6 +639,32 @@ describe('docgen generation', () => {
     expect(previewRoot).not.toContain('.events-readme.html');
   });
 
+  test('lists the mixin package overview once, in Framework, and no service repeats it', () => {
+    type Node = { text: string; link?: string; items?: Node[] };
+    const tree: Node[] = JSON.parse(readFileSync(join(outDir, 'sidebar.json'), 'utf-8'));
+    const rootReadme = '/v2/docs/@aws-cdk_cfn-property-mixins-readme';
+    const holders: string[][] = [];
+    const links: string[] = [];
+    const walk = (nodes: Node[], path: string[]): void => {
+      for (const node of nodes) {
+        if (node.link) {
+          links.push(node.link);
+          if (node.link === rootReadme) holders.push([...path, node.text]);
+        }
+        if (node.items) walk(node.items, [...path, node.text]);
+      }
+    };
+    walk(tree, []);
+
+    // The Lambda service keeps its mixin types but carries no Overview for the mixin package.
+    const lambda = tree.find((t) => t.text === 'Services')!.items!.find((s) => s.text === 'Lambda')!;
+    expect(lambda.items!.filter((i) => i.text.startsWith('Overview (@aws-cdk/cfn-property-mixins'))).toEqual([]);
+    // Exactly one entry opens the package readme: the package's own Overview, nested under aws-cdk-lib in Framework.
+    expect(holders).toEqual([['Framework', 'aws-cdk-lib', '@aws-cdk/cfn-property-mixins', 'Overview']]);
+    // And no page is the target of two entries, so only one highlights at a time.
+    expect(new Set(links).size).toBe(links.length);
+  });
+
   test('submodule start page renders the README above the type preview list', () => {
     const s3Page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
     // README's own H1 is the page's first HEADING, so it is still the
