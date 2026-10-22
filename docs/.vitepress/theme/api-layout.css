@@ -470,8 +470,13 @@ a.chain-item:hover {
 }
 
 .member-list .member-row {
-  border-bottom: 1px solid var(--vp-c-divider);
-  padding: 7px 0;
+  /* Separator uses the stronger --vp-c-border rather than the lower-contrast
+     --vp-c-divider so the boundary between members stays visible in dark mode;
+     width stays 1px. The 10px vertical padding gives the Properties and Methods
+     rows, which share this selector, room to read as separate entries while the
+     horizontal inset stays 0. */
+  border-bottom: 1px solid var(--vp-c-border);
+  padding: 10px 0;
 }
 
 .member-list .member-row:last-child {
