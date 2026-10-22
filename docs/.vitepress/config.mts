@@ -309,6 +309,7 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
         // Hint the query-scoping tokens: `module:` / `kind:` are parsed client-side (theme/search-client.ts)
         // into Pagefind filters that docgen emits on every API page.
         placeholder: "Search (e.g. bucket module:aws-s3 kind:construct)",
+        heading: "Top {{searchResult}} results",
         ...(process.env.SHARD_BUILD
           ? { indexingCommand: 'echo "[shard build] pagefind indexing deferred to post-merge step"' }
           : {}),

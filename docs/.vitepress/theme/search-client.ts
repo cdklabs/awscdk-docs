@@ -41,6 +41,31 @@ export const SEARCH_RANKING = {
   termSaturation: 1.2,
 } as const;
 
+/** Keep a bounded ranked pool for favorites without scanning every match. */
+export const MAX_SEARCH_CANDIDATES = 50;
+
+/** Return only the results the search dialog will display and materialize. */
+export const MAX_SEARCH_RESULTS = 20;
+
+interface SearchResultLike {
+  results?: unknown[];
+  [key: string]: unknown;
+}
+
+function limitSearchCandidates<T>(search: T): T {
+  if (!search || typeof search !== "object") {
+    return search;
+  }
+  const results = (search as SearchResultLike).results;
+  if (!Array.isArray(results) || results.length <= MAX_SEARCH_CANDIDATES) {
+    return search;
+  }
+  return {
+    ...search,
+    results: results.slice(0, MAX_SEARCH_CANDIDATES),
+  } as T;
+}
+
 interface SearchOptions {
   filters?: Record<string, string[]>;
   [key: string]: unknown;
@@ -98,24 +123,26 @@ export function withQueryFilters<T extends SearchHandleLike>(handle: T): T {
   }
   const wrapped: T = { ...handle };
   if (typeof handle.search === "function") {
-    wrapped.search = (text, options) => {
+    wrapped.search = async (text, options) => {
       const parsed = parseSearchQuery(text ?? "");
-      return handle.search!.call(
+      const search = await handle.search!.call(
         handle,
         parsed.text || null,
         mergeOptions(options, parsed.filters),
       );
+      return limitSearchCandidates(search);
     };
   }
   if (typeof handle.debouncedSearch === "function") {
-    wrapped.debouncedSearch = (text, options, delay) => {
+    wrapped.debouncedSearch = async (text, options, delay) => {
       const parsed = parseSearchQuery(text ?? "");
-      return handle.debouncedSearch!.call(
+      const search = await handle.debouncedSearch!.call(
         handle,
         parsed.text || null,
         mergeOptions(options, parsed.filters),
         delay,
       );
+      return limitSearchCandidates(search);
     };
   }
   return wrapped;

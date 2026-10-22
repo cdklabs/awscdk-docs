@@ -1023,6 +1023,36 @@ describe('docgen generation', () => {
     const bucketOthers = bucket.items.find((i: any) => i.text === 'Others');
     expect(bucketOthers.collapsed).toBe(true);
 
+    // Constructs group by the CloudFormation resource they provision, not
+    // by their spelling: the L1 `CfnVPC`, the stable L2 `Vpc` and the alpha
+    // L2 `VpcV2` all back `AWS::EC2::VPC`, so EC2 shows ONE group — headed
+    // by the L2 name — and no separate `VPC` or `VpcV2` resource.
+    const ec2 = serviceSections.find((s: any) => s.text === 'EC2');
+    const ec2Groups = ec2.items.map((i: any) => i.text);
+    expect(ec2Groups).toContain('Vpc');
+    expect(ec2Groups).not.toContain('VPC');
+    expect(ec2Groups).not.toContain('VpcV2');
+    const vpc = ec2.items.find((i: any) => i.text === 'Vpc');
+    expect(vpc.items).toEqual(
+      expect.arrayContaining([
+        { text: 'Vpc', link: '/v2/docs/aws-cdk-lib.aws_ec2.Vpc', level: 'L2' },
+        { text: 'VpcV2', link: '/v2/docs/@aws-cdk_aws-ec2-alpha.VpcV2', level: 'L2' },
+        { text: 'CfnVPC', link: '/v2/docs/aws-cdk-lib.aws_ec2.CfnVPC', level: 'L1' },
+      ]),
+    );
+    // Related types follow their construct into the merged group.
+    const vpcOthers = vpc.items.find((i: any) => i.text === 'Others').items.map((i: any) => i.text);
+    expect(vpcOthers).toEqual(expect.arrayContaining(['VpcProps', 'IVpc', 'CfnVPCProps', 'VpcV2Props']));
+    // `BastionHostLinux` is tagged `@resource AWS::EC2::Instance` and sorts
+    // before `Instance`; the group is still headed by the L2 that spells the
+    // resource, and the bastion joins it.
+    expect(ec2Groups).toContain('Instance');
+    expect(ec2Groups).not.toContain('BastionHostLinux');
+    const instance = ec2.items.find((i: any) => i.text === 'Instance');
+    expect(instance.items.map((i: any) => i.text)).toEqual(
+      expect.arrayContaining(['Instance', 'BastionHostLinux', 'CfnInstance']),
+    );
+
     // Core keeps aws-cdk-lib core types in its flat kind grouping; the
     // constructs package has its own section.
     const core = framework.find((s: any) => s.text === 'aws-cdk-lib');

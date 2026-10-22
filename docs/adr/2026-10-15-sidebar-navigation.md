@@ -38,7 +38,11 @@ cross-reference targets are never changed by a navigation decision, only
   module-root types (`Stack`, `App`, ...), and `assets` — lead, with a flat
   kind grouping (Constructs / Mixins / Others); resource grouping does not
   apply to Core.
-- **Resource groups.** Within a service, types group by resource, named by
+- **Resource groups.** *Superseded for constructs that resolve a
+  CloudFormation resource type — see
+  [sidebar grouping by CloudFormation resource](./2026-10-22-sidebar-grouping-by-cloudformation-resource.md).
+  The name-stem rule below remains the fallback for constructs that resolve
+  none.* Within a service, types group by resource, named by
   the construct's *stem* — its name with the `Cfn` L1 prefix stripped, so
   `CfnBucket` and `Bucket` pair under one *Bucket*. Related types attach by
   stem (stripping the `I` interface prefix and `Props` suffix:
@@ -81,9 +85,12 @@ cross-reference targets are never changed by a navigation decision, only
   entry's canonical `indexLink`. Section headers stay pure disclosure
   controls (expand/collapse), never navigation — overloading one control
   with navigate-vs-disclose is a touch-device mis-click hazard. A section
-  folding one module gets a plain `Overview`; one folding several
-  disambiguates each as `Overview (<submodule>)`, qualified with the package
-  name on a cross-package collision. Labels are language-aware via
+  folding one module gets a plain `Overview`; one folding several puts the
+  primary `aws-cdk-lib` service module first, then keeps the canonical-package
+  and link order for related overviews. A primary module is a non-empty
+  `aws_<service>` or `alexa_<service>` name with no further suffix. Multiple
+  overviews are disambiguated as `Overview (<submodule>)`, qualified with the
+  package name on a cross-package collision. Labels are language-aware via
   `labelVariants`.
 
 ### Framework / Services split
