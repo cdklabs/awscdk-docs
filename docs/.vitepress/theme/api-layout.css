@@ -880,3 +880,23 @@ a.chain-item:hover {
     display: none !important;
   }
 }
+
+/* ---------- API section headers: Properties / Methods ----------
+   These two `## Properties` / `## Methods` headings (`h2#properties`,
+   `h2#methods`, emitted by anchoredHeading in src/docgen) sit directly above
+   dense member rows whose symbol names are 0.875rem / weight 600 in the mono
+   face (the size is set on `.member-list .member-line`). With no rule of their
+   own the headings read at a size too close to the
+   symbol names below them, so the section boundary is easy to miss. Give only
+   these two headings the base (non-mono) heading font and the standard heading
+   color, clearly larger and heavier than a symbol name. Scope is deliberately
+   just #properties and #methods — other generated API headings (Example,
+   Initializer, Submodules, Types) are out of scope for this change. Monospace
+   stays on symbol names only; these headings are prose, not code. */
+.vp-doc h2#properties,
+.vp-doc h2#methods {
+  font-family: var(--vp-font-family-base);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--vp-c-text-1);
+}
