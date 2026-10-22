@@ -25,6 +25,9 @@ const CDK_ALPHA_VERSION = CDK_PINS.cdkAlpha;
 const DOCUMENTED_ALPHA_MODULES = alphaModulesOf(DOCGEN_CONFIG.modules);
 // Released in lockstep with aws-cdk-lib, so they take its pin.
 const CDK_LIB_PACKAGES = ['@aws-cdk/cfn-property-mixins', 'aws-cdk-lib'];
+// Released in lockstep with the alpha modules (`<cdk-version>-alpha.0`) but not named `*-alpha`, so the alpha
+// module pattern does not catch them and they take the alpha pin by name here.
+const CDK_ALPHA_PACKAGES = ['@aws-cdk/mixins-preview'];
 
 // @aws-cdk/toolkit-lib ships no jsii assembly and has its own external docs site.
 // @aws-cdk/cloud-assembly-schema is re-exported as the aws-cdk-lib `cloud_assembly_schema` submodule, so
@@ -124,6 +127,7 @@ const project = new CdkTypeScriptProject({
   devDeps: [
     // Documented CDK packages: their prose is the site's content, but none of their code ships.
     ...DOCUMENTED_ALPHA_MODULES.map((name) => `${name}@${CDK_ALPHA_VERSION}`),
+    ...CDK_ALPHA_PACKAGES.map((name) => `${name}@${CDK_ALPHA_VERSION}`),
     ...CDK_LIB_PACKAGES.map((name) => `${name}@${CDK_PINS.awsCdkLib}`),
     // Docgen reads the documented packages' jsii assemblies to generate the markdown source.
     '@jsii/spec',
@@ -147,7 +151,7 @@ const project = new CdkTypeScriptProject({
 // newest release, which the nightly cdk-version-check workflow pins. Keep the upgrade tasks off those packages, so a
 // cooldown-bound upgrade cannot roll a pin back. The option is construction-only and cdklabs-projen-project-types
 // does not forward it, so it is set on the components here; the task steps read it lazily at synth.
-const CDK_PINNED_PACKAGES = [...DOCUMENTED_ALPHA_MODULES, ...CDK_LIB_PACKAGES];
+const CDK_PINNED_PACKAGES = [...DOCUMENTED_ALPHA_MODULES, ...CDK_ALPHA_PACKAGES, ...CDK_LIB_PACKAGES];
 for (const upgrade of project.components.filter((c) => c instanceof javascript.UpgradeDependencies)) {
   const options = (upgrade as unknown as { options: javascript.UpgradeDependenciesOptions }).options;
   (upgrade as unknown as { options: javascript.UpgradeDependenciesOptions }).options = {

@@ -3,6 +3,7 @@
     "aws-cdk-lib",
     "constructs",
     "@aws-cdk/cfn-property-mixins",
+    "@aws-cdk/mixins-preview",
     "@aws-cdk/app-staging-synthesizer-alpha",
     "@aws-cdk/aws-amplify-alpha",
     "@aws-cdk/aws-applicationsignals-alpha",

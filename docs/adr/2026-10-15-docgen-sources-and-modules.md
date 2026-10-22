@@ -40,8 +40,8 @@ generated `package.json` matches the config, so adding a module is a one-line
 config change plus `npx projen`.
 
 The set documents `aws-cdk-lib`, `constructs`, `@aws-cdk/cfn-property-mixins`,
-and every in-support alpha module published in lockstep with the pinned core
-version (`<cdk-version>-alpha.0`). Excluded with reason: out-of-support alphas
+`@aws-cdk/mixins-preview`, and every in-support alpha module published in
+lockstep with the pinned core version (`<cdk-version>-alpha.0`). Excluded with reason: out-of-support alphas
 pinned to older CDK lines (they would advertise stale APIs); `cli-lib-alpha`
 (deprecated for `toolkit-lib`); `toolkit-lib` (ships no jsii assembly — the
 `/versions` page links its external docs); and `cx-api`, `region-info`,
@@ -104,6 +104,18 @@ package-specific renderer or rule. Two generic config knobs tune it:
 With both knobs the package contributes about 2,056 pages (~15 MB) rather than
 13,257 pages (~127 MB). Other modules emit every classified type with examples
 unless they opt in.
+
+### Mixins preview
+
+`@aws-cdk/mixins-preview` ships in lockstep with the alpha modules at the alpha
+pin (`<cdk-version>-alpha.0`) but is not named `*-alpha`, so the alpha module
+pattern does not catch it; `.projenrc.ts` pins it by name at `cdkAlpha`
+(`CDK_ALPHA_PACKAGES`), and `docgen.config.json` lists it among the fixed
+modules the nightly module sync leaves in place. It documents with the default
+kinds and examples: its per-service `mixins` submodules follow the mixin rules
+below, and its per-service `events` submodules fold into their service per
+[fold events submodules](./2026-10-22-fold-events-submodules.md). At
+2.274.0-alpha.0 it contributes about 2,100 pages, roughly 3.6% of the site.
 
 ### Mixin classification by the `IMixin` marker
 

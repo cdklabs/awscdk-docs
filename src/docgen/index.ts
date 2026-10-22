@@ -51,7 +51,7 @@ import {
 import { upstreamReadmeUrl } from './provenance.js';
 import { ExampleTranslations, loadTablet, RosettaTablet } from './rosetta.js';
 import { searchFilterHtml, searchKind, searchModule } from './search.js';
-import { buildServiceSidebar, renameChunks, SidebarEntry, SidebarItem, splitSidebarChunks } from './sidebar.js';
+import { buildServiceSidebar, isEventsSubmodule, renameChunks, SidebarEntry, SidebarItem, splitSidebarChunks } from './sidebar.js';
 import { buildSubclassIndex } from './subclasses.js';
 import {
   buildSymbolIndex,
@@ -532,16 +532,17 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     const banner = renderExperimentalBanner(assembly);
     const submoduleNames = [...groups.keys()].filter((k) => k !== '').sort();
 
-    // A synthetic mixin-submodule overview is noise: the submodule carries only mixin types and no real upstream
-    // README, so its generated `…-readme` page is a type list under a heading that corresponds to nothing a reader
-    // can open upstream. Such a page is omitted entirely rather than emitted empty. A submodule keeps its overview
-    // the moment either half is false — a real README of its own, or any non-mixin type — so real submodule
-    // overviews are untouched. Keyed on the mixin classification, not a package name, so it follows the marker.
+    // A synthetic structural-submodule overview is noise: the submodule carries only mixin types, or is a generated
+    // `events` grouping, and has no real upstream README, so its generated `…-readme` page is a type list under a
+    // heading that corresponds to nothing a reader can open upstream. Such a page is omitted entirely rather than
+    // emitted empty. A submodule keeps its overview the moment it has a real README of its own, and a non-events
+    // submodule keeps it when any of its types is not a mixin, so real submodule overviews are untouched. Keyed on
+    // the mixin classification and the reserved `events` name, not on a package name.
     const isMixinType = (entry: TypeEntry): boolean =>
       mixinIndex.has(entry.type.fqn) || mixinClassIndex.has(entry.type.fqn);
-    const isSyntheticMixinSubmodule = (sub: string): boolean => {
+    const isSyntheticSubmodule = (sub: string): boolean => {
       const types = groups.get(sub) ?? [];
-      if (types.length === 0 || !types.every(isMixinType)) {
+      if (types.length === 0 || !(isEventsSubmodule(sub) || types.every(isMixinType))) {
         return false;
       }
       // No real upstream README: a `generated` overview has none by definition, and a resolved README-bearing
@@ -553,7 +554,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     // Which submodules actually get an overview page in THIS build, so a breadcrumb segment for an intermediate
     // grouping links only when there is something to link to — and a sidebar type entry points its index link at the
     // package root rather than a synthetic submodule overview that was never written.
-    const emittedSubmodules = new Set(submoduleNames.filter((sub) => !isSyntheticMixinSubmodule(sub)));
+    const emittedSubmodules = new Set(submoduleNames.filter((sub) => !isSyntheticSubmodule(sub)));
 
     // Dedicated page for every type, dispatched by kind. A type introduced in the documented minor line gets an
     // `Added in vX.Y.Z` badge; its shape history renders inside the page's metadata block.
@@ -590,7 +591,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
 
     // Per-submodule pages: README first (when the assembly carries one), then the interactive type preview list.
     for (const sub of submoduleNames) {
-      // A synthetic mixin-submodule overview is omitted entirely (see `emittedSubmodules` above): no page, no
+      // A synthetic structural-submodule overview is omitted entirely (see `emittedSubmodules` above): no page, no
       // sidebar index link, no search entry.
       if (!emittedSubmodules.has(sub)) {
         continue;
@@ -623,7 +624,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
 
     // Sidebar entries: one per type, grouped by service later
     for (const [submodule, entries] of groups) {
-      // A synthetic mixin submodule has no overview page, so its types index to the package root rather than a
+      // A synthetic structural submodule (mixins, events) has no overview page, so its types index to the package root rather than a
       // `…-readme` link that was never written.
       const indexLink = submodule && emittedSubmodules.has(submodule)
         ? moduleReadmeLink(assembly.name, submodule)

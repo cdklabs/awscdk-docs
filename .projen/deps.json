@@ -206,6 +206,11 @@
       "type": "build"
     },
     {
+      "name": "@aws-cdk/mixins-preview",
+      "version": "2.274.0-alpha.0",
+      "type": "build"
+    },
+    {
       "name": "@axe-core/playwright",
       "type": "build"
     },

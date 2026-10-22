@@ -358,6 +358,7 @@ describe('docgen config', () => {
     const config = loadConfig(join(ROOT, 'docgen.config.json'));
     expect(config.modules).toContain('aws-cdk-lib');
     expect(config.modules).toContain('constructs');
+    expect(config.modules).toContain('@aws-cdk/mixins-preview');
     expect(config.includeKinds?.['@aws-cdk/cfn-property-mixins']).toEqual(['Mixin']);
     expect(config.emitExamples?.['@aws-cdk/cfn-property-mixins']).toBe(false);
   });
@@ -590,6 +591,52 @@ describe('docgen generation', () => {
     // No sidebar entry points a mixin submodule's types at a readme page that was never written.
     const sidebar = readFileSync(join(outDir, 'sidebar.json'), 'utf-8');
     expect(sidebar).not.toContain('@aws-cdk_cfn-property-mixins.aws_lambda-readme');
+  });
+
+  test('folds events submodules under their service: facades with their resource, the rest under Events', () => {
+    const sidebar = JSON.parse(readFileSync(join(outDir, 'sidebar.json'), 'utf-8'));
+    const serviceSections = sidebar[1].items;
+    const sectionTexts = serviceSections.map((s: any) => s.text);
+    // No generated `<Service>.events` grouping surfaces as a navigation branch of its own.
+    expect(sectionTexts.filter((t: string) => /\.events$/i.test(t))).toEqual([]);
+    expect(sectionTexts).not.toContain('Dlm.events');
+
+    // Facade case: `InstanceEvents.fromInstance(IInstanceRef)` sits with the EC2 Instance resource.
+    const ec2 = serviceSections.find((s: any) => s.text === 'EC2');
+    const instance = ec2.items.find((i: any) => i.text === 'Instance');
+    const facades = instance.items.find((i: any) => i.text === 'Facades');
+    expect(facades.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'InstanceEvents', link: '/v2/docs/@aws-cdk_mixins-preview.aws_ec2.events.InstanceEvents' }),
+      ]),
+    );
+    // General case: the plain event pattern classes and their detail structs collect under General > Events, and
+    // nowhere else in the section — `EC2InstanceStateChangeNotification` is not an Instance type.
+    const general = ec2.items.find((i: any) => i.text === 'General');
+    const events = general.items.find((i: any) => i.text === 'Events');
+    const eventTexts = events.items.map((i: any) => i.text);
+    expect(eventTexts).toEqual(expect.arrayContaining(['EC2InstanceStateChangeNotification', 'EBSVolumeNotification']));
+    expect(eventTexts.some((t: string) => t.startsWith('EC2InstanceStateChangeNotification.'))).toBe(true);
+    const withoutGeneral = JSON.stringify(ec2.items.filter((i: any) => i.text !== 'General'));
+    expect(withoutGeneral).not.toContain('EC2InstanceStateChangeNotification');
+    expect(JSON.stringify(ec2.items.map((i: any) => i.text))).not.toContain('Events"');
+
+    // A single-resource service collapses its wrapper, so Events sits at section level next to Others.
+    const dlm = serviceSections.find((s: any) => s.text === 'DLM');
+    const dlmEvents = dlm.items.find((i: any) => i.text === 'Events');
+    expect(dlmEvents.items.map((i: any) => i.text)).toEqual(expect.arrayContaining(['DLMPolicyStateChange']));
+
+    // No orphaned overview: the events submodule gets no `…-readme` page, nothing links to one, and its type
+    // pages still render.
+    const eventsReadmes = readdirSync(join(outDir, 'docs')).filter(
+      (name) => name.startsWith('@aws-cdk_mixins-preview.') && name.endsWith('.events-readme.md'),
+    );
+    expect(eventsReadmes).toEqual([]);
+    expect(existsSync(join(outDir, 'docs', '@aws-cdk_mixins-preview.aws_dlm.events.DLMPolicyStateChange.md'))).toBe(true);
+    const sidebarText = JSON.stringify(sidebar);
+    expect(sidebarText).not.toContain('.events-readme');
+    const previewRoot = readFileSync(join(outDir, 'docs', '@aws-cdk_mixins-preview-readme.md'), 'utf-8');
+    expect(previewRoot).not.toContain('.events-readme.html');
   });
 
   test('submodule start page renders the README above the type preview list', () => {
