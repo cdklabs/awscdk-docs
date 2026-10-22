@@ -762,6 +762,32 @@ describe('docgen generation', () => {
     expect(typePage).toContain('/v2/docs/aws-cdk-lib.aws_cloudfront.experimental');
   });
 
+  test('type pages list their properties and methods for the outline, keyed by the rows\' own anchors', () => {
+    const frontmatterMembers = (page: string): Record<string, [string, string][]> | undefined => {
+      const head = page.slice(0, page.indexOf('\n---\n', 3));
+      const line = head.split('\n').find((l) => l.startsWith('outlineMembers: '));
+      return line ? JSON.parse(line.slice('outlineMembers: '.length)) : undefined;
+    };
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    const members = frontmatterMembers(bucket)!;
+    expect(members.properties).toContainEqual(['bucketarn', 'bucketArn']);
+    expect(members.methods).toContainEqual(['addtoresourcepolicy', 'addToResourcePolicy']);
+    // Only the type's own properties and its methods: the inlined BucketProps rows stay out of the outline.
+    expect(Object.keys(members).sort()).toEqual(['methods', 'properties']);
+    // Every entry points at a member row that exists on the page; no per-member heading is added.
+    for (const [anchor] of [...members.properties, ...members.methods]) {
+      expect(bucket).toContain(`<div class="member-row" id="${anchor}">`);
+      expect(bucket).not.toMatch(new RegExp(`^#+ .*\\{#${anchor}\\}$`, 'm'));
+    }
+    // The declared title stays the first frontmatter key.
+    expect(bucket.startsWith('---\ntitle: "Bucket"\n')).toBe(true);
+
+    // A struct has properties but no methods: no methods group at all.
+    const props = frontmatterMembers(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8'))!;
+    expect(props.properties.length).toBeGreaterThan(0);
+    expect(props).not.toHaveProperty('methods');
+  });
+
   test('README-backed overview pages carry their upstream edit target', () => {
     // An overview page's prose is an upstream README, so the page records that
     // file for the theme to link rather than this repo's docgen directory,
@@ -862,7 +888,8 @@ describe('docgen generation', () => {
       const page = readFileSync(join(outDir, 'docs', name), 'utf-8');
       // Frontmatter must be the very first bytes or VitePress does not
       // parse it at all, which would silently restore H1 inference.
-      expect(page.startsWith(`---\ntitle: ${JSON.stringify(title)}\n---\n`)).toBe(true);
+      // The title is the first key; the outline member list may follow it.
+      expect(page.startsWith(`---\ntitle: ${JSON.stringify(title)}\n`)).toBe(true);
       // ...and still ahead of the breadcrumb and the H1.
       const end = page.indexOf('\n---\n');
       expect(end + 5).toBeLessThan(page.indexOf('<nav class="type-breadcrumb"'));
@@ -928,7 +955,8 @@ describe('docgen generation', () => {
       join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha.PythonFunction.md'),
       'utf-8',
     );
-    expect(alphaType.startsWith('---\ntitle: "PythonFunction"\n---\n')).toBe(true);
+    expect(alphaType.startsWith('---\ntitle: "PythonFunction"\n')).toBe(true);
+    expect(alphaType.indexOf('\n---\n', 3)).toBeLessThan(alphaType.indexOf('<nav class="type-breadcrumb"'));
     expect(alphaType).toContain(banner);
     expect(alphaType.indexOf('</nav>')).toBeLessThan(alphaType.indexOf(banner));
     expect(alphaType.indexOf(banner)).toBeLessThan(alphaType.search(/^# /m));

@@ -206,7 +206,9 @@ Properties and methods render the **same** `member-*` row: a header line
 (name plus full inline signature), a summary line, then short prose inline or
 long prose behind a labeled disclosure. There are no per-member headings; the
 `## Methods` and `## Properties` section headings remain, keep their outline
-entries, and per-member deep links move to the `#` permalink whose slug
+entries (members are listed under them from data, not headings — superseded in
+part by [members in the outline](./2026-10-22-outline-members.md)), and
+per-member deep links move to the `#` permalink whose slug
 (`memberAnchor`) is byte-identical to the old heading pin so every `#member`
 link still resolves. Where a construct page inlines a props struct **and**
 lists the type's own properties, the inlined table namespaces its rows under
@@ -436,7 +438,9 @@ outline, only overview pages suppress it.
 
 - **Vue components fed structured data** for the interactive layout — rejected
   for native HTML emitted at build time, so pages stay static, no-JS functional,
-  and greppable as plain text.
+  and greppable as plain text. The in-page outline is the one exception: it reads
+  a generated member list
+  ([members in the outline](./2026-10-22-outline-members.md)).
 - **Grouping overflow relations by owning submodule** — `Construct`'s
   descendants span 316 namespaces, so grouping replaces one list with 316
   headings; the two-line budget plus disclosure handles the pathological pages
