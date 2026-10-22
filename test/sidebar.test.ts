@@ -368,9 +368,9 @@ describe('buildServiceSidebar', () => {
       entry({ assemblyName: 'constructs', submodule: '', indexLink: '/api/modules/constructs/' }),
     ]);
     expect(sidebar.map((s) => s.text)).toEqual([FRAMEWORK_SECTION, SERVICES_SECTION]);
-    // Framework headings are package-qualified and alphabetical, so
-    // `constructs` follows `aws-cdk-lib.pipelines`.
-    expect(sidebar[0].items!.map((s) => s.text)).toEqual(['aws-cdk-lib.pipelines', CONSTRUCTS_SECTION]);
+    // Listed Framework sections lead in allow-list order; `aws-cdk-lib.pipelines` has no documented parent here
+    // (the build has no aws-cdk-lib core types), so it stays on the top level after them instead of disappearing.
+    expect(sidebar[0].items!.map((s) => s.text)).toEqual([CONSTRUCTS_SECTION, 'aws-cdk-lib.pipelines']);
     // Services stay alphabetical.
     expect(sidebar[1].items!.map((s) => s.text)).toEqual(['Lambda', 'SQS']);
   });
@@ -505,7 +505,7 @@ describe('buildServiceSidebar', () => {
     expect(sidebar[0].items!.map((s) => s.text)).toEqual(['S3']);
   });
 
-  test('pins the full Framework heading order: unscoped alphabetical, @-scoped last', () => {
+  test('pins the full Framework heading order: allow list on top, the rest nested alphabetically, @-scoped last', () => {
     const sidebar = buildServiceSidebar([
       entry({ submodule: 'aws_sqs', indexLink: '/api/modules/aws-cdk-lib/aws-sqs' }),
       entry({ submodule: 'aws_lambda', indexLink: '/api/modules/aws-cdk-lib/aws-lambda' }),
@@ -524,14 +524,12 @@ describe('buildServiceSidebar', () => {
         indexLink: '/api/modules/aws-cdk-integ-tests-alpha/',
       }),
     ]);
-    // The CORE_SECTION rank-0 and CONSTRUCTS_SECTION rank-1 pins are
-    // gone: `aws-cdk-lib` leads because it sorts first, and `constructs`
-    // follows the `aws-cdk-lib.*` submodules instead of preceding them.
-    expect(sidebar[0].items!.map((s) => s.text)).toEqual([
-      'aws-cdk-lib',
-      'aws-cdk-lib.assertions',
+    // The top level is the curated allow list in its own order (missing entries skipped); the unlisted modules nest
+    // under `aws-cdk-lib`, after its own groups, sorted unscoped-alphabetical with @-scoped packages last.
+    expect(sidebar[0].items!.map((s) => s.text)).toEqual(['aws-cdk-lib', 'aws-cdk-lib.assertions', 'constructs']);
+    const lib = sidebar[0].items![0];
+    expect(lib.items!.filter((i) => i.items && !i.kindGroup).map((i) => i.text)).toEqual([
       'aws-cdk-lib.pipelines',
-      'constructs',
       '@aws-cdk/app-staging-synthesizer-alpha',
       '@aws-cdk/integ-tests-alpha',
     ]);
@@ -1338,5 +1336,112 @@ describe('section modules and splitSidebarChunks', () => {
     const { chunks } = splitSidebarChunks(tree);
     expect(chunks.map((c) => c.chunk)).toEqual(['x_y', 'x_y-2', 'x-y']);
     expect(chunks[2].items).toEqual([]);
+  });
+});
+
+describe('curated Framework top level', () => {
+  const fw = (assemblyName: string, submodule: string, name = 'Thing') =>
+    entry({
+      name,
+      kind: 'Class',
+      assemblyName,
+      submodule,
+      link: `/api/${assemblyName}/${submodule || 'root'}/${name.toLowerCase()}`,
+      indexLink: `/api/modules/${assemblyName}/${submodule}`,
+    });
+  // The Framework modules the full build documents, plus one service so Services is present too.
+  const fixture = () =>
+    buildServiceSidebar([
+      fw('aws-cdk-lib', '', 'Stack'),
+      fw('aws-cdk-lib', 'assertions', 'Template'),
+      fw('aws-cdk-lib', 'cloud_assembly_schema', 'Manifest'),
+      fw('aws-cdk-lib', 'cloudformation_include', 'CfnInclude'),
+      fw('aws-cdk-lib', 'custom_resources', 'AwsCustomResource'),
+      fw('aws-cdk-lib', 'cx_api', 'CloudAssembly'),
+      fw('aws-cdk-lib', 'pipelines', 'CodePipeline'),
+      fw('aws-cdk-lib', 'region_info', 'RegionInfo'),
+      fw('aws-cdk-lib', 'triggers', 'Trigger'),
+      fw('constructs', '', 'Construct'),
+      fw('@aws-cdk/integ-tests-alpha', '', 'IntegTest'),
+      fw('@aws-cdk/app-staging-synthesizer-alpha', '', 'AppStagingSynthesizer'),
+      entry({ submodule: 'aws_sqs', indexLink: '/api/modules/aws-cdk-lib/aws-sqs' }),
+    ]);
+
+  test('the top level is exactly the allow list, in order, with friendly labels', () => {
+    const framework = fixture()[0];
+    expect(framework.text).toBe(FRAMEWORK_SECTION);
+    expect(framework.items!.map((s) => s.label ?? s.text)).toEqual([
+      'aws-cdk-lib',
+      'Custom Resources',
+      'Testing',
+      'Triggers',
+      'constructs',
+    ]);
+  });
+
+  test('promoted entries keep the module name as identity and link to the real module page', () => {
+    const top = new Map(fixture()[0].items!.map((s) => [s.label ?? s.text, s]));
+    for (const [label, module, overview] of [
+      ['Custom Resources', 'aws-cdk-lib.custom_resources', '/api/modules/aws-cdk-lib/custom_resources'],
+      ['Testing', 'aws-cdk-lib.assertions', '/api/modules/aws-cdk-lib/assertions'],
+      ['Triggers', 'aws-cdk-lib.triggers', '/api/modules/aws-cdk-lib/triggers'],
+    ] as const) {
+      const section = top.get(label)!;
+      expect(section.text).toBe(module);
+      expect(section.label).toBe(label);
+      expect(section.items![0]).toEqual({ text: 'Overview', link: overview });
+    }
+    // Unpromoted entries carry no label.
+    expect(top.get('aws-cdk-lib')!.label).toBeUndefined();
+    expect(top.get('constructs')!.label).toBeUndefined();
+  });
+
+  test('unlisted submodules and @aws-cdk framework packages nest under aws-cdk-lib', () => {
+    const lib = fixture()[0].items!.find((s) => s.text === 'aws-cdk-lib')!;
+    const nested = lib.items!.filter((i) => i.items && !i.kindGroup).map((i) => i.text);
+    expect(nested).toEqual([
+      'aws-cdk-lib.cloud_assembly_schema',
+      'aws-cdk-lib.cloudformation_include',
+      'aws-cdk-lib.cx_api',
+      'aws-cdk-lib.pipelines',
+      'aws-cdk-lib.region_info',
+      '@aws-cdk/app-staging-synthesizer-alpha',
+      '@aws-cdk/integ-tests-alpha',
+    ]);
+    // Each nested module keeps its own Overview link and types, so nothing leaves the nav.
+    const pipelines = lib.items!.find((i) => i.text === 'aws-cdk-lib.pipelines')!;
+    expect(pipelines.collapsed).toBe(true);
+    expect(pipelines.items![0]).toEqual({ text: 'Overview', link: '/api/modules/aws-cdk-lib/pipelines' });
+    // Core's own kind groups still come before the nested modules.
+    expect(lib.items![0].text).toBe('Overview');
+    expect(lib.items!.findIndex((i) => i.kindGroup)).toBeLessThan(
+      lib.items!.findIndex((i) => i.text === 'aws-cdk-lib.cloud_assembly_schema'),
+    );
+  });
+
+  test('the parent section owns the page stems of its nested modules', () => {
+    const lib = fixture()[0].items!.find((s) => s.text === 'aws-cdk-lib')!;
+    expect(lib.modules).toEqual(
+      expect.arrayContaining(['aws-cdk-lib', 'aws-cdk-lib.pipelines', '@aws-cdk_integ-tests-alpha']),
+    );
+    expect(lib.modules).not.toContain('aws-cdk-lib.assertions');
+  });
+
+  test('no type page is dropped or duplicated by the nesting', () => {
+    const leaves: string[] = [];
+    const walk = (items: readonly SidebarItem[]) => {
+      for (const item of items) {
+        if (item.link && !item.items && item.text !== 'Overview') leaves.push(item.link);
+        if (item.items) walk(item.items);
+      }
+    };
+    walk(fixture());
+    expect(new Set(leaves).size).toBe(leaves.length);
+    expect(leaves).toHaveLength(13);
+  });
+
+  test('a listed module the build does not document is skipped', () => {
+    const sidebar = buildServiceSidebar([fw('aws-cdk-lib', '', 'Stack'), fw('constructs', '', 'Construct')]);
+    expect(sidebar[0].items!.map((s) => s.label ?? s.text)).toEqual(['aws-cdk-lib', 'constructs']);
   });
 });

@@ -64,8 +64,9 @@ export interface ApiSidebarNode {
 /**
  * The label to display for a node under the active language: the language's
  * variant when the generated tree carries one, else the canonical short label,
- * else the canonical text. Links, group keys, and filter matching always use the
- * canonical text, so display shortening and language switching relabel in place.
+ * else the canonical text. Links and group keys always use the canonical text
+ * (the filter matches the label too), so display shortening and language
+ * switching relabel in place.
  */
 export function displayLabel(node: ApiSidebarNode, lang: string): string {
   return node.labels?.[lang] ?? node.label ?? node.text;
@@ -318,7 +319,10 @@ export function filterSidebarTree(
 ): ApiSidebarNode[] {
   const out: ApiSidebarNode[] = [];
   for (const node of nodes) {
-    const remaining = terms.filter((term) => !termMatches(node.text, term));
+    // A friendly label (`Testing` for `aws-cdk-lib.assertions`) is matched as well as the module name it stands for.
+    const remaining = terms.filter(
+      (term) => !termMatches(node.text, term) && !(node.label !== undefined && termMatches(node.label, term)),
+    );
     if (remaining.length === 0) {
       out.push(node);
       continue;

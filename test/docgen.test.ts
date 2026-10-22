@@ -940,19 +940,14 @@ describe('docgen generation', () => {
     expect(services).not.toContain('aws-cdk-lib');
     expect(texts).toContain('constructs');
 
-    // Framework headings are package-qualified and sort with @-scoped
-    // names last, so `constructs` follows the aws-cdk-lib.* submodules
-    // rather than being pinned by an explicit rank.
+    // The Framework top level is the curated allow list in its own order;
+    // every other framework module nests under `aws-cdk-lib`.
     const frameworkTexts = framework.map((s: any) => s.text);
     expect(frameworkTexts).toContain('aws-cdk-lib.assertions');
     expect(frameworkTexts).not.toContain('Assertions');
-    const lastSubmodule = frameworkTexts.filter((t: string) => t.startsWith('aws-cdk-lib.')).pop()!;
-    expect(frameworkTexts.indexOf('constructs')).toBeGreaterThan(frameworkTexts.indexOf(lastSubmodule));
-    expect(
-      frameworkTexts.filter((t: string) => t.startsWith('@')).every(
-        (t: string) => frameworkTexts.indexOf(t) > frameworkTexts.indexOf('constructs'),
-      ),
-    ).toBe(true);
+    expect(frameworkTexts[frameworkTexts.length - 1]).toBe('constructs');
+    expect(frameworkTexts.filter((t: string) => t.startsWith('@'))).toEqual([]);
+    expect(framework.find((s: any) => s.text === 'aws-cdk-lib.assertions').label).toBe('Testing');
 
     // Within a service, types group by resource; construct types sit
     // flat inside the resource.
