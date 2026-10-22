@@ -1019,6 +1019,38 @@ describe('buildServiceSidebar', () => {
       ]);
     });
 
+    test('puts the primary service Overview before related module overviews', () => {
+      const sidebar = sidebarSections([
+        entry({
+          name: 'Cluster',
+          kind: 'Construct (L2)',
+          submodule: 'aws_ecs',
+          link: '/cluster',
+          indexLink: '/v2/docs/aws-cdk-lib.aws_ecs-readme',
+        }),
+        entry({
+          name: 'ApplicationLoadBalancedFargateService',
+          kind: 'Construct (L3)',
+          submodule: 'aws_ecs_patterns',
+          link: '/fargate-service',
+          indexLink: '/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme',
+        }),
+        entry({
+          name: 'ClusterMixin',
+          kind: 'Mixin',
+          assemblyName: '@aws-cdk/cfn-property-mixins',
+          submodule: 'aws_ecs',
+          link: '/cluster-mixin',
+          indexLink: '/v2/docs/@aws-cdk_cfn-property-mixins.aws_ecs-readme',
+        }),
+      ]);
+      expect(sidebar[0].items!.slice(0, 3).map((item) => item.link)).toEqual([
+        '/v2/docs/aws-cdk-lib.aws_ecs-readme',
+        '/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme',
+        '/v2/docs/@aws-cdk_cfn-property-mixins.aws_ecs-readme',
+      ]);
+    });
+
     test('structural submodules surface no Overview of their own', () => {
       const sidebar = sidebarSections([
         entry({ name: 'Bucket', kind: 'Construct (L2)', link: '/bucket' }),
