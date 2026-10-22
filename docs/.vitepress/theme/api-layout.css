@@ -796,7 +796,15 @@ a.chain-item:hover {
   gap: 8px;
 }
 
+/* A type name is one unbroken identifier, so a long one (a nested
+   `...Property` struct can run past 90 characters) is wider than the box.
+   As a flex item its min-width defaults to its content width, which lets it
+   paint past the box edge; `min-width: 0` lets it shrink, and
+   `overflow-wrap: anywhere` breaks it onto further lines. The name is
+   wrapped rather than truncated, so the reader always sees all of it. */
 .type-tooltip-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--vp-font-family-mono);
   color: var(--vp-c-text-1);
 }
