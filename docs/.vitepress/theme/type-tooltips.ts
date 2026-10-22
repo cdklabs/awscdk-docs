@@ -21,6 +21,7 @@ interface TypeSummary {
 type SummaryMap = Record<string, TypeSummary>;
 
 const TOOLTIP_ID = "api-type-tooltip";
+const TOOLTIP_KIND_PALETTES = new Set(["mixin", "facade", "struct", "interface", "enum"]);
 
 let summariesAsset = "";
 let loading: Promise<SummaryMap> | undefined;
@@ -83,9 +84,13 @@ function show(anchor: HTMLAnchorElement, entry: TypeSummary): void {
   name.className = "type-tooltip-name";
   name.textContent = entry.name;
   const kind = document.createElement("span");
-  kind.className = entry.level
-    ? `type-tooltip-kind type-tooltip-kind-${entry.level.toLowerCase()}`
-    : "type-tooltip-kind";
+  const kindKey = entry.kind.toLowerCase();
+  const paletteClass = entry.level
+    ? `type-tooltip-kind-${entry.level.toLowerCase()}`
+    : TOOLTIP_KIND_PALETTES.has(kindKey)
+      ? `type-tooltip-kind-${kindKey}`
+      : undefined;
+  kind.className = ["type-tooltip-kind", paletteClass].filter(Boolean).join(" ");
   kind.textContent = entry.label ?? entry.kind;
   head.append(name, kind);
   el.append(head);

@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 export const TOPIC_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.Topic.html';
 export const QUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.Queue.html';
+export const QUEUE_PROPS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueProps.html';
+export const IQUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.IQueue.html';
+export const QUEUE_ENCRYPTION_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueEncryption.html';
 export const SQS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs-readme.html';
 // An L1. Its header chip is the "Generated code" label rather than a Source
 // link, which is the other shape the page title has to stay clean of.

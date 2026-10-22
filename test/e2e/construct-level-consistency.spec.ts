@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CFN_QUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
+import {
+  CFN_QUEUE_PAGE,
+  IQUEUE_PAGE,
+  QUEUE_ENCRYPTION_PAGE,
+  QUEUE_PAGE,
+  QUEUE_PROPS_PAGE,
+} from './fixture.js';
 
 // One construct level, three surfaces. The level is a single determination —
 // `constructLevel()` — but it reaches the reader through three separately
@@ -208,4 +214,33 @@ test.describe('construct level is consistent across its three surfaces', () => {
     expect(l1Tag.color).not.toBe(l2Tag.color);
     expect(l1Preview.text).not.toBe(l2Preview.text);
   });
+
+  for (const appearance of ['light', 'dark'] as const) {
+    test(`non-level kinds match their page badges in ${appearance} mode`, async ({ page }) => {
+      await page.addInitScript((theme) => {
+        window.localStorage.setItem('vitepress-theme-appearance', theme);
+      }, appearance);
+
+      const examples = [
+        { name: 'QueueEncryption', suffix: '.aws_sqs.QueueEncryption', page: QUEUE_ENCRYPTION_PAGE },
+        { name: 'QueueProps', suffix: '.aws_sqs.QueueProps', page: QUEUE_PROPS_PAGE },
+        { name: 'IQueue', suffix: '.aws_sqs.IQueue', page: IQUEUE_PAGE },
+      ];
+
+      for (const example of examples) {
+        await page.goto(example.page);
+        const badge = await h1Badge(page);
+
+        await page.goto(QUEUE_PAGE);
+        await page
+          .getByRole('textbox', { name: 'Filter API symbols in the sidebar' })
+          .fill(example.name);
+        await expect(page.locator(`${SIDEBAR_LINK}[href$="${example.suffix}"]`)).toBeVisible();
+        const preview = await previewChip(page, example.suffix);
+
+        expect(preview.text).toBe(badge.text);
+        expect(preview.paint).toBe(badge.paint);
+      }
+    });
+  }
 });
