@@ -1,5 +1,5 @@
 import { spawnSync } from 'child_process';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { VERSION_PARSE_PATTERN } from '../src/docgen/version-format.js';
 import { compareVersionsDesc, VERSIONS_JSON_PATH } from '../src/docgen/versions.js';
@@ -147,6 +147,22 @@ describe('single build job', () => {
   test('build only reads repository contents', () => {
     expect(jobBlock('build')).toMatch(/\n {4}permissions:\n {6}contents: read\n {4}steps:\n/);
   });
+
+  // Config shape: a status check's name only exists in GitHub's checks list.
+  test('build reports as build-docs, a check name no other PR job reports', () => {
+    expect(jobBlock('build')).toContain('\n    name: build-docs\n');
+    const dir = resolve(ROOT, '.github/workflows');
+    const checks = readdirSync(dir)
+      .map((file) => readFileSync(resolve(dir, file), 'utf-8'))
+      .filter((workflow) => /\non:\n(?: {2}.*\n)*? {2}pull_request:/.test(workflow))
+      .flatMap((workflow) => {
+        const jobs = workflow.slice(workflow.indexOf('\njobs:\n') + 7).split(/^(?= {2}[A-Za-z0-9_-]+:$)/m);
+        return jobs.map((job) => job.match(/^ {4}name: (.+)$/m)?.[1] ?? job.match(/^ {2}(\S+):$/m)![1]);
+      });
+    expect(checks).toContain('build');
+    expect(checks).toContain('build-docs');
+    expect(checks.length).toBe(new Set(checks).size);
+  });
 });
 
 
@@ -168,6 +184,15 @@ describe('Restore GitHub Releases + slim release job', () => {
     // during the ~20-min build/deploy pipeline. The per-ref concurrency group
     // serializes main runs, making that gate redundant.
     expect(content).not.toContain('latest_commit == github.sha');
+  });
+
+  // Config shape: which runs get canceled only plays out in a CI run.
+  test('a new PR push cancels the superseded build while main runs queue', () => {
+    const content = readFileSync(workflowPath, 'utf-8');
+    expect(content).toContain(
+      '\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n' +
+        "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n",
+    );
   });
 
   // Config shape with no produced-output counterpart: the guard's whole purpose

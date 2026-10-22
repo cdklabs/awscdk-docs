@@ -595,8 +595,10 @@ const NOT_YET_RELEASED = "needs.release.outputs.tag_exists != 'true'";
 const DOCS_STREAM = 'awscdk-docs';
 
 // Single build job on a self-hosted CodeBuild runner: builds every shard in parallel on one large machine, then
-// merges, indexes with Pagefind and verifies, all inside docs:build:sharded. This is the required `build` check.
+// merges, indexes with Pagefind and verifies, all inside docs:build:sharded. This is the required `build-docs`
+// check; the name keeps it apart from the `build` check of projen's build workflow, which is also required.
 combined.addJob('build', {
+  name: 'build-docs',
   runsOn: ['codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}'],
   permissions: {
     contents: github.workflows.JobPermission.READ,
@@ -654,6 +656,9 @@ combined.file!.addOverride('jobs.release.if', "github.ref == 'refs/heads/main'")
 // Projen's release concurrency group is workflow-wide, which would coalesce queued PR runs since PR builds share
 // this workflow. Scope the group per ref instead: pushes to main still serialize, PR builds run independently.
 combined.file!.addOverride('concurrency.group', '${{ github.workflow }}-${{ github.ref }}');
+// A new push to a PR supersedes its running build, so cancel it rather than delay the latest commit. Every other
+// event keeps queueing, so main deploys in order.
+combined.file!.addOverride('concurrency.cancel-in-progress', "${{ github.event_name == 'pull_request' }}");
 
 // Restore GitHub Releases + drop the redundant release build.
 //
