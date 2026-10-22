@@ -52,11 +52,10 @@ describe('type page information density', () => {
     });
 
     test('member row padding keeps the density gain in the inset', () => {
-      // Vertical padding is 10px top/bottom — raised from 7px by maintainer
-      // decision on the density issue to give member rows more breathing room,
-      // while the density claim still lives in the horizontal inset being 0
-      // (no disclosure triangle or right-hand control reserves space). The
-      // ceiling stays bounded so a future runaway value is still caught.
+      // Vertical padding is 10px top/bottom and the horizontal inset stays 0,
+      // so the density claim lives in the zero inset (no disclosure triangle or
+      // right-hand control reserves space); the exact value bounds a future
+      // runaway.
       const css = apiLayout();
       // Scoped to the rule's OWN braces: an unbounded slice lets the match
       // slide to whatever declares a padding next, which is how a passing
@@ -73,9 +72,9 @@ describe('type page information density', () => {
     test('rows are separated by a divider, and the last one is not', () => {
       // The container lost its box, so the divider is the ONLY thing left
       // separating one member from the next — and a trailing border under the
-      // last row would draw a line with nothing below it. The token is
-      // --vp-c-border (stronger than --vp-c-divider) by maintainer decision on
-      // the density issue, so the separator is visible in dark mode; width 1px.
+      // last row would draw a line with nothing below it. The separator uses
+      // --vp-c-border, the stronger token, so it stays visible in dark mode;
+      // width 1px.
       const css = apiLayout();
       const from = css.indexOf('.member-list .member-row {');
       expect(from).toBeGreaterThan(-1);
