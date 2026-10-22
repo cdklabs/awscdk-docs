@@ -79,7 +79,8 @@ test.describe('link hover preview', () => {
     expect(o.name).toBe(0);
     expect(o.kind).toBe(0);
     expect(o.nameHidden).toBeLessThanOrEqual(0);
-    // The chip keeps its own width beside a long name (`flex-shrink: 0`); squeezed, its no-wrap label would clip.
+    // The kind chip keeps its whole label beside a long name: a flex item's default `min-width: auto` stops its
+    // no-wrap text from being squeezed, so the chip is never clipped.
     const kindClipped = await tooltip
       .locator('.type-tooltip-kind')
       .evaluate((el: HTMLElement) => el.scrollWidth - el.clientWidth);
