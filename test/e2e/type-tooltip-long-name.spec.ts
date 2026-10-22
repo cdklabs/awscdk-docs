@@ -79,6 +79,11 @@ test.describe('link hover preview', () => {
     expect(o.name).toBe(0);
     expect(o.kind).toBe(0);
     expect(o.nameHidden).toBeLessThanOrEqual(0);
+    // The chip keeps its own width beside a long name (`flex-shrink: 0`); squeezed, its no-wrap label would clip.
+    const kindClipped = await tooltip
+      .locator('.type-tooltip-kind')
+      .evaluate((el: HTMLElement) => el.scrollWidth - el.clientWidth);
+    expect(kindClipped).toBeLessThanOrEqual(0);
   });
 
   test('a short type name still sits on one line beside its chip', async ({ page }) => {
