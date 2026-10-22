@@ -223,13 +223,21 @@ The inline-vs-disclosure threshold is a **character budget**
 (`INLINE_PROSE_BUDGET = 240`), not CSS `line-clamp` (which would force a
 disclosure onto every row). It approximates ~2.5 lines at the content column;
 re-tune against real pages if the corpus changes, do not raise it to flatter a
-page. A property's `@default` shows in the header after `= `; the leading jsii
-"no value" marker is stripped (`/^-(?:\s+|$)/`, collapsing whitespace first so
-a multi-line doc block cannot break attribute parsing) while a literal `-1`
-survives. Default normalization is a single collapse-then-strip at the top of
-the row emitter so header, budget comparison, and `**Default:**` repetition
-never disagree. `INLINE_DEFAULT_BUDGET = 32` ellipsizes a long default in the
-header.
+page. A property's `@default` is classified as a code-like **value** or
+descriptive **prose** by one rule: a value is a single token with no internal
+whitespace that fits `INLINE_DEFAULT_BUDGET = 32` (`undefined`, `true`,
+`RemovalPolicy.DESTROY`, `-1`); everything else is prose. A value shows inline
+in the header after `= `, in full. A prose default (a phrase such as `Assigned
+by CloudFormation (recommended)`) is NOT put in the header — it is shown in full
+on its own always-visible line labelled `Default:`, ahead of any remarks,
+because a default is one of the first things a reader looks for and truncating
+it behind the disclosure hides exactly that. Exactly one `Default:` is emitted
+per property: a value lives only in the header, a prose default only on its own
+line. The leading jsii "no value" marker is stripped (`/^-(?:\s+|$)/`,
+collapsing whitespace first so a multi-line doc block renders on one line and
+cannot break markup) while a literal `-1` survives. Default normalization is a
+single collapse-then-strip at the top of the row emitter so the classification
+and both render paths never disagree.
 
 The deprecated marker (`--api-c-deprecated`, declared in `:root` and shadowed
 in `.dark`, both pinned WCAG AA against the page background) never rests on

@@ -318,6 +318,23 @@ const INLINE_PROSE_BUDGET = 240;
 const INLINE_DEFAULT_BUDGET = 32;
 
 /**
+ * Is a `@default` a short code-like VALUE, or descriptive PROSE?
+ *
+ * A value is one token with no internal whitespace that still fits the inline
+ * budget — `undefined`, `true`, `s3.BucketEncryption.KMS`, `-1`. It stays
+ * inline in the header as `= value`. Anything else is prose — a phrase such as
+ * `Assigned by CloudFormation (recommended)` — and is shown in full on its own
+ * always-visible line labelled `Default:`, because a default is one of the
+ * first things a reader looks for and truncating it behind the disclosure hides
+ * exactly that. The whitespace test is what separates the two: a sentence has
+ * spaces, a code literal does not. `defaultText` has already collapsed internal
+ * whitespace to single spaces, so a space here is a word boundary.
+ */
+function isValueDefault(text: string): boolean {
+  return !text.includes(' ') && text.length <= INLINE_DEFAULT_BUDGET;
+}
+
+/**
  * The `#` permalink, last in the row's markup so assistive technology reads the name first, shown in the row's left
  * gutter. The row carries the id, so navigating to it lands on the whole member rather
  * than one span inside it, and the slug comes from {@link memberAnchor} — pinned to the canonical TypeScript name,
@@ -460,15 +477,13 @@ function propRowHtml(
   });
   const parts = [nameAndType];
   const fullDefault = defaultText(prop.docs?.default);
-  if (fullDefault) {
-    const shown = fullDefault.length > INLINE_DEFAULT_BUDGET
-      ? `${fullDefault.slice(0, INLINE_DEFAULT_BUDGET)}…`
-      : fullDefault;
-    // The full value in `title`, the same recovery `.member-type` uses: the header cell is clamped narrower than
-    // INLINE_DEFAULT_BUDGET, so a value can be ellipsized by CSS while still being short enough that no
-    // `**Default:**` copy is emitted below.
+  if (fullDefault && isValueDefault(fullDefault)) {
+    // A value default is one token within the budget, so it renders inline in
+    // full with no ellipsis. A prose default is NOT shown here — it goes on its
+    // own always-visible `Default:` line below (see renderPropRow), so the
+    // reader never has to expand the row to read it.
     parts.push(
-      `<span class="member-default" title="${escapeAttr(fullDefault)}">= ${escHtml(shown)}</span>`,
+      `<span class="member-default">= ${escHtml(fullDefault)}</span>`,
     );
   }
   if (!prop.optional) {
@@ -503,6 +518,14 @@ function renderPropRow(
   const prose: string[] = [];
   const detail: string[] = [];
   const labels: string[] = [];
+  // A prose default is shown in full on its own always-visible line, labelled
+  // `Default:`, so the reader never has to expand the row to read it. A value
+  // default is already inline in the header, so it is NOT repeated here —
+  // emitting it again is the duplicate `Default:` the issue rules out. Placed
+  // ahead of remarks: the default is one of the first things a reader wants.
+  if (fullDefault && !isValueDefault(fullDefault)) {
+    prose.push(`**Default:** ${escapeProse(fullDefault)}`, '');
+  }
   if (remarks) {
     if (remarks.length <= INLINE_PROSE_BUDGET) {
       prose.push(escapeProse(remarks), '');
@@ -510,11 +533,6 @@ function renderPropRow(
       detail.push(escapeProse(remarks), '');
       labels.push('notes');
     }
-  }
-  // Only a default too long for the header needs repeating in full below it.
-  if (fullDefault && fullDefault.length > INLINE_DEFAULT_BUDGET) {
-    detail.push(`**Default:** ${escapeCell(fullDefault)}`, '');
-    labels.push('default');
   }
   if (prop.docs?.example) {
     detail.push(...codeFence(prop.docs.example, 'ts'), '');
