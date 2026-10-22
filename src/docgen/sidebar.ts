@@ -712,7 +712,7 @@ function uniqueChunkName(text: string, used: Set<string>): string {
 /**
  * Whether a submodule type's index link is its package root overview rather than a page of its own submodule. Docgen
  * does this for a submodule whose overview page it omitted (a synthetic mixin submodule): the link then names the
- * package, so it must not be labelled as that submodule's Overview. Events submodules are excluded: their types index
+ * package, so it must not be labeled as that submodule's Overview. Events submodules are excluded: their types index
  * the package root too, but they surface no overview anywhere (see the fold-events-submodules decision record).
  */
 function indexesPackageRoot(entry: SidebarEntry): boolean {
