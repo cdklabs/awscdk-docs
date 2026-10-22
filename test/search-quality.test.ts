@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'fs';
 import { join, resolve } from 'path';
 import * as spec from '@jsii/spec';
 import {
+  MAX_SEARCH_CANDIDATES,
   parseSearchQuery,
   withQueryFilters,
 } from '../docs/.vitepress/theme/search-client.js';
@@ -161,6 +162,33 @@ describe('query token filters', () => {
     };
     await withQueryFilters(handle).debouncedSearch!('module:aws-s3', {}, 300);
     expect(calls[0][0]).toBeNull();
+  });
+
+  test('withQueryFilters caps both search paths without changing order or metadata', async () => {
+    const results = Array.from(
+      { length: MAX_SEARCH_CANDIDATES + 5 },
+      (_, index) => ({ index }),
+    );
+    const payload = {
+      results,
+      unfilteredResultCount: results.length + 100,
+      filters: { module: { 'aws-s3': 17 } },
+    };
+    const handle = {
+      search: async (..._args: unknown[]) => payload,
+      debouncedSearch: async (..._args: unknown[]) => payload,
+    };
+    const wrapped = withQueryFilters(handle);
+
+    const searches = [
+      await wrapped.search!('bucket'),
+      await wrapped.debouncedSearch!('bucket'),
+    ];
+    for (const search of searches) {
+      expect(search.results).toEqual(results.slice(0, MAX_SEARCH_CANDIDATES));
+      expect(search.unfilteredResultCount).toBe(payload.unfilteredResultCount);
+      expect(search.filters).toBe(payload.filters);
+    }
   });
 
   test('withQueryFilters passes plain queries through untouched', async () => {

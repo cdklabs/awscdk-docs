@@ -71,8 +71,13 @@ forking the UI:
   (`parseSearchQuery`; recognized keys only — unknown keys and empty values stay
   in the text) and forwards them as real Pagefind `filters`. A token-only query
   searches with `null` text, which Pagefind treats as "all pages matching the
-  filters". The placeholder advertises the syntax. This wrap composes with the
-  favorites-boost property trap on the same handle.
+  filters". It also keeps only the first 50 ranked candidates before another
+  wrapper can call each result's `data()`. The favorites wrapper reorders that
+  bounded pool, then returns 20 display results; without favorites it returns the
+  first 20 directly, so broad queries load 20 fragments instead of every match.
+  The search heading says `Top 20 results` rather than implying the capped count
+  is the total match count. This wrap composes with the favorites-boost property
+  trap on the same handle.
 - `warmSearchIndex()` imports and `init()`s Pagefind immediately on client mount
   instead of waiting for the plugin's `requestIdleCallback`, so the first query
   after a cold page load hits a warm engine. A `<link rel="modulepreload">` in

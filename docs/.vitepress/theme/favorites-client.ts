@@ -7,9 +7,13 @@
 import {
   apiPathFrom,
   favoritesStore,
+  FavoritesStore,
   rankFavoritesFirst,
 } from "./favorites";
-import { withQueryFilters } from "./search-client";
+import {
+  MAX_SEARCH_RESULTS,
+  withQueryFilters,
+} from "./search-client";
 
 interface PagefindResult {
   data(): Promise<{ url?: string }>;
@@ -17,15 +21,19 @@ interface PagefindResult {
 
 interface PagefindSearch {
   results?: PagefindResult[];
+  [key: string]: unknown;
 }
 
 interface PagefindHandle {
   debouncedSearch?(...args: unknown[]): Promise<PagefindSearch | null>;
 }
 
-function wrapHandle(rawHandle: PagefindHandle): PagefindHandle {
+export function withFavoritesSearchBoost(
+  rawHandle: PagefindHandle,
+  store: FavoritesStore = favoritesStore(),
+): PagefindHandle {
   // Query-token filters first: `module:` / `kind:` tokens become real Pagefind
-  // filters before favorites boosting reorders.
+  // filters and trim the ranked match set to the bounded candidate pool.
   const handle = withQueryFilters(rawHandle);
   const original = handle?.debouncedSearch;
   if (typeof original !== "function") {
@@ -36,13 +44,19 @@ function wrapHandle(rawHandle: PagefindHandle): PagefindHandle {
     debouncedSearch: async (...args: unknown[]) => {
       const search = await original.apply(handle, args);
       const results = search?.results;
-      if (!results || results.length < 2) {
+      if (!results) {
         return search;
       }
+      const displayResults = () => ({
+        ...search,
+        results: results.slice(0, MAX_SEARCH_RESULTS),
+      });
+      if (results.length < 2) {
+        return displayResults();
+      }
       try {
-        const store = favoritesStore();
         if (store.list().length === 0) {
-          return search;
+          return displayResults();
         }
         const datas = await Promise.all(results.map((r) => r.data()));
         const starred = new Set(
@@ -53,10 +67,13 @@ function wrapHandle(rawHandle: PagefindHandle): PagefindHandle {
         );
         return {
           ...search,
-          results: rankFavoritesFirst(results, (r) => starred.has(r)),
+          results: rankFavoritesFirst(results, (r) => starred.has(r)).slice(
+            0,
+            MAX_SEARCH_RESULTS,
+          ),
         };
       } catch {
-        return search; // boosting is best-effort; never break search
+        return displayResults(); // boosting is best-effort; never break search
       }
     },
   };
@@ -77,13 +94,13 @@ export function installFavoritesSearchBoost(): void {
   win.__cdkDocsFavoritesBoost = true;
 
   let handle = win.__pagefind__
-    ? wrapHandle(win.__pagefind__ as PagefindHandle)
+    ? withFavoritesSearchBoost(win.__pagefind__ as PagefindHandle)
     : undefined;
   Object.defineProperty(window, "__pagefind__", {
     configurable: true,
     get: () => handle,
     set: (value: PagefindHandle) => {
-      handle = wrapHandle(value);
+      handle = withFavoritesSearchBoost(value);
     },
   });
 
