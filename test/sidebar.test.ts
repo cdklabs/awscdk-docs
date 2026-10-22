@@ -720,6 +720,152 @@ describe('buildServiceSidebar', () => {
     expect(others.items!.map((i) => i.text)).toEqual(['StorageClass']);
   });
 
+  describe('grouping by CloudFormation resource type', () => {
+    const ec2 = (overrides: Partial<SidebarEntry>) =>
+      entry({ submodule: 'aws_ec2', indexLink: '/api/modules/aws-cdk-lib/aws-ec2', ...overrides });
+    const VPC = 'AWS::EC2::VPC';
+
+    test('constructs sharing a resource type land in one group whatever their names', () => {
+      // Stems differ (`VPC`, `Vpc`, `VpcV2`) so the name rule would make three groups.
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({
+          name: 'VpcV2',
+          kind: 'Construct (L2)',
+          level: 'L2',
+          link: '/vpc-v2',
+          resourceType: VPC,
+          assemblyName: '@aws-cdk/aws-ec2-alpha',
+          submodule: '',
+          experimental: true,
+        }),
+      ]));
+      expect(sidebar).toHaveLength(1);
+      expect(sidebar[0].items!.map((g) => g.text)).toEqual(['Overview', 'Sibling', 'Vpc', 'Zzsibling']);
+      const vpc = sidebar[0].items!.find((g) => g.text === 'Vpc')!;
+      // Level order (L2 before L1), alphabetical inside a tier; each leaf keeps its level tag.
+      expect(vpc.items!.map((i) => [i.text, i.level])).toEqual([
+        ['Vpc', 'L2'], ['VpcV2', 'L2'], ['CfnVPC', 'L1'],
+      ]);
+    });
+
+    test('the heading is the L2 whose name spells the resource, even when another L2 sorts first', () => {
+      // `BastionHostLinux` is tagged `@resource AWS::EC2::Instance` upstream and sorts before `Instance`.
+      const INSTANCE = 'AWS::EC2::Instance';
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'BastionHostLinux', kind: 'Construct (L2)', level: 'L2', link: '/bastion', resourceType: INSTANCE }),
+        ec2({ name: 'CfnInstance', kind: 'Construct (L1)', level: 'L1', link: '/cfn-instance', resourceType: INSTANCE }),
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance', resourceType: INSTANCE }),
+        ec2({ name: 'VpcV2', kind: 'Construct (L2)', level: 'L2', link: '/vpc-v2', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+      ]));
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toEqual(['Overview', 'Instance', 'Sibling', 'Vpc', 'Zzsibling']);
+      const instance = sidebar[0].items!.find((g) => g.text === 'Instance')!;
+      expect(instance.items!.map((i) => i.text)).toEqual(['BastionHostLinux', 'Instance', 'CfnInstance']);
+    });
+
+    test('when no L2 spells the resource, the heading is the alphabetically first L2', () => {
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'ZetaThing', kind: 'Construct (L2)', level: 'L2', link: '/zeta', resourceType: 'AWS::EC2::Widget' }),
+        ec2({ name: 'AlphaThing', kind: 'Construct (L2)', level: 'L2', link: '/alpha', resourceType: 'AWS::EC2::Widget' }),
+      ]));
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toContain('AlphaThing');
+      expect(groups).not.toContain('ZetaThing');
+      expect(groups).not.toContain('Widget');
+    });
+
+    test('with no L2 the heading is the resource name from the CloudFormation type', () => {
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+      ]));
+      expect(sidebar[0].items!.map((g) => g.text)).toEqual(['Overview', 'Sibling', 'VPC', 'Zzsibling']);
+    });
+
+    test('related types attach through the construct their stem names and follow it into the group', () => {
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({ name: 'VpcV2', kind: 'Construct (L2)', level: 'L2', link: '/vpc-v2', resourceType: VPC }),
+        ec2({ name: 'CfnVPCProps', kind: 'Struct', link: '/cfn-vpc-props' }),
+        ec2({ name: 'VpcProps', kind: 'Struct', link: '/vpc-props' }),
+        ec2({ name: 'IVpc', kind: 'Interface', link: '/ivpc' }),
+        ec2({ name: 'VpcV2Props', kind: 'Struct', link: '/vpc-v2-props' }),
+        ec2({ name: 'IVpcV2', kind: 'Interface', link: '/ivpc-v2' }),
+        ec2({ name: 'VpcLookupOptions', kind: 'Struct', link: '/vpc-lookup-options' }),
+      ]));
+      const vpc = sidebar[0].items!.find((g) => g.text === 'Vpc')!;
+      expect(vpc.items!.map((g) => g.text)).toEqual(['Vpc', 'VpcV2', 'CfnVPC', 'Others']);
+      const others = vpc.items!.find((g) => g.text === 'Others')!;
+      expect(others.items!.map((i) => i.text)).toEqual([
+        'CfnVPCProps', 'IVpc', 'IVpcV2', 'VpcLookupOptions', 'VpcProps', 'VpcV2Props',
+      ]);
+      expect(sidebar[0].items!.map((g) => g.text)).not.toContain('General');
+    });
+
+    test('constructs without a resource type keep name-stem grouping, so nothing drops out', () => {
+      const sidebar = sidebarSections([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        // No CloudFormation resource resolves for these two: they still pair by stem.
+        ec2({ name: 'CfnInstance', kind: 'Construct (L1)', level: 'L1', link: '/cfn-instance' }),
+        ec2({ name: 'Instance', kind: 'Construct (L2)', level: 'L2', link: '/instance' }),
+        ec2({ name: 'InstanceProps', kind: 'Struct', link: '/instance-props' }),
+        ec2({ name: 'BastionHostLinux', kind: 'Construct (L2)', level: 'L2', link: '/bastion' }),
+      ]);
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toEqual(['Overview', 'BastionHostLinux', 'Instance', 'Vpc']);
+      const instance = sidebar[0].items!.find((g) => g.text === 'Instance')!;
+      expect(instance.items!.map((g) => g.text)).toEqual(['Instance', 'CfnInstance', 'Others']);
+      expect(instance.items!.find((g) => g.text === 'Others')!.items!.map((i) => i.text)).toEqual(['InstanceProps']);
+    });
+
+    test('a construct with no resource type joins the typed group whose construct shares its stem', () => {
+      // An unleveled construct spelled like a typed construct (here a legacy `Vpc` from an integration submodule that
+      // folds into the same EC2 section) must not open a second group under the same resource.
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct', link: '/vpc-legacy', submodule: 'aws_ec2_legacy' }),
+      ]));
+      const groups = sidebar[0].items!.map((g) => g.text);
+      expect(groups).toEqual(['Overview', 'Sibling', 'Vpc', 'Zzsibling']);
+      const vpc = sidebar[0].items!.find((g) => g.text === 'Vpc')!;
+      expect(vpc.items!.map((i) => i.link)).toEqual(['/vpc', '/cfn-vpc', '/vpc-legacy']);
+    });
+
+    test('a name-keyed group with the same heading as a typed group merges into it', () => {
+      // The typed group has no L2, so its heading is the resource name `Bar`; the untyped L2 `Bar` (stem `Bar`,
+      // matching no typed construct's stem) would otherwise form a second `Bar` group.
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'CfnFoo', kind: 'Construct (L1)', level: 'L1', link: '/cfn-foo', resourceType: 'AWS::EC2::Bar' }),
+        ec2({ name: 'Bar', kind: 'Construct (L2)', level: 'L2', link: '/bar' }),
+      ]));
+      const bars = sidebar[0].items!.filter((g) => g.text === 'Bar');
+      expect(bars).toHaveLength(1);
+      expect(bars[0].items!.map((i) => i.text)).toEqual(['Bar', 'CfnFoo']);
+    });
+
+    test('a single typed resource collapses its wrapper like a name-keyed one', () => {
+      const sidebar = sidebarSections([
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({ name: 'VpcProps', kind: 'Struct', link: '/vpc-props' }),
+      ]);
+      expect(sidebar[0].items!.map((g) => g.text)).toEqual(['Overview', 'Vpc', 'CfnVPC', 'Others']);
+    });
+
+    test('the resource type never leaks into text, label or link', () => {
+      const sidebar = sidebarSections(withSibling([
+        ec2({ name: 'Vpc', kind: 'Construct (L2)', level: 'L2', link: '/vpc', resourceType: VPC }),
+        ec2({ name: 'CfnVPC', kind: 'Construct (L1)', level: 'L1', link: '/cfn-vpc', resourceType: VPC }),
+      ]));
+      expect(JSON.stringify(sidebar)).not.toContain('AWS::');
+    });
+  });
+
   describe('sections with at most one resource collapse the wrapper', () => {
     test('a single resource is listed directly, with its other kinds behind it', () => {
       // The wrapper restated the section name and buried the section's only
