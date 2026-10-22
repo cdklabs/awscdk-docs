@@ -111,10 +111,11 @@ test.describe('pagefind search', () => {
       await expect(hint).toContainText('No module matches module:snss');
       await expect(hint).toContainText('aws-sns');
       await expect(page.locator('.search-dialog .link')).toHaveCount(0);
-      // Correcting the token clears the hint.
+      // Correcting the token clears the hint; the live region stays, empty and hidden.
       await page.locator('#search-input').fill('module:sns topic');
       await expect(page.locator('.search-dialog .link').first()).toBeVisible({ timeout: 15_000 });
-      await expect(hint).toHaveCount(0);
+      await expect(hint).toHaveText('');
+      await expect(hint).toBeHidden();
     });
   });
 

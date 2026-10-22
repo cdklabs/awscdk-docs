@@ -356,3 +356,8 @@
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* The live region persists empty between messages so it is announced reliably; it takes no room then. */
+.search-dialog .search-module-hint:empty {
+  display: none;
+}

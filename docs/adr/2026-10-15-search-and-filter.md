@@ -84,8 +84,9 @@ forking the UI:
   module answers empty without a search. `kind:` stays an exact match. When a
   module value matches nothing, or the selection returns no results, a hint
   under the result list names up to five close modules (containing matches
-  first, then by edit distance). The syntax stays typed; there is no dropdown. It also keeps only the first 50 ranked candidates before another
-  wrapper can call each result's `data()`. The favorites wrapper reorders that
+  first, then by edit distance). The syntax stays typed; there is no dropdown.
+  `withQueryFilters()` also keeps only the first 50 ranked candidates before
+  another wrapper can call each result's `data()`. The favorites wrapper reorders that
   bounded pool, then returns 20 display results; without favorites it returns the
   first 20 directly, so broad queries load 20 fragments instead of every match.
   The search heading says `Top 20 results` rather than implying the capped count

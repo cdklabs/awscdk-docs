@@ -289,21 +289,35 @@ function renderModuleHint(text: string | undefined): void {
     return;
   }
   const dialog = doc.querySelector(".search-dialog");
-  let hint = dialog?.querySelector(`.${MODULE_HINT_CLASS}`) ?? null;
-  if (!text) {
-    hint?.remove();
-    return;
-  }
   if (!dialog) {
     return;
   }
+  // The live region stays in the dialog once created, empty when there is nothing
+  // to say (the stylesheet hides it then): screen readers only announce a polite
+  // region that already existed before its text arrived, so the first message is
+  // written on the next frame, and an unchanged message is not rewritten, which
+  // would re-announce it on every keystroke.
+  const next = text ?? "";
+  let hint = dialog.querySelector(`.${MODULE_HINT_CLASS}`);
   if (!hint) {
     hint = doc.createElement("div");
     hint.className = MODULE_HINT_CLASS;
     hint.setAttribute("role", "status");
     dialog.appendChild(hint);
+    if (next) {
+      const created = hint;
+      const defer = globalThis.requestAnimationFrame ?? ((fn: () => void) => setTimeout(fn, 0));
+      defer(() => {
+        if (created.isConnected && created.textContent !== next) {
+          created.textContent = next;
+        }
+      });
+    }
+    return;
   }
-  hint.textContent = text;
+  if (hint.textContent !== next) {
+    hint.textContent = next;
+  }
 }
 
 /**

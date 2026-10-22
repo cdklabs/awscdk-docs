@@ -153,6 +153,14 @@ describe('query token filters', () => {
     expect(parseSearchQuery('kind:Construct_L2').filters).toEqual({ kind: ['construct_l2'] });
   });
 
+  test('normalizeModuleValue produces exactly the slug docgen stores for the same module', () => {
+    // The client and docgen each hold a copy of the slug transform; if either drifts, the module:
+    // filter silently matches nothing while both unit suites stay green. This pins them together.
+    for (const typed of ['aws_s3', 'aws-s3', '@aws-cdk/aws-s3-alpha', 'aws_lambda/python', 'AWS_S3', 'constructs']) {
+      expect(normalizeModuleValue(typed)).toBe(searchModule('aws-cdk-lib', typed));
+    }
+  });
+
   const KNOWN = [
     'aws-ecs', 'aws-lambda', 'aws-lambda-python-alpha', 'aws-s3', 'aws-s3-assets', 'aws-s3-deployment',
     'aws-s3-notifications', 'aws-s3tables-alpha', 'aws-sns', 'aws-sqs', 'constructs',
