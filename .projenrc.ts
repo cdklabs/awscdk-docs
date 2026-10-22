@@ -10,6 +10,12 @@ const PROJEN_GITHUB_TOKEN = github.GithubCredentials.fromPersonalAccessToken({
   environment: 'automation',
 });
 
+// Self-hosted CodeBuild GitHub Actions runner label. The run_id/run_attempt suffix makes each job claim its own
+// ephemeral runner instance. Used by the deploy build job and the PR docs gates (build, docs-e2e, docs-a11y,
+// docs-lighthouse, docs-agent-readiness) so they all run on CodeBuild instead of the GitHub-hosted ubuntu image.
+const CODEBUILD_RUNNER =
+  'codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}';
+
 // ---------------------------------------------------------------------------
 // Documented CDK ecosystem packages.
 //
@@ -346,7 +352,7 @@ project.gitignore.addPatterns('screenshots/');
 const docsE2eWorkflow = project.github!.addWorkflow('docs-e2e');
 docsE2eWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });
 docsE2eWorkflow.addJob('e2e', {
-  runsOn: ['ubuntu-latest'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -390,7 +396,7 @@ docsE2eWorkflow.addJob('e2e', {
 const docsA11yWorkflow = project.github!.addWorkflow('docs-a11y');
 docsA11yWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });
 docsA11yWorkflow.addJob('a11y', {
-  runsOn: ['ubuntu-latest'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -451,7 +457,7 @@ project.gitignore.addPatterns('.lighthouseci/');
 const lighthouseWorkflow = project.github!.addWorkflow('docs-lighthouse');
 lighthouseWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });
 lighthouseWorkflow.addJob('lighthouse', {
-  runsOn: ['ubuntu-latest'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -507,7 +513,7 @@ project.gitignore.addPatterns('.agent-readiness/');
 const agentReadinessWorkflow = project.github!.addWorkflow('docs-agent-readiness');
 agentReadinessWorkflow.on({ pullRequest: {}, mergeGroup: {}, workflowDispatch: {} });
 agentReadinessWorkflow.addJob('agent-readiness', {
-  runsOn: ['ubuntu-latest'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -599,7 +605,7 @@ const DOCS_STREAM = 'awscdk-docs';
 // check; the name keeps it apart from the `build` check of projen's build workflow, which is also required.
 combined.addJob('build', {
   name: 'build-docs',
-  runsOn: ['codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}'],
+  runsOn: [CODEBUILD_RUNNER],
   permissions: {
     contents: github.workflows.JobPermission.READ,
   },
@@ -910,6 +916,11 @@ versionCheck.addJob('alert-on-failure', {
 const buildWorkflowFile = project.tryFindObjectFile('.github/workflows/build.yml');
 buildWorkflowFile?.addDeletionOverride('jobs.build.steps.0.with.repository');
 buildWorkflowFile?.addDeletionOverride('jobs.build.steps.0.with.ref');
+
+// Run the build check on the self-hosted CodeBuild runner, matching the docs gates. projen's BuildWorkflow has
+// no per-job runsOn option, so override the generated job. The self-mutation push-back job is left on
+// ubuntu-latest: it only runs on same-repo (non-fork) PRs and does no heavy work.
+buildWorkflowFile?.addOverride('jobs.build.runs-on', CODEBUILD_RUNNER);
 
 // The package is ESM. `type: module` makes Node read every .js in the tree as a module, and NodeNext is the
 // resolution mode that matches it, so relative imports carry the extension the emitted file will have.

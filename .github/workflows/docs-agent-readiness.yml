@@ -7,7 +7,7 @@ on:
   workflow_dispatch: {}
 jobs:
   agent-readiness:
-    runs-on: ubuntu-latest
+    runs-on: codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: read
     steps:
