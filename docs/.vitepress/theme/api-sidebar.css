@@ -15,17 +15,6 @@
   }
 }
 
-@media (min-width: 960px) {
-  :root .VPSidebar {
-    top: calc(var(--vp-layout-top-height, 0px) + var(--vp-nav-height));
-    padding-top: 0;
-  }
-
-  :root .VPSidebar .curtain {
-    display: none;
-  }
-}
-
 /* Keep the filter, jump control and favorites pinned while the tree scrolls.
    `top: 0` pins the block to the scrollport's content edge at both breakpoints:
    the desktop scrollport begins below the navbar, while the drawer keeps its
@@ -35,6 +24,27 @@
   top: 0;
   z-index: 1;
   background-color: var(--vp-sidebar-bg-color);
+}
+
+@media (min-width: 960px) {
+  :root .VPSidebar {
+    top: calc(var(--vp-layout-top-height, 0px) + var(--vp-nav-height));
+    padding-top: 0;
+  }
+
+  :root .VPSidebar .curtain {
+    display: none;
+  }
+
+  /* The desktop scrollport begins flush against the navbar's bottom border, so
+     the pinned header's focusable controls (the filter box's focus ring) would
+     touch that line. Inset the pinned block from the scrollport's top edge.
+     Padding on the sticky block keeps it pinned and shifts only its content;
+     the opaque background still covers tree rows scrolling underneath. Desktop
+     only — the mobile drawer keeps its own top padding (no doubling). */
+  :root .VPSidebar .sidebar-header {
+    padding-top: 8px;
+  }
 }
 
 /* The mobile drawer has no `.curtain` — VitePress scopes that to >=960px — so
