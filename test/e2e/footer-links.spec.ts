@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
+import { CFN_QUEUE_PAGE, SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // Consolidated doc-footer contribution links (PageFooterLinks.vue): "Edit
-// this page" + "Report an issue with this page" rendered together in the
+// this page" + "Report an issue" rendered together in the
 // doc-after slot. The report link is built client-side in onMounted from the
 // live page context.
 test.describe('doc footer contribution links', () => {
@@ -40,24 +40,41 @@ test.describe('doc footer contribution links', () => {
     await expect(editLink).toHaveAttribute('target', '_blank');
   });
 
-  test('a symbol page renders no edit link at all', async ({ page }) => {
+  test('a type page links the upstream source file its docs come from', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
 
-    // A class page is rendered from jsii docstrings, so there is no
-    // markdown file to edit; the footer keeps the report link and the
-    // Markdown twin.
+    // A class page is rendered from the jsii docstrings in its declaring
+    // source file, so that file is the edit target — next to the report link
+    // and the Markdown twin, never this repo's generated page.
+    const footer = page.locator('.page-footer-links');
+    await expect(footer).toBeVisible();
+    await expect(footer.locator('.footer-link')).toHaveCount(3);
+    const editLink = footer.locator('.footer-link', { hasText: 'Edit this page' });
+    await expect(editLink).toHaveAttribute(
+      'href',
+      'https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-sns/lib/topic.ts',
+    );
+    await expect(editLink).toHaveAttribute('target', '_blank');
+    await expect(footer.locator('.footer-link', { hasText: 'Report an issue' })).toBeVisible();
+    await expect(page.locator('.page-footer-links a[href*="src/docgen"]')).toHaveCount(0);
+  });
+
+  test('a type page with no editable source renders no edit link at all', async ({ page }) => {
+    await page.goto(CFN_QUEUE_PAGE);
+
+    // An L1 page is built from generated code that is not in the upstream
+    // repository; the footer keeps the report link and the Markdown twin.
     const footer = page.locator('.page-footer-links');
     await expect(footer).toBeVisible();
     await expect(footer.locator('.footer-link')).toHaveCount(2);
     await expect(footer).not.toContainText('Edit this page');
-    await expect(page.locator('.page-footer-links a[href*="src/docgen"]')).toHaveCount(0);
   });
 
   test('the report link opens a pre-filled new issue', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
 
     const reportLink = page.locator('.page-footer-links .footer-link', {
-      hasText: 'Report an issue with this page',
+      hasText: 'Report an issue',
     });
     await expect(reportLink).toBeVisible();
     await expect(reportLink).toHaveAttribute('target', '_blank');

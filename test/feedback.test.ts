@@ -130,7 +130,7 @@ describe('footer links component wiring', () => {
   test('builds the report-issue link from shared helpers', () => {
     expect(component).toContain('reportIssueUrl');
     expect(component).toContain('navigator.userAgent');
-    expect(component).toContain('Report an issue with this page');
+    expect(component).toContain('Report an issue');
   });
 
   test('the helpful?-vote widget is gone', () => {

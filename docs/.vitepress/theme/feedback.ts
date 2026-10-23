@@ -1,5 +1,5 @@
 // Pure helpers for the doc-footer contribution links — "Edit this page" and
-// "Report an issue with this page". No Vue/VitePress imports, so Jest tests can
+// "Report an issue". No Vue/VitePress imports, so Jest tests can
 // use them directly.
 
 export const REPO_URL = "https://github.com/aws/aws-cdk";
@@ -21,10 +21,11 @@ export function isGeneratedPage(filePath: string): boolean {
  * Edit URL for a page, or `undefined` when the page has no editable source (no
  * link is rendered).
  *
- * Hand-written pages link straight to their own markdown. A generated overview
- * page instead links to the upstream `README.md` its prose came from, passed
- * through frontmatter as `upstreamEditUrl`. Other generated pages (class,
- * interface, struct, enum) have no upstream markdown file, so they get no link.
+ * Hand-written pages link straight to their own markdown. A generated page
+ * instead links to the upstream file its prose came from, passed through
+ * frontmatter as `upstreamEditUrl`: an overview's `README.md`, or the source
+ * file a type page's docstrings are declared in. A generated page with no such
+ * file (a table-only overview, an L1 built from generated code) gets no link.
  *
  * `upstreamEditUrl` is checked first and wins outright.
  */
