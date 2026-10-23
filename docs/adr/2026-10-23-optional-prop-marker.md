@@ -20,9 +20,10 @@ stands.
 Required properties get a `required` badge and optional ones get nothing, so a
 reader can only tell a prop is optional by its missing badge. TypeScript and
 jsii spell an optional property with a trailing `?`, a mark readers already
-know. The issue (cdklabs/awscdk-docs#74) asks for that mark after every optional
-property's name, in the rows and in the "On this page" outline. The maintainer
-settled the open choices on the issue before it was worked.
+know. The reference should show that mark after every optional property's name,
+in the rows and in the "On this page" outline. The open choices below (where
+the mark sits, what a screen reader hears, which tables count as inputs) were
+settled with the maintainer before the work started.
 
 ## Decision
 
