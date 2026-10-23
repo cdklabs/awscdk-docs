@@ -93,6 +93,25 @@ describe('outline member list', () => {
     expect(out.slice(out.indexOf('\n---\n', 3))).toBe(PAGE.slice(PAGE.indexOf('\n---\n', 3)));
   });
 
+  test('carries an optional row\'s kind as extras, read from the row\'s data and not its name', () => {
+    const optionalRow = (id: string, name: string, kind: string) => {
+      const [, ...rest] = row(id, name);
+      return [`<div class="member-row" id="${id}" data-optional="${kind}">`, ...rest];
+    };
+    const page = [
+      '## Construct Props {#props-queueprops}',
+      ...optionalRow('props-queueprops-fifo', 'fifo', 'input'),
+      '## Properties {#properties}',
+      ...optionalRow('deadletterqueue', 'deadLetterQueue', 'output'),
+      ...row('queuearn', 'queueArn'),
+    ].join('\n');
+    expect(outlineMembers(page)).toEqual({
+      'props-queueprops': [['props-queueprops-fifo', 'fifo', { optional: 'input' }]],
+      // A required row stays a plain pair.
+      'properties': [['deadletterqueue', 'deadLetterQueue', { optional: 'output' }], ['queuearn', 'queueArn']],
+    });
+  });
+
   test('a page with no member rows is left untouched', () => {
     const page = '---\ntitle: "Empty"\n---\n\n# Empty\n\n## Example {#example}\n';
     expect(withOutlineMembers(page)).toBe(page);
@@ -116,6 +135,23 @@ describe('outline nesting', () => {
       ['#props-queueprops', [['#props-queueprops-fifo', 'fifo', 3]]],
       ['#properties', [['#queuearn', 'queueArn', 3]]],
       ['#methods', [['#grantsend', 'grantSend', 3]]],
+    ]);
+  });
+
+  test('passes an entry\'s optional kind to its item, and only a known kind', () => {
+    const out = nestOutlineMembers([header('properties', 'Properties')], {
+      properties: [
+        ['bucketname', 'bucketName', { optional: 'input' }],
+        ['encryptionkey', 'encryptionKey', { optional: 'output' }],
+        ['bucketarn', 'bucketArn'],
+        ['bogus', 'bogus', { optional: '<b>' as any }],
+      ],
+    });
+    expect(out[0].children.map((c) => [c.title, c.optional])).toEqual([
+      ['bucketName', 'input'],
+      ['encryptionKey', 'output'],
+      ['bucketArn', undefined],
+      ['bogus', undefined],
     ]);
   });
 

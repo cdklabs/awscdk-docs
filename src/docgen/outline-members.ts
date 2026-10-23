@@ -10,9 +10,23 @@
  */
 import { PROPS_ANCHOR_PREFIX, SECTION_ANCHORS } from './anchors.js';
 import { tokenizeFences } from './fences.js';
+import type { OptionalKind } from './layout.js';
 
-/** One outline entry: the row's anchor id and the member's canonical (TypeScript) name. */
-export type OutlineMember = readonly [anchor: string, name: string];
+/**
+ * Display data an outline entry may carry beside its anchor and name. `optional` is the row's optional kind, so the
+ * outline marks the same members the rows mark (`docs/adr/2026-10-23-optional-prop-marker.md`).
+ */
+export interface OutlineMemberExtras {
+  readonly optional?: OptionalKind;
+}
+
+/**
+ * One outline entry: the row's anchor id, the member's canonical (TypeScript) name, and display extras when the row
+ * has any. A row with none stays a plain `[anchor, name]` pair.
+ */
+export type OutlineMember =
+  | readonly [anchor: string, name: string]
+  | readonly [anchor: string, name: string, extras: OutlineMemberExtras];
 
 /**
  * Section heading anchor to the members listed under it, in page order: `properties`, `methods`, and a construct
@@ -37,7 +51,7 @@ function isOutlineSection(anchor: string): boolean {
 }
 
 const SECTION_HEADING = /^## .*\{#([^}\s]+)\}\s*$/;
-const MEMBER_ROW = /^<div class="member-row" id="([^"]+)">/;
+const MEMBER_ROW = /^<div class="member-row" id="([^"]+)"(?: data-optional="(input|output)")?>/;
 const PERMALINK_NAME = /class="member-permalink" href="#([^"]+)" aria-label="Permalink to ([^"]+)"/;
 
 function unescapeHtml(text: string): string {
@@ -59,6 +73,7 @@ export function outlineMembers(page: string): OutlineMembers {
   const groups: Record<string, OutlineMember[]> = {};
   let section: string | undefined;
   let pendingRow: string | undefined;
+  let pendingOptional: OptionalKind | undefined;
   for (const span of tokenizeFences(page)) {
     if (span.kind === 'code') {
       continue;
@@ -73,6 +88,7 @@ export function outlineMembers(page: string): OutlineMembers {
       const row = MEMBER_ROW.exec(line);
       if (row) {
         pendingRow = row[1];
+        pendingOptional = row[2] as OptionalKind | undefined;
         continue;
       }
       if (pendingRow === undefined || section === undefined) {
@@ -80,7 +96,8 @@ export function outlineMembers(page: string): OutlineMembers {
       }
       const link = PERMALINK_NAME.exec(line);
       if (link && link[1] === pendingRow) {
-        (groups[section] ??= []).push([pendingRow, unescapeHtml(link[2])]);
+        const name = unescapeHtml(link[2]);
+        (groups[section] ??= []).push(pendingOptional ? [pendingRow, name, { optional: pendingOptional }] : [pendingRow, name]);
         pendingRow = undefined;
       }
     }

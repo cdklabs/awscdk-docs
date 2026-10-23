@@ -42,7 +42,9 @@ The `static` modifier keeps its muted italic styling: it is a minor modifier,
 not the must-supply-this signal, and should not compete with the required badge
 for the reader's eye. Which properties are marked required is unchanged; only
 the presentation of the existing required state changes. Optional properties
-carry no required marker, so they remain clearly distinguishable.
+carry no required marker, so they remain clearly distinguishable. *Superseded —
+see [optional property marker](./2026-10-23-optional-prop-marker.md): optional
+properties now show a trailing `?`. The badge rules above stand.*
 
 ## Consequences
 

@@ -320,7 +320,7 @@ export function renderConstructPage(options: ConstructPageOptions): string {
 
   const props = classProperties(type, index);
   if (props.length > 0) {
-    lines.push(anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages }));
+    lines.push(anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages, optionalKind: 'output' }));
   }
   lines.push(...renderMethodsSection(classMethods(type, index), linkFor, type.fqn, languages));
 
@@ -469,6 +469,7 @@ function renderInitializer(
         // Namespaced under this section's own slug: the same member name can appear in the type's Properties
         // section below.
         anchorPrefix: propsAnchor(param.type.fqn),
+        optionalKind: 'input',
       }),
     );
   }

@@ -3,16 +3,34 @@
 // (`outlineMembers`, see src/docgen/outline-members.ts); this nests those entries under the matching section heading.
 // See docs/adr/2026-10-22-outline-members.md.
 
-/** One outline entry, the shape VitePress's outline item component renders. */
+/** Whether an optional member is an input the caller may omit or an output that may be undefined. */
+export type OptionalKind = "input" | "output";
+
+/** The words a screen reader hears in place of the visible `?`, the same ones the member rows use. */
+export const OPTIONAL_LABELS: Readonly<Record<OptionalKind, string>> = {
+  input: "optional",
+  output: "may be undefined",
+};
+
+/** One outline entry, the shape VitePress's outline item component renders, plus a member's optional kind. */
 export interface OutlineItem {
   title: string;
   link: string;
   level: number;
   children: OutlineItem[];
+  optional?: OptionalKind;
 }
 
-/** Frontmatter `outlineMembers`: section anchor to `[anchor, name]` pairs, in page order. */
-export type OutlineMembers = Readonly<Record<string, readonly (readonly [string, string])[]>>;
+/** Display extras an entry may carry (docs/adr/2026-10-23-optional-prop-marker.md). */
+export interface OutlineMemberExtras {
+  readonly optional?: OptionalKind;
+}
+
+/** One entry: `[anchor, name]`, or `[anchor, name, extras]` when the row has display data. */
+export type OutlineMember = readonly [string, string] | readonly [string, string, OutlineMemberExtras];
+
+/** Frontmatter `outlineMembers`: section anchor to entries, in page order. */
+export type OutlineMembers = Readonly<Record<string, readonly OutlineMember[]>>;
 
 /**
  * The headers with each section's members appended as its children, one level deeper. A group whose section heading
@@ -33,7 +51,14 @@ export function nestOutlineMembers<T extends OutlineItem>(headers: T[], members:
       ...header,
       children: [
         ...header.children,
-        ...group.map(([anchor, name]) => ({ title: name, link: `#${anchor}`, level, children: [] })),
+        ...group.map(([anchor, name, extras]) => ({
+          title: name,
+          link: `#${anchor}`,
+          level,
+          children: [],
+          // Only a known kind is passed on, so a malformed entry cannot put arbitrary text in the label.
+          ...(extras?.optional === "input" || extras?.optional === "output" ? { optional: extras.optional } : {}),
+        })),
       ],
     };
   });
