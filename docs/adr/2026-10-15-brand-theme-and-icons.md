@@ -44,8 +44,10 @@ stay low-risk. Every text/surface pair meets AA (>= 4.5:1), enforced by
 ### Logo and copyright
 
 The navbar carries the AWS company logo, matching the reference documentation,
-rather than a per-product CDK icon. `themeConfig.logo` is
-`{ src: "/aws-logo-gray.svg", alt: "AWS" }`; the logo and site title link home.
+rather than a per-product CDK icon. `themeConfig.logo` uses the single
+`/aws-logo-gray.svg` asset; its current decorative semantics are recorded in
+[navbar title lockup](./2026-10-23-navbar-title-lockup.md). The logo and title
+share one home link.
 Only one asset is committed (`docs/public/aws-logo-gray.svg`, fill `#161d26`,
 legible on light). `nav-controls.css` paints it white in dark mode with
 `.dark .VPNavBarTitle .logo { filter: brightness(0) invert(1); }` —

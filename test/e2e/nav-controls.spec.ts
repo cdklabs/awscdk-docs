@@ -155,13 +155,21 @@ test.describe('navbar layout', () => {
       const overflows = (element: Element) => element.scrollWidth > element.clientWidth + 1;
       expect(await wrapper.evaluate(overflows)).toBe(false);
 
+      if (width === 768) {
+        await page.locator('.VPNavBar .container > .title').evaluate((element) => {
+          const title = element as HTMLElement;
+          title.style.flexShrink = '0';
+          title.style.width = '500px';
+        });
+        expect(await wrapper.evaluate(overflows)).toBe(true);
+      }
     });
   }
 
   const titleWidths = [
     [320, 'logo'],
-    [360, 'short'],
-    [390, 'full'],
+    [360, 'logo'],
+    [390, 'short'],
     [430, 'full'],
     [768, 'logo'],
     [960, 'full'],

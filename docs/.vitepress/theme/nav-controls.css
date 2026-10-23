@@ -317,22 +317,20 @@
 }
 
 /* The mobile row has fewer controls than the medium row. Keep the full name
- * from 390px, use the short label from 340px, then show only the logo. */
-@media (max-width: 389px) {
+ * from 430px, use the short label from 390px, then show only the logo. */
+@media (max-width: 429px) {
   .nav-site-title-full {
     display: none;
   }
+}
 
+@media (min-width: 390px) and (max-width: 429px) {
   .nav-site-title-short {
     display: inline;
   }
 }
 
-@media (max-width: 339px) {
-  .nav-site-title-short {
-    display: none;
-  }
-
+@media (max-width: 389px) {
   .VPNavBarTitle .logo {
     margin-right: 0;
   }

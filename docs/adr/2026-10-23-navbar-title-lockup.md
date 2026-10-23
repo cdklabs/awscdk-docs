@@ -25,8 +25,8 @@ name announced for the home link.
 - `NavSiteTitle.vue` supplies two painted labels and one visually hidden name.
   The full label is "AWS CDK Reference", the short label is "CDK Reference",
   and the accessible name is always "AWS CDK Reference".
-- The full label appears at 390-767px and from 960px upward. The short label
-  appears at 340-389px. The logo stands alone below 340px and at 768-959px,
+- The full label appears at 430-767px and from 960px upward. The short label
+  appears at 390-429px. The logo stands alone below 390px and at 768-959px,
   where VitePress moves the desktop controls into the same row.
 - Labels switch with `display`; no visible label is clipped or ellipsized. The
   full accessible name remains in the DOM at every width.
