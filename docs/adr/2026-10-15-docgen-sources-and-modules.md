@@ -174,10 +174,12 @@ The dist root holds `build.json` (naming the candidate version and commit) and
   `package/package.json`, not by file name — `npm pack` mangles scopes
   (`@aws-cdk/aws-msk-alpha` → `aws-cdk-aws-msk-alpha-<version>.tgz`), which an
   unscoped package of that name would also produce.
-- **Configured CDK modules are required in the dist.** A configured module with
-  no tarball fails before install, naming every missing one at once, so an
-  incomplete candidate cannot silently fall back to a stale npm pin while still
-  reporting the candidate version.
+- **Configured stable CDK modules are required in the dist.** A configured
+  stable module with no tarball fails before install, naming every missing one
+  at once, so an incomplete candidate cannot silently fall back to a stale npm
+  pin while still reporting the candidate version. A configured alpha module
+  with no tarball is dropped from the install and documentation plan and named
+  in the install output, because alpha tarballs may disappear from a dist.
 - **The dist is authoritative for additions.** Every tarball containing a
   `package/.jsii` assembly is a documentation candidate; a jsii module present
   in the dist but absent from `docgen.config.json` is installed and appended to

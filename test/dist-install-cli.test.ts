@@ -136,13 +136,27 @@ describe('dist install CLI end to end', () => {
     }
   }, 120_000);
 
-  test('a module the dist does not pack fails after nothing is installed', () => {
-    const dir = scaffold(['aws-cdk-lib', '@aws-cdk/aws-ivs-alpha'], '2.269.0', [
+  test('a missing alpha module is dropped and reported', () => {
+    const dir = scaffold(['aws-cdk-lib', '@aws-cdk/aws-glue-alpha'], '2.269.0', [
       ['aws-cdk-lib', 'aws-cdk-lib-2.269.0'],
     ]);
     try {
       const { status, out } = run(dir, { [CDK_DIST_DIR_ENV]: join(dir, 'dist') });
-      expect(out).toContain('@aws-cdk/aws-ivs-alpha');
+      expect(out).toContain('installed 1 module(s) at 2.269.0');
+      expect(out).toContain('dropped @aws-cdk/aws-glue-alpha without dist tarballs');
+      expect(status).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  test('a stable module the dist does not pack fails before anything is installed', () => {
+    const dir = scaffold(['aws-cdk-lib', '@aws-cdk/cfn-property-mixins'], '2.269.0', [
+      ['aws-cdk-lib', 'aws-cdk-lib-2.269.0'],
+    ]);
+    try {
+      const { status, out } = run(dir, { [CDK_DIST_DIR_ENV]: join(dir, 'dist') });
+      expect(out).toContain('@aws-cdk/cfn-property-mixins');
       expect(status).toBe(1);
     } finally {
       rmSync(dir, { recursive: true, force: true });
