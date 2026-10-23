@@ -107,8 +107,8 @@ function onKeydown(e: KeyboardEvent) {
         v-model="query"
         class="nav-filter-input"
         type="text"
-        placeholder="Filter symbols…"
-        aria-label="Filter API symbols in the sidebar"
+        placeholder="Filter navigation…"
+        aria-label="Filter navigation in the sidebar"
         @focus="load()"
         @keydown="onKeydown"
       />

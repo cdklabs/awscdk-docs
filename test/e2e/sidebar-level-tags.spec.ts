@@ -14,7 +14,7 @@ test.describe('sidebar construct level tags', () => {
   }
 
   function filterInput(page: Page) {
-    return page.getByRole('textbox', { name: 'Filter API symbols in the sidebar' });
+    return page.getByRole('textbox', { name: 'Filter navigation in the sidebar' });
   }
 
   const entry = (page: Page, fqnSuffix: string) =>

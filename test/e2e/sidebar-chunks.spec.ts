@@ -77,7 +77,7 @@ test.describe('per-section sidebar chunks', () => {
     const urls = recordSidebarRequests(page);
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.api-sidebar-nav')).toBeVisible();
-    await page.getByRole('textbox', { name: 'Filter API symbols in the sidebar' }).fill('Queue');
+    await page.getByRole('textbox', { name: 'Filter navigation in the sidebar' }).fill('Queue');
     // A match from a section that was not loaded on arrival.
     await expect(page.locator('.api-sidebar a.api-sidebar-link', { hasText: /^Queue$/ }).first()).toBeVisible();
     const skeleton = await (await page.request.get(apiSidebarAssetPath('sidebar'))).json();
@@ -97,7 +97,7 @@ test.describe('per-section sidebar chunks', () => {
       await route.continue();
     });
     await page.goto(TOPIC_PAGE);
-    const filter = page.getByRole('textbox', { name: 'Filter API symbols in the sidebar' });
+    const filter = page.getByRole('textbox', { name: 'Filter navigation in the sidebar' });
     await filter.fill('Queue');
     await expect(page.locator('.api-sidebar-nav')).toHaveCount(0);
     releaseSkeleton();

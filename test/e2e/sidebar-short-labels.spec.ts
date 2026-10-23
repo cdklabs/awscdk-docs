@@ -14,7 +14,7 @@ test.describe('sidebar short type labels', () => {
   }
 
   function filterInput(page: Page) {
-    return page.getByRole('textbox', { name: 'Filter API symbols in the sidebar' });
+    return page.getByRole('textbox', { name: 'Filter navigation in the sidebar' });
   }
 
   test('nested types display only the last FQN segment, keeping the canonical link', async ({ page }) => {

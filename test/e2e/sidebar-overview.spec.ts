@@ -51,7 +51,7 @@ test.describe('sidebar submodule Overview link', () => {
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
 
-    const input = page.getByRole('textbox', { name: 'Filter API symbols in the sidebar' });
+    const input = page.getByRole('textbox', { name: 'Filter navigation in the sidebar' });
     await input.fill('Overview');
 
     const sidebar = page.locator('.api-sidebar');
