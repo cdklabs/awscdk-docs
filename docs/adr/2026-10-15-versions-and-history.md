@@ -112,21 +112,23 @@ rendering the full one for every tracked package (measured ~1,900 `time` entries
 `generatedAt` comes from the snapshot, not the clock — the property that makes a build reproducible.
 
 `cdk-version-check` runs once nightly, resolves released versions, applies whatever moved (the core
-`aws-cdk-lib` pin, the shared alpha-module pin, the snapshot, and the history ledger), and opens one PR labeled
-`auto-approve` on the fixed branch `chore/cdk-version-bot/refresh-cdk-versions`. Merge stays gated on a green
-`build`; the merge to `main` triggers the existing deploy/release flow via `enablePRAutoMerge`. The run is split
-into `versions:plan` (the only registry query, records a plan) → `versions:apply` (offline) → `docs:baseline`
-(updates the ledger from the newly installed release), so applied versions cannot differ from planned ones.
+`aws-cdk-lib` pin, the default alpha-module pin, per-module alpha holds, the snapshot, and the history ledger), and
+opens one PR labeled `auto-approve` on the fixed branch `chore/cdk-version-bot/refresh-cdk-versions`. Merge stays
+gated on a green `build`; the merge to `main` triggers the existing deploy/release flow via `enablePRAutoMerge`.
+The run is split into `versions:plan` (the only registry query, records a plan) → `versions:apply` (offline) →
+`docs:baseline` (updates the ledger from the newly installed release), so applied versions cannot differ from
+planned ones.
 
 Every judgment is a pure function in `src/docgen/version-bump.ts` (alpha-publication check, did-anything-move
 comparison, plan summary, reusing `isNewerVersion` from `freshness.ts`); the workflow holds no decision logic and
 no package list — the alpha module list derives from the installed devDependencies projen generates from the single
-documented-alpha-modules list. Both pins are structured data in `projenrc/cdk-versions.json`, which `.projenrc.ts`
-imports (no `sed` over TypeScript source). An alpha candidate qualifies only when **every** documented module has
-published it, tried newest-first over a bounded window; if none is unanimous the alpha pin is held and the PR body
-names the missing modules. The two cursors may diverge: when alphas lag, the core pin still moves, so `Added in`
-badging for alpha pages tracks the alpha cursor and can lag the core library by a release. `@jsii/spec` is out of
-scope and bumps separately so a jsii-spec break cannot block a CDK bump.
+documented-alpha-modules list. The default pin and per-module holds are structured data in
+`projenrc/cdk-versions.json`, which `.projenrc.ts` imports (no `sed` over TypeScript source). The
+[per-module alpha refresh rule](./2026-10-23-move-alpha-modules-independently.md) defines how the source-tree tag,
+registry results, and failed reads classify each module as published, late, gone, or unknown. The core and alpha
+cursors may diverge: when alphas lag, the core pin still moves, so `Added in` badging for alpha pages tracks each
+module's alpha cursor and can lag the core library by a release. `@jsii/spec` is out of scope and bumps separately
+so a jsii-spec break cannot block a CDK bump.
 
 ### The registry is untrusted input: one version shape, validated at every boundary
 

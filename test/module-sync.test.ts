@@ -246,13 +246,22 @@ describe('building after removal', () => {
       const configFile = join(dir, 'docgen.config.json');
       writeFileSync(configFile, applyModuleSync(configText, plan));
       const outDir = join(dir, 'out');
+      const agentOutDir = join(dir, 'agent');
+      const publicDir = join(dir, 'public');
 
-      generateDocs(loadConfig(configFile), { outDir, packageRoot: ROOT, languages: ['ts'] });
+      generateDocs(loadConfig(configFile), {
+        outDir,
+        agentOutDir,
+        publicDir,
+        packageRoot: ROOT,
+        languages: ['ts'],
+      });
 
-      const output = readdirSync(outDir, { recursive: true })
-        .map(String)
-        .filter((name) => statSync(join(outDir, name)).isFile())
-        .map((name) => readFileSync(join(outDir, name), 'utf-8'))
+      const output = [outDir, agentOutDir, publicDir]
+        .flatMap((root) => readdirSync(root, { recursive: true })
+          .map(String)
+          .filter((name) => statSync(join(root, name)).isFile())
+          .map((name) => readFileSync(join(root, name), 'utf-8')))
         .join('\n');
       expect(output).not.toContain('aws-glue-alpha');
       expect(output).toContain('constructs');
