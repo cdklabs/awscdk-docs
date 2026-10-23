@@ -229,7 +229,9 @@ page. A property's `@default` is classified as a code-like **value** or
 descriptive **prose** by one rule: a value is a single token with no internal
 whitespace that fits `INLINE_DEFAULT_BUDGET = 32` (`undefined`, `true`,
 `RemovalPolicy.DESTROY`, `-1`); everything else is prose. A value shows inline
-in the header after `= `, in full. A prose default (a phrase such as `Assigned
+in the header after `= `, in full: the budget is its only length bound, with no
+narrower CSS clamp, and when the header line cannot hold it beside the name and
+type the line wraps it onto a line of its own. A prose default (a phrase such as `Assigned
 by CloudFormation (recommended)`) is NOT put in the header — it is shown in full
 on its own always-visible line labelled `Default:`, ahead of any remarks,
 because a default is one of the first things a reader looks for and truncating

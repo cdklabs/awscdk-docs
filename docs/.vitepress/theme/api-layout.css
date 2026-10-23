@@ -638,12 +638,12 @@ a.chain-item:hover {
   overflow-wrap: anywhere;
 }
 
-/* The clamp is deliberately narrower than the emitter's own
-   INLINE_DEFAULT_BUDGET: the default is the least important thing on the header
-   line and must not crowd the name and type. Widening it to match the budget
-   would double the worst case this exists to bound, so recovery is the `title`
-   the emitter puts on the span instead — the same answer `.member-type` got.
-   This is monospace, so `ch` and characters count the same. */
+/* A value default is never clipped. The emitter already bounds its length:
+   only a single token within INLINE_DEFAULT_BUDGET reaches the header, so that
+   budget is the worst case, and a CSS clamp narrower than it would cut a value
+   the row promises to show in full. `nowrap` keeps the value one unit; when the
+   header line cannot hold it beside the name and type, the line's
+   `flex-wrap: wrap` moves it onto its own line instead of clipping it. */
 .member-default {
   font-family: var(--vp-font-family-mono);
   font-size: 0.8125rem;
@@ -651,10 +651,7 @@ a.chain-item:hover {
      at this size; text-2 is the muted-but-readable step. Checked by the
      axe-core audit, which failed on this element before the change. */
   color: var(--vp-c-text-2);
-  max-width: 16ch;
-  overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 /* `required` is a distinct badge, not muted text: a reader skimming a long
@@ -907,7 +904,8 @@ a.chain-item:hover {
   }
 
   /* The type's clamp is `max-width: 100%`, which stops binding once the text
-     may wrap; the default's is a `ch` measure, which does not. */
+     may wrap. The default has no clamp above this breakpoint; `max-width: none`
+     keeps it that way here too. */
   .member-list .member-default {
     max-width: none;
   }
