@@ -814,6 +814,16 @@ describe('docgen generation', () => {
     expect(props).not.toHaveProperty('methods');
   });
 
+  test('a value default longer than sixteen characters is in the row header in full', () => {
+    // `BucketAccessControl.PRIVATE` is one token within the inline budget, so
+    // the header carries it whole and no `Default:` line repeats it.
+    const props = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+    const row = props.slice(props.indexOf('id="accesscontrol"'));
+    const header = row.slice(0, row.indexOf('</div>'));
+    expect(header).toContain('<span class="member-default" data-pagefind-ignore>= BucketAccessControl.PRIVATE</span>');
+    expect(row.slice(0, row.indexOf('class="member-row"', 10))).not.toContain('**Default:**');
+  });
+
   test('README-backed overview pages carry their upstream edit target', () => {
     // An overview page's prose is an upstream README, so the page records that
     // file for the theme to link rather than this repo's docgen directory,
