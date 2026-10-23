@@ -30,6 +30,10 @@ The outline is fed from data, and nothing else about the page changes:
   is the row's `id`, the existing `memberAnchor` slug, so an entry cannot point
   at a different place than the row's own `#` permalink. The list is a plain
   value with no presentation in it, so another consumer can read it later.
+  *Superseded in part — see [method parameters in the outline](./2026-10-23-outline-method-parameters.md):
+  an entry is now `[anchor, name, extras?]`, where the optional third element
+  carries display data such as a method's parameter list. The anchor and the
+  name are unchanged.*
 - **Only the type's own properties and its methods are listed.** *Superseded —
   see [construct props in the outline](./2026-10-23-outline-construct-props.md),
   which lists the inlined props as a third group. The empty-section and
@@ -44,6 +48,9 @@ The outline is fed from data, and nothing else about the page changes:
   the heading outline exactly as the default theme does and nests each section's
   members under that section's entry, one level deeper
   (`theme/outline-members.ts`). Markup and styling are the default theme's own.
+  *Superseded in part — see [method parameters in the outline](./2026-10-23-outline-method-parameters.md):
+  the outline item is now the repository's own `ApiDocOutlineItem.vue`, with
+  the default theme's markup and classes plus a method entry's parameter list.*
 - **Active-entry tracking covers members.** The default tracker follows only the
   headings it collected, so the component runs the same algorithm over every
   outline entry: the active entry is the last one whose target sits above the top

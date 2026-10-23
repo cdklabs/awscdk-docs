@@ -13,6 +13,7 @@ import {
   translateTypeRef,
 } from './languages.js';
 import { pageHref } from './links.js';
+import { methodOutlineExtras, OutlineExtrasByAnchor } from './outline-members.js';
 import { PAGEFIND_IGNORE } from './search.js';
 import {
   LinkResolver,
@@ -598,6 +599,7 @@ export function renderMethodsSection(
   linkFor: LinkResolver,
   ownerFqn: string,
   languages: readonly Language[] = [DEFAULT_LANGUAGE],
+  outline?: OutlineExtrasByAnchor,
 ): string[] {
   if (methods.length === 0) {
     return [];
@@ -608,7 +610,7 @@ export function renderMethodsSection(
   // name out of the index too.
   const body: string[] = ['<div class="methods-table member-list" v-pre>'];
   for (const method of methods) {
-    body.push(...renderMethodRow(method, linkFor, ownerFqn, languages));
+    body.push(...renderMethodRow(method, linkFor, ownerFqn, languages, outline));
   }
   body.push('</div>', '');
   return [anchoredHeading(2, 'Methods', SECTION_ANCHORS.methods), '', ...wrapLanguageTabs(languages, body)];
@@ -617,14 +619,18 @@ export function renderMethodsSection(
 /**
  * One method as a member row. The header line carries the full signature inline, so a method costs the same single
  * row as a property. Per-member deep links are the `#` permalink, which resolves to the same slug a heading would
- * produce.
+ * produce. When an `outline` map is given, the row's anchor is recorded with the parameter list the in-page outline
+ * shows, taken from the same jsii declaration the signature is built from.
  */
 function renderMethodRow(
   method: spec.Method,
   linkFor: LinkResolver,
   ownerFqn: string,
   languages: readonly Language[],
+  outline?: OutlineExtrasByAnchor,
 ): string[] {
+  const anchor = memberAnchor(method.name);
+  outline?.set(anchor, methodOutlineExtras(method));
   const deprecated = method.docs?.deprecated?.trim();
   const signature = languageVariantSpans(languages, (lang) => {
     const sig = lang === 'ts'
@@ -675,6 +681,6 @@ function renderMethodRow(
     detail.push(...codeFence(method.docs.example, 'ts'), '');
     labels.push('example');
   }
-  return memberRow(memberAnchor(method.name), method.name, header, summary, prose,
+  return memberRow(anchor, method.name, header, summary, prose,
     { lines: detail, labels });
 }

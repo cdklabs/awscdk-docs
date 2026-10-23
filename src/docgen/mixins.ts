@@ -17,6 +17,7 @@ import {
   renderMethodsSection,
   renderTypeMetadata,
 } from './layout.js';
+import type { OutlineExtrasByAnchor } from './outline-members.js';
 import { weightedTitle } from './search.js';
 
 /**
@@ -272,6 +273,8 @@ export interface MixinPageOptions {
   readonly languages?: readonly Language[];
   /** Version history of the type from the ledger; renders the `Type last changed` metadata row when known. */
   readonly history?: PageHistory;
+  /** Filled with each method row's outline display data, keyed by row anchor, for the page's in-page outline. */
+  readonly outline?: OutlineExtrasByAnchor;
 }
 
 /** Render a dedicated markdown page for one mixin. */
@@ -287,7 +290,7 @@ export function renderMixinPage(options: MixinPageOptions): string {
   lines.push(...renderExtendsBar(type, linkFor, mixins.get(type.fqn) ?? []));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
 
-  lines.push(...renderMethods(type, index, linkFor, languages));
+  lines.push(...renderMethods(type, index, linkFor, languages, options.outline));
   lines.push(...renderProperties(type, index, linkFor, languages));
 
   return lines.join('\n');
@@ -298,6 +301,7 @@ function renderMethods(
   index: TypeIndex,
   linkFor: (fqn: string) => string | undefined,
   languages: readonly Language[],
+  outline?: OutlineExtrasByAnchor,
 ): string[] {
   const methods = collectMethods(type, index);
   if (methods.length === 0) {
@@ -305,7 +309,7 @@ function renderMethods(
   }
   // One renderer for both surfaces: a mixin's methods are the same member rows as a class's, so this delegates
   // rather than keeping a parallel copy that would drift.
-  return renderMethodsSection(methods, linkFor, type.fqn, languages);
+  return renderMethodsSection(methods, linkFor, type.fqn, languages, outline);
 }
 
 function renderProperties(

@@ -18,7 +18,8 @@ test.describe('outline lists type members', () => {
     const property = aside.locator('a.outline-link[href="#deadletterqueue"]');
     const method = aside.locator('a.outline-link[href="#addtoresourcepolicy"]');
     await expect(property).toHaveText('deadLetterQueue');
-    await expect(method).toHaveText('addToResourcePolicy');
+    // A method entry shows its parameter names after the name (docs/adr/2026-10-23-outline-method-parameters.md).
+    await expect(method).toHaveText('addToResourcePolicy(statement)');
 
     // Each is nested under its own section's entry, not listed at the top level.
     const sectionOf = (href: string) =>
@@ -75,5 +76,68 @@ test.describe('outline lists type members', () => {
       window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 20),
     );
     await expect(outline(page).locator('a.outline-link[href="#addtoresourcepolicy"]')).toHaveClass(/\bactive\b/);
+  });
+});
+
+// A method entry reads `name(a, b?, ...rest)`: parameter names only, a trailing `?` on an optional parameter, `...`
+// before a variadic one, `()` when there are none. The marks are glyphs, so a screen reader is given words instead.
+test.describe('outline method entries show parameters', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  const outline = (page: import('@playwright/test').Page) => page.locator('.VPDocAsideOutline');
+
+  test('a required, an optional and a variadic parameter each render their mark, and the text is names only', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const aside = outline(page);
+    await expect(aside).toBeVisible();
+
+    // `metric(metricName, props?)`: the optional mark is a visible `?` and a spoken "optional".
+    const metric = aside.locator('a.outline-link[href="#metric"]');
+    await expect(metric.locator('.outline-name')).toHaveText('metric');
+    await expect(metric.locator('.outline-params')).toHaveText(/^\(metricName, props\?\s*optional\)$/);
+    await expect(metric.locator('.outline-params [aria-hidden="true"]')).toHaveText(['?']);
+    await expect(metric.locator('.outline-params .visually-hidden')).toHaveText(['optional']);
+    // The name computation pads a positioned span with spaces; the words are what matter.
+    await expect(metric).toHaveAccessibleName(/^metric\(metricName, props\s+optional\s*\)$/);
+    await expect(metric).toHaveAttribute('title', 'metric(metricName, props?)');
+
+    // `grant(grantee, ...actions)`: the variadic mark is a visible `...` and a spoken "variadic".
+    const grant = aside.locator('a.outline-link[href="#grant"]');
+    await expect(grant.locator('.outline-params [aria-hidden="true"]')).toHaveText(['...']);
+    await expect(grant.locator('.outline-params .visually-hidden')).toHaveText(['variadic']);
+    await expect(grant).toHaveAccessibleName(/^grant\(grantee,\s+variadic\s+actions\)$/);
+    await expect(grant).toHaveAttribute('title', 'grant(grantee, ...actions)');
+
+    // No type appears anywhere in a method entry.
+    const entries = await aside.locator('li', { has: page.locator('> a.outline-link[href="#methods"]') })
+      .locator('a.outline-link.outline-link-method').allTextContents();
+    expect(entries.length).toBeGreaterThan(3);
+    for (const text of entries) {
+      expect(text).not.toMatch(/:|IGrantable|PolicyStatement|MetricOptions/);
+    }
+  });
+
+  test('a method without parameters shows empty parentheses; a property shows no parentheses', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const aside = outline(page);
+    await expect(aside.locator('a.outline-link[href="#tostring"]')).toHaveText('toString()');
+    await expect(aside.locator('a.outline-link[href="#tostring"] .visually-hidden')).toHaveCount(0);
+    await expect(aside.locator('a.outline-link[href="#queuearn"]')).toHaveText('queueArn');
+    await expect(aside.locator('a.outline-link[href="#queuearn"] .outline-params')).toHaveCount(0);
+  });
+
+  test('the parameter text is display only: the link target is the row anchor and the text sits outside the search body', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const aside = outline(page);
+    const metric = aside.locator('a.outline-link[href="#metric"]');
+    await metric.click();
+    await expect(page).toHaveURL(/#metric$/);
+    await expect(page.locator('.member-row#metric')).toBeInViewport();
+    // The row keeps its id and permalink; nothing on the page gained a `metric(metricName` anchor.
+    await expect(page.locator('.member-row#metric a.member-permalink[href="#metric"]')).toHaveCount(1);
+    await expect(page.locator('[id*="("]')).toHaveCount(0);
+    // Pagefind indexes the rendered article (`data-pagefind-body`); the aside outline is outside it.
+    await expect(page.locator('[data-pagefind-body] .VPDocAsideOutline')).toHaveCount(0);
+    await expect(page.locator('[data-pagefind-body]')).toHaveCount(1);
   });
 });
