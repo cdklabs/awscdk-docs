@@ -7,11 +7,25 @@
  * outline component nests the entries under the matching section heading
  * (`docs/adr/2026-10-22-outline-members.md`).
  */
+import * as spec from '@jsii/spec';
 import { SECTION_ANCHORS } from './anchors.js';
+import type { TypeIndex } from './constructs.js';
 import { tokenizeFences } from './fences.js';
 
-/** One outline entry: the row's anchor id and the member's canonical (TypeScript) name. */
-export type OutlineMember = readonly [anchor: string, name: string];
+/** One method parameter: name, optionality, and variadic state. */
+export interface MethodParam {
+  readonly name: string;
+  readonly optional?: boolean;
+  readonly variadic?: boolean;
+}
+
+/** Display extras for an outline entry. Methods carry parameter info. */
+export interface OutlineMemberExtras {
+  readonly params?: readonly MethodParam[];
+}
+
+/** One outline entry: the row's anchor id, the member's canonical name, and optional display extras. */
+export type OutlineMember = readonly [anchor: string, name: string, extras?: OutlineMemberExtras];
 
 /** Section heading anchor (`properties` or `methods`) to the members listed under it, in page order. */
 export type OutlineMembers = Readonly<Record<string, readonly OutlineMember[]>>;
@@ -77,12 +91,88 @@ export function outlineMembers(page: string): OutlineMembers {
 }
 
 /**
+ * Extract method parameter info from a jsii type, including inherited methods. Returns a map from method name to parameter list.
+ * Only class and interface types with methods are processed.
+ */
+function methodParams(type: spec.Type, index: TypeIndex): ReadonlyMap<string, readonly MethodParam[]> {
+  const map = new Map<string, readonly MethodParam[]>();
+
+  // For class types, walk up the inheritance chain
+  if (spec.isClassType(type)) {
+    let current: string | undefined = type.fqn;
+    while (current) {
+      const entry = index.get(current);
+      if (!entry || !spec.isClassType(entry.type)) {
+        break;
+      }
+      for (const method of entry.type.methods ?? []) {
+        // Skip static methods and already-seen methods (child class overrides)
+        if (method.static || map.has(method.name)) {
+          continue;
+        }
+        const params = (method.parameters ?? []).map((p) => ({
+          name: p.name,
+          optional: p.optional,
+          variadic: p.variadic,
+        }));
+        map.set(method.name, params);
+      }
+      current = entry.type.base;
+    }
+    return map;
+  }
+
+  // For interface types, just use direct methods (interfaces don't inherit in the same way)
+  if (spec.isInterfaceType(type) && type.methods) {
+    for (const method of type.methods) {
+      if (method.static) {
+        continue;
+      }
+      const params = (method.parameters ?? []).map((p) => ({
+        name: p.name,
+        optional: p.optional,
+        variadic: p.variadic,
+      }));
+      map.set(method.name, params);
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Add parameter extras to method outline entries. The base outline comes from parsing the page HTML,
+ * and the jsii type provides parameter data for methods. Properties and static methods are unchanged.
+ */
+function withMethodParams(members: OutlineMembers, type: spec.Type | undefined, index: TypeIndex): OutlineMembers {
+  if (!type) {
+    return members;
+  }
+  const params = methodParams(type, index);
+  if (params.size === 0) {
+    return members;
+  }
+  const methodList = members.methods;
+  if (!methodList || methodList.length === 0) {
+    return members;
+  }
+  const updated = methodList.map(([anchor, name]) => {
+    const methodParameters = params.get(name);
+    if (!methodParameters) {
+      return [anchor, name] as OutlineMember;
+    }
+    return [anchor, name, { params: methodParameters }] as OutlineMember;
+  });
+  return { ...members, methods: updated };
+}
+
+/**
  * Add the page's member list to its frontmatter, after the keys already there so the declared `title` keeps its
  * place. JSON is valid YAML, so the list is one line the VitePress frontmatter parser reads as a plain object. A page
  * with no member rows is returned untouched.
  */
-export function withOutlineMembers(page: string): string {
-  const members = outlineMembers(page);
+export function withOutlineMembers(page: string, type: spec.Type | undefined, index: TypeIndex): string {
+  const members = withMethodParams(outlineMembers(page), type, index);
   if (Object.keys(members).length === 0) {
     return page;
   }

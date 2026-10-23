@@ -50,4 +50,23 @@ test.describe('outline lists type members', () => {
     );
     await expect(outline(page).locator('a.outline-link[href="#addtoresourcepolicy"]')).toHaveClass(/\bactive\b/);
   });
+
+  test('method entries show parameter names in the outline', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const aside = outline(page);
+    // addToResourcePolicy(permission, objectsKeyPattern?) shows required and optional params.
+    const method = aside.locator('a.outline-link[href="#addtoresourcepolicy"]');
+    await expect(method).toHaveText('addToResourcePolicy(permission, objectsKeyPattern?)');
+    // grantSend(grantee) shows a single required param.
+    const grantSend = aside.locator('a.outline-link[href="#grantsend"]');
+    await expect(grantSend).toHaveText('grantSend(grantee)');
+  });
+
+  test('method with no parameters shows empty parentheses', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const aside = outline(page);
+    // toString() has no parameters.
+    const method = aside.locator('a.outline-link[href="#tostring"]');
+    await expect(method).toHaveText('toString()');
+  });
 });

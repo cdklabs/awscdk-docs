@@ -789,7 +789,8 @@ describe('docgen generation', () => {
   });
 
   test('type pages list their properties and methods for the outline, keyed by the rows\' own anchors', () => {
-    const frontmatterMembers = (page: string): Record<string, [string, string][]> | undefined => {
+    type OutlineMember = [string, string, { params?: { name: string; optional?: boolean; variadic?: boolean }[] }?];
+    const frontmatterMembers = (page: string): Record<string, OutlineMember[]> | undefined => {
       const head = page.slice(0, page.indexOf('\n---\n', 3));
       const line = head.split('\n').find((l) => l.startsWith('outlineMembers: '));
       return line ? JSON.parse(line.slice('outlineMembers: '.length)) : undefined;
@@ -797,7 +798,8 @@ describe('docgen generation', () => {
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     const members = frontmatterMembers(bucket)!;
     expect(members.properties).toContainEqual(['bucketarn', 'bucketArn']);
-    expect(members.methods).toContainEqual(['addtoresourcepolicy', 'addToResourcePolicy']);
+    // Method entries include parameter extras, so match by anchor and name.
+    expect(members.methods.map((m) => [m[0], m[1]])).toContainEqual(['addtoresourcepolicy', 'addToResourcePolicy']);
     // Only the type's own properties and its methods: the inlined BucketProps rows stay out of the outline.
     expect(Object.keys(members).sort()).toEqual(['methods', 'properties']);
     // Every entry points at a member row that exists on the page; no per-member heading is added.
@@ -807,11 +809,44 @@ describe('docgen generation', () => {
     }
     // The declared title stays the first frontmatter key.
     expect(bucket.startsWith('---\ntitle: "Bucket"\n')).toBe(true);
+    // Method entries carry parameter extras.
+    const grantRead = members.methods.find((m) => m[1] === 'grantRead');
+    expect(grantRead).toBeDefined();
+    // grantRead inherits from BucketBase.grantRead(identity, objectsKeyPattern?)
+    expect(grantRead![2]).toEqual({ params: [{ name: 'identity' }, { name: 'objectsKeyPattern', optional: true }] });
+    const addToResourcePolicy = members.methods.find((m) => m[1] === 'addToResourcePolicy');
+    expect(addToResourcePolicy).toBeDefined();
+    // addToResourcePolicy inherits from BucketBase.addToResourcePolicy(permission)
+    expect(addToResourcePolicy![2]).toEqual({ params: [{ name: 'permission' }] });
 
     // A struct has properties but no methods: no methods group at all.
     const props = frontmatterMembers(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8'))!;
     expect(props.properties.length).toBeGreaterThan(0);
     expect(props).not.toHaveProperty('methods');
+  });
+
+  test('method anchors on Bucket are unchanged when parameter extras are added to the outline', () => {
+    type OutlineMember = [string, string, { params?: { name: string; optional?: boolean; variadic?: boolean }[] }?];
+    const frontmatterMembers = (page: string): Record<string, OutlineMember[]> | undefined => {
+      const head = page.slice(0, page.indexOf('\n---\n', 3));
+      const line = head.split('\n').find((l) => l.startsWith('outlineMembers: '));
+      return line ? JSON.parse(line.slice('outlineMembers: '.length)) : undefined;
+    };
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    const members = frontmatterMembers(bucket)!;
+    // Extract just the anchors from methods - these must match the row ids.
+    const methodAnchors = members.methods.map(([anchor]) => anchor);
+    // Every anchor must correspond to an actual member-row on the page.
+    for (const anchor of methodAnchors) {
+      expect(bucket).toContain(`<div class="member-row" id="${anchor}">`);
+    }
+    // Verify a sample of expected method anchors are present.
+    expect(methodAnchors).toContain('grantread');
+    expect(methodAnchors).toContain('grantwrite');
+    expect(methodAnchors).toContain('addtoresourcepolicy');
+    // Verify that anchors are slugified method names, not parameter-annotated.
+    expect(methodAnchors).not.toContain('grantread-grantee');
+    expect(methodAnchors).not.toContain('addtoresourcepolicy-permission');
   });
 
   test('a value default longer than sixteen characters is in the row header in full', () => {

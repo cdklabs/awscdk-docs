@@ -11,8 +11,34 @@ export interface OutlineItem {
   children: OutlineItem[];
 }
 
-/** Frontmatter `outlineMembers`: section anchor to `[anchor, name]` pairs, in page order. */
-export type OutlineMembers = Readonly<Record<string, readonly (readonly [string, string])[]>>;
+/** One method parameter: name, optionality, and variadic state. */
+interface MethodParam {
+  readonly name: string;
+  readonly optional?: boolean;
+  readonly variadic?: boolean;
+}
+
+/** Display extras for an outline entry. Methods carry parameter info. */
+interface OutlineMemberExtras {
+  readonly params?: readonly MethodParam[];
+}
+
+/** Frontmatter `outlineMembers`: section anchor to `[anchor, name, extras?]` tuples, in page order. */
+export type OutlineMembers = Readonly<Record<string, readonly (readonly [string, string, OutlineMemberExtras?])[]>>;
+
+/** Render parameter list for an outline title: `a, b?, ...rest` or empty parentheses. */
+function paramList(params: readonly MethodParam[] | undefined): string {
+  if (!params || params.length === 0) {
+    return '()';
+  }
+  const parts = params.map((p) => {
+    if (p.variadic) {
+      return `...${p.name}`;
+    }
+    return p.optional ? `${p.name}?` : p.name;
+  });
+  return `(${parts.join(', ')})`;
+}
 
 /**
  * The headers with each section's members appended as its children, one level deeper. A group whose section heading
@@ -33,7 +59,10 @@ export function nestOutlineMembers<T extends OutlineItem>(headers: T[], members:
       ...header,
       children: [
         ...header.children,
-        ...group.map(([anchor, name]) => ({ title: name, link: `#${anchor}`, level, children: [] })),
+        ...group.map(([anchor, name, extras]) => {
+          const title = extras?.params !== undefined ? `${name}${paramList(extras.params)}` : name;
+          return { title, link: `#${anchor}`, level, children: [] };
+        }),
       ],
     };
   });

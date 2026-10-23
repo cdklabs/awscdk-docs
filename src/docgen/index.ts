@@ -602,6 +602,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           entry.link,
           withOutlineMembers(
             `${typePageFrontmatter(entry.name, upstreamSourceUrl(entry.type, assembly)).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
+            entry.type,
+            typeIndex,
           ),
           history,
         );
