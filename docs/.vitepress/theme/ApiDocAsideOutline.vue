@@ -95,16 +95,66 @@ function setActiveLink(): void {
 
 const onScroll = throttleAndDebounce(setActiveLink, 100);
 
+// Keep the outline from overlapping the footer. The default theme's aside wrapper
+// (`.aside-container`) is `position: fixed; height: 100vh`, so its lower edge always
+// sits at the viewport bottom. The default theme hides the footer on doc pages, but
+// this site renders a `SiteFooter` on every page — so once the footer scrolls into
+// view, the fixed aside paints over it. Cap the aside wrapper's height at the footer's
+// top edge while the footer is visible; otherwise leave it at its natural height. The
+// wrapper already has `overflow-y: auto`, so a tall outline just scrolls internally.
+function boundAgainstFooter(): void {
+  const asideContainer = container.value?.closest<HTMLElement>(".aside-container");
+  if (!asideContainer) {
+    return;
+  }
+  // VitePress renders a sibling `.aside-curtain` (fixed, bottom: 0) that fades the
+  // outline's lower edge. It is pinned to the viewport bottom independently of the
+  // container, so it must be bounded against the footer alongside it.
+  const curtain = asideContainer.parentElement?.querySelector<HTMLElement>(".aside-curtain");
+  const footer = document.querySelector<HTMLElement>("footer.site-footer");
+  const footerTop = footer ? footer.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
+  // .aside-container is fixed at top: 0 (its content is pushed down by padding-top),
+  // so its own rect top is where the cap starts.
+  const asideTop = asideContainer.getBoundingClientRect().top;
+  if (footerTop < window.innerHeight) {
+    // Footer is on screen: bound the wrapper's bottom to the footer's top (never negative),
+    // and lift the curtain so its fade band sits above the footer rather than over it.
+    asideContainer.style.maxHeight = `${Math.max(0, footerTop - asideTop)}px`;
+    if (curtain) {
+      curtain.style.bottom = `${Math.max(0, window.innerHeight - footerTop)}px`;
+    }
+  } else {
+    // Footer is below the fold: no cap, restore natural behavior.
+    asideContainer.style.maxHeight = "";
+    if (curtain) {
+      curtain.style.bottom = "";
+    }
+  }
+}
+
+const onScrollBound = throttleAndDebounce(boundAgainstFooter, 100);
+
 onMounted(() => {
   requestAnimationFrame(setActiveLink);
+  requestAnimationFrame(boundAgainstFooter);
   window.addEventListener("scroll", onScroll);
+  window.addEventListener("scroll", onScrollBound);
+  window.addEventListener("resize", onScrollBound);
 });
 onUpdated(() => {
   // A route change re-renders the outline.
   activate(location.hash);
+  boundAgainstFooter();
 });
 onUnmounted(() => {
   window.removeEventListener("scroll", onScroll);
+  window.removeEventListener("scroll", onScrollBound);
+  window.removeEventListener("resize", onScrollBound);
+  // Clear the inline styles written on the shared default-theme nodes, which this
+  // component does not own, so a reused wrapper is not left with a stranded cap.
+  const asideContainer = container.value?.closest<HTMLElement>(".aside-container");
+  asideContainer?.style.setProperty("max-height", "");
+  asideContainer?.parentElement?.querySelector<HTMLElement>(".aside-curtain")?.style.setProperty("bottom", "");
 });
 </script>
 
