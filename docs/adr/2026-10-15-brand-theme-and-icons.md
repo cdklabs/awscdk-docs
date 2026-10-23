@@ -55,7 +55,9 @@ deliberate: VitePress renders a `{ light, dark }` logo pair as two `<img>`
 elements, hides one with `display: none`, and a cold load fetches both, paying
 for an asset no reader sees. `test/theme.test.ts` asserts the single-asset
 shape and `test/e2e/logo.spec.ts` asserts the dark-mode filter on rendered
-pixels, so reintroducing a pair fails the suite.
+pixels, so reintroducing a pair fails the suite. The logo is decorative inside
+the named home link; its former `alt: "AWS"` rule is superseded by
+[navbar title lockup](./2026-10-23-navbar-title-lockup.md).
 
 The AWS company mark carries no public redistribution grant; the license for it
 is owned, recorded here from the maintainer rather than inferred, because a
@@ -177,9 +179,9 @@ cannot affect the gate.
 
 - Every default-theme feature keeps working — no components are forked — and
   deeper personality changes extend this same theme entry, the supported path.
-- Chrome brands the site by company, matching the reference docs it mirrors; the
-  accessible name of the home link is `AWS`, with the adjacent site title saying
-  what the site is.
+- Chrome brands the site by company, matching the reference docs it mirrors;
+  the home-link naming rule is superseded by
+  [navbar title lockup](./2026-10-23-navbar-title-lockup.md).
 - One ~4 KB logo SVG is committed under the theme and fetched once per cold
   load.
 - Removing inline chrome `<svg>` cuts a construct page from 16 inline SVG to 1

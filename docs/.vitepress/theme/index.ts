@@ -16,6 +16,7 @@ import LanguageTabs from "./LanguageTabs.vue";
 import LanguageToggle from "./LanguageToggle.vue";
 import JumpToCurrent from "./JumpToCurrent.vue";
 import NavFilter from "./NavFilter.vue";
+import NavSiteTitle from "./NavSiteTitle.vue";
 import NotFound from "./NotFound.vue";
 import PageFooterLinks from "./PageFooterLinks.vue";
 import { warmSearchIndex } from "./search-client";
@@ -59,6 +60,9 @@ const theme: Theme = {
       // The generated Service -> Resource -> Kind tree, fetched once. Inert
       // outside the /api/ section.
       "sidebar-nav-after": () => h(ApiSidebar),
+      // The title stays one root link, with responsive visual labels and one
+      // stable accessible name. VitePress still owns the link and logo.
+      "nav-bar-title-after": () => h(NavSiteTitle),
       // Navbar: language slider (multi-language builds only), centered search,
       // and the two tri-state theme pickers behind the gear Settings dropdown.
       // Positioning is flex `order` + centering in nav-controls.css. The
