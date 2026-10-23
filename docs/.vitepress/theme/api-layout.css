@@ -625,6 +625,19 @@ a.chain-item:hover {
   white-space: nowrap;
 }
 
+/* A method row's variant span holds the whole signature, and the `nowrap`
+   above is inherited by it — which made a long signature one unbreakable line
+   that ran past the content column and over the outline. The header line is
+   meant to WRAP a signature, never clamp it (the member-rows ADR: a signature
+   has no single line to clamp to, and truncating one hides a parameter), so
+   the signature releases the wrapper's `nowrap` for its own text.
+   `overflow-wrap: anywhere` is the fallback for a single token wider than the
+   column, such as a deeply nested generic. */
+.member-list .member-signature {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /* The clamp is deliberately narrower than the emitter's own
    INLINE_DEFAULT_BUDGET: the default is the least important thing on the header
    line and must not crowd the name and type. Widening it to match the budget

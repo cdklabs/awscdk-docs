@@ -946,6 +946,22 @@ describe('API page layout', () => {
       expect(wrapper).not.toMatch(/display: (inline-)?flex/);
     });
 
+    test('the signature releases the wrapper nowrap so a long one wraps', () => {
+      // A method row's variant span holds the whole signature, so the
+      // wrapper's `nowrap` above reached it too: a 100-character Python
+      // factory signature stayed one line and ran 170px past the content
+      // column into the outline. The header line is meant to wrap a
+      // signature, never clamp it, so the signature carries its own release
+      // — and a break-anywhere fallback for a single over-wide token.
+      const signature = declarations(css(), '.member-list .member-signature');
+      expect(signature).toContain('white-space: normal');
+      expect(signature).toContain('overflow-wrap: anywhere');
+      // The release must not come with a clamp: nothing in a signature may be
+      // hidden, which is the whole reason it wraps instead.
+      expect(signature).not.toContain('overflow: hidden');
+      expect(signature).not.toContain('text-overflow');
+    });
+
     test('the summary sits in its own block, so it never shares the line with the type', () => {
       // With the summary and the type on one line, the shrink has to be
       // weighted so a long description yields before the type clamps. The

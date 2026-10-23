@@ -280,8 +280,12 @@ cap on the type — the shrink weighting alone orders it in one declaration. The
 clamp is an inline-block on the type (making it a flex item blockifies the
 adjacent name `code` and shifts row height); the span gets `white-space: nowrap`,
 `min-width: 0`, `overflow: hidden`, and a full-type `title`. Both clamps release
-at the `max-width: 640px` breakpoint where rows stack. Scoped to `.props-table`
-so signature rendering (which has no single line to clamp) is untouched.
+at the `max-width: 640px` breakpoint where rows stack. The language-variant
+wrapper's `nowrap` is shared by method rows, where the variant holds the whole
+signature; `.member-signature` releases it (`white-space: normal`,
+`overflow-wrap: anywhere`) so a long signature wraps inside the content column
+instead of running over the outline — a signature has no single line to clamp
+to and is never truncated.
 
 ### "Construct Props" heading with a pinned anchor
 
