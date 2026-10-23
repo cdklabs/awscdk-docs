@@ -618,6 +618,42 @@ a.chain-item:hover {
   margin-right: 8px;
 }
 
+/* An optional property's `?` hugs its name, so the 8px moves past the mark.
+   Display only (docs/adr/2026-10-23-optional-prop-marker.md): unselectable,
+   so a copied name carries no `?`, and the same weight and color as the name
+   so it reads as the TypeScript spelling `bucketName?`. */
+.member-list .member-name:has(+ .member-optional) {
+  margin-right: 0;
+}
+
+.member-list .member-optional {
+  margin-right: 8px;
+  font-family: var(--vp-font-family-mono);
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  user-select: none;
+}
+
+/* With a single language the name and the mark are both flex items of the
+   header line, so the line's column-gap would push the mark away. */
+.member-list .member-line > .member-name + .member-optional {
+  margin-left: -12px;
+}
+
+/* The words a screen reader hears in place of the `?`. Read, never painted.
+   Kept in flow (a 1px box with a -1px margin takes no room) rather than
+   positioned: the permalink is the one out-of-flow element a row may have. */
+.member-optional-label {
+  display: inline-block;
+  width: 1px;
+  height: 1px;
+  margin: 0 -1px 0 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* With 2+ languages the row's flex child is the variant span, not the name or
    type inside it: `nowrap` keeps the pair from breaking apart. */
 .member-list .member-line > .lang-variant {

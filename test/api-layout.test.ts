@@ -340,12 +340,12 @@ describe('API page layout', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
       // The id is on the ROW, so navigating to it lands on the whole member
       // rather than on one span inside it.
-      expect(page).toContain('<div class="member-row" id="versioned">');
+      expect(page).toContain('<div class="member-row" id="versioned" data-optional="input">');
       expect(page).toContain('<a class="member-permalink" href="#versioned"'
         + ' aria-label="Permalink to versioned">#</a>');
       // Identity is the canonical TS name, not the displayed one, so a deep
       // link survives a language switch.
-      const rows = [...page.matchAll(/<div class="member-row" id="([^"]+)">/g)].map((m) => m[1]);
+      const rows = [...page.matchAll(/<div class="member-row" id="([^"]+)"/g)].map((m) => m[1]);
       expect(rows.length).toBeGreaterThan(5);
       expect(new Set(rows).size).toBe(rows.length);
       for (const id of rows) {
@@ -424,6 +424,57 @@ describe('API page layout', () => {
       expect(style).toContain('background-color');
       expect(style).toContain('border-radius');
       expect(style).not.toContain('font-style: italic');
+    });
+
+    test('an optional prop shows a display-only ? after its name, spoken by kind; a required prop shows none', () => {
+      const optional = { name: 'accessControl', type: { primitive: 'string' }, optional: true } as any;
+      const required = { name: 'code', type: { primitive: 'string' } } as any;
+
+      // An input (struct prop): the `?` hugs the name, is hidden from assistive technology, and is spoken as
+      // "optional". It is out of the search index and the row records its kind as data for the outline.
+      const input = renderExpandableProps([optional], () => undefined, { optionalKind: 'input' }).join('\n');
+      expect(input).toContain(
+        '<code class="member-name">accessControl</code><span class="member-optional" data-pagefind-ignore>'
+        + '<span aria-hidden="true">?</span><span class="member-optional-label">optional</span></span>',
+      );
+      expect(input).toContain('<div class="member-row" id="accesscontrol" data-optional="input">');
+      // The anchor and the permalink name carry no mark.
+      expect(input).toContain('href="#accesscontrol" aria-label="Permalink to accessControl"');
+
+      // An output (class property): same mark, spoken as "may be undefined".
+      const output = renderExpandableProps([optional], () => undefined, { optionalKind: 'output' }).join('\n');
+      expect(output).toContain('<span class="member-optional-label">may be undefined</span>');
+      expect(output).toContain('data-optional="output"');
+
+      // A required prop gets no mark and no optional data, and keeps its badge.
+      const req = renderExpandableProps([required], () => undefined, { optionalKind: 'input' }).join('\n');
+      expect(req).not.toContain('member-optional');
+      expect(req).not.toContain('data-optional');
+      expect(req).toContain('<span class="member-required">required</span>');
+
+      // Every language variant carries the mark, not just TypeScript.
+      const multi = renderExpandableProps([optional], () => undefined, {
+        optionalKind: 'input',
+        languages: ['ts', 'python'],
+      }).join('\n');
+      expect(multi.match(/class="member-optional"/g)).toHaveLength(2);
+
+      // The mark cannot be copied with the name.
+      const rules = withoutComments(
+        readFileSync(resolve(import.meta.dirname, '../docs/.vitepress/theme/api-layout.css'), 'utf-8'),
+      );
+      expect(blocksMentioning(rules, '.member-list .member-optional').join('\n')).toContain('user-select: none');
+    });
+
+    test('struct and construct props are inputs; class properties are outputs', () => {
+      const props = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+      expect(props).toContain('<div class="member-row" id="bucketname" data-optional="input">');
+      const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+      expect(bucket).toContain('<div class="member-row" id="props-bucketprops-bucketname" data-optional="input">');
+      // Bucket.bucketName is always set: an output with no mark.
+      expect(bucket).toContain('<div class="member-row" id="bucketname">');
+      // Bucket.encryptionKey may be undefined.
+      expect(bucket).toContain('<div class="member-row" id="encryptionkey" data-optional="output">');
     });
 
     test('a value default renders inline in the header line', () => {
@@ -521,7 +572,7 @@ describe('API page layout', () => {
     test('a default that is only the marker earns no header slot at all', () => {
       const page = readFileSync(
         join(outDir, 'docs', 'aws-cdk-lib.aws_ec2.AmazonLinuxImageProps.md'), 'utf-8');
-      const at = page.indexOf('<div class="member-row" id="kernel">');
+      const at = page.indexOf('<div class="member-row" id="kernel" data-optional="input">');
       expect(at).toBeGreaterThan(-1);
       const line = page.slice(at, page.indexOf('</div>', at));
       expect(line).toContain('>kernel</code>');

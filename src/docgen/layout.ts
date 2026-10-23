@@ -304,6 +304,36 @@ export interface PropsRenderOptions {
    * keep the bare canonical slug, so every `#member` link stays byte-identical.
    */
   readonly anchorPrefix?: string;
+  /**
+   * What an optional property means in this table, which picks the words a screen reader hears for its `?` mark:
+   * a struct prop is an INPUT the caller may leave out (`optional`), a class or interface property is an OUTPUT
+   * whose value may be missing (`may be undefined`). Defaults to `input`.
+   */
+  readonly optionalKind?: OptionalKind;
+}
+
+/**
+ * Whether an optional property is an input the caller may omit (a struct prop) or an output that may be undefined
+ * (a class or interface property). See `docs/adr/2026-10-23-optional-prop-marker.md`.
+ */
+export type OptionalKind = 'input' | 'output';
+
+/** The words a screen reader hears in place of the visible `?`, per kind. */
+export const OPTIONAL_LABELS: Readonly<Record<OptionalKind, string>> = {
+  input: 'optional',
+  output: 'may be undefined',
+};
+
+/**
+ * The `?` after an optional property's name. Display only: the mark itself is hidden from assistive technology,
+ * which hears the kind's label instead; neither is indexed by Pagefind, and the theme makes both unselectable, so a
+ * copied name needs no cleanup. Anchors, permalinks and the Markdown output never read this span.
+ */
+function optionalMarkHtml(kind: OptionalKind): string {
+  return `<span class="member-optional" ${PAGEFIND_IGNORE}>`
+    + '<span aria-hidden="true">?</span>'
+    + `<span class="member-optional-label">${OPTIONAL_LABELS[kind]}</span>`
+    + '</span>';
 }
 
 /**
@@ -364,8 +394,12 @@ function memberRow(
   prose: string[],
   detail: { readonly lines: string[]; readonly labels: readonly string[] },
   indexBody = true,
+  optional?: OptionalKind,
 ): string[] {
-  const lines = [`<div class="member-row" id="${anchorId}">`];
+  // `data-optional` carries the row's optional state as data, so the outline reads it from the same jsii flag that
+  // drew the row's `?` (see outline-members.ts), never from the rendered name.
+  const optionalAttr = optional ? ` data-optional="${optional}"` : '';
+  const lines = [`<div class="member-row" id="${anchorId}"${optionalAttr}>`];
   lines.push(
     '<div class="member-line">'
     + headerParts.join('')
@@ -415,7 +449,7 @@ export function renderExpandableProps(
   // repeated types stay out of the index via their local ignore attributes.
   const lines: string[] = ['<div class="props-table member-list" v-pre>'];
   for (const prop of props) {
-    lines.push(...renderPropRow(prop, linkFor, languages, options.anchorPrefix));
+    lines.push(...renderPropRow(prop, linkFor, languages, options.anchorPrefix, options.optionalKind ?? 'input'));
   }
   lines.push('</div>', '');
   // The `v-pre` rows are static HTML, so per-language name/type spans flip via the surrounding <LanguageTabs> CSS.
@@ -459,6 +493,7 @@ function propRowHtml(
   prop: spec.Property,
   linkFor: LinkResolver,
   languages: readonly Language[],
+  optionalKind: OptionalKind,
 ): string[] {
   const deprecated = prop.docs?.deprecated;
   // Name and type are language-variant: one span per enabled language; the trailing markers and summary are
@@ -474,7 +509,10 @@ function propRowHtml(
     const full = lang === 'ts' ? typeRefText(prop.type) : translateTypeRef(prop.type, lang);
     // Strikethrough marks the IDENTIFIER only — running it over the type or the anchor reads as a scribble.
     const nameClass = deprecated ? 'member-name member-name-deprecated' : 'member-name';
-    return `<code class="${nameClass}">${name}</code>`
+    // The `?` sits right after the name, in every language: optionality is a fact about the member, not about how
+    // one language spells it.
+    const mark = prop.optional ? optionalMarkHtml(optionalKind) : '';
+    return `<code class="${nameClass}">${name}</code>${mark}`
       + `<span class="member-type" data-pagefind-ignore title="${escapeAttr(full)}">${withoutAnchorTooltips(type)}</span>`;
   });
   const parts = [nameAndType];
@@ -508,9 +546,10 @@ function renderPropRow(
   prop: spec.Property,
   linkFor: LinkResolver,
   languages: readonly Language[],
-  anchorPrefix?: string,
+  anchorPrefix: string | undefined,
+  optionalKind: OptionalKind,
 ): string[] {
-  const header = propRowHtml(prop, linkFor, languages);
+  const header = propRowHtml(prop, linkFor, languages, optionalKind);
   const deprecated = prop.docs?.deprecated?.trim();
   // A deprecation reason replaces the summary: it is what a reader needs
   // first, and showing both puts the superseded description on top.
@@ -543,7 +582,7 @@ function renderPropRow(
   const slug = memberAnchor(prop.name);
   const id = anchorPrefix ? `${anchorPrefix}-${slug}` : slug;
   return memberRow(id, prop.name, header, summary, prose,
-    { lines: detail, labels }, false);
+    { lines: detail, labels }, false, prop.optional ? optionalKind : undefined);
 }
 
 /** Own methods plus those inherited along the base-class chain, sorted. */

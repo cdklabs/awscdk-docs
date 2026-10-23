@@ -278,7 +278,7 @@ function renderPropertiesSection(
   if (props.length === 0) {
     return [];
   }
-  return [anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages })];
+  return [anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages, optionalKind: 'output' })];
 }
 
 function renderStructProps(
@@ -288,7 +288,7 @@ function renderStructProps(
   languages: readonly Language[],
 ): string[] {
   const props = collectProperties(struct, index);
-  return [anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages })];
+  return [anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages, optionalKind: 'input' })];
 }
 
 // ─── Navbar Type-Ahead Filter Index ───────────────────────────────────────────

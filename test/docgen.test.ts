@@ -801,11 +801,12 @@ describe('docgen generation', () => {
     // The inlined BucketProps rows are listed too, as a third group keyed by the Construct Props section anchor,
     // each entry carrying the props-based row id.
     expect(Object.keys(members).sort()).toEqual(['methods', 'properties', 'props-bucketprops']);
-    expect(members['props-bucketprops']).toContainEqual(['props-bucketprops-bucketname', 'bucketName']);
+    expect(members['props-bucketprops']).toContainEqual(['props-bucketprops-bucketname', 'bucketName', { optional: 'input' }]);
     expect(bucket).toContain('## Construct Props {#props-bucketprops}');
     // Every entry points at a member row that exists on the page; no per-member heading is added.
     for (const [anchor] of [...members.properties, ...members.methods, ...members['props-bucketprops']]) {
-      expect(bucket).toContain(`<div class="member-row" id="${anchor}">`);
+      // An optional row also carries its kind as `data-optional`, so match up to the id.
+      expect(bucket).toContain(`<div class="member-row" id="${anchor}"`);
       expect(bucket).not.toMatch(new RegExp(`^#+ .*\\{#${anchor}\\}$`, 'm'));
     }
     // The declared title stays the first frontmatter key.

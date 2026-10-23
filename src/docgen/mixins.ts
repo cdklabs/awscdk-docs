@@ -319,6 +319,6 @@ function renderProperties(
     return [];
   }
   // Same delegation as renderMethods above: a mixin's properties are the same member rows as a class's.
-  return [anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages })];
+  return [anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages, optionalKind: 'output' })];
 }
 

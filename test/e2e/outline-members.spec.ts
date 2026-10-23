@@ -17,7 +17,8 @@ test.describe('outline lists type members', () => {
 
     const property = aside.locator('a.outline-link[href="#deadletterqueue"]');
     const method = aside.locator('a.outline-link[href="#addtoresourcepolicy"]');
-    await expect(property).toHaveText('deadLetterQueue');
+    // An optional member's entry ends with the display-only mark and its spoken label (optional-marker.spec.ts).
+    await expect(property).toHaveText('deadLetterQueue?may be undefined');
     await expect(method).toHaveText('addToResourcePolicy');
 
     // Each is nested under its own section's entry, not listed at the top level.
@@ -33,7 +34,7 @@ test.describe('outline lists type members', () => {
 
     // The inlined construct props are listed too, under their own section entry and never at the top level.
     const prop = aside.locator('a.outline-link[href="#props-queueprops-fifo"]');
-    await expect(prop).toHaveText('fifo');
+    await expect(prop).toHaveText('fifo?optional');
     await expect(sectionOf('#props-queueprops').locator('a.outline-link[href="#props-queueprops-fifo"]')).toHaveCount(1);
     await expect(page.locator('.vp-doc .member-row#props-queueprops-fifo')).toHaveCount(1);
     await expect(page.locator('.vp-doc :is(h2,h3,h4,h5,h6)#props-queueprops-fifo')).toHaveCount(0);
@@ -56,7 +57,7 @@ test.describe('outline lists type members', () => {
     await page.goto(QUEUE_PROPS_PAGE);
     const aside = outline(page);
     await expect(aside).toBeVisible();
-    await expect(aside.locator('a.outline-link[href="#fifo"]')).toHaveText('fifo');
+    await expect(aside.locator('a.outline-link[href="#fifo"]')).toHaveText('fifo?optional');
     await expect(aside.locator('a.outline-link[href^="#props-"]')).toHaveCount(0);
   });
 

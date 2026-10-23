@@ -219,4 +219,16 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     ].join('\n');
     expect(toAgentMarkdown(page).markdown).toBe('- `ttl` = The greater of 1 day and ``minTtl`` — How long.\n');
   });
+
+  test('an optional property\'s display-only mark and its spoken label stay out of the Markdown', () => {
+    const page = [
+      '<div class="member-row" id="bucketname" data-optional="input"><div class="member-line">'
+      + '<code class="member-name">bucketName</code><span class="member-optional" data-pagefind-ignore>'
+      + '<span aria-hidden="true">?</span><span class="member-optional-label">optional</span></span>'
+      + '<span class="member-type" data-pagefind-ignore title="string">string</span></div>',
+      '<div class="member-summary">Physical name of this bucket.</div></div>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `bucketName`: string — Physical name of this bucket.\n');
+  });
 });
