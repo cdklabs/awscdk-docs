@@ -6,9 +6,7 @@ import { TOPIC_PAGE } from './fixture.js';
 test.describe('navbar logo: one asset for both color modes', () => {
   const logo = (page: import('@playwright/test').Page) => page.locator('.VPNavBarTitle img.logo');
 
-  test('a cold load fetches the logo exactly once and renders exactly one logo img with its alt text', async ({
-    page,
-  }) => {
+  test('a cold load fetches one decorative logo image', async ({ page }) => {
     const logoRequests: string[] = [];
     page.on('request', (r) => {
       if (/aws-logo/.test(r.url())) {
@@ -19,7 +17,7 @@ test.describe('navbar logo: one asset for both color modes', () => {
 
     await expect(logo(page)).toHaveCount(1);
     await expect(logo(page)).toBeVisible();
-    await expect(logo(page)).toHaveAttribute('alt', 'AWS');
+    await expect(logo(page)).toHaveAttribute('alt', '');
     await expect(logo(page)).toHaveAttribute('src', /\/aws-logo-gray\.svg$/);
     expect(logoRequests).toHaveLength(1);
     expect(logoRequests[0]).toMatch(/\/aws-logo-gray\.svg$/);

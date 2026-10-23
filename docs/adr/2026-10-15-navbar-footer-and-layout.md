@@ -228,11 +228,10 @@ spans full width, at both the 960px and 1440px tiers. `!important` is required
 here (unlike the geometry rules) because the stock rules are Vue-scoped at
 (0,4,0).
 
-The **site title holds `--vp-c-text-2`** in every state (default, hover, active,
-focus, focus-visible), the lighter secondary color; pinning all states makes
-"does not change on interaction" true by construction. The nav links keep their
-brand-color hover — that is the theme's navigation affordance, not the site
-name's — and an assertion guards that the pin is not widened onto them.
+The former rule pinning the site title to `--vp-c-text-2` is superseded by
+[navbar title lockup](./2026-10-23-navbar-title-lockup.md). The title now uses
+the primary text color and responsive complete labels. The nav links keep their
+brand-color hover — that remains the theme's navigation affordance.
 
 ### Navbar title-lane background
 

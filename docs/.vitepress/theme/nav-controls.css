@@ -153,14 +153,43 @@
   }
 }
 
-/* The site title holds the secondary text color in every state; the nav
- * links keep their own brand-color hover. */
+/* The title is the primary label for the site. Keep its color steady across
+ * interaction while nav links retain their own brand-color hover. */
 .VPNavBarTitle .title,
 .VPNavBarTitle .title:hover,
 .VPNavBarTitle .title:active,
 .VPNavBarTitle .title:focus,
 .VPNavBarTitle .title:focus-visible {
-  color: var(--vp-c-text-2);
+  color: var(--vp-c-text-1);
+}
+
+.VPNavBarTitle .title:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* VitePress's stock gap is 8px. Sixteen separates the repeated visible AWS
+ * word from the mark without changing the mark itself. */
+.VPNavBarTitle .logo {
+  margin-right: 16px;
+}
+
+.nav-site-title-short {
+  display: none;
+}
+
+/* One stable accessible name remains in the link while the painted title
+ * changes at narrow widths. */
+.nav-site-title-accessible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Dark mode: flatten the gray mark to black, then invert it to white. */
@@ -287,10 +316,30 @@
   background-color: var(--vp-c-default-soft);
 }
 
-/* Below 960px the title is a flex item in the same row as the controls, and
- * the row's controls need 623px on their own. The title yields the space and
- * truncates rather than pushing the controls beyond the viewport. */
-@media (max-width: 959px) {
+/* The mobile row has fewer controls than the medium row. Keep the full name
+ * from 430px, use the short label from 390px, then show only the logo. */
+@media (max-width: 429px) {
+  .nav-site-title-full {
+    display: none;
+  }
+}
+
+@media (min-width: 390px) and (max-width: 429px) {
+  .nav-site-title-short {
+    display: inline;
+  }
+}
+
+@media (max-width: 389px) {
+  .VPNavBarTitle .logo {
+    margin-right: 0;
+  }
+}
+
+/* At 768-959px VitePress moves the desktop controls into the top row. That
+ * row needs its full width, so the title uses the logo-only form until the
+ * fixed 320px desktop title lane starts. */
+@media (min-width: 768px) and (max-width: 959px) {
   .VPNavBar .container > .title {
     flex-shrink: 1;
     min-width: 0;
@@ -301,11 +350,12 @@
     overflow: hidden;
   }
 
-  .VPNavBarTitle .title > span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .nav-site-title-full {
+    display: none;
+  }
+
+  .VPNavBarTitle .logo {
+    margin-right: 0;
   }
 }
 

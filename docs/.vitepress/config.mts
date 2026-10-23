@@ -335,12 +335,13 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   },
 
   themeConfig: {
-    // Official AWS logo. One asset for both color modes: nav-controls.css flattens and inverts this <img> to
-    // white in dark mode. Navbar logo + title link to the home page.
+    // The logo is decorative inside the home link: NavSiteTitle supplies the
+    // exact accessible name while CSS chooses the visible responsive label.
     logo: {
       src: "/aws-logo-gray.svg",
-      alt: "AWS",
+      alt: "",
     },
+    siteTitle: false,
 
     // No native editLink here: "Edit this page" and "Report an issue" render together in the PageFooterLinks
     // doc-footer component, which derives the edit target from editLinkFor() in theme/feedback.ts. Configuring

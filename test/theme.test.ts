@@ -243,24 +243,24 @@ describe('AWS logo and AWS copyright', () => {
     'utf-8',
   );
 
-  test('themeConfig.logo is a single src with alt text, not a light/dark pair', () => {
+  test('themeConfig.logo is one decorative image beside one accessible title', () => {
     expect(config).toMatch(/logo:\s*{/);
     expect(config).toContain('src: "/aws-logo-gray.svg"');
-    expect(config).toContain('alt: "AWS"');
+    expect(config).toContain('alt: ""');
+    expect(config).toContain('siteTitle: false');
     // A pair would render two <img> elements and fetch both on every cold load; see the ADR.
     expect(config).not.toMatch(/logo:\s*{[^}]*\b(light|dark):/);
   });
 
-  test('dark mode turns the single logo img white with a filter, and nothing masks or hides it', () => {
+  test('dark mode turns the single logo img white without masking or hiding it', () => {
     // Both filter steps are load-bearing: brightness(0) flattens the mark to black, invert(1) makes it white.
     // Inverting #161d26 directly would give a pale tan, not white.
     const css = readFileSync(resolve(THEME_DIR, 'nav-controls.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
     const rule = /\.dark \.VPNavBarTitle \.logo\s*{([^}]*)}/.exec(css);
     expect(rule).not.toBeNull();
     expect(rule![1]).toMatch(/filter:\s*brightness\(0\)\s+invert\(1\)/);
-    // Light mode leaves the img alone: no rule targets the logo outside .dark.
-    expect(css.replace(/\.dark \.VPNavBarTitle \.logo\s*{[^}]*}/g, '')).not.toMatch(/\.logo\s*{/);
-    expect(css).not.toMatch(/\.logo[^{]*{[^}]*(mask|display:\s*none|visibility:\s*hidden)/);
+    const lightLogoRules = css.replace(/\.dark \.VPNavBarTitle \.logo\s*{[^}]*}/g, '');
+    expect(lightLogoRules).not.toMatch(/\.logo[^{]*{[^}]*(filter|mask|display:\s*none|visibility:\s*hidden)/);
   });
 
   test('footer carries the AWS copyright wording with a computed year', () => {

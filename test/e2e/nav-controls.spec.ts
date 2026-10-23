@@ -155,28 +155,71 @@ test.describe('navbar layout', () => {
       const overflows = (element: Element) => element.scrollWidth > element.clientWidth + 1;
       expect(await wrapper.evaluate(overflows)).toBe(false);
 
-      // Positive control at the narrowest width, where the title at its natural size does not fit beside the
-      // controls: undo the rule that makes room and the bar must overflow again. Wider rows hold the title as is.
       if (width === 768) {
         await page.locator('.VPNavBar .container > .title').evaluate((element) => {
-          (element as HTMLElement).style.flexShrink = '0';
+          const title = element as HTMLElement;
+          title.style.flexShrink = '0';
+          title.style.width = '500px';
         });
         expect(await wrapper.evaluate(overflows)).toBe(true);
       }
     });
   }
 
-  test('at 768px the title truncates instead of the controls', async ({ page }) => {
-    await page.setViewportSize({ width: 768, height: 800 });
-    await page.goto(TOPIC_PAGE);
-    const label = page.locator('.VPNavBarTitle .title > span');
-    await expect(label).toHaveText('AWS CDK Reference');
-    const clipped = await label.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
-    expect(clipped).toBe(true);
-    const labelBox = await label.boundingBox();
-    const search = await page.locator('.VPNavBar .content-body > .search').boundingBox();
-    expect(labelBox!.x + labelBox!.width).toBeLessThanOrEqual(search!.x);
-  });
+  const titleWidths = [
+    [320, 'logo'],
+    [360, 'logo'],
+    [390, 'short'],
+    [430, 'full'],
+    [768, 'logo'],
+    [960, 'full'],
+    [1280, 'full'],
+  ] as const;
+
+  for (const [width, visibleLabel] of titleWidths) {
+    test(`the title uses its ${visibleLabel} form at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      for (const path of ['/', TOPIC_PAGE]) {
+        await page.goto(path);
+        const title = page.locator('.VPNavBarTitle > a.title');
+        const full = title.locator('.nav-site-title-full');
+        const short = title.locator('.nav-site-title-short');
+
+        await expect(title).toHaveAccessibleName('AWS CDK Reference');
+        await expect(title).toHaveAttribute('href', '/');
+        if (visibleLabel === 'full') {
+          await expect(full).toBeVisible();
+        } else {
+          await expect(full).toBeHidden();
+        }
+        if (visibleLabel === 'short') {
+          await expect(short).toBeVisible();
+        } else {
+          await expect(short).toBeHidden();
+        }
+
+        const visibleTextClips = await title.evaluate((element) =>
+          [...element.querySelectorAll<HTMLElement>('.nav-site-title-full, .nav-site-title-short')]
+            .filter((part) => getComputedStyle(part).display !== 'none')
+            .some((part) => part.scrollWidth > part.clientWidth + 1),
+        );
+        expect(visibleTextClips, `${path} at ${width}px`).toBe(false);
+
+        const titleBox = (await title.boundingBox())!;
+        const content = page.locator('.VPNavBar .content');
+        const contentBox = (await content.boundingBox())!;
+        const contentPadding = await content.evaluate((el) =>
+          parseFloat(getComputedStyle(el).paddingLeft),
+        );
+        expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(
+          contentBox.x + contentPadding + 1,
+        );
+        if (width < 768) {
+          expect(titleBox.height).toBeGreaterThanOrEqual(44);
+        }
+      }
+    });
+  }
 
   test('row fits at 1280px, the tightest desktop width', async ({ page }) => {
     // 1280px is where the desktop layout starts and the social links
@@ -365,35 +408,81 @@ test.describe('navbar geometry is page-independent', () => {
     }
   });
 
-  test('the site title holds the secondary text color in every state', async ({
+  test('the desktop title has primary color, clear spacing, and focus', async ({
     page,
   }) => {
-    // The nav links keep their brand-color hover — asserted here so the
-    // title's pin cannot be widened into pinning the whole row.
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(TOPIC_PAGE);
-    const title = page.locator('.VPNavBarTitle > a.title');
-    const secondary = await page
-      .locator('html')
-      .evaluate((el) => getComputedStyle(el).getPropertyValue('--vp-c-text-2').trim());
-    const colorOf = () => title.evaluate((el) => getComputedStyle(el).color);
-    const expected = await page.evaluate((token) => {
-      const probe = document.createElement('span');
-      probe.style.color = token;
-      document.body.appendChild(probe);
-      const resolved = getComputedStyle(probe).color;
-      probe.remove();
-      return resolved;
-    }, secondary);
 
-    expect(await colorOf()).toBe(expected);
-    await title.hover();
-    expect(await colorOf()).toBe(expected);
-    const box = (await title.boundingBox())!;
-    await page.mouse.move(box.x + 10, box.y + box.height / 2);
-    await page.mouse.down();
-    expect(await colorOf()).toBe(expected);
-    await page.mouse.up();
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme });
+      await page.goto(TOPIC_PAGE);
+      const title = page.locator('.VPNavBarTitle > a.title');
+      const primary = await page
+        .locator('html')
+        .evaluate((el) => getComputedStyle(el).getPropertyValue('--vp-c-text-1').trim());
+      const colorOf = () => title.evaluate((el) => getComputedStyle(el).color);
+      const expected = await page.evaluate((token) => {
+        const probe = document.createElement('span');
+        probe.style.color = token;
+        document.body.appendChild(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        return resolved;
+      }, primary);
+
+      expect(await colorOf()).toBe(expected);
+      await title.hover();
+      expect(await colorOf()).toBe(expected);
+      const box = (await title.boundingBox())!;
+      await page.mouse.move(box.x + 10, box.y + box.height / 2);
+      await page.mouse.down();
+      expect(await colorOf()).toBe(expected);
+      await page.mouse.up();
+
+      const contrast = await title.evaluate((el) => {
+        const channels = (value: string) =>
+          (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const luminance = (value: string) => {
+          const linear = channels(value).map((channel) => {
+            const normalized = channel / 255;
+            return normalized <= 0.04045
+              ? normalized / 12.92
+              : ((normalized + 0.055) / 1.055) ** 2.4;
+          });
+          return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+        };
+        const style = getComputedStyle(el);
+        const foreground = luminance(style.color);
+        let surface: Element | null = el;
+        let background = style.backgroundColor;
+        while (surface && background === 'rgba(0, 0, 0, 0)') {
+          surface = surface.parentElement;
+          if (surface) background = getComputedStyle(surface).backgroundColor;
+        }
+        const backgroundLuminance = luminance(background);
+        return (Math.max(foreground, backgroundLuminance) + 0.05) /
+          (Math.min(foreground, backgroundLuminance) + 0.05);
+      });
+      expect(contrast).toBeGreaterThanOrEqual(4.5);
+    }
+
+    const title = page.locator('.VPNavBarTitle > a.title');
+    const logoBox = (await title.locator('img.logo').boundingBox())!;
+    const labelBox = (await title.locator('.nav-site-title-full').boundingBox())!;
+    const gap = labelBox.x - (logoBox.x + logoBox.width);
+    expect(gap).toBeGreaterThanOrEqual(12);
+    expect(gap).toBeLessThanOrEqual(16);
+
+    await title.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(title).toBeFocused();
+    const focus = await title.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { style: style.outlineStyle, width: parseFloat(style.outlineWidth) };
+    });
+    expect(focus.style).not.toBe('none');
+    expect(focus.width).toBeGreaterThanOrEqual(2);
 
     const navLink = page.locator('.VPNavBarMenuLink').first();
     const navIdle = await navLink.evaluate((el) => getComputedStyle(el).color);
