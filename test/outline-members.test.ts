@@ -2,13 +2,15 @@ import { nestOutlineMembers } from '../docs/.vitepress/theme/outline-members.js'
 import { outlineMembers, withOutlineMembers } from '../src/docgen/outline-members.js';
 
 /** One member row as the layout renderers emit it: the row id and a permalink naming the member. */
-function row(id: string, name: string): string[] {
-  return [
+function row(id: string, name: string, signature?: string): string[] {
+  const parts = [
     `<div class="member-row" id="${id}">`,
+    signature ? `<div class="member-line">${signature}</div>` : '',
     `<div class="member-line"><code class="member-name">${name}</code><a class="member-permalink" href="#${id}" aria-label="Permalink to ${name}">#</a></div>`,
     '<div class="member-summary">Summary.</div>',
     '</div>',
   ];
+  return parts.filter(p => p);
 }
 
 const PAGE = [
@@ -41,7 +43,10 @@ const PAGE = [
   '',
   '## Methods {#methods}',
   '',
-  ...row('grantsend', 'grantSend'),
+  ...row('grantsend', 'grantSend', '<code class="member-signature"><span class="sig-name">grantSend</span><span data-pagefind-ignore><span class="sig-punct">(</span><span class="sig-param">queue</span><span class="sig-punct">:</span> <span class="sig-type">Queue</span><span class="sig-punct">)</span>: <span class="sig-type">IPolicyStatement</span></span></code>'),
+  ...row('methodWithOpt', 'methodWithOpt', '<code class="member-signature"><span class="sig-name">methodWithOpt</span><span data-pagefind-ignore><span class="sig-punct">(</span><span class="sig-param">a</span><span class="sig-punct">:</span> <span class="sig-type">string</span><span class="sig-punct">,</span> <span class="sig-param">b?</span><span class="sig-punct">:</span> <span class="sig-type">number</span><span class="sig-punct">)</span>: <span class="sig-type">void</span></span></code>'),
+  ...row('methodWithRest', 'methodWithRest', '<code class="member-signature"><span class="sig-name">methodWithRest</span><span data-pagefind-ignore><span class="sig-punct">(</span><span class="sig-param">...rest</span><span class="sig-punct">:</span> <span class="sig-type">string</span><span class="sig-punct">[]</span><span class="sig-punct">)</span>: <span class="sig-type">void</span></span></code>'),
+  ...row('noParams', 'noParams', '<code class="member-signature"><span class="sig-name">noParams</span><span data-pagefind-ignore><span class="sig-punct">(</span><span class="sig-punct">)</span>: <span class="sig-type">void</span></span></code>'),
   '',
 ].join('\n');
 
@@ -52,7 +57,12 @@ describe('outline member list', () => {
       ['queuearn', 'queueArn'],
       ['property-injection-id', 'PROPERTY_INJECTION_ID'],
     ]);
-    expect(members.methods).toEqual([['grantsend', 'grantSend']]);
+    expect(members.methods).toEqual([
+      ['grantsend', 'grantSend(queue)'],
+      ['methodWithOpt', 'methodWithOpt(a, b?)'],
+      ['methodWithRest', 'methodWithRest(...rest)'],
+      ['noParams', 'noParams()'],
+    ]);
   });
 
   test('lists the inlined construct props under the Construct Props section anchor, with their props-based row ids', () => {
@@ -108,14 +118,14 @@ describe('outline nesting', () => {
       {
         'props-queueprops': [['props-queueprops-fifo', 'fifo']],
         'properties': [['queuearn', 'queueArn']],
-        'methods': [['grantsend', 'grantSend']],
+        'methods': [['grantsend', 'grantSend(queue)']],
       },
     );
     expect(out.map((h) => [h.link, h.children.map((c) => [c.link, c.title, c.level])])).toEqual([
       ['#example', []],
       ['#props-queueprops', [['#props-queueprops-fifo', 'fifo', 3]]],
       ['#properties', [['#queuearn', 'queueArn', 3]]],
-      ['#methods', [['#grantsend', 'grantSend', 3]]],
+      ['#methods', [['#grantsend', 'grantSend(queue)', 3]]],
     ]);
   });
 
@@ -133,7 +143,7 @@ describe('outline nesting', () => {
     const child = { title: 'Static', link: '#static', level: 3, children: [] };
     const out = nestOutlineMembers(
       [{ ...header('methods', 'Methods'), children: [child] }],
-      { methods: [['grantsend', 'grantSend']] },
+      { methods: [['grantsend', 'grantSend(queue)']] },
     );
     expect(out[0].children.map((c) => c.link)).toEqual(['#static', '#grantsend']);
   });

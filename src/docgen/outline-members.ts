@@ -50,6 +50,27 @@ function unescapeHtml(text: string): string {
 }
 
 /**
+ * Extract method parameter names from the signature HTML.
+ * Returns something like "(a, b?, ...rest)" or "()" for no parameters.
+ * The parameter names include the ? for optional and ... for variadic.
+ */
+function extractParamsFromSignature(sigHtml: string): string | undefined {
+  // Find all sig-param spans and extract their content
+  const paramSpans: string[] = [];
+  let match: RegExpExecArray | null;
+  const paramSpanRegex = /<span class="sig-param">([^<]*)<\/span>/g;
+  while ((match = paramSpanRegex.exec(sigHtml)) !== null) {
+    paramSpans.push(match[1]);
+  }
+  
+  if (paramSpans.length === 0) {
+    return '()';
+  }
+  
+  return `(${paramSpans.join(', ')})`;
+}
+
+/**
  * Collect the member rows of a rendered type page, grouped by the `##` section they sit under: the type's own
  * properties and methods, and the inlined construct props. Fenced code is skipped, so an example that happens to
  * contain a heading or row markup cannot add an entry. A section with no member rows gets no key, so the outline
@@ -59,6 +80,8 @@ export function outlineMembers(page: string): OutlineMembers {
   const groups: Record<string, OutlineMember[]> = {};
   let section: string | undefined;
   let pendingRow: string | undefined;
+  let pendingSignature: string | undefined;
+  
   for (const span of tokenizeFences(page)) {
     if (span.kind === 'code') {
       continue;
@@ -68,6 +91,12 @@ export function outlineMembers(page: string): OutlineMembers {
       if (heading) {
         section = isOutlineSection(heading[1]) ? heading[1] : undefined;
         pendingRow = undefined;
+        pendingSignature = undefined;
+        continue;
+      }
+      // Check for member signature (before the row)
+      if (line.includes('class="member-signature"')) {
+        pendingSignature = line;
         continue;
       }
       const row = MEMBER_ROW.exec(line);
@@ -80,8 +109,17 @@ export function outlineMembers(page: string): OutlineMembers {
       }
       const link = PERMALINK_NAME.exec(line);
       if (link && link[1] === pendingRow) {
-        (groups[section] ??= []).push([pendingRow, unescapeHtml(link[2])]);
+        let name = unescapeHtml(link[2]);
+        // For methods, try to add parameter info from signature
+        if (section === SECTION_ANCHORS.methods && pendingSignature) {
+          const params = extractParamsFromSignature(pendingSignature);
+          if (params) {
+            name = name + params;
+          }
+        }
+        (groups[section] ??= []).push([pendingRow, name]);
         pendingRow = undefined;
+        pendingSignature = undefined;
       }
     }
   }
