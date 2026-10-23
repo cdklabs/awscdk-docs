@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { QUEUE_PAGE } from './fixture.js';
+import { QUEUE_PAGE, QUEUE_PROPS_PAGE } from './fixture.js';
 
-// The "On this page" outline lists a type page's properties and methods under their section headings. Members are
-// rows, not headings, so these entries come from the member list docgen writes into the page's frontmatter.
+// The "On this page" outline lists a type page's properties, methods and inlined construct props under their section
+// headings. Members are rows, not headings, so these entries come from the member list docgen writes into the page's
+// frontmatter.
 test.describe('outline lists type members', () => {
   // The aside outline only shows on a wide viewport.
   test.use({ viewport: { width: 1440, height: 900 } });
@@ -30,8 +31,33 @@ test.describe('outline lists type members', () => {
     await expect(page.locator('.vp-doc .member-row#addtoresourcepolicy')).toHaveCount(1);
     await expect(page.locator('.vp-doc :is(h2,h3,h4,h5,h6)#addtoresourcepolicy')).toHaveCount(0);
 
-    // The inlined construct props are another type's members and are not listed.
-    await expect(aside.locator('a.outline-link[href^="#props-queueprops-"]')).toHaveCount(0);
+    // The inlined construct props are listed too, under their own section entry and never at the top level.
+    const prop = aside.locator('a.outline-link[href="#props-queueprops-fifo"]');
+    await expect(prop).toHaveText('fifo');
+    await expect(sectionOf('#props-queueprops').locator('a.outline-link[href="#props-queueprops-fifo"]')).toHaveCount(1);
+    await expect(page.locator('.vp-doc .member-row#props-queueprops-fifo')).toHaveCount(1);
+    await expect(page.locator('.vp-doc :is(h2,h3,h4,h5,h6)#props-queueprops-fifo')).toHaveCount(0);
+    // `deadLetterQueue` is both a construct prop and a property of the type: each sits under its own section, so
+    // the prop's entry uses the props-based row id and the property's entry the plain one.
+    await expect(sectionOf('#props-queueprops').locator('a.outline-link[href="#props-queueprops-deadletterqueue"]')).toHaveCount(1);
+    await expect(sectionOf('#properties').locator('a.outline-link[href^="#props-queueprops-"]')).toHaveCount(0);
+  });
+
+  test('following a construct prop entry lands on its row and marks it active', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const link = outline(page).locator('a.outline-link[href="#props-queueprops-fifo"]');
+    await link.click();
+    await expect(page).toHaveURL(/#props-queueprops-fifo$/);
+    await expect(page.locator('.member-row#props-queueprops-fifo')).toBeInViewport();
+    await expect(link).toHaveClass(/\bactive\b/);
+  });
+
+  test('a page without a Construct Props section lists only its own members', async ({ page }) => {
+    await page.goto(QUEUE_PROPS_PAGE);
+    const aside = outline(page);
+    await expect(aside).toBeVisible();
+    await expect(aside.locator('a.outline-link[href="#fifo"]')).toHaveText('fifo');
+    await expect(aside.locator('a.outline-link[href^="#props-"]')).toHaveCount(0);
   });
 
   test('following a member entry lands on its row and marks it active', async ({ page }) => {

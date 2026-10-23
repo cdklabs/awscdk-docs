@@ -1,5 +1,5 @@
 import * as spec from '@jsii/spec';
-import { anchoredHeading, SECTION_ANCHORS } from './anchors.js';
+import { anchoredHeading, PROPS_ANCHOR_PREFIX, SECTION_ANCHORS } from './anchors.js';
 import { escapeAttr, escapeVueText } from './escape.js';
 import { exampleSection } from './examples.js';
 import { PageHistory } from './history.js';
@@ -481,7 +481,7 @@ function renderInitializer(
  * `aws-cdk-lib.aws_s3.BucketProps` -> `props-bucketprops`.
  */
 function propsAnchor(fqn: string): string {
-  return `props-${shortName(fqn).toLowerCase().replace(/\./g, '-')}`;
+  return `${PROPS_ANCHOR_PREFIX}${shortName(fqn).toLowerCase().replace(/\./g, '-')}`;
 }
 
 /** Own properties plus those inherited from parent structs, sorted by name. */

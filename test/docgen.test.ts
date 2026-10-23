@@ -788,7 +788,7 @@ describe('docgen generation', () => {
     expect(typePage).toContain('/v2/docs/aws-cdk-lib.aws_cloudfront.experimental');
   });
 
-  test('type pages list their properties and methods for the outline, keyed by the rows\' own anchors', () => {
+  test('type pages list their properties, methods and construct props for the outline, keyed by the rows\' own anchors', () => {
     const frontmatterMembers = (page: string): Record<string, [string, string][]> | undefined => {
       const head = page.slice(0, page.indexOf('\n---\n', 3));
       const line = head.split('\n').find((l) => l.startsWith('outlineMembers: '));
@@ -798,20 +798,23 @@ describe('docgen generation', () => {
     const members = frontmatterMembers(bucket)!;
     expect(members.properties).toContainEqual(['bucketarn', 'bucketArn']);
     expect(members.methods).toContainEqual(['addtoresourcepolicy', 'addToResourcePolicy']);
-    // Only the type's own properties and its methods: the inlined BucketProps rows stay out of the outline.
-    expect(Object.keys(members).sort()).toEqual(['methods', 'properties']);
+    // The inlined BucketProps rows are listed too, as a third group keyed by the Construct Props section anchor,
+    // each entry carrying the props-based row id.
+    expect(Object.keys(members).sort()).toEqual(['methods', 'properties', 'props-bucketprops']);
+    expect(members['props-bucketprops']).toContainEqual(['props-bucketprops-bucketname', 'bucketName']);
+    expect(bucket).toContain('## Construct Props {#props-bucketprops}');
     // Every entry points at a member row that exists on the page; no per-member heading is added.
-    for (const [anchor] of [...members.properties, ...members.methods]) {
+    for (const [anchor] of [...members.properties, ...members.methods, ...members['props-bucketprops']]) {
       expect(bucket).toContain(`<div class="member-row" id="${anchor}">`);
       expect(bucket).not.toMatch(new RegExp(`^#+ .*\\{#${anchor}\\}$`, 'm'));
     }
     // The declared title stays the first frontmatter key.
     expect(bucket.startsWith('---\ntitle: "Bucket"\n')).toBe(true);
 
-    // A struct has properties but no methods: no methods group at all.
+    // A struct has properties but no methods and no inlined props: only a properties group.
     const props = frontmatterMembers(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8'))!;
     expect(props.properties.length).toBeGreaterThan(0);
-    expect(props).not.toHaveProperty('methods');
+    expect(Object.keys(props)).toEqual(['properties']);
   });
 
   test('a value default longer than sixteen characters is in the row header in full', () => {

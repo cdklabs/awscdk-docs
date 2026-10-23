@@ -21,6 +21,13 @@ export const SECTION_ANCHORS = {
   types: 'module-types',
 } as const;
 
+/**
+ * Prefix of a construct page's inlined props section anchor (`props-<struct>`, e.g. `props-bucketprops`) and of the
+ * row ids under it (`props-<struct>-<member>`). `propsAnchor` in `constructs.ts` builds the id; the outline collector
+ * recognizes the section by this prefix, so the two cannot drift apart.
+ */
+export const PROPS_ANCHOR_PREFIX = 'props-';
+
 /** A markdown heading with an explicit anchor (markdown-it-attrs `{#id}` syntax). */
 export function anchoredHeading(level: number, text: string, id: string): string {
   return `${'#'.repeat(level)} ${text} {#${id}}`;

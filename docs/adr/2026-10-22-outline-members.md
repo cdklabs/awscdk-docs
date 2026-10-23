@@ -30,7 +30,10 @@ The outline is fed from data, and nothing else about the page changes:
   is the row's `id`, the existing `memberAnchor` slug, so an entry cannot point
   at a different place than the row's own `#` permalink. The list is a plain
   value with no presentation in it, so another consumer can read it later.
-- **Only the type's own properties and its methods are listed.** A construct
+- **Only the type's own properties and its methods are listed.** *Superseded —
+  see [construct props in the outline](./2026-10-23-outline-construct-props.md),
+  which lists the inlined props as a third group. The empty-section and
+  empty-page rules below stand.* A construct
   page's inlined props struct (`## Construct Props`, rows
   `props-<struct>-<member>`) belongs to another type and is not listed. A section
   with no rows gets no key, so the outline never shows an empty group; a page with
