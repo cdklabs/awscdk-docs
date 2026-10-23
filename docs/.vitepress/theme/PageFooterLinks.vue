@@ -1,5 +1,5 @@
-<!-- Doc-footer contribution links: "Edit this page" and "Report an issue with
-     this page", rendered together below the doc content via the doc-after slot.
+<!-- Doc-footer contribution links: "Edit this page" and "Report an issue",
+     rendered together below the doc content via the doc-after slot.
      VitePress's native editLink is disabled in config.mts so this component is
      the single source of the edit link. -->
 <script setup lang="ts">
@@ -14,8 +14,9 @@ const { page, site, theme } = useData();
 
 // The edit target depends only on the page's file path and the upstream file
 // docgen recorded in frontmatter, so it is safe to compute during SSR. A
-// generated page either links that upstream README or gets no link, so the
-// template renders the anchor conditionally.
+// generated page either links that upstream file (an overview's README, a type
+// page's declaring source file) or gets no link, so the template renders the
+// anchor conditionally.
 const editUrl = computed(() =>
   editLinkFor(page.value.filePath, page.value.frontmatter?.upstreamEditUrl),
 );
@@ -60,7 +61,7 @@ watch(() => page.value.relativePath, refresh);
       <span class="footer-link-separator" aria-hidden="true">·</span>
     </template>
     <a class="footer-link" :href="issueUrl" target="_blank" rel="noreferrer">
-      Report an issue with this page
+      Report an issue
     </a>
     <template v-if="markdownUrl">
       <span class="footer-link-separator" aria-hidden="true">·</span>

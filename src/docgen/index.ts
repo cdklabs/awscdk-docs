@@ -50,7 +50,7 @@ import {
   type OverviewSpec,
   parseOverviews,
 } from './overviews.js';
-import { upstreamReadmeUrl } from './provenance.js';
+import { upstreamReadmeUrl, upstreamSourceUrl } from './provenance.js';
 import { ExampleTranslations, loadTablet, RosettaTablet } from './rosetta.js';
 import { searchFilterHtml, searchKind, searchModule } from './search.js';
 import {
@@ -601,7 +601,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         emitPage(
           entry.link,
           withOutlineMembers(
-            `${typePageFrontmatter(entry.name).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
+            `${typePageFrontmatter(entry.name, upstreamSourceUrl(entry.type, assembly)).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
           ),
           history,
         );
@@ -1037,7 +1037,8 @@ export function renderSeparateInstallAlert(assembly: spec.Assembly): string[] {
 const OVERVIEW_FRONTMATTER = ['---', 'outline: false', '---', ''];
 
 /**
- * Frontmatter for a type page: the bare type name as an explicit title.
+ * Frontmatter for a type page: the bare type name as an explicit title, then the upstream source file the page's
+ * docstrings came from (when it has one) for the footer's edit link.
  *
  * Two constraints not visible from the code:
  *
@@ -1046,8 +1047,8 @@ const OVERVIEW_FRONTMATTER = ['---', 'outline: false', '---', ''];
  * - The type name is stated explicitly because the H1 carries a source chip whose inner text would otherwise leak
  *   into VitePress's inferred title.
  */
-function typePageFrontmatter(name: string): readonly string[] {
-  return ['---', `title: ${JSON.stringify(name)}`, '---', ''];
+function typePageFrontmatter(name: string, upstreamEditUrl: string | undefined): readonly string[] {
+  return ['---', `title: ${JSON.stringify(name)}`, ...upstreamKey(upstreamEditUrl), '---', ''];
 }
 
 /** The recorded history as frontmatter keys, one per known value; a page with no history is returned untouched. */

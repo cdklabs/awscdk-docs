@@ -129,3 +129,34 @@ export function upstreamReadmeUrl(assembly: spec.Assembly, id: string): string |
   }
   return subDir ? `${prefix}${subDir}/README.md` : `${prefix}README.md`;
 }
+
+/**
+ * Upstream source-file URL for a type page's edit link, or `undefined` when
+ * the type has no source a reader could edit — in which case the caller
+ * renders no edit link at all rather than a misleading one.
+ *
+ * A type page's prose comes from the docstrings in the file the type is
+ * declared in (`locationInModule`), so that file is the edit target. It
+ * follows the README rules above: the owning repository and package
+ * directory come from the assembly, the ref is `HEAD`, and anything that is
+ * not plain path data yields no link.
+ *
+ * No link for a build-generated file (`*.generated.*`, the L1 `Cfn*`
+ * sources), which does not exist in the repository, nor for a type with
+ * no recorded location. Unlike the type page's version-pinned `Source` row,
+ * the URL carries no line anchor: the line is the one in the released
+ * version, and on the default branch it moves.
+ */
+export function upstreamSourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
+  const filename = type.locationInModule?.filename;
+  if (!filename || /\.generated\./.test(filename)) {
+    return undefined;
+  }
+  const base = repoBase(assembly);
+  const dir = packageDir(assembly);
+  const file = pathDir(filename);
+  if (!base || dir === undefined || !file) {
+    return undefined;
+  }
+  return `${base}/blob/${DEFAULT_REF}/${dir}${file}`;
+}

@@ -1,5 +1,5 @@
 import * as spec from '@jsii/spec';
-import { submoduleDir, upstreamReadmeUrl } from '../src/docgen/provenance.js';
+import { submoduleDir, upstreamReadmeUrl, upstreamSourceUrl } from '../src/docgen/provenance.js';
 
 /**
  * Upstream README provenance. The footer's edit link must reach the file a
@@ -125,5 +125,50 @@ describe('upstream README URL', () => {
         expect(url).toBeUndefined();
       }
     }
+  });
+});
+
+describe('upstream source URL for a type page', () => {
+  const type = (assembly: spec.Assembly, fqn: string): spec.Type => assembly.types![fqn];
+
+  test('a type resolves to the file it is declared in, on the default branch, with no line anchor', () => {
+    expect(upstreamSourceUrl(type(cdkLib, 'aws-cdk-lib.aws_s3.Bucket'), cdkLib)).toBe(
+      `${CDK_LIB_PREFIX}/aws-s3/lib/bucket.ts`,
+    );
+    expect(upstreamSourceUrl(type(cdkLib, 'aws-cdk-lib.aws_s3.BucketProps'), cdkLib)).toBe(
+      `${CDK_LIB_PREFIX}/aws-s3/lib/bucket.ts`,
+    );
+  });
+
+  test('an alpha package type follows its own repository directory', () => {
+    expect(upstreamSourceUrl(type(alpha, '@aws-cdk/aws-bedrock-alpha.ActionGroupExecutor'), alpha)).toBe(
+      'https://github.com/aws/aws-cdk/blob/HEAD/packages/@aws-cdk/aws-bedrock-alpha/bedrock/agents/api-executor.ts',
+    );
+  });
+
+  test('a type from build-generated code gets no link', () => {
+    // The L1 `Cfn*` sources are written at build time and are not in the
+    // repository, so a link to one would 404.
+    expect(upstreamSourceUrl(type(cdkLib, 'aws-cdk-lib.aws_s3.CfnBucket'), cdkLib)).toBeUndefined();
+  });
+
+  test('a type with no recorded location gets no link', () => {
+    const bucket = type(cdkLib, 'aws-cdk-lib.aws_s3.Bucket');
+    expect(upstreamSourceUrl({ ...bucket, locationInModule: undefined }, cdkLib)).toBeUndefined();
+  });
+
+  test('a filename that is not plain path data yields no link', () => {
+    const bucket = type(cdkLib, 'aws-cdk-lib.aws_s3.Bucket');
+    for (const filename of ['../../evil.ts', 'aws-s3/./lib/bucket.ts', 'a\\b.ts', 'a#b.ts', 'a b.ts', 'a?x=1.ts']) {
+      expect(upstreamSourceUrl({ ...bucket, locationInModule: { filename, line: 1 } }, cdkLib)).toBeUndefined();
+    }
+  });
+
+  test('an assembly with no usable repository yields no link', () => {
+    const bucket = type(cdkLib, 'aws-cdk-lib.aws_s3.Bucket');
+    const orphan = { ...cdkLib, repository: undefined } as unknown as spec.Assembly;
+    expect(upstreamSourceUrl(bucket, orphan)).toBeUndefined();
+    const ssh = { ...cdkLib, repository: { ...cdkLib.repository, url: 'git@github.com:aws/aws-cdk.git' } } as spec.Assembly;
+    expect(upstreamSourceUrl(bucket, ssh)).toBeUndefined();
   });
 });

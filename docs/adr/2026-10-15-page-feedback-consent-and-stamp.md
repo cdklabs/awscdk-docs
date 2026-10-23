@@ -46,9 +46,12 @@ The edit link resolves from `editLinkFor(filePath, upstreamEditUrl)`:
   page frontmatter; the pure helper takes it as an argument and it wins
   outright. `isGeneratedPage()` (path prefix `v2/`) guards against ever making a
   generated page's own gitignored path an edit target.
-- **Symbol pages** (class, interface, struct, enum) and table-only overviews
-  render **no edit link** — a misleading link is worse than none. The footer
-  still shows the report link, so footer shape differs by page kind
+- **Symbol pages** (class, interface, struct, enum) link the upstream source
+  file their docstrings are declared in — superseded in
+  [edit link on type pages](./2026-10-23-type-page-edit-link.md); before it they
+  rendered no edit link. L1 pages built from generated code and table-only
+  overviews render **no edit link** — a misleading link is worse than none. The
+  footer still shows the report link, so footer shape differs by page kind
   deliberately, and the browser spec pins both shapes.
 
 Provenance is resolved per-assembly from the jsii assembly, never derived from
@@ -139,7 +142,8 @@ runner location.
 
 - Every page gets consistent feedback affordances with no backend and no new
   dependency. README-backed overview pages carry a frontmatter block (keeping
-  their right-hand outline and README H1); symbol pages carry no edit link.
+  their right-hand outline and README H1); symbol pages link their source file
+  (see [edit link on type pages](./2026-10-23-type-page-edit-link.md)).
 - Edit links point at a moving default branch, so they can go stale if an
   upstream README is renamed — the normal cost of linking another repo's file,
   preferable to a link dead for a whole package class from day one. An assembly

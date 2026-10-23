@@ -831,13 +831,27 @@ describe('docgen generation', () => {
 
   });
 
-  test('pages with no upstream markdown file record no edit target', () => {
-    // A type page's prose is jsii docstrings in TypeScript source, and a
-    // table-only overview has no README at all — neither has a markdown
-    // file a reader can edit, so the footer must render no link rather
-    // than a misleading one.
-    const typePage = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
-    expect(typePage).not.toContain('upstreamEditUrl');
+  test('type pages record the upstream source file their docstrings are declared in', () => {
+    // A type page's prose is the jsii docstrings in its declaring source file,
+    // so that file is what a reader who spotted a typo can edit. The title
+    // stays the first frontmatter key.
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    expect(bucket.startsWith(
+      '---\ntitle: "Bucket"\nupstreamEditUrl: "https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-s3/lib/bucket.ts"\n',
+    )).toBe(true);
+    const props = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+    expect(props).toContain(
+      'upstreamEditUrl: "https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-s3/lib/bucket.ts"',
+    );
+  });
+
+  test('pages with no editable upstream file record no edit target', () => {
+    // An L1 page is built from generated code that is not in the upstream
+    // repository, and a table-only overview has no README at all — neither
+    // has a file a reader can edit, so the footer must render no link
+    // rather than a misleading one.
+    const l1 = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
+    expect(l1).not.toContain('upstreamEditUrl');
     const tableOnly = readFileSync(
       join(outDir, 'docs', 'aws-cdk-lib.aws_cloudfront.experimental-readme.md'),
       'utf-8',
