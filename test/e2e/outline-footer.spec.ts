@@ -12,6 +12,7 @@ test.describe('aside outline does not overlap the footer', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
   const asideContainer = (page: import('@playwright/test').Page) => page.locator('.aside-container');
+  const curtain = (page: import('@playwright/test').Page) => page.locator('.aside-curtain');
   const footer = (page: import('@playwright/test').Page) => page.locator('footer.site-footer');
 
   test('scrolled to the bottom of a tall type page, the outline stops above the footer', async ({ page }) => {
@@ -32,6 +33,11 @@ test.describe('aside outline does not overlap the footer', () => {
     // The visible outline container's lower edge must not cross into the footer.
     // Allow a 1px rounding tolerance.
     expect(asideBox!.y + asideBox!.height).toBeLessThanOrEqual(footerBox!.y + 1);
+
+    // The sibling fade curtain is bounded too, so its band does not paint over the footer.
+    const curtainBox = await curtain(page).boundingBox();
+    expect(curtainBox).not.toBeNull();
+    expect(curtainBox!.y + curtainBox!.height).toBeLessThanOrEqual(footerBox!.y + 1);
   });
 
   test('scrolling back up from the footer clears the cap', async ({ page }) => {

@@ -107,16 +107,28 @@ function boundAgainstFooter(): void {
   if (!asideContainer) {
     return;
   }
+  // VitePress renders a sibling `.aside-curtain` (fixed, bottom: 0) that fades the
+  // outline's lower edge. It is pinned to the viewport bottom independently of the
+  // container, so it must be bounded against the footer alongside it.
+  const curtain = asideContainer.parentElement?.querySelector<HTMLElement>(".aside-curtain");
   const footer = document.querySelector<HTMLElement>("footer.site-footer");
   const footerTop = footer ? footer.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
-  // The aside is fixed at `top: var(--vp-nav-height)`; its own top is where the cap starts.
+  // .aside-container is fixed at top: 0 (its content is pushed down by padding-top),
+  // so its own rect top is where the cap starts.
   const asideTop = asideContainer.getBoundingClientRect().top;
   if (footerTop < window.innerHeight) {
-    // Footer is on screen: bound the wrapper's bottom to the footer's top (never negative).
+    // Footer is on screen: bound the wrapper's bottom to the footer's top (never negative),
+    // and lift the curtain so its fade band sits above the footer rather than over it.
     asideContainer.style.maxHeight = `${Math.max(0, footerTop - asideTop)}px`;
+    if (curtain) {
+      curtain.style.bottom = `${Math.max(0, window.innerHeight - footerTop)}px`;
+    }
   } else {
     // Footer is below the fold: no cap, restore natural behavior.
     asideContainer.style.maxHeight = "";
+    if (curtain) {
+      curtain.style.bottom = "";
+    }
   }
 }
 
@@ -138,6 +150,11 @@ onUnmounted(() => {
   window.removeEventListener("scroll", onScroll);
   window.removeEventListener("scroll", onScrollBound);
   window.removeEventListener("resize", onScrollBound);
+  // Clear the inline styles written on the shared default-theme nodes, which this
+  // component does not own, so a reused wrapper is not left with a stranded cap.
+  const asideContainer = container.value?.closest<HTMLElement>(".aside-container");
+  asideContainer?.style.setProperty("max-height", "");
+  asideContainer?.parentElement?.querySelector<HTMLElement>(".aside-curtain")?.style.setProperty("bottom", "");
 });
 </script>
 
