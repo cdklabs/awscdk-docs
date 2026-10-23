@@ -115,7 +115,7 @@ function boundAgainstFooter(): void {
     // Footer is on screen: bound the wrapper's bottom to the footer's top (never negative).
     asideContainer.style.maxHeight = `${Math.max(0, footerTop - asideTop)}px`;
   } else {
-    // Footer is below the fold: no cap, restore natural behaviour.
+    // Footer is below the fold: no cap, restore natural behavior.
     asideContainer.style.maxHeight = "";
   }
 }

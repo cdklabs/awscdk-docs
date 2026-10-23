@@ -34,20 +34,22 @@ test.describe('aside outline does not overlap the footer', () => {
     expect(asideBox!.y + asideBox!.height).toBeLessThanOrEqual(footerBox!.y + 1);
   });
 
-  test('at the top of the page, with the footer off screen, the container keeps its natural height', async ({ page }) => {
+  test('scrolling back up from the footer clears the cap', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     await expect(asideContainer(page)).toBeVisible();
 
-    // At the top of a tall page the footer is below the fold, so no cap should apply.
+    // Scroll to the bottom so the footer is on screen and the cap is applied.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(300);
+    const cappedHeight = await asideContainer(page).evaluate((el) => el.style.maxHeight);
+    // Precondition: the fix actually capped the container (a non-empty px value).
+    expect(cappedHeight).toMatch(/^\d+(\.\d+)?px$/);
+
+    // Scroll back to the top: the footer leaves the viewport, so the else branch
+    // must clear the cap. This fails if the clear-the-cap branch never runs.
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(300);
-
-    const footerTop = await footer(page).evaluate((el) => el.getBoundingClientRect().top);
-    // Precondition: the footer really is below the viewport here (tall page).
-    expect(footerTop).toBeGreaterThan(900);
-
-    // With the footer off screen, the routine clears the inline cap.
-    const maxHeight = await asideContainer(page).evaluate((el) => el.style.maxHeight);
-    expect(maxHeight).toBe('');
+    const clearedHeight = await asideContainer(page).evaluate((el) => el.style.maxHeight);
+    expect(clearedHeight).toBe('');
   });
 });
