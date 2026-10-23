@@ -2,7 +2,12 @@ import { existsSync, readFileSync } from 'fs';
 import { join, resolve } from 'path';
 import * as spec from '@jsii/spec';
 import {
+  closeModules,
+  matchModules,
   MAX_SEARCH_CANDIDATES,
+  MODULE_HINT_LIMIT,
+  moduleHintText,
+  normalizeModuleValue,
   parseSearchQuery,
   withQueryFilters,
 } from '../docs/.vitepress/theme/search-client.js';
@@ -138,6 +143,92 @@ describe('query token filters', () => {
 
   test('parseSearchQuery lowercases filter values', () => {
     expect(parseSearchQuery('Kind:Construct').filters).toEqual({ kind: ['construct'] });
+  });
+
+  test('parseSearchQuery normalizes module values to the indexed slug shape', () => {
+    // Readers type what the sidebar and import paths show: underscores, package scopes, mixed case.
+    expect(parseSearchQuery('api module:aws_apigatewayv2').filters).toEqual({ module: ['aws-apigatewayv2'] });
+    expect(parseSearchQuery('module:@aws-cdk/aws-s3-alpha').filters).toEqual({ module: ['aws-cdk-aws-s3-alpha'] });
+    expect(parseSearchQuery('module:AWS_S3').filters).toEqual({ module: ['aws-s3'] });
+    expect(normalizeModuleValue('@aws-cdk/aws_lambda_python-alpha')).toBe('aws-cdk-aws-lambda-python-alpha');
+    // kind: stays an exact, lowercased value.
+    expect(parseSearchQuery('kind:Construct_L2').filters).toEqual({ kind: ['construct_l2'] });
+  });
+
+  test('normalizeModuleValue produces exactly the slug docgen stores for the same module', () => {
+    // The client and docgen each hold a copy of the slug transform; if either drifts, the module:
+    // filter silently matches nothing while both unit suites stay green. This pins them together.
+    for (const typed of ['aws_s3', 'aws-s3', '@aws-cdk/aws-s3-alpha', 'aws_lambda/python', 'AWS_S3', 'constructs']) {
+      expect(normalizeModuleValue(typed)).toBe(searchModule('aws-cdk-lib', typed));
+    }
+  });
+
+  const KNOWN = [
+    'aws-ecs', 'aws-lambda', 'aws-lambda-python-alpha', 'aws-s3', 'aws-s3-assets', 'aws-s3-deployment',
+    'aws-s3-notifications', 'aws-s3tables-alpha', 'aws-sns', 'aws-sqs', 'constructs',
+  ];
+
+  test('matchModules: an exact module name selects only that module', () => {
+    expect(matchModules('aws-s3', KNOWN)).toEqual(['aws-s3']);
+    expect(matchModules('aws-lambda', KNOWN)).toEqual(['aws-lambda']);
+  });
+
+  test('matchModules: otherwise each typed word prefixes a module word, in order', () => {
+    expect(matchModules('s3', KNOWN)).toEqual([
+      'aws-s3', 'aws-s3-assets', 'aws-s3-deployment', 'aws-s3-notifications', 'aws-s3tables-alpha',
+    ]);
+    expect(matchModules('lambda-python', KNOWN)).toEqual(['aws-lambda-python-alpha']);
+    expect(matchModules('lam', KNOWN)).toEqual(['aws-lambda', 'aws-lambda-python-alpha']);
+    // Words out of order, or a word prefixing nothing, select nothing.
+    expect(matchModules('python-lambda', KNOWN)).toEqual([]);
+    expect(matchModules('bucket', KNOWN)).toEqual([]);
+    expect(matchModules('', KNOWN)).toEqual([]);
+  });
+
+  test('closeModules offers up to five near names, containing matches first', () => {
+    expect(closeModules('s3bucket', KNOWN)).toHaveLength(MODULE_HINT_LIMIT);
+    expect(closeModules('lambd', KNOWN).slice(0, 2)).toEqual(['aws-lambda', 'aws-lambda-python-alpha']);
+    expect(closeModules('sqs', ['aws-sns', 'aws-sqs'])).toEqual(['aws-sqs', 'aws-sns']);
+    expect(moduleHintText(['sq'], ['aws-sqs'])).toBe('No module matches module:sq. Try: aws-sqs');
+    expect(moduleHintText([], ['aws-s3'])).toBe('No results in that module. Try: aws-s3');
+  });
+
+  test('withQueryFilters resolves module values against the modules the engine reports', async () => {
+    const calls: unknown[][] = [];
+    let filterReads = 0;
+    const handle = {
+      filters: async () => { filterReads++; return { module: Object.fromEntries(KNOWN.map((m) => [m, 1])) }; },
+      search: async (...args: unknown[]) => { calls.push(args); return { results: [{}] }; },
+    };
+    const wrapped = withQueryFilters(handle);
+    await wrapped.search!('bucket module:aws_s3');
+    expect(calls[0]).toEqual(['bucket', { filters: { module: ['aws-s3'] } }]);
+    await wrapped.search!('bucket module:s3');
+    expect(calls[1]).toEqual(['bucket', {
+      filters: {
+        module: {
+          any: [
+            'aws-s3', 'aws-s3-assets', 'aws-s3-deployment', 'aws-s3-notifications', 'aws-s3tables-alpha',
+          ],
+        },
+      },
+    }]);
+    // Several module tokens union; kind stays exact beside them.
+    await wrapped.search!('module:aws-sns module:sqs kind:construct');
+    expect(calls[2]).toEqual([null, { filters: { module: { any: ['aws-sns', 'aws-sqs'] }, kind: ['construct'] } }]);
+    // The engine's module list is read once per handle.
+    expect(filterReads).toBe(1);
+  });
+
+  test('withQueryFilters answers empty without searching when no module matches', async () => {
+    const calls: unknown[][] = [];
+    const handle = {
+      filters: async () => ({ module: { 'aws-sns': 3, 'aws-sqs': 2 } }),
+      debouncedSearch: async (...args: unknown[]) => { calls.push(args); return { results: [{}] }; },
+    };
+    const search = await withQueryFilters(handle).debouncedSearch!('topic module:nothing', {}, 300);
+    expect(calls).toEqual([]);
+    expect((search as { results: unknown[] }).results).toEqual([]);
   });
 
   test('withQueryFilters forwards parsed filters to the underlying handle', async () => {

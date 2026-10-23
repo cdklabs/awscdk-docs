@@ -74,8 +74,22 @@ forking the UI:
   (`parseSearchQuery`; recognized keys only — unknown keys and empty values stay
   in the text) and forwards them as real Pagefind `filters`. A token-only query
   searches with `null` text, which Pagefind treats as "all pages matching the
-  filters". It also keeps only the first 50 ranked candidates before another
-  wrapper can call each result's `data()`. The favorites wrapper reorders that
+  filters".
+- A `module:` value is forgiving, because the index stores the slug
+  (`aws-s3`) while the sidebar and import paths show `aws_s3`. The typed value
+  is normalized (lowercase, `_` and `/` to `-`, leading `@` dropped) and
+  resolved against the module list the engine reports through `filters()`,
+  read once per handle: a value equal to a known module selects that module
+  only; otherwise every known module whose hyphen-separated words contain the
+  typed words in order, each as a prefix, is selected and passed as an any-of
+  filter (`module:s3` selects `aws-s3`, `aws-s3-assets`, `aws-s3-deployment`,
+  `aws-s3-notifications`, `aws-s3tables-alpha`). A value that selects no
+  module answers empty without a search. `kind:` stays an exact match. When a
+  module value matches nothing, or the selection returns no results, a hint
+  under the result list names up to five close modules (containing matches
+  first, then by edit distance). The syntax stays typed; there is no dropdown.
+  `withQueryFilters()` also keeps only the first 50 ranked candidates before
+  another wrapper can call each result's `data()`. The favorites wrapper reorders that
   bounded pool, then returns 20 display results; without favorites it returns the
   first 20 directly, so broad queries load 20 fragments instead of every match.
   The search heading says `Top 20 results` rather than implying the capped count
