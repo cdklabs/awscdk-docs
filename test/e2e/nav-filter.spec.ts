@@ -11,7 +11,7 @@ test.describe('in-sidebar symbol filter', () => {
   }
 
   const filterInput = (page: Page) =>
-    page.getByRole('textbox', { name: 'Filter API symbols in the sidebar' });
+    page.getByRole('textbox', { name: 'Filter navigation in the sidebar' });
 
   test('typing narrows the API sidebar in place (no popup)', async ({ page }) => {
     await page.goto(TOPIC_PAGE);

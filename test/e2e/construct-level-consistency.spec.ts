@@ -47,7 +47,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
   async function surfaceQueues(page: Page) {
     await expect(page.locator('.api-sidebar-nav')).toBeVisible();
     await page
-      .getByRole('textbox', { name: 'Filter API symbols in the sidebar' })
+      .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
       .fill('Queue');
     await expect(page.locator(`${SIDEBAR_LINK}[href$=".aws_sqs.Queue"]`)).toBeVisible();
     await expect(page.locator(`${SIDEBAR_LINK}[href$=".aws_sqs.CfnQueue"]`)).toBeVisible();
@@ -237,7 +237,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
 
         await page.goto(QUEUE_PAGE);
         await page
-          .getByRole('textbox', { name: 'Filter API symbols in the sidebar' })
+          .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
           .fill(example.name);
         await expect(page.locator(`${SIDEBAR_LINK}[href$="${example.suffix}"]`)).toBeVisible();
         const preview = await previewChip(page, example.suffix);

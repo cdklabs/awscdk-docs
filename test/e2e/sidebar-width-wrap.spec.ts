@@ -57,7 +57,7 @@ test.describe('sidebar width and name wrapping', () => {
     const longName =
       'LocalGatewayRouteTableVirtualInterfaceGroupAssociationReference';
     await page
-      .getByRole('textbox', { name: 'Filter API symbols in the sidebar' })
+      .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
       .fill('LocalGatewayRouteTableVirtualInterfaceGroup');
 
     // Leaf entries render their text directly inside a.api-sidebar-link

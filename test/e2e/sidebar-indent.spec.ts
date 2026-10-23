@@ -52,7 +52,7 @@ test.describe('sidebar indentation capped at one level', () => {
     // surviving group open, so type links at the deepest nesting level
     // become visible without scripting per-level clicks.
     await page
-      .getByRole('textbox', { name: 'Filter API symbols in the sidebar' })
+      .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
       .fill('Topic');
     await expect(
       page.locator('.api-sidebar a.api-sidebar-link').first(),
@@ -84,7 +84,7 @@ test.describe('sidebar indentation capped at one level', () => {
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.api-sidebar-nav')).toBeVisible();
     await page
-      .getByRole('textbox', { name: 'Filter API symbols in the sidebar' })
+      .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
       .fill('Topic');
     await expect(
       page.locator('.api-sidebar a.api-sidebar-link').first(),
@@ -179,7 +179,7 @@ test.describe('sidebar indentation capped at one level', () => {
   test('kind groups are de-emphasized by their marker, identically at two different depths', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.api-sidebar-nav')).toBeVisible();
-    const filter = page.getByRole('textbox', { name: 'Filter API symbols in the sidebar' });
+    const filter = page.getByRole('textbox', { name: 'Filter navigation in the sidebar' });
 
     // Deep arm: SQS has several resources, so `Queue` keeps its resource
     // wrapper and the `Facades` kind group holding `QueueGrants` sits at
