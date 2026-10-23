@@ -8,11 +8,47 @@
  * (`docs/adr/2026-10-22-outline-members.md`; the construct props group is
  * `docs/adr/2026-10-23-outline-construct-props.md`).
  */
+import * as spec from '@jsii/spec';
 import { PROPS_ANCHOR_PREFIX, SECTION_ANCHORS } from './anchors.js';
 import { tokenizeFences } from './fences.js';
 
-/** One outline entry: the row's anchor id and the member's canonical (TypeScript) name. */
-export type OutlineMember = readonly [anchor: string, name: string];
+/** One method parameter as the outline shows it: the canonical (TypeScript) name and its optional / variadic marks. */
+export interface OutlineParam {
+  readonly name: string;
+  readonly optional?: true;
+  readonly variadic?: true;
+}
+
+/**
+ * Display data an entry carries beside its anchor and name. `params` is present on every method entry (empty for a
+ * method without parameters, so the theme renders `()`), absent on property and prop entries.
+ */
+export interface OutlineExtras {
+  readonly params?: readonly OutlineParam[];
+}
+
+/**
+ * One outline entry: the row's anchor id, the member's canonical (TypeScript) name, and optional display data. The
+ * anchor and the name are the identity; `extras` never takes part in the link target.
+ */
+export type OutlineMember = readonly [anchor: string, name: string, extras?: OutlineExtras];
+
+/**
+ * Display data per row anchor, filled by the member-row emitter from the same jsii data the row's signature is built
+ * from and read by {@link outlineMembers}, so the outline cannot disagree with the row and never reads the row HTML.
+ */
+export type OutlineExtrasByAnchor = Map<string, OutlineExtras>;
+
+/** The outline's view of a method's parameters, from its jsii declaration: names in declared order with their marks. */
+export function methodOutlineExtras(method: spec.Method): OutlineExtras {
+  return {
+    params: (method.parameters ?? []).map((param) => ({
+      name: param.name,
+      ...(param.optional ? { optional: true as const } : {}),
+      ...(param.variadic ? { variadic: true as const } : {}),
+    })),
+  };
+}
 
 /**
  * Section heading anchor to the members listed under it, in page order: `properties`, `methods`, and a construct
@@ -53,9 +89,9 @@ function unescapeHtml(text: string): string {
  * Collect the member rows of a rendered type page, grouped by the `##` section they sit under: the type's own
  * properties and methods, and the inlined construct props. Fenced code is skipped, so an example that happens to
  * contain a heading or row markup cannot add an entry. A section with no member rows gets no key, so the outline
- * never shows an empty group.
+ * never shows an empty group. An entry whose anchor has display data in `extras` carries it as a third element.
  */
-export function outlineMembers(page: string): OutlineMembers {
+export function outlineMembers(page: string, extras?: ReadonlyMap<string, OutlineExtras>): OutlineMembers {
   const groups: Record<string, OutlineMember[]> = {};
   let section: string | undefined;
   let pendingRow: string | undefined;
@@ -80,7 +116,10 @@ export function outlineMembers(page: string): OutlineMembers {
       }
       const link = PERMALINK_NAME.exec(line);
       if (link && link[1] === pendingRow) {
-        (groups[section] ??= []).push([pendingRow, unescapeHtml(link[2])]);
+        const extra = extras?.get(pendingRow);
+        (groups[section] ??= []).push(
+          extra ? [pendingRow, unescapeHtml(link[2]), extra] : [pendingRow, unescapeHtml(link[2])],
+        );
         pendingRow = undefined;
       }
     }
@@ -93,8 +132,8 @@ export function outlineMembers(page: string): OutlineMembers {
  * place. JSON is valid YAML, so the list is one line the VitePress frontmatter parser reads as a plain object. A page
  * with no member rows is returned untouched.
  */
-export function withOutlineMembers(page: string): string {
-  const members = outlineMembers(page);
+export function withOutlineMembers(page: string, extras?: ReadonlyMap<string, OutlineExtras>): string {
+  const members = outlineMembers(page, extras);
   if (Object.keys(members).length === 0) {
     return page;
   }

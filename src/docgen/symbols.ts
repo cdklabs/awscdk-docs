@@ -21,6 +21,7 @@ import {
   renderMethodsSection,
 } from './layout.js';
 import { collectMethods, collectProperties } from './mixins.js';
+import type { OutlineExtrasByAnchor } from './outline-members.js';
 import { RosettaTablet } from './rosetta.js';
 import { ignoreBlock, weightedTitle } from './search.js';
 import { CONSTRUCTS_SECTION, CORE_SECTION, isConstructsPackage, isCore, sectionName, serviceSubmodule, SidebarEntry } from './sidebar.js';
@@ -158,6 +159,8 @@ interface SymbolPageOptions<T extends spec.Type> {
   readonly subclasses?: ReadonlyMap<string, readonly string[]>;
   /** Version history of the type from the ledger; renders the `Type last changed` metadata row when known. */
   readonly history?: PageHistory;
+  /** Filled with each method row's outline display data, keyed by row anchor, for the page's in-page outline. */
+  readonly outline?: OutlineExtrasByAnchor;
 }
 
 /** Render a dedicated page for a non-construct class. */
@@ -176,7 +179,7 @@ export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): str
   }
   lines.push(...renderClassInitializer(type, linkFor, languages));
   lines.push(...renderPropertiesSection(classProperties(type, index), linkFor, languages));
-  lines.push(...renderMethodsSection(classMethods(type, index), linkFor, type.fqn, languages));
+  lines.push(...renderMethodsSection(classMethods(type, index), linkFor, type.fqn, languages, options.outline));
   return lines.join('\n');
 }
 
@@ -209,7 +212,7 @@ export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceTyp
     lines.push(...exampleSection(type, assembly, languages, { linkFor }));
   }
   lines.push(...renderPropertiesSection(collectProperties(type, index), linkFor, languages));
-  lines.push(...renderMethodsSection(collectMethods(type, index), linkFor, type.fqn, languages));
+  lines.push(...renderMethodsSection(collectMethods(type, index), linkFor, type.fqn, languages, options.outline));
   return lines.join('\n');
 }
 

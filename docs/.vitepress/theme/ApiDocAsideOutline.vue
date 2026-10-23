@@ -8,8 +8,9 @@ import { getScrollOffset, onContentUpdated, useData } from "vitepress";
 import { getHeaders, resolveTitle } from "vitepress/dist/client/theme-default/composables/outline.js";
 import { useAside } from "vitepress/dist/client/theme-default/composables/aside.js";
 import { throttleAndDebounce } from "vitepress/dist/client/theme-default/support/utils.js";
-import VPDocOutlineItem from "vitepress/dist/client/theme-default/components/VPDocOutlineItem.vue";
 import { onMounted, onUnmounted, onUpdated, ref, shallowRef } from "vue";
+// The default theme's item component with a method entry's parameter list rendered after its name.
+import ApiDocOutlineItem from "./ApiDocOutlineItem.vue";
 import { nestOutlineMembers, type OutlineItem, type OutlineMembers } from "./outline-members";
 
 const { frontmatter, theme } = useData();
@@ -172,7 +173,7 @@ onUnmounted(() => {
         {{ resolveTitle(theme) }}
       </div>
 
-      <VPDocOutlineItem :headers="headers" :root="true" />
+      <ApiDocOutlineItem :headers="headers" :root="true" />
     </div>
   </nav>
 </template>

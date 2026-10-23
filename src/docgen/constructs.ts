@@ -15,6 +15,7 @@ import {
   TypeMetadataRow,
 } from './layout.js';
 import { pageHref } from './links.js';
+import type { OutlineExtrasByAnchor } from './outline-members.js';
 import { RosettaTablet } from './rosetta.js';
 import { formatDateOnly } from '../page-history.js';
 import { STABILITY_ROUTE } from '../site-routes.js';
@@ -284,6 +285,8 @@ export interface ConstructPageOptions {
   readonly emitExamples?: boolean;
   /** Version history of the type from the ledger; renders the `Type last changed` metadata row when known. */
   readonly history?: PageHistory;
+  /** Filled with each method row's outline display data, keyed by row anchor, for the page's in-page outline. */
+  readonly outline?: OutlineExtrasByAnchor;
 }
 
 /**
@@ -322,7 +325,7 @@ export function renderConstructPage(options: ConstructPageOptions): string {
   if (props.length > 0) {
     lines.push(anchoredHeading(2, 'Properties', SECTION_ANCHORS.properties), '', ...renderExpandableProps(props, linkFor, { languages }));
   }
-  lines.push(...renderMethodsSection(classMethods(type, index), linkFor, type.fqn, languages));
+  lines.push(...renderMethodsSection(classMethods(type, index), linkFor, type.fqn, languages, options.outline));
 
   return lines.join('\n');
 }

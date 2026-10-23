@@ -42,7 +42,7 @@ import { HISTORY_FRONTMATTER } from '../page-history.js';
 import { SITE_TITLE, STABILITY_ROUTE } from '../site-routes.js';
 import { buildMixinClassification, MixinIndex, renderMixinPage } from './mixins.js';
 import { byLevelThenName } from './ordering.js';
-import { withOutlineMembers } from './outline-members.js';
+import { OutlineExtrasByAnchor, withOutlineMembers } from './outline-members.js';
 import {
   assertOverviewsResolvable,
   overviewFor,
@@ -584,10 +584,12 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           module: searchModule(assembly.name, submodule),
           kind: searchKind(entry.kind),
         });
+        // Display data the member rows hand to the in-page outline (a method's parameter list), keyed by row anchor.
+        const outline: OutlineExtrasByAnchor = new Map();
         const page = renderPage(
           entry, assembly, typeIndex, mixinIndex, usageIndex, linkFor, languageIds, tablet,
           config.emitExamples?.[moduleName] ?? true,
-          implementorsIndex, subclassIndex, history,
+          implementorsIndex, subclassIndex, history, outline,
         );
         // Breadcrumb module hierarchy above the H1. Built here — the only layer that knows the module and submodule
         // page links.
@@ -602,6 +604,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           entry.link,
           withOutlineMembers(
             `${typePageFrontmatter(entry.name, upstreamSourceUrl(entry.type, assembly)).join('\n')}\n${breadcrumb.join('\n')}\n${banner.join('\n')}${page}\n\n${filters}\n`,
+            outline,
           ),
           history,
         );
@@ -915,12 +918,13 @@ function renderPage(
   implementors?: ReadonlyMap<string, readonly string[]>,
   subclasses?: ReadonlyMap<string, readonly string[]>,
   history: PageHistory = {},
+  outline?: OutlineExtrasByAnchor,
 ): string {
   // Every enabled language's variant regions are embedded in the one rendered page; with a single language the
   // renderers emit that language's canonical output unwrapped.
   const { type } = entry;
   return pinTitleAnchor(
-    renderTypePage(entry, assembly, index, mixins, usage, linkFor, languages, tablet, emitExamples, implementors, subclasses, history),
+    renderTypePage(entry, assembly, index, mixins, usage, linkFor, languages, tablet, emitExamples, implementors, subclasses, history, outline),
     titleAnchor(type, index, entry.kind === 'Mixin'),
   );
 }
@@ -938,11 +942,12 @@ function renderTypePage(
   implementors: ReadonlyMap<string, readonly string[]> | undefined,
   subclasses: ReadonlyMap<string, readonly string[]> | undefined,
   history: PageHistory,
+  outline?: OutlineExtrasByAnchor,
 ): string {
   const { type } = entry;
   if (spec.isClassType(type)) {
     return isConstruct(type.fqn, index)
-      ? renderConstructPage({ type, assembly, index, linkFor, languages, subclasses, tablet, emitExamples, history })
+      ? renderConstructPage({ type, assembly, index, linkFor, languages, subclasses, tablet, emitExamples, history, outline })
       : renderClassPage({
         type,
         assembly,
@@ -954,6 +959,7 @@ function renderTypePage(
         tablet,
         emitExamples,
         history,
+        outline,
         // A class-based mixin is grouped as `Mixin` in the index table, the sidebar and the search filter, so its
         // own page badges itself the same way, in the same color renderMixinPage gives an interface mixin. A Facade
         // is classified by `buildFacadeIndex` and labeled Facade elsewhere, so its page badges itself Facade too.
@@ -962,11 +968,11 @@ function renderTypePage(
   }
   if (spec.isInterfaceType(type)) {
     if (mixins.has(type.fqn)) {
-      return renderMixinPage({ type, assembly, index, mixins, linkFor, languages, history });
+      return renderMixinPage({ type, assembly, index, mixins, linkFor, languages, history, outline });
     }
     return type.datatype
       ? renderStructPage({ type, assembly, index, usage, linkFor, languages, emitExamples, history })
-      : renderInterfacePage({ type, assembly, index, usage, linkFor, languages, emitExamples, implementors, history });
+      : renderInterfacePage({ type, assembly, index, usage, linkFor, languages, emitExamples, implementors, history, outline });
   }
   if (spec.isEnumType(type)) {
     return renderEnumPage({ type, assembly, index, usage, linkFor, languages, emitExamples, history });
