@@ -136,6 +136,50 @@ describe('dist install CLI end to end', () => {
     }
   }, 120_000);
 
+  test('passes legacy peer handling when installing candidate tarballs', () => {
+    const dir = scaffold(
+      ['aws-cdk-lib', '@aws-cdk/app-staging-synthesizer-alpha'],
+      '2.275.0',
+      [
+        ['aws-cdk-lib', 'aws-cdk-lib-2.275.0'],
+        [
+          '@aws-cdk/app-staging-synthesizer-alpha',
+          'aws-cdk-app-staging-synthesizer-alpha-2.275.0-alpha.0',
+        ],
+      ],
+    );
+    try {
+      const npm = spawnSync('which', ['npm'], { encoding: 'utf-8' }).stdout.trim();
+      const bin = join(dir, 'bin');
+      mkdirSync(bin);
+      writeFileSync(
+        join(bin, 'npm'),
+        `#!/usr/bin/env node
+const { spawnSync } = require('child_process');
+const args = process.argv.slice(2);
+if (!args.includes('--legacy-peer-deps')) {
+  console.error('npm error code ERESOLVE');
+  process.exit(1);
+}
+const result = spawnSync(process.env.REAL_NPM, args, { stdio: 'inherit' });
+process.exit(result.status ?? 1);
+`,
+        { mode: 0o755 },
+      );
+
+      const { status, out } = run(dir, {
+        [CDK_DIST_DIR_ENV]: join(dir, 'dist'),
+        PATH: `${bin}:${process.env.PATH}`,
+        REAL_NPM: npm,
+      });
+
+      expect(out).toContain('installed 2 module(s) at 2.275.0');
+      expect(status).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   test('a missing alpha module is dropped and reported', () => {
     const dir = scaffold(['aws-cdk-lib', '@aws-cdk/aws-glue-alpha'], '2.269.0', [
       ['aws-cdk-lib', 'aws-cdk-lib-2.269.0'],

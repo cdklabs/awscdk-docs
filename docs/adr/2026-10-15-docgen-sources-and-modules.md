@@ -166,10 +166,15 @@ The dist root holds `build.json` (naming the candidate version and commit) and
 [site generator and build](./2026-10-15-site-generator-and-build.md)), with
 `CDK_DIST_DIR` flowing to the build through the environment.
 
-- **Install with `npm install --no-save` over the pinned tree.** Rewriting
-  pins or adding overrides would dirty generated, committed files that `npm ci`
-  could no longer reproduce. `--no-save` leaves `package.json` and the lockfile
-  byte-identical, so reproducibility is a property of the repository.
+- **Install with `npm install --no-save --legacy-peer-deps` over the pinned
+  tree.** Rewriting pins or adding overrides would dirty generated, committed
+  files that `npm ci` could no longer reproduce. `--no-save` leaves
+  `package.json` and the lockfile byte-identical. Candidate alpha tarballs have
+  peer ranges for the candidate core version while the committed manifest still
+  names the prior release, so resolving peers against that stale graph produces
+  `ERESOLVE`. Ignoring the stale peer graph is safe here because every requested
+  tarball is explicit and the post-install check requires every installed module
+  to match the candidate release.
 - **Match tarballs by the package name inside the archive**, read from
   `package/package.json`, not by file name — `npm pack` mangles scopes
   (`@aws-cdk/aws-msk-alpha` → `aws-cdk-aws-msk-alpha-<version>.tgz`), which an

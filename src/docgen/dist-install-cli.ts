@@ -25,11 +25,16 @@ try {
   const config = loadConfig(path.join(root, 'docgen.config.json'));
   const plan = planDistInstall(config.modules, readJsiiTarballNames(listDistTarballs(distDir)));
 
-  // --no-save keeps package.json and the lockfile byte-identical, so `npm ci` stays reproducible after a dist build.
-  const install = spawnSync('npm', ['install', '--no-save', ...plan.installs.map((i) => i.tarball)], {
-    cwd: root,
-    stdio: 'inherit',
-  });
+  // --no-save keeps committed pins unchanged. The candidate replaces that pinned tree, so ignore its stale peer graph;
+  // verification below still requires every installed module to match the candidate release.
+  const install = spawnSync(
+    'npm',
+    ['install', '--no-save', '--legacy-peer-deps', ...plan.installs.map((i) => i.tarball)],
+    {
+      cwd: root,
+      stdio: 'inherit',
+    },
+  );
   if (install.status !== 0) {
     throw new Error(`npm install of ${plan.installs.length} dist tarball(s) failed with exit ${install.status}`);
   }
