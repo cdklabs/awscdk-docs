@@ -1,5 +1,8 @@
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join, resolve } from 'path';
+import { fetchUpstreamAlphaModules } from '../src/docgen/alpha-module-source.js';
+import { generateDocs, loadConfig } from '../src/docgen/index.js';
 import {
   ALPHA_MODULE_PATTERN,
   alphaModulesOf,
@@ -10,6 +13,7 @@ import {
   renderModuleOutputs,
   upstreamAlphaModules,
 } from '../src/docgen/module-sync.js';
+import { alphaVersionForModule } from '../src/docgen/pins.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const ALPHA = '2.270.0-alpha.0';
@@ -39,6 +43,21 @@ describe('the upstream listing', () => {
       { name: 'README.md', type: 'file' },
     ];
     expect(upstreamAlphaModules(entries)).toEqual(['@aws-cdk/aws-glue-alpha', '@aws-cdk/aws-ivs-alpha']);
+  });
+
+  test('the shared reader uses the requested release tag', async () => {
+    let requested = '';
+    const modules = await fetchUpstreamAlphaModules('2.269.0', undefined, async (input) => {
+      requested = String(input);
+      return new Response(JSON.stringify(listing('aws-glue-alpha')), { status: 200 });
+    });
+    expect(requested).toContain('ref=v2.269.0');
+    expect(modules).toEqual(['@aws-cdk/aws-glue-alpha']);
+  });
+
+  test('the shared reader rejects a failed tag read', async () => {
+    await expect(fetchUpstreamAlphaModules('2.269.0', undefined, async () => new Response('', { status: 404 })))
+      .rejects.toThrow(/HTTP 404/);
   });
 
   test.each([
@@ -162,7 +181,7 @@ describe('the documented module list has one source', () => {
     const installed = Object.keys(pkg.devDependencies).filter((name) => ALPHA_MODULE_PATTERN.test(name)).sort();
     expect(installed).toEqual([...documented].sort());
     for (const name of documented) {
-      expect(pkg.devDependencies[name]).toBe(pins.cdkAlpha);
+      expect(pkg.devDependencies[name]).toBe(alphaVersionForModule(pins, name));
     }
   });
 });
@@ -209,5 +228,36 @@ describe('cdk-version-check workflow module sync', () => {
   test('a failure of either job files the alert issue', () => {
     const alert = job('alert-on-failure');
     expect(alert).toMatch(/needs:\n\s+- check\n\s+- sync-modules/);
+  });
+});
+
+
+describe('building after removal', () => {
+  test('the generated tree contains no page, sidebar, or search entry for a removed module', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'module-removal-'));
+    try {
+      const configText = JSON.stringify({ modules: ['constructs', '@aws-cdk/aws-glue-alpha'], languages: ['ts'] }, null, 2);
+      const plan = {
+        changed: true,
+        additions: [],
+        held: [],
+        removals: ['@aws-cdk/aws-glue-alpha'],
+      };
+      const configFile = join(dir, 'docgen.config.json');
+      writeFileSync(configFile, applyModuleSync(configText, plan));
+      const outDir = join(dir, 'out');
+
+      generateDocs(loadConfig(configFile), { outDir, packageRoot: ROOT, languages: ['ts'] });
+
+      const output = readdirSync(outDir, { recursive: true })
+        .map(String)
+        .filter((name) => statSync(join(outDir, name)).isFile())
+        .map((name) => readFileSync(join(outDir, name), 'utf-8'))
+        .join('\n');
+      expect(output).not.toContain('aws-glue-alpha');
+      expect(output).toContain('constructs');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

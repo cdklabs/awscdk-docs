@@ -4,6 +4,7 @@ import DOCGEN_CONFIG from './docgen.config.json' with { type: 'json' };
 import CDK_PINS from './projenrc/cdk-versions.json' with { type: 'json' };
 import { S3DocsPublishing } from './projenrc/s3-docs-publishing.js';
 import { alphaModulesOf } from './src/docgen/module-sync.js';
+import { alphaVersionForModule } from './src/docgen/pins.js';
 import { VERSIONS_JSON_PATH } from './src/docgen/versions.js';
 
 const PROJEN_GITHUB_TOKEN = github.GithubCredentials.fromPersonalAccessToken({
@@ -132,7 +133,7 @@ const project = new CdkTypeScriptProject({
 
   devDeps: [
     // Documented CDK packages: their prose is the site's content, but none of their code ships.
-    ...DOCUMENTED_ALPHA_MODULES.map((name) => `${name}@${CDK_ALPHA_VERSION}`),
+    ...DOCUMENTED_ALPHA_MODULES.map((name) => `${name}@${alphaVersionForModule(CDK_PINS, name)}`),
     ...CDK_ALPHA_PACKAGES.map((name) => `${name}@${CDK_ALPHA_VERSION}`),
     ...CDK_LIB_PACKAGES.map((name) => `${name}@${CDK_PINS.awsCdkLib}`),
     // Docgen reads the documented packages' jsii assemblies to generate the markdown source.

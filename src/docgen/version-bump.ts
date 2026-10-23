@@ -18,46 +18,75 @@ export function alphaVersionFor(coreVersion: string): string {
   return `${coreVersion}-alpha.0`;
 }
 
-/**
- * Pick the alpha version to pin, given the versions each documented
- * alpha module has actually published.
- *
- * A partial bump is a broken tree — installing
- * `@aws-cdk/aws-foo-alpha@2.269.0-alpha.0` fails outright when only 30
- * of the 31 modules have published it — so a candidate only qualifies
- * when EVERY module has it. Candidates are tried newest first and the
- * first unanimous one wins; `undefined` means no candidate is unanimous
- * and the alphas must be left alone this run.
- *
- * `published` maps module name to the versions the registry lists for
- * it. A module missing from the map has published nothing and therefore
- * disqualifies every candidate.
- */
-export function resolveAlphaTarget(
-  modules: readonly string[],
-  published: ReadonlyMap<string, readonly string[]>,
-  coreCandidates: readonly string[],
-): string | undefined {
-  for (const core of coreCandidates) {
-    const target = alphaVersionFor(core);
-    if (modules.every((name) => published.get(name)?.includes(target))) {
-      return target;
-    }
-  }
-  return undefined;
+/** Inputs for resolving each documented alpha module independently. */
+export interface AlphaVersionInput {
+  readonly modules: readonly string[];
+  /** Modules present under packages/@aws-cdk at the target release tag; undefined means the listing failed. */
+  readonly upstream?: readonly string[];
+  /** Registry versions by module; a missing key means that module's registry read failed. */
+  readonly published: ReadonlyMap<string, readonly string[]>;
+  readonly targetCore: string;
+  readonly currentDefault: string;
+  readonly currentOverrides: Readonly<Record<string, string>>;
+}
+
+export interface AlphaVersionResolution {
+  readonly defaultVersion: string;
+  readonly overrides: Record<string, string>;
+  readonly published: string[];
+  readonly late: string[];
+  readonly gone: string[];
+  readonly unknown: string[];
 }
 
 /**
- * Modules lacking a given alpha version — the evidence for why an alpha
- * bump was skipped, reported into the job log and the PR body rather
- * than left for someone to reconstruct.
+ * Resolve the target alpha version per module.
+ *
+ * A folder missing from the release tag means the module is gone. A folder
+ * that exists without the target registry version is late. Failed tag or
+ * registry reads are unknown and preserve the current pin.
  */
-export function modulesMissingAlpha(
-  modules: readonly string[],
-  published: ReadonlyMap<string, readonly string[]>,
-  alphaVersion: string,
-): string[] {
-  return modules.filter((name) => !published.get(name)?.includes(alphaVersion));
+export function resolveAlphaVersions(input: AlphaVersionInput): AlphaVersionResolution {
+  if (input.upstream === undefined || isNewerVersion(input.targetCore, releasePartOf(input.currentDefault))) {
+    return {
+      defaultVersion: input.currentDefault,
+      overrides: { ...input.currentOverrides },
+      published: [],
+      late: [],
+      gone: [],
+      unknown: [...input.modules],
+    };
+  }
+
+  const target = alphaVersionFor(input.targetCore);
+  const upstream = new Set(input.upstream);
+  const published: string[] = [];
+  const late: string[] = [];
+  const gone: string[] = [];
+  const unknown: string[] = [];
+
+  for (const name of input.modules) {
+    if (!upstream.has(name)) {
+      gone.push(name);
+    } else if (!input.published.has(name)) {
+      unknown.push(name);
+    } else if (input.published.get(name)!.includes(target)) {
+      published.push(name);
+    } else {
+      late.push(name);
+    }
+  }
+
+  const defaultVersion = published.length > 0 ? target : input.currentDefault;
+  const overrides: Record<string, string> = {};
+  for (const name of [...late, ...unknown].sort()) {
+    const held = input.currentOverrides[name] ?? input.currentDefault;
+    if (held !== defaultVersion) {
+      overrides[name] = held;
+    }
+  }
+
+  return { defaultVersion, overrides, published, late, gone, unknown };
 }
 
 /**
@@ -86,11 +115,10 @@ export interface VersionBumpInput {
   readonly latestCore: string;
   /** Current `cdkAlpha` pin. */
   readonly currentAlpha: string;
-  /**
-   * Alpha version to move to, or undefined when no version is published
-   * across every documented module (see `resolveAlphaTarget`).
-   */
+  /** Resolved default alpha version after late and gone modules are classified. */
   readonly alphaTarget?: string;
+  /** True when per-module holds or removals changed, even if the default did not. */
+  readonly alphaSetChanged?: boolean;
   /** `dist-tags.latest` per tracked package in the committed snapshot. */
   readonly snapshotLatest: LatestVersions;
   /** `dist-tags.latest` per tracked package as published now. */
@@ -120,10 +148,14 @@ export interface VersionBumpPlan {
 export function planVersionBump(input: VersionBumpInput): VersionBumpPlan {
   const core = isNewerVersion(input.currentCore, input.latestCore) ? input.latestCore : undefined;
 
-  // Compared with isNewerVersion, which ignores the -alpha.0 suffix
-  // both pins carry: the comparison is between their release parts.
+  // A module-level hold or removal must run the same apply and ledger path
+  // even when the default alpha version itself stays unchanged.
   const alpha =
-    input.alphaTarget && input.alphaTarget !== input.currentAlpha && isNewerVersion(input.currentAlpha, input.alphaTarget)
+    input.alphaTarget
+    && (
+      (input.alphaTarget !== input.currentAlpha && isNewerVersion(input.currentAlpha, input.alphaTarget))
+      || (input.alphaSetChanged === true && input.alphaTarget === input.currentAlpha)
+    )
       ? input.alphaTarget
       : undefined;
 

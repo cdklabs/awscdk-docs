@@ -1,23 +1,28 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fetchUpstreamAlphaModules } from './alpha-module-source.js';
 import { sanitizeLogList, sanitizeLogText } from './log-text.js';
-import { CDK_PINS_FILE, readCdkPins, withCdkPin, writeCdkPins } from './pins.js';
+import { applyModuleSync, ModuleSyncPlan } from './module-sync.js';
 import {
+  CDK_PINS_FILE,
+  readCdkPins,
+  withAlphaVersions,
+  withCdkPin,
+  writeCdkPins,
+} from './pins.js';
+import {
+  AlphaVersionResolution,
   describeVersionBump,
   documentedAlphaModules,
-  modulesMissingAlpha,
   planVersionBump,
-  releasePartOf,
   renderWorkflowOutputs,
-  resolveAlphaTarget,
+  resolveAlphaVersions,
   VersionBumpPlan,
 } from './version-bump.js';
 import {
   buildVersionSnapshot,
-  compareVersionsDesc,
   fetchJson,
   fetchPackuments,
-  isStableVersion,
   Packument,
   readVersionSnapshot,
   VERSION_SNAPSHOT_FILE,
@@ -37,14 +42,11 @@ import {
 const root = process.cwd();
 const PLAN_FILE = process.env.CDK_VERSION_PLAN_FILE ?? path.join(root, '.version-plan.json');
 
-/** How far back to look for an alpha set that is published across every module. */
-const ALPHA_CANDIDATE_DEPTH = 10;
-
 interface PlanFile {
   readonly plan: VersionBumpPlan;
   readonly snapshot: VersionSnapshot;
-  readonly missingAlphas: string[];
-  readonly alphaCandidate?: string;
+  readonly alphaResolution: AlphaVersionResolution;
+  readonly targetCore: string;
   readonly summary: string[];
 }
 
@@ -52,10 +54,19 @@ function latestMap(packuments: Map<string, Packument>): Map<string, string> {
   return new Map([...packuments].map(([name, p]) => [name, p['dist-tags'].latest]));
 }
 
-/** Versions the registry lists for a package, newest-first for stable ones. */
+/** Versions the registry lists for a package. */
 async function publishedVersions(name: string): Promise<string[]> {
   const packument = await fetchJson(`https://registry.npmjs.org/${name}`);
   return Object.keys(packument.time ?? {});
+}
+
+function sameOverrides(
+  left: Readonly<Record<string, string>>,
+  right: Readonly<Record<string, string>>,
+): boolean {
+  const leftEntries = Object.entries(left).sort(([a], [b]) => a.localeCompare(b));
+  const rightEntries = Object.entries(right).sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(leftEntries) === JSON.stringify(rightEntries);
 }
 
 async function plan(): Promise<void> {
@@ -68,47 +79,83 @@ async function plan(): Promise<void> {
   const core = packuments.get('aws-cdk-lib')!;
   const latestCore = core['dist-tags'].latest;
 
-  // Alpha candidates: stable core releases at or below the newest one and
-  // above the release the alphas are currently pinned to, newest first.
-  const currentAlphaRelease = releasePartOf(pins.cdkAlpha);
-  const candidates = Object.keys(core.time)
-    .filter((v) => isStableVersion(v) && compareVersionsDesc(v, currentAlphaRelease) < 0)
-    .sort(compareVersionsDesc)
-    .slice(0, ALPHA_CANDIDATE_DEPTH);
+  let upstream: string[] | undefined;
+  try {
+    upstream = await fetchUpstreamAlphaModules(latestCore);
+  } catch (err: unknown) {
+    // A failed tag read proves nothing about package removal. Preserve every alpha pin.
+    // eslint-disable-next-line no-console
+    console.log(`version-refresh: release-tag module list unavailable — holding alpha pins: ${sanitizeLogText(err instanceof Error ? err.message : String(err))}`);
+  }
 
   const published = new Map<string, string[]>();
-  await Promise.all(alphaModules.map(async (name) => published.set(name, await publishedVersions(name))));
+  if (upstream !== undefined) {
+    const upstreamSet = new Set(upstream);
+    await Promise.all(alphaModules.filter((name) => upstreamSet.has(name)).map(async (name) => {
+      try {
+        published.set(name, await publishedVersions(name));
+      } catch (err: unknown) {
+        // One failed registry read is unknown, not evidence that the module is late or gone.
+        // eslint-disable-next-line no-console
+        console.log(`version-refresh: registry data unavailable for ${sanitizeLogText(name)} — holding its pin: ${sanitizeLogText(err instanceof Error ? err.message : String(err))}`);
+      }
+    }));
+  }
 
-  const alphaTarget = resolveAlphaTarget(alphaModules, published, candidates);
+  const alphaResolution = resolveAlphaVersions({
+    modules: alphaModules,
+    upstream,
+    published,
+    targetCore: latestCore,
+    currentDefault: pins.cdkAlpha,
+    currentOverrides: pins.cdkAlphaOverrides,
+  });
+  const alphaSetChanged = alphaResolution.defaultVersion !== pins.cdkAlpha
+    || !sameOverrides(alphaResolution.overrides, pins.cdkAlphaOverrides)
+    || alphaResolution.gone.length > 0;
+
   const bump = planVersionBump({
     currentCore: pins.awsCdkLib,
     latestCore,
     currentAlpha: pins.cdkAlpha,
-    alphaTarget,
+    alphaTarget: alphaResolution.defaultVersion,
+    alphaSetChanged,
     snapshotLatest: latestMap(new Map(Object.entries(snapshot.packages))),
     registryLatest: latestMap(packuments),
   });
 
-  // Evidence for a held-back alpha bump: which modules lack the version
-  // the newest core release would imply.
-  const wanted = candidates[0] ? `${candidates[0]}-alpha.0` : undefined;
-  const missingAlphas = wanted && alphaTarget !== wanted ? modulesMissingAlpha(alphaModules, published, wanted) : [];
-
-  const summary = describeVersionBump(bump);
+  const describedBump = alphaResolution.defaultVersion === pins.cdkAlpha
+    ? { ...bump, alpha: undefined }
+    : bump;
+  const summary = [
+    ...describeVersionBump(describedBump),
+    ...alphaResolution.late.map((name) => `hold ${name} at its current alpha pin`),
+    ...alphaResolution.gone.map((name) => `remove ${name}; folder missing at aws-cdk v${latestCore}`),
+  ];
   const planFile: PlanFile = {
     plan: bump,
     snapshot: buildVersionSnapshot(packuments),
-    missingAlphas,
-    alphaCandidate: wanted,
+    alphaResolution,
+    targetCore: latestCore,
     summary,
   };
   fs.writeFileSync(PLAN_FILE, `${JSON.stringify(planFile, null, 2)}\n`);
 
   // eslint-disable-next-line no-console
-  console.log(bump.changed ? `version-refresh: changes detected\n  ${sanitizeLogList(summary).join('\n  ')}` : 'version-refresh: nothing moved');
-  if (missingAlphas.length > 0) {
+  console.log(bump.changed
+    ? `version-refresh: changes detected\n  ${sanitizeLogList(summary).join('\n  ')}`
+    : 'version-refresh: nothing moved');
+  if (alphaResolution.late.length > 0) {
     // eslint-disable-next-line no-console
-    console.log(`version-refresh: holding alpha pin — ${missingAlphas.length} module(s) have not published ${sanitizeLogText(`${wanted}`)}: ${sanitizeLogList(missingAlphas).join(', ')}`);
+    console.log(`version-refresh: holding ${alphaResolution.late.length} late module pin(s): ${sanitizeLogList(alphaResolution.late).join(', ')}`);
+  }
+  if (alphaResolution.gone.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`version-refresh: dropping ${alphaResolution.gone.length} gone module(s): ${sanitizeLogList(alphaResolution.gone).join(', ')}`);
+  }
+  if (alphaResolution.unknown.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`version-refresh: holding ${alphaResolution.unknown.length} unknown module pin(s): ${sanitizeLogList(alphaResolution.unknown).join(', ')}`);
   }
 
   if (process.env.GITHUB_OUTPUT) {
@@ -124,17 +171,29 @@ function apply(): void {
     return;
   }
 
-  writeVersionSnapshot(planFile.snapshot, path.join(root, VERSION_SNAPSHOT_FILE));
-
   const pinsPath = path.join(root, CDK_PINS_FILE);
   let pins = readCdkPins(pinsPath);
   if (planFile.plan.core) {
     pins = withCdkPin(pins, 'awsCdkLib', planFile.plan.core);
   }
-  if (planFile.plan.alpha) {
-    pins = withCdkPin(pins, 'cdkAlpha', planFile.plan.alpha);
-  }
+  pins = withAlphaVersions(
+    pins,
+    planFile.alphaResolution.defaultVersion,
+    planFile.alphaResolution.overrides,
+  );
+
+  const configPath = path.join(root, 'docgen.config.json');
+  const modulePlan: ModuleSyncPlan = {
+    changed: planFile.alphaResolution.gone.length > 0,
+    additions: [],
+    held: [],
+    removals: planFile.alphaResolution.gone,
+  };
+  const config = applyModuleSync(fs.readFileSync(configPath, 'utf-8'), modulePlan);
+
+  writeVersionSnapshot(planFile.snapshot, path.join(root, VERSION_SNAPSHOT_FILE));
   writeCdkPins(pins, pinsPath);
+  fs.writeFileSync(configPath, config);
 
   // eslint-disable-next-line no-console
   console.log(`version-refresh: applied\n  ${sanitizeLogList(planFile.summary).join('\n  ')}`);
@@ -156,14 +215,34 @@ function body(): void {
       `The version-history ledger was updated from v${planFile.plan.core}: its diff below lists every type and README introduced or changed in this release.`,
     );
   }
-  if (planFile.missingAlphas.length > 0) {
+  if (planFile.alphaResolution.late.length > 0) {
     lines.push(
       '',
-      '## Alpha pin held back',
+      '## Alpha pins held back',
       '',
-      `\`${planFile.alphaCandidate}\` is not published for ${planFile.missingAlphas.length} documented module(s), so the alpha pin was left alone rather than bumped to a version some module lacks:`,
+      `These modules still exist in aws-cdk v${planFile.targetCore}, but have not published that release's alpha. Their prior pins remain in place while the other alphas move:`,
       '',
-      ...planFile.missingAlphas.map((name) => `- \`${name}\``),
+      ...planFile.alphaResolution.late.map((name) => `- \`${name}\``),
+    );
+  }
+  if (planFile.alphaResolution.gone.length > 0) {
+    lines.push(
+      '',
+      '## Alpha modules removed',
+      '',
+      `These modules are removed because their folders are missing under \`packages/@aws-cdk\` at aws-cdk v${planFile.targetCore}. Review each removal before merging:`,
+      '',
+      ...planFile.alphaResolution.gone.map((name) => `- \`${name}\``),
+    );
+  }
+  if (planFile.alphaResolution.unknown.length > 0) {
+    lines.push(
+      '',
+      '## Alpha pins unchanged after failed reads',
+      '',
+      'Release-tag or registry data could not be read for these modules. Their pins remain unchanged, and none are removed:',
+      '',
+      ...planFile.alphaResolution.unknown.map((name) => `- \`${name}\``),
     );
   }
   // The changelog section and the contributor statement are appended by

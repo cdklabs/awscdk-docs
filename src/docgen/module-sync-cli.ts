@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fetchUpstreamAlphaModules } from './alpha-module-source.js';
 import { loadAssembly } from './index.js';
 import { sanitizeLogList, sanitizeLogText } from './log-text.js';
 import {
@@ -10,7 +11,6 @@ import {
   modulePageCount,
   planModuleSync,
   renderModuleOutputs,
-  upstreamAlphaModules,
 } from './module-sync.js';
 import { CDK_PINS_FILE, readCdkPins } from './pins.js';
 import { assertValidVersion } from './version-format.js';
@@ -48,26 +48,6 @@ function documentedAlphas(): string[] {
   return alphaModulesOf(config.modules);
 }
 
-/**
- * The `packages/@aws-cdk` directory of aws/aws-cdk at a release tag. A non-200 answer is an error, never an
- * empty list.
- */
-async function fetchUpstreamListing(coreVersion: string): Promise<unknown> {
-  const url = `https://api.github.com/repos/aws/aws-cdk/contents/packages/@aws-cdk?ref=v${coreVersion}`;
-  const headers: Record<string, string> = {
-    'accept': 'application/vnd.github+json',
-    'user-agent': 'cdk-docs-module-sync',
-  };
-  if (process.env.GH_TOKEN) {
-    headers.authorization = `Bearer ${process.env.GH_TOKEN}`;
-  }
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    throw new Error(`GET ${url}: HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
 async function publishedVersions(name: string): Promise<string[]> {
   const packument = await fetchJson(`https://registry.npmjs.org/${name}`);
   return Object.keys(packument.time ?? {});
@@ -76,7 +56,7 @@ async function publishedVersions(name: string): Promise<string[]> {
 async function plan(): Promise<void> {
   const pins = readCdkPins(path.join(root, CDK_PINS_FILE));
   const documented = documentedAlphas();
-  const upstream = upstreamAlphaModules(await fetchUpstreamListing(pins.awsCdkLib));
+  const upstream = await fetchUpstreamAlphaModules(pins.awsCdkLib);
 
   const candidates = upstream.filter((name) => !documented.includes(name));
   const published = new Map<string, string[]>();

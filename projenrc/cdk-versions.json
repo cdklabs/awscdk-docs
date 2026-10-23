@@ -1,4 +1,5 @@
 {
   "awsCdkLib": "2.274.0",
-  "cdkAlpha": "2.274.0-alpha.0"
+  "cdkAlpha": "2.274.0-alpha.0",
+  "cdkAlphaOverrides": {}
 }
