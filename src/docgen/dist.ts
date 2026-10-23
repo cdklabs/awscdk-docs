@@ -115,17 +115,20 @@ export interface DistInstallPlan {
   readonly installs: DistInstall[];
   /** Configured modules deliberately left to npm — see {@link DIST_EXCLUDED_MODULES}. */
   readonly excluded: string[];
-  /** Modules docgen should read: configured modules plus new jsii modules supplied by the dist. */
+  /** Configured alpha modules omitted because the dist has no matching tarball. */
+  readonly dropped: string[];
+  /** Modules docgen should read: available configured modules plus new jsii modules supplied by the dist. */
   readonly modules: string[];
 }
 
 /**
- * Map configured modules onto the dist and append new jsii modules it supplies. Configured modules remain required
- * so a damaged candidate fails loudly; the dist is authoritative only for additions.
+ * Map configured modules onto the dist and append new jsii modules it supplies. Missing alpha modules are dropped;
+ * missing stable modules fail loudly because the dist is authoritative only for additions.
  */
 export function planDistInstall(modules: string[], tarballNames: Map<string, string>): DistInstallPlan {
   const installs: DistInstall[] = [];
   const excluded: string[] = [];
+  const dropped: string[] = [];
   const missing: string[] = [];
   for (const module of modules) {
     if (DIST_EXCLUDED_MODULES.includes(module)) {
@@ -134,7 +137,11 @@ export function planDistInstall(modules: string[], tarballNames: Map<string, str
     }
     const tarball = tarballNames.get(module);
     if (tarball === undefined) {
-      missing.push(module);
+      if (module.endsWith('-alpha')) {
+        dropped.push(module);
+      } else {
+        missing.push(module);
+      }
       continue;
     }
     installs.push({ module, tarball });
@@ -154,7 +161,13 @@ export function planDistInstall(modules: string[], tarballNames: Map<string, str
     installs.push({ module, tarball: tarballNames.get(module)! });
     added.push(module);
   }
-  return { installs, excluded, modules: [...modules, ...added] };
+  const droppedSet = new Set(dropped);
+  return {
+    installs,
+    excluded,
+    dropped,
+    modules: [...modules.filter((module) => !droppedSet.has(module)), ...added],
+  };
 }
 
 /** Tarball path by declared package name, for every archive in the dist. */

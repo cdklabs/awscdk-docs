@@ -229,16 +229,35 @@ describe('planning the install', () => {
     ]);
   });
 
-  test('a module with no tarball fails loudly and never falls back to the pin', () => {
-    expect(() => planDistInstall(['aws-cdk-lib', '@aws-cdk/aws-ivs-alpha'], tarballs)).toThrow(
-      /no tarball in the dist for 1 configured module\(s\): @aws-cdk\/aws-ivs-alpha/,
+  test('missing alpha modules are dropped while other modules remain installable', () => {
+    const plan = planDistInstall(
+      ['aws-cdk-lib', '@aws-cdk/aws-glue-alpha', 'constructs'],
+      tarballs,
+    );
+
+    expect(plan.installs.map((entry) => entry.module)).toEqual([
+      'aws-cdk-lib',
+      '@aws-cdk/aws-msk-alpha',
+    ]);
+    expect(plan.excluded).toEqual(['constructs']);
+    expect(plan.dropped).toEqual(['@aws-cdk/aws-glue-alpha']);
+    expect(plan.modules).toEqual([
+      'aws-cdk-lib',
+      'constructs',
+      '@aws-cdk/aws-msk-alpha',
+    ]);
+  });
+
+  test('a stable module with no tarball fails loudly and never falls back to the pin', () => {
+    expect(() => planDistInstall(['aws-cdk-lib', '@aws-cdk/cfn-property-mixins'], tarballs)).toThrow(
+      /no tarball in the dist for 1 configured module\(s\): @aws-cdk\/cfn-property-mixins/,
     );
   });
 
-  test('every uncovered module is named in one error, not just the first', () => {
+  test('every uncovered stable module is named in one error, not just the first', () => {
     expect(() =>
-      planDistInstall(['@aws-cdk/aws-ivs-alpha', 'aws-cdk-lib', '@aws-cdk/aws-kro-alpha'], tarballs),
-    ).toThrow(/2 configured module\(s\): @aws-cdk\/aws-ivs-alpha, @aws-cdk\/aws-kro-alpha/);
+      planDistInstall(['@aws-cdk/cfn-property-mixins', 'aws-cdk-lib', '@aws-cdk/cloud-assembly-schema'], tarballs),
+    ).toThrow(/2 configured module\(s\): @aws-cdk\/cfn-property-mixins, @aws-cdk\/cloud-assembly-schema/);
   });
 });
 

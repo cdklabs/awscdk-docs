@@ -39,7 +39,8 @@ try {
   // eslint-disable-next-line no-console
   console.log(
     `docs:dist:install: installed ${plan.installs.length} module(s) at ${build.version}` +
-      `${plan.excluded.length > 0 ? `, left ${plan.excluded.join(', ')} to npm` : ''}`,
+      `${plan.excluded.length > 0 ? `, left ${plan.excluded.join(', ')} to npm` : ''}` +
+      `${plan.dropped.length > 0 ? `, dropped ${plan.dropped.join(', ')} without dist tarballs` : ''}`,
   );
 } catch (err: unknown) {
   // eslint-disable-next-line no-console
