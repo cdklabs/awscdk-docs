@@ -24,6 +24,16 @@
   :root .VPSidebar .curtain {
     display: none;
   }
+
+  /* The desktop scrollport begins flush against the navbar's bottom border, so
+     the pinned header's focusable controls (the filter box's focus ring) would
+     touch that line. Inset the pinned block from the scrollport's top edge.
+     Padding on the sticky block keeps it pinned and shifts only its content;
+     the opaque background still covers tree rows scrolling underneath. Desktop
+     only — the mobile drawer keeps its own top padding (no doubling). */
+  :root .VPSidebar .sidebar-header {
+    padding-top: 8px;
+  }
 }
 
 /* Keep the filter, jump control and favorites pinned while the tree scrolls.

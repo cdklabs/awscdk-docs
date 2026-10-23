@@ -71,7 +71,7 @@ test.describe('in-sidebar symbol filter', () => {
     await expect(filterInput(page)).toHaveValue('');
   });
 
-  test('the filter starts at the sidebar scrollport top without overlap', async ({ page }) => {
+  test('the filter sits below the pinned header top edge, clear of the navbar', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await waitForSidebar(page);
     await filterInput(page).focus();
@@ -81,7 +81,11 @@ test.describe('in-sidebar symbol filter', () => {
       const header = document.querySelector('.sidebar-header')!.getBoundingClientRect();
       return box.top - header.top;
     });
-    expect(gap).toBe(0);
+    // The pinned header carries 8px of top padding on desktop so the focused
+    // filter box's inset ring clears the navbar border it is pinned against.
+    // The box therefore starts 8px below the header's box top, not flush with
+    // it — a flush box (gap 0) is the crowded state this spacing fixes.
+    expect(gap).toBe(8);
   });
 
   test('Enter jumps to the best-ranked symbol', async ({ page }) => {

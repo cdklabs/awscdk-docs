@@ -61,6 +61,33 @@ test.describe('sidebar header stays put while the tree scrolls', () => {
     expect(Math.abs(geometry.headerTop - geometry.navbarBottom)).toBeLessThanOrEqual(1);
   });
 
+  // The pinned header's box starts at the navbar's bottom border (asserted
+  // above). Its first focusable control — the filter box — must not sit flush
+  // against that line: the focus ring is a 2px INSET outline drawn at the box's
+  // own top edge, so a box top equal to the navbar bottom paints the ring right
+  // on the border and reads as crowded. The header's top padding is what opens
+  // the gap, so the filter box's top must clear the navbar bottom by it. Focus
+  // the input first — the ring only renders on :focus-within, and a box
+  // measured unfocused cannot catch a ring that overlaps the border.
+  test('the focused filter box clears the navbar border', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(TOPIC_PAGE);
+    await expect(page.locator('.nav-filter-input')).toBeVisible();
+
+    await page.focus('.nav-filter-input');
+    await expect(page.locator('.nav-filter-box')).toHaveCSS('outline-style', 'solid');
+
+    const geometry = await page.evaluate(() => {
+      const navbar = document.querySelector('.VPNavBar')!.getBoundingClientRect();
+      const box = document.querySelector('.nav-filter-box')!.getBoundingClientRect();
+      return { navbarBottom: navbar.bottom, boxTop: box.top };
+    });
+
+    // A clear, visible gap — not merely non-overlapping. The header padding is
+    // 8px; allow for sub-pixel rounding but require most of it to be present.
+    expect(geometry.boxTop - geometry.navbarBottom).toBeGreaterThanOrEqual(6);
+  });
+
   test('the desktop rail keeps the filter, jump-to-current and favorites in view', async ({
     page,
   }) => {
