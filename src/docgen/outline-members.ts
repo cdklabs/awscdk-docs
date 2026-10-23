@@ -2,28 +2,39 @@
  * The member list a type page's in-page outline shows under its section headings.
  *
  * Members render as `member-row` divs, not headings, so the outline VitePress builds from headings lists only the
- * sections (`Properties`, `Methods`). This list is emitted at generate time, read from the page's
- * own rows, so each entry carries exactly the `memberAnchor` id its row has and no anchor can drift. The theme's
+ * sections (`Properties`, `Methods`, `Construct Props`). This list is emitted at generate time, read from the page's
+ * own rows, so each entry carries exactly the id its row has and no anchor can drift. The theme's
  * outline component nests the entries under the matching section heading
- * (`docs/adr/2026-10-22-outline-members.md`).
+ * (`docs/adr/2026-10-22-outline-members.md`; the construct props group is
+ * `docs/adr/2026-10-23-outline-construct-props.md`).
  */
-import { SECTION_ANCHORS } from './anchors.js';
+import { PROPS_ANCHOR_PREFIX, SECTION_ANCHORS } from './anchors.js';
 import { tokenizeFences } from './fences.js';
 
 /** One outline entry: the row's anchor id and the member's canonical (TypeScript) name. */
 export type OutlineMember = readonly [anchor: string, name: string];
 
-/** Section heading anchor (`properties` or `methods`) to the members listed under it, in page order. */
+/**
+ * Section heading anchor to the members listed under it, in page order: `properties`, `methods`, and a construct
+ * page's inlined props section (`props-<struct>`).
+ */
 export type OutlineMembers = Readonly<Record<string, readonly OutlineMember[]>>;
 
 /** Frontmatter key the theme's outline component reads. */
 export const OUTLINE_MEMBERS_KEY = 'outlineMembers';
 
-/**
- * The sections whose rows the outline lists: the type's own properties and its methods. A construct page's inlined
- * props struct (`## Construct Props`, rows `props-<struct>-<member>`) is a different type's members and stays out.
- */
+/** The fixed-anchor sections whose rows the outline lists: the type's own properties and its methods. */
 const OUTLINE_SECTIONS: ReadonlySet<string> = new Set([SECTION_ANCHORS.properties, SECTION_ANCHORS.methods]);
+
+/**
+ * Whether a `##` heading opens a section whose rows the outline lists. Besides the type's own properties and
+ * methods, a construct page's inlined props struct (`## Construct Props {#props-<struct>}`, rows
+ * `props-<struct>-<member>`) is listed too: the props are the main way a reader configures a construct, and the
+ * section anchor is the group key so the theme nests the rows under that heading.
+ */
+function isOutlineSection(anchor: string): boolean {
+  return OUTLINE_SECTIONS.has(anchor) || anchor.startsWith(PROPS_ANCHOR_PREFIX);
+}
 
 const SECTION_HEADING = /^## .*\{#([^}\s]+)\}\s*$/;
 const MEMBER_ROW = /^<div class="member-row" id="([^"]+)">/;
@@ -39,9 +50,10 @@ function unescapeHtml(text: string): string {
 }
 
 /**
- * Collect the property and method rows of a rendered type page, grouped by the `##` section they sit under. Fenced code is
- * skipped, so an example that happens to contain a heading or row markup cannot add an entry. A section with no
- * member rows gets no key, so the outline never shows an empty group.
+ * Collect the member rows of a rendered type page, grouped by the `##` section they sit under: the type's own
+ * properties and methods, and the inlined construct props. Fenced code is skipped, so an example that happens to
+ * contain a heading or row markup cannot add an entry. A section with no member rows gets no key, so the outline
+ * never shows an empty group.
  */
 export function outlineMembers(page: string): OutlineMembers {
   const groups: Record<string, OutlineMember[]> = {};
@@ -54,7 +66,7 @@ export function outlineMembers(page: string): OutlineMembers {
     for (const line of span.text.split('\n')) {
       const heading = SECTION_HEADING.exec(line);
       if (heading) {
-        section = OUTLINE_SECTIONS.has(heading[1]) ? heading[1] : undefined;
+        section = isOutlineSection(heading[1]) ? heading[1] : undefined;
         pendingRow = undefined;
         continue;
       }

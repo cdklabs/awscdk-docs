@@ -47,18 +47,22 @@ const PAGE = [
 
 describe('outline member list', () => {
   test('groups each property and method row under its section anchor, in page order, with its own row id', () => {
-    expect(outlineMembers(PAGE)).toEqual({
-      properties: [
-        ['queuearn', 'queueArn'],
-        ['property-injection-id', 'PROPERTY_INJECTION_ID'],
-      ],
-      methods: [['grantsend', 'grantSend']],
-    });
+    const members = outlineMembers(PAGE);
+    expect(members.properties).toEqual([
+      ['queuearn', 'queueArn'],
+      ['property-injection-id', 'PROPERTY_INJECTION_ID'],
+    ]);
+    expect(members.methods).toEqual([['grantsend', 'grantSend']]);
   });
 
-  test('leaves out the inlined construct props, which are another type\'s members', () => {
-    expect(outlineMembers(PAGE)).not.toHaveProperty('props-queueprops');
-    expect(JSON.stringify(outlineMembers(PAGE))).not.toContain('props-queueprops-fifo');
+  test('lists the inlined construct props under the Construct Props section anchor, with their props-based row ids', () => {
+    expect(outlineMembers(PAGE)['props-queueprops']).toEqual([['props-queueprops-fifo', 'fifo']]);
+    expect(Object.keys(outlineMembers(PAGE)).sort()).toEqual(['methods', 'properties', 'props-queueprops']);
+  });
+
+  test('a page without a Construct Props section gets no props group', () => {
+    const page = ['## Properties {#properties}', ...row('queuearn', 'queueArn')].join('\n');
+    expect(Object.keys(outlineMembers(page))).toEqual(['properties']);
   });
 
   test('skips headings and rows inside fenced code', () => {
@@ -100,11 +104,16 @@ describe('outline nesting', () => {
 
   test('nests each member under the matching section heading, linked to its anchor', () => {
     const out = nestOutlineMembers(
-      [header('example', 'Example'), header('properties', 'Properties'), header('methods', 'Methods')],
-      { properties: [['queuearn', 'queueArn']], methods: [['grantsend', 'grantSend']] },
+      [header('example', 'Example'), header('props-queueprops', 'Construct Props'), header('properties', 'Properties'), header('methods', 'Methods')],
+      {
+        'props-queueprops': [['props-queueprops-fifo', 'fifo']],
+        'properties': [['queuearn', 'queueArn']],
+        'methods': [['grantsend', 'grantSend']],
+      },
     );
     expect(out.map((h) => [h.link, h.children.map((c) => [c.link, c.title, c.level])])).toEqual([
       ['#example', []],
+      ['#props-queueprops', [['#props-queueprops-fifo', 'fifo', 3]]],
       ['#properties', [['#queuearn', 'queueArn', 3]]],
       ['#methods', [['#grantsend', 'grantSend', 3]]],
     ]);
