@@ -15,6 +15,17 @@
   }
 }
 
+/* Keep the filter, jump control and favorites pinned while the tree scrolls.
+   `top: 0` pins the block to the scrollport's content edge at both breakpoints:
+   the desktop scrollport begins below the navbar, while the drawer keeps its
+   own top padding. The background stays opaque as tree rows scroll under it. */
+.VPSidebar .sidebar-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--vp-sidebar-bg-color);
+}
+
 @media (min-width: 960px) {
   :root .VPSidebar {
     top: calc(var(--vp-layout-top-height, 0px) + var(--vp-nav-height));
@@ -34,17 +45,6 @@
   :root .VPSidebar .sidebar-header {
     padding-top: 8px;
   }
-}
-
-/* Keep the filter, jump control and favorites pinned while the tree scrolls.
-   `top: 0` pins the block to the scrollport's content edge at both breakpoints:
-   the desktop scrollport begins below the navbar, while the drawer keeps its
-   own top padding. The background stays opaque as tree rows scroll under it. */
-.VPSidebar .sidebar-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background-color: var(--vp-sidebar-bg-color);
 }
 
 /* The mobile drawer has no `.curtain` — VitePress scopes that to >=960px — so
