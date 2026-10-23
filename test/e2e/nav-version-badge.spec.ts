@@ -57,9 +57,9 @@ test.describe('navbar version badge', () => {
     expect(await wrapper.evaluate(overflows)).toBe(false);
 
     await page.locator('.VPNavBar .container > .title').evaluate((element) => {
-      const title = element as HTMLElement;
-      title.style.flexShrink = '0';
-      title.style.width = '500px';
+      const forcedTitle = element as HTMLElement;
+      forcedTitle.style.flexShrink = '0';
+      forcedTitle.style.width = '500px';
     });
     expect(await wrapper.evaluate(overflows)).toBe(true);
   });
