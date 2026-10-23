@@ -9,7 +9,7 @@ import {
   planVersionBump,
   releasePartOf,
   renderWorkflowOutputs,
-  resolveAlphaTarget,
+  resolveAlphaVersions,
 } from '../src/docgen/version-bump.js';
 import {
   buildVersionsData,
@@ -208,31 +208,82 @@ describe('alpha lockstep resolution', () => {
     expect(releasePartOf('2.266.0-alpha.0')).toBe('2.266.0');
   });
 
-  test('picks the newest core version every documented module has published', () => {
-    const published = new Map(ALPHAS.map((name) => [name, ['2.268.0-alpha.0', '2.267.0-alpha.0']]));
-    expect(resolveAlphaTarget(ALPHAS, published, ['2.269.0', '2.268.0', '2.267.0'])).toBe('2.268.0-alpha.0');
+  test('bumps published modules, holds late modules, and drops gone modules', () => {
+    const target = '2.269.0-alpha.0';
+    const resolution = resolveAlphaVersions({
+      modules: ALPHAS,
+      upstream: [ALPHAS[0], ALPHAS[1]],
+      published: new Map([
+        [ALPHAS[0], [target]],
+        [ALPHAS[1], ['2.268.0-alpha.0']],
+      ]),
+      targetCore: '2.269.0',
+      currentDefault: '2.268.0-alpha.0',
+      currentOverrides: {},
+    });
+
+    expect(resolution).toEqual({
+      defaultVersion: target,
+      overrides: { [ALPHAS[1]]: '2.268.0-alpha.0' },
+      published: [ALPHAS[0]],
+      late: [ALPHAS[1]],
+      gone: [ALPHAS[2]],
+      unknown: [],
+    });
   });
 
-  test('never picks a version some module lacks — a partial bump is a broken tree', () => {
-    const published = new Map([
-      [ALPHAS[0], ['2.269.0-alpha.0', '2.268.0-alpha.0']],
-      [ALPHAS[1], ['2.269.0-alpha.0', '2.268.0-alpha.0']],
-      // One straggler has not published 2.269.0-alpha.0 yet.
-      [ALPHAS[2], ['2.268.0-alpha.0']],
-    ]);
-    expect(resolveAlphaTarget(ALPHAS, published, ['2.269.0', '2.268.0'])).toBe('2.268.0-alpha.0');
-    expect(modulesMissingAlpha(ALPHAS, published, '2.269.0-alpha.0')).toEqual([ALPHAS[2]]);
+  test('holds only an unknown module while known modules still bump', () => {
+    const target = '2.269.0-alpha.0';
+    const resolution = resolveAlphaVersions({
+      modules: ALPHAS,
+      upstream: ALPHAS,
+      published: new Map([
+        [ALPHAS[0], [target]],
+        [ALPHAS[1], [target]],
+      ]),
+      targetCore: '2.269.0',
+      currentDefault: '2.268.0-alpha.0',
+      currentOverrides: { [ALPHAS[2]]: '2.267.0-alpha.0' },
+    });
+
+    expect(resolution.defaultVersion).toBe(target);
+    expect(resolution.overrides).toEqual({ [ALPHAS[2]]: '2.267.0-alpha.0' });
+    expect(resolution.published).toEqual([ALPHAS[0], ALPHAS[1]]);
+    expect(resolution.unknown).toEqual([ALPHAS[2]]);
+    expect(resolution.gone).toEqual([]);
   });
 
-  test('a module absent from the registry data disqualifies every candidate', () => {
-    const published = new Map([[ALPHAS[0], ['2.269.0-alpha.0']]]);
-    expect(resolveAlphaTarget(ALPHAS, published, ['2.269.0'])).toBeUndefined();
-    expect(modulesMissingAlpha(ALPHAS, published, '2.269.0-alpha.0')).toEqual([ALPHAS[1], ALPHAS[2]]);
+  test('an unreadable release-tag listing holds every pin and drops nothing', () => {
+    const currentOverrides = { [ALPHAS[1]]: '2.267.0-alpha.0' };
+    expect(resolveAlphaVersions({
+      modules: ALPHAS,
+      upstream: undefined,
+      published: new Map(),
+      targetCore: '2.269.0',
+      currentDefault: '2.268.0-alpha.0',
+      currentOverrides,
+    })).toEqual({
+      defaultVersion: '2.268.0-alpha.0',
+      overrides: currentOverrides,
+      published: [],
+      late: [],
+      gone: [],
+      unknown: ALPHAS,
+    });
   });
 
-  test('no unanimous candidate yields undefined, so the pin is left alone', () => {
-    const published = new Map(ALPHAS.map((name) => [name, ['2.200.0-alpha.0']]));
-    expect(resolveAlphaTarget(ALPHAS, published, ['2.269.0', '2.268.0'])).toBeUndefined();
+  test('removes an override when a late module catches up', () => {
+    const target = '2.269.0-alpha.0';
+    const resolution = resolveAlphaVersions({
+      modules: ALPHAS,
+      upstream: ALPHAS,
+      published: new Map(ALPHAS.map((name) => [name, [target]])),
+      targetCore: '2.269.0',
+      currentDefault: target,
+      currentOverrides: { [ALPHAS[2]]: '2.268.0-alpha.0' },
+    });
+    expect(resolution.overrides).toEqual({});
+    expect(resolution.published).toEqual(ALPHAS);
   });
 
   test('derives the module list from the installed devDependencies, duplicating no list', () => {
@@ -299,6 +350,13 @@ describe('planVersionBump', () => {
 
   test('an absent alpha target never moves the pin', () => {
     expect(planVersionBump({ ...base, alphaTarget: undefined, currentAlpha: '2.200.0-alpha.0' }).alpha).toBeUndefined();
+  });
+
+  test('a module-level alpha change runs apply even when the default stays put', () => {
+    const plan = planVersionBump({ ...base, alphaSetChanged: true });
+    expect(plan.alpha).toBe(base.currentAlpha);
+    expect(plan.changed).toBe(true);
+    expect(renderWorkflowOutputs(plan)).toContain(`alpha=${base.currentAlpha}`);
   });
 
   test('never moves a pin backwards', () => {

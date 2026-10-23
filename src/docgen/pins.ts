@@ -15,27 +15,43 @@ import { assertValidVersion } from './version-format.js';
 export interface CdkPins {
   /** Exact `aws-cdk-lib` devDependency version. */
   readonly awsCdkLib: string;
-  /**
-   * Exact version for every documented `@aws-cdk/*-alpha` module. In-support
-   * alphas ship in lockstep with the core library: the same release version
-   * with an `-alpha.0` suffix.
-   *
-   * Maintained by the nightly refresh, which only moves it to a version
-   * EVERY documented module has published — installing a version some
-   * module lacks would fail outright. When the set is incomplete the pin
-   * is held back and the PR body names the modules that are missing.
-   */
+  /** Default version for documented `@aws-cdk/*-alpha` modules. */
   readonly cdkAlpha: string;
+  /** Older per-module pins retained while those modules publish late. */
+  readonly cdkAlphaOverrides: Readonly<Record<string, string>>;
 }
 
 /** Repo-relative path of the pins file. */
 export const CDK_PINS_FILE = 'projenrc/cdk-versions.json';
 
-/** Pin keys, in the order they are written back to the file. */
-export const CDK_PIN_KEYS: ReadonlyArray<keyof CdkPins> = ['awsCdkLib', 'cdkAlpha'];
+/** Scalar pin keys accepted by the `cdk:pin` CLI. */
+export type CdkPinKey = 'awsCdkLib' | 'cdkAlpha';
+export const CDK_PIN_KEYS: ReadonlyArray<CdkPinKey> = ['awsCdkLib', 'cdkAlpha'];
+
+/** All keys, in their stable on-disk order. */
+export const CDK_PIN_FILE_KEYS: ReadonlyArray<keyof CdkPins> = [
+  ...CDK_PIN_KEYS,
+  'cdkAlphaOverrides',
+];
+
+const ALPHA_MODULE_PATTERN = /^@aws-cdk\/[a-z0-9]+(?:-[a-z0-9]+)*-alpha$/;
 
 function assertVersion(key: string, value: unknown): string {
   return assertValidVersion(`${CDK_PINS_FILE}: "${key}"`, value);
+}
+
+function parseAlphaOverrides(value: unknown): Record<string, string> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${CDK_PINS_FILE}: "cdkAlphaOverrides" must contain a JSON object`);
+  }
+  const overrides: Record<string, string> = {};
+  for (const name of Object.keys(value).sort()) {
+    if (!ALPHA_MODULE_PATTERN.test(name)) {
+      throw new Error(`${CDK_PINS_FILE}: invalid alpha module override ${JSON.stringify(name)}`);
+    }
+    overrides[name] = assertVersion(`cdkAlphaOverrides.${name}`, (value as Record<string, unknown>)[name]);
+  }
+  return overrides;
 }
 
 /** Parse the pins from JSON text, rejecting anything malformed loudly. */
@@ -47,12 +63,17 @@ export function parseCdkPins(text: string): CdkPins {
   return {
     awsCdkLib: assertVersion('awsCdkLib', raw.awsCdkLib),
     cdkAlpha: assertVersion('cdkAlpha', raw.cdkAlpha),
+    cdkAlphaOverrides: parseAlphaOverrides(raw.cdkAlphaOverrides),
   };
 }
 
 /** Serialize pins back to the file's exact on-disk form. */
 export function formatCdkPins(pins: CdkPins): string {
-  const ordered = Object.fromEntries(CDK_PIN_KEYS.map((key) => [key, pins[key]]));
+  const ordered: CdkPins = {
+    awsCdkLib: pins.awsCdkLib,
+    cdkAlpha: pins.cdkAlpha,
+    cdkAlphaOverrides: Object.fromEntries(Object.entries(pins.cdkAlphaOverrides).sort(([a], [b]) => a.localeCompare(b))),
+  };
   return `${JSON.stringify(ordered, null, 2)}\n`;
 }
 
@@ -64,16 +85,33 @@ export function writeCdkPins(pins: CdkPins, file: string = CDK_PINS_FILE): void 
   fs.writeFileSync(file, formatCdkPins(pins));
 }
 
+/** The effective pin for one documented alpha module. */
+export function alphaVersionForModule(pins: CdkPins, module: string): string {
+  return pins.cdkAlphaOverrides[module] ?? pins.cdkAlpha;
+}
+
+/** Replace the default and held alpha pins after validating every value. */
+export function withAlphaVersions(
+  pins: CdkPins,
+  defaultVersion: string,
+  overrides: Readonly<Record<string, string>>,
+): CdkPins {
+  return {
+    ...pins,
+    cdkAlpha: assertVersion('cdkAlpha', defaultVersion),
+    cdkAlphaOverrides: parseAlphaOverrides(overrides),
+  };
+}
+
 /**
- * Return the pins with one key replaced. Validates the incoming value the
- * same way reading does, so the bot cannot write a pin that the next read
- * would reject.
+ * Return the pins with one scalar key replaced. Validates the incoming value
+ * before writing, so the bot cannot persist a malformed pin.
  */
-export function withCdkPin(pins: CdkPins, key: keyof CdkPins, value: string): CdkPins {
+export function withCdkPin(pins: CdkPins, key: CdkPinKey, value: string): CdkPins {
   return { ...pins, [key]: assertVersion(key, value) };
 }
 
-/** True for a key the pins file defines. Narrows an untrusted CLI argument. */
-export function isCdkPinKey(key: string): key is keyof CdkPins {
+/** True for a scalar key the pins CLI may set. */
+export function isCdkPinKey(key: string): key is CdkPinKey {
   return (CDK_PIN_KEYS as ReadonlyArray<string>).includes(key);
 }

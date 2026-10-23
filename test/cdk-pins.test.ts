@@ -3,6 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import {
+  alphaVersionForModule,
+  CDK_PIN_FILE_KEYS,
   CDK_PIN_KEYS,
   CDK_PINS_FILE,
   formatCdkPins,
@@ -28,24 +30,26 @@ const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8'));
 describe('cdk-versions.json pins file', () => {
   const pins = readCdkPins(pinsPath);
 
-  test('declares exactly the two pins, in a stable order', () => {
-    expect(Object.keys(JSON.parse(readFileSync(pinsPath, 'utf-8')))).toEqual([...CDK_PIN_KEYS]);
+  test('declares the core pin, alpha default, and alpha holds in stable order', () => {
+    expect(Object.keys(JSON.parse(readFileSync(pinsPath, 'utf-8')))).toEqual([...CDK_PIN_FILE_KEYS]);
+    expect(pins.cdkAlphaOverrides).toEqual({});
   });
 
-  test('the core pin is a stable release and the alpha pin carries the -alpha.0 suffix', () => {
+  test('the core pin is stable and every alpha pin has the alpha suffix', () => {
     expect(pins.awsCdkLib).toMatch(/^\d+\.\d+\.\d+$/);
     expect(pins.cdkAlpha).toMatch(/^\d+\.\d+\.\d+-alpha\.\d+$/);
+    for (const version of Object.values(pins.cdkAlphaOverrides)) {
+      expect(version).toMatch(/^\d+\.\d+\.\d+-alpha\.\d+$/);
+    }
   });
 
-  test('the generated package.json pins match the file — the two cannot drift', () => {
-    // The real guard: projen regenerates devDependencies from these pins,
-    // so an edit to one without `npx projen` fails here.
+  test('the generated package.json resolves each module through its own held pin', () => {
     expect(pkg.devDependencies['aws-cdk-lib']).toBe(pins.awsCdkLib);
 
     const alphas = Object.keys(pkg.devDependencies).filter((name) => name.endsWith('-alpha'));
     expect(alphas.length).toBeGreaterThan(0);
     for (const name of alphas) {
-      expect(pkg.devDependencies[name]).toBe(pins.cdkAlpha);
+      expect(pkg.devDependencies[name]).toBe(alphaVersionForModule(pins, name));
     }
   });
 });
@@ -112,7 +116,7 @@ describe('cdk:pin CLI end to end', () => {
   const tsx = join(ROOT, 'node_modules', '.bin', 'tsx');
   const cli = join(ROOT, 'src', 'docgen', 'pins-cli.ts');
 
-  function run(args: string[], pins = { awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0' }) {
+  function run(args: string[], pins = { awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0', cdkAlphaOverrides: {} }) {
     const dir = mkdtempSync(join(tmpdir(), 'pins-cli-'));
     const file = join(dir, CDK_PINS_FILE);
     mkdirSync(dirname(file), { recursive: true });
@@ -131,7 +135,11 @@ describe('cdk:pin CLI end to end', () => {
   test('a successful bump rewrites the pin and exits 0', () => {
     const r = run(['awsCdkLib', '2.269.0']);
     expect(r.status).toBe(0);
-    expect(parseCdkPins(r.after)).toEqual({ awsCdkLib: '2.269.0', cdkAlpha: '2.266.0-alpha.0' });
+    expect(parseCdkPins(r.after)).toEqual({
+      awsCdkLib: '2.269.0',
+      cdkAlpha: '2.266.0-alpha.0',
+      cdkAlphaOverrides: {},
+    });
     expect(r.out).toContain('awsCdkLib 2.268.0 -> 2.269.0');
   });
 
@@ -173,10 +181,32 @@ describe('cdk:pin CLI end to end', () => {
 });
 
 describe('pins module', () => {
+  test('uses a held pin only for its named alpha module', () => {
+    const pins = parseCdkPins(JSON.stringify({
+      awsCdkLib: '2.269.0',
+      cdkAlpha: '2.269.0-alpha.0',
+      cdkAlphaOverrides: { '@aws-cdk/aws-glue-alpha': '2.268.0-alpha.0' },
+    }));
+    expect(alphaVersionForModule(pins, '@aws-cdk/aws-glue-alpha')).toBe('2.268.0-alpha.0');
+    expect(alphaVersionForModule(pins, '@aws-cdk/aws-ivs-alpha')).toBe('2.269.0-alpha.0');
+    expect(() => parseCdkPins(JSON.stringify({
+      ...pins,
+      cdkAlphaOverrides: { 'not-an-alpha': '2.268.0-alpha.0' },
+    }))).toThrow(/invalid alpha module override/);
+  });
+
   test('round-trips through parse and format, normalizing key order', () => {
-    const text = formatCdkPins({ cdkAlpha: '2.266.0-alpha.0', awsCdkLib: '2.268.0' } as any);
-    expect(text).toBe('{\n  "awsCdkLib": "2.268.0",\n  "cdkAlpha": "2.266.0-alpha.0"\n}\n');
-    expect(parseCdkPins(text)).toEqual({ awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0' });
+    const text = formatCdkPins({
+      cdkAlpha: '2.266.0-alpha.0',
+      awsCdkLib: '2.268.0',
+      cdkAlphaOverrides: {},
+    });
+    expect(text).toBe('{\n  "awsCdkLib": "2.268.0",\n  "cdkAlpha": "2.266.0-alpha.0",\n  "cdkAlphaOverrides": {}\n}\n');
+    expect(parseCdkPins(text)).toEqual({
+      awsCdkLib: '2.268.0',
+      cdkAlpha: '2.266.0-alpha.0',
+      cdkAlphaOverrides: {},
+    });
   });
 
   test('writeCdkPins emits exactly what formatCdkPins produces, and readCdkPins reads it back', () => {
@@ -184,7 +214,7 @@ describe('pins module', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pins-'));
     try {
       const file = join(dir, 'cdk-versions.json');
-      const pins = { awsCdkLib: '2.269.0', cdkAlpha: '2.269.0-alpha.0' };
+      const pins = { awsCdkLib: '2.269.0', cdkAlpha: '2.269.0-alpha.0', cdkAlphaOverrides: {} };
       writeCdkPins(pins, file);
       expect(readFileSync(file, 'utf-8')).toBe(formatCdkPins(pins));
       expect(readCdkPins(file)).toEqual(pins);
@@ -197,7 +227,7 @@ describe('pins module', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pins-'));
     try {
       const file = join(dir, 'cdk-versions.json');
-      const pins = { awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0' };
+      const pins = { awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0', cdkAlphaOverrides: {} };
       writeCdkPins(pins, file);
       const before = readFileSync(file, 'utf-8');
 
@@ -213,15 +243,16 @@ describe('pins module', () => {
   });
 
   test('withCdkPin replaces one pin and leaves the other alone', () => {
-    const pins = { awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0' };
+    const pins = { awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0', cdkAlphaOverrides: {} };
     expect(withCdkPin(pins, 'awsCdkLib', '2.269.0')).toEqual({
       awsCdkLib: '2.269.0',
       cdkAlpha: '2.266.0-alpha.0',
+      cdkAlphaOverrides: {},
     });
   });
 
   test('rejects a value that is not a version, rather than writing it', () => {
-    const pins = { awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0' };
+    const pins = { awsCdkLib: '2.268.0', cdkAlpha: '2.266.0-alpha.0', cdkAlphaOverrides: {} };
     expect(() => withCdkPin(pins, 'awsCdkLib', 'latest')).toThrow(/must be a semver version/);
     expect(() => withCdkPin(pins, 'awsCdkLib', '')).toThrow(/must be a semver version/);
   });
