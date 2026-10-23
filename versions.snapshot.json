@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-22T06:08:29.981Z",
+  "generatedAt": "2026-10-23T06:08:13.952Z",
   "packages": {
     "aws-cdk-lib": {
       "dist-tags": {
@@ -11,10 +11,10 @@
     },
     "aws-cdk": {
       "dist-tags": {
-        "latest": "2.1146.0"
+        "latest": "2.1146.1"
       },
       "time": {
-        "2.1146.0": "2026-10-20T02:38:11.857Z"
+        "2.1146.1": "2026-10-22T17:45:09.900Z"
       }
     },
     "@aws-cdk/toolkit-lib": {
