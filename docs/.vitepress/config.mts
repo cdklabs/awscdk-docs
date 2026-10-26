@@ -14,7 +14,7 @@ import { injectSiteStamp } from "../../src/site-stamp";
 import { hashmapCacheBuster, resolveBuildId } from "./hashmap-cache-buster";
 import { docsSiteUrl, readVersionSnapshot, VERSION_SNAPSHOT_FILE } from "../../src/docgen/versions";
 import { assertValidVersion } from "../../src/docgen/version-format";
-import { createHighlighter } from "shiki";
+import { createHighlighter, type ShikiTransformer } from "shiki";
 import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
 
 // Languages docgen emits, plus incidental fences in generated prose. Pinning the set makes Shiki load only
@@ -47,7 +47,7 @@ const highlighterPromise = createHighlighter({
 // Inline type links in generated signature fences: the fence info line carries a `type-links=Name:href,…`
 // attribute and `applyTypeLinks` wraps the mapped identifiers in anchors after highlighting. Lives in
 // `./type-links` so its validation of untrusted fence attributes is unit-tested directly.
-import { applyTypeLinks } from "./type-links";
+import { TYPE_LINKS_RE, applyTypeLinks, codeNolinkTransformer, mayHoldLiterals } from "./type-links";
 
 // markdown-it `highlight` hook: (code, lang) => html. Mirrors the options VitePress passes to `codeToHtml`
 // (dual themes + defaultColor:false) so the emitted markup matches the default highlighter.
@@ -57,18 +57,29 @@ async function makeHighlight() {
   // Memoize by (language, exact code): the hook is pure, so identical fences produce byte-identical HTML, and
   // generated snippets repeat heavily across pages. The key uses NUL as the separator (never in a lang id) and
   // the exact code — trailing whitespace changes the output, so it must not be normalized away.
-  const cache = new Map<string, string>();
+  const cache = new Map<string, { html: string; marked: boolean }>();
   return (code: string, lang: string, attrs?: string): string => {
     const language = lang && loaded.has(lang) ? lang : "txt";
     const key = `${language}\u0000${code}`;
+    // Strings and comments only need marking where a type link could land in them: a fence that offers type links
+    // and contains a quote or comment marker. Reporting grammar scopes roughly doubles a fence's highlight time, so
+    // the other fences skip it.
+    const needsMarks = !!attrs && TYPE_LINKS_RE.test(attrs) && mayHoldLiterals(code);
     // Cache stores the pure Shiki output; type links are applied per call, after the cache. Two pages can share
     // the same signature text with different link targets, so folding attrs into the key would lose duplicate hits.
+    // An entry highlighted without marks is redone once if the same code later arrives with type links, so the key
+    // stays (lang, code).
     const cached = cache.get(key);
-    if (cached !== undefined) return applyTypeLinks(cached, attrs);
+    if (cached !== undefined && (cached.marked || !needsMarks)) return applyTypeLinks(cached.html, attrs);
+    // Grammar scope names per token, so `codeNolinkTransformer` can mark strings and comments. The marker is part
+    // of the cached HTML. Shiki's `codeToHtml` passes this tokenizer option through to `codeToTokens`, but its
+    // `CodeToHastOptions` type does not list it, so it is spread in rather than written as a literal key.
+    const scopes = { includeExplanation: needsMarks ? ("scopeName" as const) : false };
     const html = highlighter.codeToHtml(code, {
       lang: language,
       themes: CODE_THEMES,
       defaultColor: false,
+      ...scopes,
       // Match VitePress's default highlighter: tag the <pre> with `vp-code` (its copy-button / code-group logic
       // keys off it), and mark it `v-pre` so Vue never parses the highlighted code as a template — generated
       // fences can contain `{{ … }}` that Vue would otherwise read as interpolations and fail the build.
@@ -81,9 +92,12 @@ async function makeHighlight() {
             node.properties["v-pre"] = "";
           },
         },
+        // Typed structurally in type-links.ts (so its unit tests can call it with plain tokens); it implements the
+        // `tokens` and `span` hooks of a Shiki transformer.
+        codeNolinkTransformer as unknown as ShikiTransformer,
       ],
     });
-    cache.set(key, html);
+    cache.set(key, { html, marked: needsMarks });
     return applyTypeLinks(html, attrs);
   };
 }

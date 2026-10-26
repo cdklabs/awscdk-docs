@@ -20,13 +20,13 @@ describe('VitePress highlight cache', () => {
   const config = readFileSync(resolve(ROOT, 'docs/.vitepress/config.mts'), 'utf-8');
   const fn = config.slice(
     config.indexOf('async function makeHighlight()'),
-    config.indexOf('async function makeHighlight()') + 3400,
+    config.indexOf('async function makeHighlight()') + 4800,
   );
 
   test('makeHighlight memoizes with a Map', () => {
-    expect(fn).toMatch(/const cache = new Map<string, string>\(\)/);
+    expect(fn).toMatch(/const cache = new Map<string, \{ html: string; marked: boolean \}>\(\)/);
     expect(fn).toMatch(/cache\.get\(key\)/);
-    expect(fn).toMatch(/cache\.set\(key, html\)/);
+    expect(fn).toMatch(/cache\.set\(key, \{ html, marked: needsMarks \}\)/);
   });
 
   test('cache key is (language, EXACT code) with a NUL separator', () => {
@@ -44,10 +44,19 @@ describe('VitePress highlight cache', () => {
   });
 
   test('a cache hit short-circuits before codeToHtml', () => {
-    const hitIdx = fn.indexOf('if (cached !== undefined) return applyTypeLinks(cached, attrs)');
+    const hitIdx = fn.indexOf('return applyTypeLinks(cached.html, attrs)');
     const htmlIdx = fn.indexOf('highlighter.codeToHtml');
     expect(hitIdx).toBeGreaterThan(-1);
     expect(hitIdx).toBeLessThan(htmlIdx);
+  });
+
+  test('an entry highlighted without string/comment marks is redone when type links need them', () => {
+    // Scope reporting is costly, so only fences that offer type links and can hold a string or comment ask
+    // for it. A cached entry made without marks must not serve a later fence with the same code that needs
+    // them, or a string in that fence would get a link; the key itself stays (language, code).
+    expect(fn).toContain('const needsMarks = !!attrs && TYPE_LINKS_RE.test(attrs) && mayHoldLiterals(code);');
+    expect(fn).toContain('if (cached !== undefined && (cached.marked || !needsMarks))');
+    expect(fn).toContain('includeExplanation: needsMarks ? ("scopeName" as const) : false');
   });
 
 });
@@ -64,10 +73,11 @@ describe('signature fence type links', () => {
 
   test('type links are applied on BOTH return paths, outside the cache', () => {
     // Hit path and miss path both post-process; the stored value is pure.
-    expect(config).toContain('if (cached !== undefined) return applyTypeLinks(cached, attrs)');
+    expect(config).toContain('return applyTypeLinks(cached.html, attrs)');
     expect(config).toContain('return applyTypeLinks(html, attrs)');
-    expect(config).toContain('cache.set(key, html)');
+    expect(config).toContain('cache.set(key, { html, marked: needsMarks })');
     expect(config).not.toContain('cache.set(key, applyTypeLinks');
+    expect(config).not.toMatch(/cache\.set\(key, \{ html: applyTypeLinks/);
   });
 
   // Behavioral coverage of the extracted helper — the hook runs on every
