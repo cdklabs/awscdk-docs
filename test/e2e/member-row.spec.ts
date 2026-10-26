@@ -140,6 +140,96 @@ test.describe('member rows', () => {
   });
 });
 
+test.describe('member row vertical balance', () => {
+  // Each row sits centered between its two dividers: the space above the member
+  // name equals the space below the last line, so a row never reads pushed up
+  // against the divider above it. The row's padding comes from the density
+  // token layer, so this must hold at every density level; the gap is measured
+  // against the row's own content box, which excludes that symmetric padding.
+  //
+  // The three kinds exercise each surface the fix touches: a summary-only row
+  // (already balanced, so it must stay balanced), a row whose last block is a
+  // `.member-extra` inline description, and a folded-out row whose last block
+  // is `.member-details`. The extra and details kinds are the two arms of the
+  // CSS rule, so both are covered independently. (A prose `Default:` line
+  // renders as a `<p>` inside `.member-extra`, so it is already an ends-in-extra
+  // row — there is no separate `.member-default` block to target; the inline
+  // value-default `<span>` lives inside `.member-line`, never last.)
+  type Kind = 'summary-only' | 'ends-in-extra' | 'folded-out';
+  const KINDS: Kind[] = ['summary-only', 'ends-in-extra', 'folded-out'];
+  // 'unset' is Balanced (no attribute); the picker's other two levels change
+  // the padding but must keep top and bottom equal.
+  const LEVELS = ['', 'compact', 'spacious'] as const;
+
+  for (const level of LEVELS) {
+    for (const kind of KINDS) {
+      test(`${level || 'balanced'}: a ${kind} row has equal space above and below`, async ({ page }) => {
+        await page.goto(TOPIC_PAGE);
+        await page.evaluate((lvl) => {
+          const h = document.documentElement;
+          if (lvl) h.setAttribute('data-density', lvl); else h.removeAttribute('data-density');
+          // Open every disclosure so a folded-out row can be measured expanded.
+          document
+            .querySelectorAll('.props-table details.member-disclosure, .methods-table details.member-disclosure')
+            .forEach((d) => ((d as HTMLDetailsElement).open = true));
+        }, level);
+
+        const trailingMargin = await page.evaluate((k: Kind) => {
+          const rows = [...document.querySelectorAll('.props-table .member-row, .methods-table .member-row')];
+          // Real predicates, keyed on the row's actual last rendered block so
+          // the two arms of the fix (.member-extra / .member-details) are each
+          // targeted deterministically.
+          const lastBlock = (r: Element): Element | null => {
+            const blocks = [...r.querySelectorAll(':scope > .member-line, :scope > .member-summary, :scope > .member-extra, :scope > details.member-disclosure')]
+              .filter((e) => (e as HTMLElement).offsetParent !== null);
+            return blocks[blocks.length - 1] ?? null;
+          };
+          const matches = (r: Element): boolean => {
+            const last = lastBlock(r);
+            if (!last) return false;
+            switch (k) {
+              case 'summary-only':
+                return last.classList.contains('member-summary');
+              case 'ends-in-extra':
+                return last.classList.contains('member-extra');
+              case 'folded-out':
+                return last.matches('details.member-disclosure');
+            }
+          };
+          const target = rows.find(matches);
+          if (!target) return null;
+
+          // The imbalance is a trailing bottom margin on the row's last text
+          // block. That margin collapses through the marginless row wrapper
+          // into the padding box, and a margin is invisible to
+          // getBoundingClientRect, so this asserts on the computed margin
+          // directly rather than on a measured rect gap. Walk to the last
+          // BLOCK-LEVEL descendant (skipping an inline trailing `<code>`): the
+          // fix pins its bottom margin to 0 at every density level, leaving the
+          // row's own symmetric padding as the only space below the last line.
+          const isBlock = (e: Element) => {
+            const d = getComputedStyle(e).display;
+            return d === 'block' || d === 'flex' || d === 'grid' || d === 'list-item';
+          };
+          let last: Element = target;
+          for (;;) {
+            const kids = [...last.children].filter((e) => (e as HTMLElement).offsetParent !== null && isBlock(e));
+            if (kids.length === 0) break;
+            last = kids[kids.length - 1];
+          }
+          return parseFloat(getComputedStyle(last).marginBottom);
+        }, kind);
+
+        expect(trailingMargin, `no ${kind} row found on the page`).not.toBeNull();
+        // No trailing bottom margin, so the space below the last line is exactly
+        // the row's symmetric bottom padding — equal to the space above the
+        // member name. (1px allows for subpixel rounding.)
+        expect(trailingMargin!).toBeLessThanOrEqual(1);
+      });
+    }
+  }
+});
+
 test.describe('member permalinks', () => {
   test('every row carries a named permalink that is always in the tab order', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
