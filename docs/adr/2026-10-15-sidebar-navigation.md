@@ -21,6 +21,9 @@ data-layer concern — canonical page routes
 cross-reference targets are never changed by a navigation decision, only
 *where a type is listed* changes.
 
+The optional package regrouping of this same data is recorded in
+[API Sidebar Navigation Styles](./2026-10-23-sidebar-navigation-styles.md).
+
 ## Decision
 
 ### Service → resource → kind structure

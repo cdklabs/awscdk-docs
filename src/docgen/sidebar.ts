@@ -48,11 +48,46 @@ export interface SidebarItem {
    * on groups and on everything that is not a leveled construct.
    */
   readonly level?: ConstructLevel;
+  /** Owning jsii module FQN for a type leaf. */
+  readonly module?: string;
+  /** Stable package-view kind for a type leaf. */
+  readonly kind?: PackageSidebarKind;
+  /** Compact module metadata used to regroup existing leaves by package. Present on the served skeleton root only. */
+  readonly packageModules?: PackageSidebarModuleData;
+  /** Chunk files needed to materialize a package-view entry. */
+  readonly chunks?: readonly string[];
   /** Page-id stems (`<docId>[.<submodule>]`) whose type and overview pages live under this section. Sections only. */
   readonly modules?: readonly string[];
+
   /** In the served skeleton, the chunk file (`api-sidebar/chunks/<chunk>`) holding this section's `items`. */
   readonly chunk?: string;
   readonly items?: SidebarItem[];
+}
+
+export type PackageSidebarKind =
+  | 'construct'
+  | 'mixin'
+  | 'class'
+  | 'struct'
+  | 'interface'
+  | 'enum'
+  | 'cfn-resource'
+  | 'cfn-property';
+
+export type PackageSidebarModuleData = readonly [
+  flags: string,
+  scopedAssemblies: readonly string[],
+  extras?: readonly (readonly [fqn: string, flags: number])[],
+];
+
+/** One documented jsii module, expanded from the compact served skeleton row. */
+export interface PackageSidebarModule {
+  readonly fqn: string;
+  readonly assembly: string;
+  readonly service: boolean;
+  readonly cloudFormationOnly: boolean;
+  readonly overview?: string;
+  readonly sectionStems: readonly string[];
 }
 
 /** One documented type, as input to sidebar generation. */
@@ -352,6 +387,11 @@ export function isServiceSubmodule(submodule: string): boolean {
     // Lambda-layer asset packages belong to the Lambda service.
     || submodule.startsWith(LAMBDA_LAYER_PREFIX)
   );
+}
+
+/** Whether a full jsii module FQN represents an AWS service package or submodule. */
+export function isPackageServiceModule(fqn: string): boolean {
+  return fqn.includes('/aws-') || fqn.split('.').some((part) => part.startsWith('aws_') || part.startsWith('alexa'));
 }
 
 /**
@@ -671,10 +711,13 @@ export interface SidebarChunk {
  * Split the full tree into the served skeleton (every section node minus its `items`, naming its chunk) and one
  * chunk per section. Chunk names derive from the section text, URL-safe and unique in tree order.
  */
-export function splitSidebarChunks(tree: readonly SidebarItem[]): { skeleton: SidebarItem[]; chunks: SidebarChunk[] } {
+export function splitSidebarChunks(
+  tree: readonly SidebarItem[],
+  packageModules: readonly PackageSidebarModule[] = [],
+): { skeleton: SidebarItem[]; chunks: SidebarChunk[] } {
   const chunks: SidebarChunk[] = [];
   const used = new Set<string>();
-  const skeleton = tree.map((root) => ({
+  let skeleton = tree.map((root) => ({
     ...root,
     items: (root.items ?? []).map((section) => {
       const { items, ...rest } = section;
@@ -683,6 +726,10 @@ export function splitSidebarChunks(tree: readonly SidebarItem[]): { skeleton: Si
       return { ...rest, chunk };
     }),
   }));
+  const compactModules = encodePackageSidebarModules(packageModules, skeleton);
+  if (skeleton[0] && packageModules.length > 0) {
+    skeleton = [{ ...skeleton[0], packageModules: compactModules }, ...skeleton.slice(1)];
+  }
   return { skeleton, chunks };
 }
 
@@ -1037,6 +1084,82 @@ export function shortTypeName(name: string): string {
   return idx === -1 ? name : name.slice(idx + 1);
 }
 
+function entryModule(entry: SidebarEntry): string {
+  return entry.submodule ? `${entry.assemblyName}.${entry.submodule}` : entry.assemblyName;
+}
+
+/** Stable package-view kind derived from the same type classification used by the service tree. */
+export function packageSidebarKind(entry: SidebarEntry): PackageSidebarKind {
+  const service = isPackageServiceModule(entryModule(entry));
+  const cloudFormation = service && entry.name.split('.').some((part) => part.startsWith('Cfn'));
+  if (cloudFormation) return isConstructKind(entry) ? 'cfn-resource' : 'cfn-property';
+  if (isConstructKind(entry)) return 'construct';
+  if (entry.kind === 'Mixin') return 'mixin';
+  if (entry.kind === 'Struct') return 'struct';
+  if (entry.kind === 'Interface' || entry.kind === 'Trait') return 'interface';
+  if (entry.kind === 'Enum') return 'enum';
+  return 'class';
+}
+
+/** Build the compact module table embedded in the existing sidebar skeleton. */
+export function buildPackageSidebarModules(entries: readonly SidebarEntry[]): PackageSidebarModule[] {
+  const assemblies = new Set(entries.map((entry) => entry.assemblyName));
+  const byModule = new Map<string, SidebarEntry[]>();
+  for (const assembly of assemblies) byModule.set(assembly, []);
+  for (const entry of entries) {
+    const fqn = entryModule(entry);
+    const list = byModule.get(fqn) ?? [];
+    list.push(entry);
+    byModule.set(fqn, list);
+  }
+
+  return [...byModule.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }))
+    .map(([fqn, moduleEntries]) => {
+      const assembly = moduleEntries[0]?.assemblyName
+        ?? [...assemblies].find((candidate) => fqn === candidate)!;
+      const submodule = fqn === assembly ? '' : fqn.slice(assembly.length + 1);
+      const expectedOverview = moduleReadmeLink(assembly, submodule || undefined);
+      const overview = submodule === '' || (
+        serviceSubmodule(submodule) === submodule
+        && moduleEntries.some((entry) => entry.indexLink === expectedOverview)
+      )
+        ? expectedOverview
+        : undefined;
+      const service = isPackageServiceModule(fqn);
+      return {
+        fqn,
+        assembly,
+        service,
+        cloudFormationOnly:
+          service && moduleEntries.length > 0 && moduleEntries.every((entry) => packageSidebarKind(entry).startsWith('cfn-')),
+        ...(overview ? { overview } : {}),
+        sectionStems: moduleEntries.length > 0
+          ? [assemblyDocId(assembly) + (submodule ? `.${submodule}` : '')]
+          : [],
+      };
+    });
+}
+
+/** Encode module flags against the section stems already present in the skeleton. */
+export function encodePackageSidebarModules(
+  modules: readonly PackageSidebarModule[],
+  skeleton: readonly SidebarItem[],
+): PackageSidebarModuleData {
+  const stems = [...new Set(skeleton.flatMap((root) => root.items ?? []).flatMap((section) => section.modules ?? []))];
+  const byStem = new Map(modules.flatMap((module) => module.sectionStems.map((stem) => [stem, module] as const)));
+  const flags = (module: PackageSidebarModule): number =>
+    (module.cloudFormationOnly ? 1 : 0) + (module.overview ? 2 : 0);
+  const scopedAssemblies = [...new Set(modules.map((module) => module.assembly).filter((assembly) => assembly.includes('/')))];
+  const extras = modules
+    .filter((module) => !module.sectionStems.some((stem) => stems.includes(stem)))
+    .map((module) => [module.fqn, flags(module)] as const);
+  const packed = stems.map((stem) => String(flags(byStem.get(stem)!))).join('');
+  return extras.length > 0
+    ? [packed, scopedAssemblies, extras]
+    : [packed, scopedAssemblies];
+}
+
 function linkedItems(entries: SidebarEntry[], languages: readonly Language[]): SidebarItem[] {
   return [...entries]
     // Constructs read L3 -> L2 -> L1 -> unleveled; non-construct lists are all one rank, so they stay alphabetical.
@@ -1053,6 +1176,8 @@ function linkedItems(entries: SidebarEntry[], languages: readonly Language[]): S
         link: e.link,
         ...(labels ? { labels } : {}),
         ...(e.level ? { level: e.level } : {}),
+        module: entryModule(e),
+        kind: packageSidebarKind(e),
       };
     });
 }

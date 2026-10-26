@@ -1,7 +1,9 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
+import { gzipSync } from 'zlib';
 import { hashedAssetPath } from './hashed-assets.js';
+import { buildPackageSidebar, decodePackageModules } from '../docs/.vitepress/theme/api-sidebar-package.js';
 import { assetHash } from '../src/docgen/asset-hash.js';
 import { generateDocs } from '../src/docgen/index.js';
 import { renderExpandableProps, renderTypeMetadata, TypeMetadataRow } from '../src/docgen/layout.js';
@@ -93,7 +95,7 @@ describe('API page layout', () => {
       expect(sections.every((s: any) => s.items === undefined && typeof s.chunk === 'string')).toBe(true);
       expect(new Set(sections.map((s: any) => s.chunk)).size).toBe(sections.length);
       // Putting every chunk back yields exactly the canonical tree.
-      const rebuilt = skeleton.map((root: any) => ({
+      const rebuilt = skeleton.map(({ packageModules: _packageModules, ...root }: any) => ({
         ...root,
         items: root.items.map(({ chunk, ...section }: any) => ({
           ...section,
@@ -101,6 +103,63 @@ describe('API page layout', () => {
         })),
       }));
       expect(rebuilt).toEqual(generated);
+    });
+
+    test('the package view regroups every generated page exactly once', () => {
+      const skeleton = JSON.parse(readFileSync(hashedAssetPath(join(publicDir, 'api-sidebar'), 'sidebar'), 'utf-8'));
+      const generated = JSON.parse(readFileSync(join(outDir, 'sidebar.json'), 'utf-8'));
+      const sections = skeleton.flatMap((root: any) => root.items);
+      const chunks = new Map<string, any[]>(sections.map((section: any) => [
+        section.chunk,
+        JSON.parse(readFileSync(join(publicDir, 'api-sidebar', 'chunks', section.chunk), 'utf-8')),
+      ]));
+      const packageModules = decodePackageModules(skeleton[0].packageModules, skeleton, '/v2/');
+      const packageTree = buildPackageSidebar(
+        packageModules,
+        skeleton,
+        chunks,
+        '/v2/',
+      );
+      const pageLinks = (tree: any[]): string[] => {
+        const links: string[] = [];
+        const visit = (nodes: any[]): void => nodes.forEach((node) => {
+          if (node.link && node.link !== '/v2/') links.push(node.link);
+          if (node.items) visit(node.items);
+        });
+        visit(tree);
+        return links;
+      };
+      const serviceLinks = pageLinks(generated).sort();
+      const packageLinks = pageLinks(packageTree).sort();
+      const serviceSet = new Set(serviceLinks);
+      const packageSet = new Set(packageLinks);
+
+      expect({
+        missing: serviceLinks.filter((link) => !packageSet.has(link)),
+        extra: packageLinks.filter((link) => !serviceSet.has(link)),
+        duplicates: packageLinks.filter((link, index) => packageLinks.indexOf(link) !== index),
+      }).toEqual({ missing: [], extra: [], duplicates: [] });
+      expect(packageModules.length).toBeGreaterThan(100);
+      expect(skeleton.slice(1).every((root: any) => root.packageModules === undefined)).toBe(true);
+    });
+
+    test('package metadata stays within the ten percent gzip limit', () => {
+      const skeleton = JSON.parse(readFileSync(hashedAssetPath(join(publicDir, 'api-sidebar'), 'sidebar'), 'utf-8'));
+      const withoutModules = skeleton.map(({ packageModules: _packageModules, ...root }: any) => root);
+      const gzip = (value: unknown): number => gzipSync(JSON.stringify(value)).length;
+      expect(gzip(skeleton)).toBeLessThanOrEqual(gzip(withoutModules) * 1.1);
+
+      const chunksDir = join(publicDir, 'api-sidebar', 'chunks');
+      const sizes = readdirSync(chunksDir).map((file) => {
+        const chunk = JSON.parse(readFileSync(join(chunksDir, file), 'utf-8'));
+        const strip = (nodes: any[]): any[] => nodes.map(({ module: _module, kind: _kind, items, ...node }) => ({
+          ...node,
+          ...(items ? { items: strip(items) } : {}),
+        }));
+        return { full: gzip(chunk), base: gzip(strip(chunk)) };
+      });
+      const largest = sizes.reduce((left, right) => right.full > left.full ? right : left);
+      expect(largest.full).toBeLessThanOrEqual(largest.base * 1.1);
     });
 
     test('a section names the page stems it owns so the client can pick its chunk from the page path', () => {
