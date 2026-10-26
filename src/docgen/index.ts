@@ -18,7 +18,7 @@ import {
   TypeIndex,
 } from './constructs.js';
 import { removeAll } from './escape.js';
-import { FENCE_LANG } from './examples.js';
+import { FENCE_LANG, withoutLiteralsAndComments } from './examples.js';
 import { codeFence, mapProse, tokenizeFences } from './fences.js';
 import { injectBadges } from './freshness.js';
 import { BreadcrumbSegment, renderBreadcrumb } from './header.js';
@@ -51,7 +51,8 @@ import {
   parseOverviews,
 } from './overviews.js';
 import { upstreamReadmeUrl, upstreamSourceUrl } from './provenance.js';
-import { ExampleTranslations, loadTablet, RosettaTablet } from './rosetta.js';
+import { ImportModules, importModules, readmeTypeLinksAttr } from './readme-links.js';
+import { ExampleTranslations, importStatements, loadTablet, RosettaTablet } from './rosetta.js';
 import { searchFilterHtml, searchKind, searchModule } from './search.js';
 import {
   buildPackageSidebarModules,
@@ -316,6 +317,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
   const tabletFor = (moduleName: string): RosettaTablet =>
     loadTablet(path.join(packageRoot, 'node_modules', moduleName));
   const typeIndex = buildTypeIndex([...assemblies.values()]);
+  // Import paths README examples resolve their type names through.
+  const readmeModules = importModules(assemblies.values());
   // Both mixin shapes, sharing one marker resolution and one closure memo: interface-marked mixins, and the concrete
   // CLASSES extending the marker-carrying abstract base, which the interface-keyed index cannot hold.
   const {
@@ -397,6 +400,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         moduleFqn: source.fqn,
         languages: languageIds,
         tablet: tabletFor(source.packageName),
+        typeLinks: { linkFor, modules: readmeModules },
       },
     };
   };
@@ -469,19 +473,6 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
 
   const sidebarEntries: SidebarEntry[] = [];
 
-  if (options.overviewFile) {
-    const primary = assemblies.get(config.modules[0])!;
-    fs.mkdirSync(path.dirname(options.overviewFile), { recursive: true });
-    const content = options.overviewSourceFile
-      ? fs.readFileSync(options.overviewSourceFile, 'utf-8')
-      : withHistory(renderApiOverviewPage(primary, {
-        moduleFqn: primary.name,
-        languages: languageIds,
-        tablet: tabletFor(config.modules[0]),
-      }), readmeHistory(ledger, primary.name));
-    emitPageFile(options.overviewFile, `${API_ROOT}index.md`, content);
-  }
-
   // First pass: group types for every module and collect a global
   // FQN -> page link map, so pages can cross-link types in other
   // modules (e.g. a mixin page listing its implementing constructs).
@@ -506,6 +497,22 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     }
   }
   const linkFor = (fqn: string) => pageLinks.get(fqn);
+
+  // The API overview embeds the primary package's README, whose examples link their types, so it is rendered once
+  // every page link is known.
+  if (options.overviewFile) {
+    const primary = assemblies.get(config.modules[0])!;
+    fs.mkdirSync(path.dirname(options.overviewFile), { recursive: true });
+    const content = options.overviewSourceFile
+      ? fs.readFileSync(options.overviewSourceFile, 'utf-8')
+      : withHistory(renderApiOverviewPage(primary, {
+        moduleFqn: primary.name,
+        languages: languageIds,
+        tablet: tabletFor(config.modules[0]),
+        typeLinks: { linkFor, modules: readmeModules },
+      }), readmeHistory(ledger, primary.name));
+    emitPageFile(options.overviewFile, `${API_ROOT}index.md`, content);
+  }
 
   // Type-summary lookup for hover tooltips: keyed by page link so the client can resolve any cross-reference anchor.
   // Written with the api-sidebar assets below, under a content-hashed name. Built unconditionally — the lookup is a
@@ -1291,6 +1298,11 @@ interface ReadmeExampleOptions {
   readonly languages: readonly Language[];
   /** Translations for this assembly's README examples. */
   readonly tablet: RosettaTablet;
+  /** Resolves type names in the README's examples and inline code to their pages. Absent: nothing is linked. */
+  readonly typeLinks?: {
+    readonly linkFor: (fqn: string) => string | undefined;
+    readonly modules: ImportModules;
+  };
 }
 
 /**
@@ -1307,8 +1319,11 @@ function renderReadmeBody(body: string, options?: ReadmeExampleOptions): string[
       // Blank lines around the block let markdown-it re-enter markdown
       // parsing inside the raw-HTML container, so the body still renders
       // as markdown while `v-pre` shields it from the Vue compiler.
-      lines.push('<div v-pre>', '', segment.text, '', '</div>', '');
+      lines.push('<div v-pre>', '', linkReadmeProse(segment.text, options), '', '</div>', '');
     } else {
+      // One attribute for every language tab: each translation is the same compiled example, so the jsii types it
+      // names are the TypeScript example's.
+      const attr = exampleLinksAttr(segment.original, options);
       lines.push(...languageVariantBlocks(
         options!.languages,
         // rosetta can legitimately fail to translate an individual snippet;
@@ -1319,8 +1334,8 @@ function renderReadmeBody(body: string, options?: ReadmeExampleOptions): string[
         (lang) => {
           const translated = segment.translations[lang];
           return translated !== undefined
-            ? fenceFor(translated, lang)
-            : fenceFor(segment.original, 'ts');
+            ? fenceFor(translated, lang, attr)
+            : fenceFor(segment.original, 'ts', attr);
         },
         // The fences compile into Shiki `language-<lang>` divs carrying VitePress's copy-code button, which `v-pre`
         // would ship dead on every non-canonical tab (see variants.ts).
@@ -1331,9 +1346,73 @@ function renderReadmeBody(body: string, options?: ReadmeExampleOptions): string[
   return lines;
 }
 
-/** One fenced code block in the given language. */
-function fenceFor(source: string, lang: Language): string[] {
-  return codeFence(source, FENCE_LANG[lang]);
+/** One fenced code block in the given language, with an optional `type-links=…` attribute. */
+function fenceFor(source: string, lang: Language, attr = ''): string[] {
+  return codeFence(source, `${FENCE_LANG[lang]}${attr ? ` ${attr}` : ''}`);
+}
+
+/**
+ * The `type-links=…` attribute for one README TypeScript example, resolved from its imports: the visible example's
+ * own, plus the ones rosetta compiled it with when it was compiled (a README example usually shows none, and its
+ * fixture supplies them).
+ */
+function exampleLinksAttr(source: string, options?: ReadmeExampleOptions): string {
+  if (!options?.typeLinks) {
+    return '';
+  }
+  const compiled = options.tablet.compiledFor?.(options.moduleFqn, source);
+  return readmeTypeLinksAttr(withoutLiteralsAndComments(source), {
+    imports: [importStatements(source), compiled?.imports ?? ''].join('\n'),
+    modules: options.typeLinks.modules,
+    linkFor: options.typeLinks.linkFor,
+  });
+}
+
+/** TypeScript fence info strings README examples use. */
+const TS_FENCE = /^(?:ts|typescript)$/;
+
+/**
+ * README prose with its TypeScript fences carrying type links and its inline code spans that name a type of the
+ * README's own module linked to that type. Unchanged without `typeLinks`.
+ */
+function linkReadmeProse(prose: string, options?: ReadmeExampleOptions): string {
+  const typeLinks = options?.typeLinks;
+  if (!typeLinks) {
+    return prose;
+  }
+  return tokenizeFences(prose).map((span) => {
+    if (span.kind === 'code') {
+      const info = span.info?.trim() ?? '';
+      if (!span.closed || !TS_FENCE.test(info)) {
+        return span.text;
+      }
+      const lines = span.text.split('\n');
+      const attr = exampleLinksAttr(lines.slice(1, -1).join('\n'), options);
+      return attr ? [`${lines[0]} ${attr}`, ...lines.slice(1)].join('\n') : span.text;
+    }
+    return linkInlineTypes(span.text, options!.moduleFqn, typeLinks.linkFor);
+  }).join('\n');
+}
+
+/**
+ * Link an inline code span that is exactly a type name of the README's own module (`` `Bucket` `` in the
+ * `aws_s3` README). Only that module's types resolve safely from prose, which has no imports; a name from another
+ * module, a member, or any longer expression stays plain. Headings and spans already inside link text are left
+ * as they are, so no anchor changes.
+ */
+function linkInlineTypes(prose: string, moduleFqn: string, linkFor: (fqn: string) => string | undefined): string {
+  return prose.split('\n').map((line) => (/^\s{0,3}#/.test(line)
+    ? line
+    : line.replace(/(?<![[`\w])`([A-Z][A-Za-z0-9_]*)`(?![`\]\w(])/g, (span, name: string, offset: number) => {
+      // Inside a link's text (`[the `App` class](…)`) a second link would nest, so leave it.
+      const before = line.slice(0, offset);
+      if ((before.match(/\[/g) ?? []).length > (before.match(/\]/g) ?? []).length
+        || (before.match(/<a\b/g) ?? []).length > (before.match(/<\/a>/g) ?? []).length) {
+        return span;
+      }
+      const link = linkFor(`${moduleFqn}.${name}`);
+      return link ? `[\`${name}\`](${link})` : span;
+    }))).join('\n');
 }
 
 type ReadmeSegment =

@@ -291,7 +291,7 @@ const IDENTIFIER_RE = /[A-Za-z_$][\w$]*/g;
  * Blank string literals and comments (same-length padding), keeping `${…}` template holes, which are source rather
  * than text. One ordered pass, not independent replacements, because the constructs nest.
  */
-function withoutLiteralsAndComments(code: string): string {
+export function withoutLiteralsAndComments(code: string): string {
   const out = code.split('');
   const blank = (from: number, to: number): void => {
     for (let i = from; i < to && i < out.length; i++) {

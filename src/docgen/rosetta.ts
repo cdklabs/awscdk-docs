@@ -55,6 +55,24 @@ export interface RosettaTablet {
    * rosetta could not compile.
    */
   translationsForType(fqn: string): ExampleTranslations | undefined;
+
+  /**
+   * What rosetta compiled a README fence body with: the import statements
+   * of its fixtured `fullSource`, i.e. the imports the example compiles
+   * with. Undefined when the
+   * fence is not a rosetta example. Optional, so a hand-built tablet need
+   * not provide it.
+   */
+  compiledFor?(moduleFqn: string, source: string): CompiledExample | undefined;
+}
+
+/** A README example as rosetta compiled it. */
+export interface CompiledExample {
+  /**
+   * The import statements of the fixtured, compilable source: the visible example's own imports plus the ones its
+   * fixture supplies. Only the imports are kept, since the rest of a fixture is scaffolding nothing reads.
+   */
+  readonly imports?: string;
 }
 
 /** A tablet with no translations — every lookup misses. */
@@ -105,6 +123,7 @@ export function parseTablet(json: string): RosettaTablet {
     readonly snippets?: Record<string, TabletSnippet>;
   };
   const byModule = new Map<string, Map<string, ExampleTranslations>>();
+  const compiled = new Map<string, Map<string, CompiledExample>>();
   const byType = new Map<string, ExampleTranslations>();
   for (const snippet of Object.values(raw.snippets ?? {})) {
     const api = snippet.location?.api;
@@ -121,10 +140,19 @@ export function parseTablet(json: string): RosettaTablet {
       byModule.set(api.moduleFqn, examples);
     }
     examples.set(visible.trim(), collectTranslations(snippet));
+    if (snippet.fullSource !== undefined) {
+      let module = compiled.get(api.moduleFqn);
+      if (module === undefined) {
+        module = new Map();
+        compiled.set(api.moduleFqn, module);
+      }
+      module.set(visible.trim(), { imports: importStatements(snippet.fullSource) });
+    }
   }
   return {
     translationsFor: (moduleFqn, source) => byModule.get(moduleFqn)?.get(source.trim()),
     translationsForType: (fqn) => byType.get(fqn),
+    compiledFor: (moduleFqn, source) => compiled.get(moduleFqn)?.get(source.trim()),
   };
 }
 
@@ -140,9 +168,15 @@ function collectTranslations(snippet: TabletSnippet): ExampleTranslations {
   return translations;
 }
 
+/** The top-level `import … ;` statements of a TypeScript source, joined by newlines. */
+export function importStatements(source: string): string {
+  return (source.match(/^import\b[^;]*;/gm) ?? []).join('\n');
+}
+
 /** The subset of the tablet snippet schema the docgen reads. */
 interface TabletSnippet {
   readonly translations?: Record<string, { readonly source?: string }>;
+  readonly fullSource?: string;
   readonly location?: {
     readonly api?: { readonly api?: string; readonly moduleFqn?: string; readonly fqn?: string };
   };
