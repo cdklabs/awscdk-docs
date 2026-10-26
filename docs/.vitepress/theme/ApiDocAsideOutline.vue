@@ -50,6 +50,19 @@ function absoluteTop(element: HTMLElement | null): number {
 
 let previous: HTMLElement | null = null;
 
+function positionMarker(): void {
+  if (!previous || !marker.value) {
+    return;
+  }
+  const parent = marker.value.offsetParent as HTMLElement | null;
+  if (!parent) {
+    return;
+  }
+  const linkRect = previous.getBoundingClientRect();
+  const parentRect = parent.getBoundingClientRect();
+  marker.value.style.top = `${linkRect.top - parentRect.top + (linkRect.height - marker.value.offsetHeight) / 2}px`;
+}
+
 function activate(hash: string | null): void {
   previous?.classList.remove("active");
   previous = hash == null ? null : container.value?.querySelector<HTMLElement>(`a[href="${decodeURIComponent(hash)}"]`) ?? null;
@@ -58,7 +71,7 @@ function activate(hash: string | null): void {
   }
   if (previous) {
     previous.classList.add("active");
-    marker.value.style.top = `${previous.offsetTop + 39}px`;
+    positionMarker();
     marker.value.style.opacity = "1";
   } else {
     marker.value.style.top = "33px";
@@ -134,10 +147,15 @@ function boundAgainstFooter(): void {
 }
 
 const onScrollBound = throttleAndDebounce(boundAgainstFooter, 100);
+let outlineResizeObserver: ResizeObserver | undefined;
 
 onMounted(() => {
   requestAnimationFrame(setActiveLink);
   requestAnimationFrame(boundAgainstFooter);
+  outlineResizeObserver = new ResizeObserver(positionMarker);
+  if (container.value) {
+    outlineResizeObserver.observe(container.value);
+  }
   window.addEventListener("scroll", onScroll);
   window.addEventListener("scroll", onScrollBound);
   window.addEventListener("resize", onScrollBound);
@@ -148,6 +166,7 @@ onUpdated(() => {
   boundAgainstFooter();
 });
 onUnmounted(() => {
+  outlineResizeObserver?.disconnect();
   window.removeEventListener("scroll", onScroll);
   window.removeEventListener("scroll", onScrollBound);
   window.removeEventListener("resize", onScrollBound);

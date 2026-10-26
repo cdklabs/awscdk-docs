@@ -8,6 +8,7 @@ describe('type page information density', () => {
   const densityPath = resolve(THEME_DIR, 'density.css');
   const density = () => readFileSync(densityPath, 'utf-8');
   const apiLayout = () => readFileSync(resolve(THEME_DIR, 'api-layout.css'), 'utf-8');
+  const outlineItem = () => readFileSync(resolve(THEME_DIR, 'ApiDocOutlineItem.vue'), 'utf-8');
 
   // Spacing and small font sizes are now expressed as `--density-*` custom
   // properties declared once on `:root` in density.css (today's values). The
@@ -91,15 +92,18 @@ describe('type page information density', () => {
         expect([name, num(root[name]) <= num(spacious[name])]).toEqual([name, true]);
       }
 
-      // Compact keeps today's member rows, headers and tables; Spacious keeps
-      // today's outline. The outline's tighter levels are set in their own step.
+      // Compact keeps today's member rows, headers and tables. Outline values
+      // are owned by this step: Compact is tighter than Balanced, while
+      // Spacious keeps the pre-density outline.
       for (const name of Object.keys(root).filter((n) => /^(member|section|table)-/.test(n))) {
         expect([name, compact[name]]).toEqual([name, root[name]]);
       }
-      for (const name of Object.keys(root).filter((n) => n.startsWith('outline-'))) {
-        expect([name, spacious[name]]).toEqual([name, root[name]]);
-        expect([name, compact[name]]).toEqual([name, root[name]]);
+      for (const name of ['outline-font', 'outline-line', 'outline-pad']) {
+        expect([name, num(compact[name]) < num(root[name])]).toEqual([name, true]);
+        expect([name, num(root[name]) < num(spacious[name])]).toEqual([name, true]);
       }
+      expect(compact['outline-indent']).toBe(root['outline-indent']);
+      expect(spacious['outline-indent']).toBe(root['outline-indent']);
 
       // Compact is tighter and Spacious looser in the sidebar, and Spacious is
       // looser in the rows.
@@ -112,6 +116,37 @@ describe('type page information density', () => {
       const itemHeight = num(compact['sidebar-font']) * num(compact['sidebar-line'])
         + 2 * num(compact['sidebar-pad-y']);
       expect(itemHeight).toBeGreaterThanOrEqual(24);
+    });
+
+    test('outline tokens drive links at the three settled levels', () => {
+      const css = density();
+      const block = (selector: string): Record<string, string> => {
+        const from = css.indexOf(`${selector} {`);
+        expect(from).toBeGreaterThan(-1);
+        const body = css.slice(from, css.indexOf('}', from));
+        return Object.fromEntries(
+          [...body.matchAll(/--density-([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]),
+        );
+      };
+      const balanced = block(':root');
+      const compact = { ...balanced, ...block('[data-density="compact"]') };
+      const spacious = { ...balanced, ...block('[data-density="spacious"]') };
+
+      expect([
+        compact['outline-font'], compact['outline-line'], compact['outline-pad'], compact['outline-indent'],
+      ]).toEqual(['12px', '1.2', '2px', '16px']);
+      expect([
+        balanced['outline-font'], balanced['outline-line'], balanced['outline-pad'], balanced['outline-indent'],
+      ]).toEqual(['13px', '1.25', '4px', '16px']);
+      expect([
+        spacious['outline-font'], spacious['outline-line'], spacious['outline-pad'], spacious['outline-indent'],
+      ]).toEqual(['14px', '1.3', '5px', '16px']);
+
+      const component = outlineItem();
+      expect(component).toMatch(/font-size:\s*var\(--density-outline-font\)/);
+      expect(component).toMatch(/min-height:\s*24px/);
+      expect(component).toMatch(/align-items:\s*center/);
+      expect(component).not.toMatch(/\.outline-link\s*\{[^}]*font-size:\s*14px/s);
     });
   });
 
