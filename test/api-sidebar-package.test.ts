@@ -50,11 +50,12 @@ const skeleton = (...entries: ReadonlyArray<readonly [string, string]>): ApiSide
 describe('package sidebar', () => {
   test('decodes compact module rows from the existing skeleton', () => {
     expect(decodePackageModules([
-      '23',
+      '234',
       ['@aws-cdk/aws-only-alpha'],
     ], skeleton(
       ['aws-cdk-lib.aws_s3', 's3.js'],
       ['@aws-cdk_aws-only-alpha', 'only.js'],
+      ['aws-cdk-lib.unlisted', 'unlisted.js'],
     ), '/v2/')).toEqual([
       {
         fqn: 'aws-cdk-lib.aws_s3',

@@ -33,12 +33,14 @@ export function decodePackageModules(
     };
   };
   return [
-    ...stems.map((sectionStem, index) => {
+    ...stems.flatMap((sectionStem, index) => {
+      const flags = Number(packedFlags[index] ?? '4');
+      if (flags === 4) return [];
       const scoped = assemblies.find(({ stem }) => sectionStem === stem || sectionStem.startsWith(`${stem}.`));
       const fqn = scoped
         ? scoped.assembly + sectionStem.slice(scoped.stem.length)
         : sectionStem;
-      return expand(fqn, sectionStem, Number(packedFlags[index] ?? '0'));
+      return [expand(fqn, sectionStem, flags)];
     }),
     ...extras.map(([fqn, flags]) => expand(fqn, fqn.replace(/\//g, '_'), flags)),
   ];

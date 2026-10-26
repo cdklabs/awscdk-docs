@@ -1154,7 +1154,10 @@ export function encodePackageSidebarModules(
   const extras = modules
     .filter((module) => !module.sectionStems.some((stem) => stems.includes(stem)))
     .map((module) => [module.fqn, flags(module)] as const);
-  const packed = stems.map((stem) => String(flags(byStem.get(stem)!))).join('');
+  const packed = stems.map((stem) => {
+    const module = byStem.get(stem);
+    return module ? String(flags(module)) : '4';
+  }).join('');
   return extras.length > 0
     ? [packed, scopedAssemblies, extras]
     : [packed, scopedAssemblies];
