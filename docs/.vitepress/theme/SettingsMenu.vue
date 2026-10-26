@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Settings dropdown: a compact gear-icon disclosure in the desktop navbar that
-// hosts the low-frequency appearance controls — both tri-state pickers, Site
-// theme and Code theme — behind the gear to keep the nav row uncluttered.
+// hosts the low-frequency appearance controls — the three tri-state pickers,
+// Site theme, Code theme and Layout — behind the gear to keep the nav row
+// uncluttered.
 //
 // Disclosure pattern: the trigger is a real <button> with aria-expanded /
 // aria-controls, Enter/Space toggle natively, Escape closes and returns focus to

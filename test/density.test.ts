@@ -53,14 +53,65 @@ describe('type page information density', () => {
         'section-header-font',
       ]) {
         const occurrences = (css.match(new RegExp(`--density-${name}:`, 'g')) ?? []).length;
-        expect(occurrences).toBe(1);
+        const presets = ['[data-density="compact"]', '[data-density="spacious"]']
+          .map((sel) => {
+            const from = css.indexOf(`${sel} {`);
+            return css.slice(from, css.indexOf('}', from));
+          })
+          .filter((body) => body.includes(`--density-${name}:`)).length;
+        // Once on :root; the presets may override it, but nothing else may.
+        expect(occurrences - presets).toBe(1);
+        expect((css.match(/:root\s*\{/g) ?? []).length).toBe(1);
       }
     });
 
-    test('empty compact and spacious preset seams sit next to :root', () => {
+    test('compact and spacious presets sit next to :root and keep the level order', () => {
       const css = density();
       expect(css).toContain('[data-density="compact"]');
       expect(css).toContain('[data-density="spacious"]');
+
+      // A preset block's own token overrides; anything it does not set falls
+      // back to :root (Balanced).
+      const block = (selector: string): Record<string, string> => {
+        const from = css.indexOf(`${selector} {`);
+        expect(from).toBeGreaterThan(-1);
+        const body = css.slice(from, css.indexOf('}', from));
+        return Object.fromEntries(
+          [...body.matchAll(/--density-([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]),
+        );
+      };
+      const root = block(':root');
+      const compact = { ...root, ...block('[data-density="compact"]') };
+      const spacious = { ...root, ...block('[data-density="spacious"]') };
+      const num = (v: string) => Number(v.replace(/px|rem$/, ''));
+
+      // The order the maintainer settled, per token: Compact <= Balanced <= Spacious.
+      for (const name of Object.keys(root)) {
+        expect([name, num(compact[name]) <= num(root[name])]).toEqual([name, true]);
+        expect([name, num(root[name]) <= num(spacious[name])]).toEqual([name, true]);
+      }
+
+      // Compact keeps today's member rows, headers and tables; Spacious keeps
+      // today's outline. The outline's tighter levels are set in their own step.
+      for (const name of Object.keys(root).filter((n) => /^(member|section|table)-/.test(n))) {
+        expect([name, compact[name]]).toEqual([name, root[name]]);
+      }
+      for (const name of Object.keys(root).filter((n) => n.startsWith('outline-'))) {
+        expect([name, spacious[name]]).toEqual([name, root[name]]);
+        expect([name, compact[name]]).toEqual([name, root[name]]);
+      }
+
+      // Compact is tighter and Spacious looser in the sidebar, and Spacious is
+      // looser in the rows.
+      expect(num(compact['sidebar-pad-y'])).toBeLessThan(num(root['sidebar-pad-y']));
+      expect(num(spacious['sidebar-pad-y'])).toBeGreaterThan(num(root['sidebar-pad-y']));
+      expect(num(spacious['member-row-pad-y'])).toBeGreaterThan(num(root['member-row-pad-y']));
+
+      // A compact sidebar item stays a 24px target (WCAG 2.5.8):
+      // font x line height + 2 x vertical padding.
+      const itemHeight = num(compact['sidebar-font']) * num(compact['sidebar-line'])
+        + 2 * num(compact['sidebar-pad-y']);
+      expect(itemHeight).toBeGreaterThanOrEqual(24);
     });
   });
 

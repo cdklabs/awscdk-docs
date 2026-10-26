@@ -102,3 +102,45 @@ maintainer before the work started.
   present and the tokens are declared once.
 - The later density-picker UI and the Compact/Spacious preset values build on
   this layer without re-opening these choices.
+
+## Addendum: the Layout picker and the Compact / Spacious presets
+
+Added with the density picker step. The decisions above stand.
+
+- **Picker.** A third tri-state group, **Layout**, sits in `ThemePicker.vue`
+  after Site theme and Code theme, so it shows in the Settings menu (with its
+  visible caption) and in the mobile nav screen. It offers Compact, Balanced
+  and Spacious, in that order, with the same segmented icon buttons, accessible
+  names (`Compact layout`, `Balanced layout`, `Spacious layout`), `aria-pressed`
+  state and 24px minimum targets as the other two groups. A click calls
+  `setDensity`, which applies and stores the choice at once.
+- **Preset values.** Only the tokens this step owns are set. A token a preset
+  leaves out falls back to `:root` (Balanced, today's values).
+
+  | Token | Compact | Balanced (`:root`) | Spacious |
+  |---|---|---|---|
+  | `member-row-pad-y` | 10px | 10px | 13px |
+  | `member-divider` | 1px | 1px | 2px |
+  | `member-gap` | 12px | 12px | 14px |
+  | `member-foldout-pad` | 4px | 4px | 6px |
+  | `section-header-font` | 1.4rem | 1.4rem | 1.5rem |
+  | `table-cell-pad-y` / `-x` | 5px / 10px | 5px / 10px | 7px / 12px |
+  | `table-margin` | 14px | 14px | 18px |
+  | `sidebar-font` | 13px | 14px | 14px |
+  | `sidebar-line` | 1.4 | 1.5 | 1.6 |
+  | `sidebar-pad-y` | 3px | 5px | 8px |
+  | `sidebar-indent` | 12px | 14px | 16px |
+  | `outline-*` | today's | today's | today's |
+
+- **Why Compact rows match Balanced for now.** Per the levels above, Compact
+  keeps today's member rows, headers and tables, and Balanced is loosened in
+  its own step. Until that step lands, the two are equal in those areas. The
+  outline's tighter Balanced and Compact values are also set in their own step;
+  Spacious keeps today's outline.
+- **Sidebar targets.** A Compact sidebar item is 13px x 1.4 + 2 x 3px = 24.2px
+  tall, so it stays a 24px target.
+- `test/density.test.ts` checks the level order for every token, the areas
+  each preset must leave alone, and the Compact sidebar target height.
+  `test/e2e/density-picker.spec.ts` checks the picker's place, order, storage,
+  reload, keyboard use, the mobile nav screen, the rendered heights per level,
+  and that body prose, code blocks and the navbar do not change.

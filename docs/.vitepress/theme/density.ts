@@ -8,8 +8,7 @@
 //   `:root` tokens apply and every area renders exactly as it does today.
 // - 'compact' / 'spacious': `data-density="compact" | "spacious"` on <html>,
 //   and the matching `[data-density=...]` block in density.css overrides the
-//   tokens. (Those preset blocks are empty in this step; a later step fills
-//   them.)
+//   tokens. The Layout group in ThemePicker.vue sets the choice.
 //
 // Persistence: localStorage. A pre-hydration inline script in config.mts
 // re-applies a stored non-default choice before first paint, so a reload never
