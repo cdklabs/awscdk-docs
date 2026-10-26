@@ -1108,7 +1108,7 @@ describe('docgen generation', () => {
         },
       ]),
     );
-    // Non-constructs carry none: the Others group's leaves are bare.
+    // Non-constructs carry no construct level, but do carry module and kind.
     const bucketProps = bucket.items
       .find((i: any) => i.text === 'Others')
       .items.find((i: any) => i.text === 'BucketProps');

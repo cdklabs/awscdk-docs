@@ -24,7 +24,7 @@ The package tree follows these rules:
 - Facades use Classes. Traits use Interfaces. Construct-level chips remain leaf data.
 - Service submodule leaves merge into the parent categories. A real submodule overview gets a category named by its full FQN.
 - Non-service submodules get categories prefixed by their name after the parent. A real overview gets a category bearing that same short name.
-- CloudFormation-only service entries receive a superscript one suffix.
+- CloudFormation-only service entries carry structured state for an accessible superscript-one marker.
 - Only top-level entries collapse. Routes, anchors, search, and the rendered service view do not change.
 
 The skeleton and largest chunk may each grow by at most ten percent when gzipped. Generated-output tests compare all service-view page links with the regrouped package view and require each link exactly once.

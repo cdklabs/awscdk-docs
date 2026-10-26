@@ -21,21 +21,19 @@ export function decodePackageModules(
     .sort((a, b) => b.stem.length - a.stem.length);
   const expand = (fqn: string, sectionStem: string, flags: number): PackageSidebarModule => {
     const assembly = fqn.split('.')[0];
-    const service = fqn.includes('/aws-')
-      || fqn.split('.').some((part) => part.startsWith('aws_') || part.startsWith('alexa'));
     return {
       fqn,
       assembly,
-      service,
+      service: Math.floor(flags / 4) % 2 === 1,
       cloudFormationOnly: flags % 2 === 1,
-      ...(flags >= 2 ? { overview: `${root}docs/${sectionStem}-readme` } : {}),
+      ...(flags % 4 >= 2 ? { overview: `${root}docs/${sectionStem}-readme` } : {}),
       sectionStems: sectionStem ? [sectionStem] : [],
     };
   };
   return [
     ...stems.flatMap((sectionStem, index) => {
-      const flags = Number(packedFlags[index] ?? '4');
-      if (flags === 4) return [];
+      const flags = Number(packedFlags[index] ?? '8');
+      if (flags === 8) return [];
       const scoped = assemblies.find(({ stem }) => sectionStem === stem || sectionStem.startsWith(`${stem}.`));
       const fqn = scoped
         ? scoped.assembly + sectionStem.slice(scoped.stem.length)
@@ -175,8 +173,9 @@ export function buildPackageSidebar(
 
       const cloudFormationOnly = service && ordered.every((module) => module.cloudFormationOnly);
       return {
-        text: cloudFormationOnly ? `${key}¹` : key,
+        text: key,
         collapsed: true,
+        ...(cloudFormationOnly ? { cloudFormationOnly: true } : {}),
         chunks,
         items,
       };

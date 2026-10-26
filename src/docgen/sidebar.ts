@@ -1149,14 +1149,14 @@ export function encodePackageSidebarModules(
   const stems = [...new Set(skeleton.flatMap((root) => root.items ?? []).flatMap((section) => section.modules ?? []))];
   const byStem = new Map(modules.flatMap((module) => module.sectionStems.map((stem) => [stem, module] as const)));
   const flags = (module: PackageSidebarModule): number =>
-    (module.cloudFormationOnly ? 1 : 0) + (module.overview ? 2 : 0);
+    (module.cloudFormationOnly ? 1 : 0) + (module.overview ? 2 : 0) + (module.service ? 4 : 0);
   const scopedAssemblies = [...new Set(modules.map((module) => module.assembly).filter((assembly) => assembly.includes('/')))];
   const extras = modules
     .filter((module) => !module.sectionStems.some((stem) => stems.includes(stem)))
     .map((module) => [module.fqn, flags(module)] as const);
   const packed = stems.map((stem) => {
     const module = byStem.get(stem);
-    return module ? String(flags(module)) : '4';
+    return module ? String(flags(module)) : '8';
   }).join('');
   return extras.length > 0
     ? [packed, scopedAssemblies, extras]

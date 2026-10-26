@@ -50,7 +50,7 @@ const skeleton = (...entries: ReadonlyArray<readonly [string, string]>): ApiSide
 describe('package sidebar', () => {
   test('decodes compact module rows from the existing skeleton', () => {
     expect(decodePackageModules([
-      '234',
+      '678',
       ['@aws-cdk/aws-only-alpha'],
     ], skeleton(
       ['aws-cdk-lib.aws_s3', 's3.js'],
@@ -188,7 +188,10 @@ describe('package sidebar', () => {
       cloudFormationOnly: true,
     });
     const tree = buildPackageSidebar([module], skeleton(), new Map(), '/v2/');
-    expect(tree[1].text).toBe('@aws-cdk/aws-foo-alpha¹');
+    expect(tree[1]).toMatchObject({
+      text: '@aws-cdk/aws-foo-alpha',
+      cloudFormationOnly: true,
+    });
   });
 
   test('keeps every type page exactly once', () => {

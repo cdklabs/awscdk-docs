@@ -85,6 +85,8 @@ export interface ApiSidebarNode {
   readonly kind?: ApiSidebarKind;
   /** Compact module metadata used to regroup existing leaves by package. Present on the served skeleton root only. */
   readonly packageModules?: ApiSidebarPackageModuleData;
+  /** Whether a package entry contains only CloudFormation types. */
+  readonly cloudFormationOnly?: boolean;
   /** Chunk files needed to materialize a package-view entry. */
   readonly chunks?: readonly string[];
   /** Page-id stems (`<docId>[.<submodule>]`) whose pages this section owns. Section nodes only. */
