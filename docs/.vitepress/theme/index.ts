@@ -9,6 +9,7 @@ import DefaultTheme from "vitepress/theme-without-fonts";
 import { h } from "vue";
 import ApiSidebar from "./ApiSidebar.vue";
 import { initCodeTheme } from "./code-theme";
+import { initDensity } from "./density";
 import { installFavoritesSearchBoost } from "./favorites-client";
 import FavoriteStar from "./FavoriteStar.vue";
 import FavoritesList from "./FavoritesList.vue";
@@ -85,6 +86,9 @@ const theme: Theme = {
     // Re-apply a stored decoupled code-block theme choice at client boot.
     // No-op on the server and when the code theme follows the site theme.
     initCodeTheme();
+    // Re-apply a stored layout-density choice at client boot. No-op on the
+    // server and at the default (Balanced) level, which carries no attribute.
+    initDensity();
     installTypeTooltips(siteData.value.themeConfig.typeSummariesAsset ?? "");
     installFavoritesSearchBoost();
     // Eagerly initialize Pagefind: the plugin's own idle loader leaves a window

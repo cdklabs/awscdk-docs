@@ -1,4 +1,79 @@
 /**
+ * Layout density: the spacing-token layer and the doc-body table rules.
+ *
+ * This file owns the single `:root` declaration of the `--density-*` custom
+ * properties. Every tokenized area across the API layout (member rows and the
+ * Properties/Methods section headers in api-layout.css, the aside outline in
+ * outline.css and ApiDocAsideOutline.vue, the API sidebar in api-sidebar.css,
+ * and the doc-body tables below) reads its spacing and small font sizes from
+ * these properties rather than hard-coding them, so a later step can vary
+ * density in one place and a reader's stored choice can drive it.
+ *
+ * The values declared here are TODAY's values: at the default level (Balanced,
+ * the absence of a `data-density` attribute on <html>) every tokenized area
+ * renders exactly as the site does now. The empty `[data-density="compact"]`
+ * and `[data-density="spacious"]` blocks are deliberate seams for the next
+ * step (#35/#37/#38) to fill; this step adds no preset values and changes
+ * nothing a reader can see.
+ *
+ * What is NOT tokenized, and why: body prose, code blocks and the navbar keep
+ * their own type sizes untouched — density is about the generated API layout's
+ * spacing, not the reading column. See docs/adr/2026-10-23-layout-density.md.
+ *
+ * The stored choice and the attribute are owned by theme/density.ts (the state
+ * module) and config.mts (the pre-hydration bootstrap that applies a stored
+ * choice before first paint). This file is only the token values they switch
+ * between.
+ */
+
+:root {
+  /* Member rows (api-layout.css): vertical padding, divider width, the gap
+     between header parts, and the fold-out disclosure's top margin. */
+  --density-member-row-pad-y: 10px;
+  --density-member-divider: 1px;
+  --density-member-gap: 12px;
+  --density-member-foldout-pad: 4px;
+
+  /* Aside outline (outline.css + ApiDocAsideOutline.vue): entry font size,
+     line height, per-entry padding, and the member indent (the border-left
+     offset of the outline content column). */
+  --density-outline-font: 13px;
+  --density-outline-line: 1.3;
+  --density-outline-pad: 5px;
+  --density-outline-indent: 16px;
+
+  /* API sidebar (api-sidebar.css): item font size, line height, item padding
+     (vertical and horizontal), and the per-level nesting indent. */
+  --density-sidebar-font: 14px;
+  --density-sidebar-line: 1.5;
+  --density-sidebar-pad-y: 5px;
+  --density-sidebar-pad-x: 4px;
+  --density-sidebar-indent: 14px;
+
+  /* Doc-body tables (below): cell padding (vertical and horizontal) and the
+     table block margin. */
+  --density-table-cell-pad-y: 5px;
+  --density-table-cell-pad-x: 10px;
+  --density-table-margin: 14px;
+
+  /* Section headers (api-layout.css): the Properties / Methods / Construct
+     Props heading font size. */
+  --density-section-header-font: 1.4rem;
+}
+
+/* Preset seams for the next step. Compact is never looser than Balanced and
+   Balanced is never looser than Spacious, in every area — the order the
+   maintainer settled. Left empty here on purpose: this step ships only the
+   foundation. */
+[data-density="compact"] {
+  /* filled by #35/#37 */
+}
+
+[data-density="spacious"] {
+  /* filled by #35/#37/#38 */
+}
+
+/**
  * Information density for doc-body tables.
  *
  * The generated type pages carry markdown tables (enum members, facts,
@@ -15,10 +90,10 @@
  */
 
 .vp-doc table {
-  margin: 14px 0;
+  margin: var(--density-table-margin) 0;
 }
 
 .vp-doc th,
 .vp-doc td {
-  padding: 5px 10px;
+  padding: var(--density-table-cell-pad-y) var(--density-table-cell-pad-x);
 }

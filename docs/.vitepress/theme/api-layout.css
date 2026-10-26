@@ -475,8 +475,8 @@ a.chain-item:hover {
      width stays 1px. The 10px vertical padding gives the Properties and Methods
      rows, which share this selector, room to read as separate entries while the
      horizontal inset stays 0. */
-  border-bottom: 1px solid var(--vp-c-border);
-  padding: 10px 0;
+  border-bottom: var(--density-member-divider) solid var(--vp-c-border);
+  padding: var(--density-member-row-pad-y) 0;
 }
 
 .member-list .member-row:last-child {
@@ -497,7 +497,7 @@ a.chain-item:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  column-gap: 12px;
+  column-gap: var(--density-member-gap);
   row-gap: 2px;
   min-width: 0;
   font-family: var(--vp-font-family-mono);
@@ -793,7 +793,7 @@ a.chain-item:hover {
 .member-disclosure > summary {
   /* The default theme sets `.vp-doc summary { margin: 16px 0 }`, which would
      open a gap far airier than the row it belongs to. */
-  margin: 4px 0 0;
+  margin: var(--density-member-foldout-pad) 0 0;
   display: inline-block;
   font-family: var(--vp-font-family-base);
   font-size: 0.8125rem;
@@ -982,7 +982,7 @@ a.chain-item:hover {
 .vp-doc h2#properties,
 .vp-doc h2#methods {
   font-family: var(--vp-font-family-base);
-  font-size: 1.4rem;
+  font-size: var(--density-section-header-font);
   font-weight: 700;
   color: var(--vp-c-text-1);
 }

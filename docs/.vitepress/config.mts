@@ -289,6 +289,15 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
       {},
       `;(function () { try { var t = localStorage.getItem("cdk-docs-code-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-code-theme", t); } catch (e) {} })();`,
     ],
+    // Re-apply a stored density choice before first paint, mirroring the code-theme bootstrap above, so a
+    // reload never flashes the wrong spacing. Storage key is DENSITY_KEY in theme/density.ts; 'balanced'
+    // (today's values) is the absence of the attribute, so only compact/spacious apply. Unknown stored
+    // values are ignored here, matching the module's fall-back-to-balanced rule.
+    [
+      "script",
+      {},
+      `;(function () { try { var d = localStorage.getItem("cdk-docs-density"); if (d === "compact" || d === "spacious") document.documentElement.setAttribute("data-density", d); } catch (e) {} })();`,
+    ],
     // The standard AWS docs boot script: cookie-consent banner, footer "Cookie preferences" hook, and
     // consent-gated analytics, which reports the page under the two meta tags.
     ["meta", { name: "guide-name", content: "API Reference" }],

@@ -9,32 +9,87 @@ describe('type page information density', () => {
   const density = () => readFileSync(densityPath, 'utf-8');
   const apiLayout = () => readFileSync(resolve(THEME_DIR, 'api-layout.css'), 'utf-8');
 
+  // Spacing and small font sizes are now expressed as `--density-*` custom
+  // properties declared once on `:root` in density.css (today's values). The
+  // tokenized rules below read `var(--density-*)`, so these tests resolve the
+  // token's value from that `:root` block and assert on it, rather than on a
+  // literal that no longer sits in the rule.
+  const densityToken = (name: string): string => {
+    const css = density();
+    const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
+    const m = root.match(new RegExp(`--density-${name}:\\s*([^;]+);`));
+    expect(m).not.toBeNull();
+    return m![1].trim();
+  };
+
   test('density stylesheet exists and is imported by the theme entry', () => {
     expect(existsSync(densityPath)).toBe(true);
     const entry = readFileSync(resolve(THEME_DIR, 'index.ts'), 'utf-8');
     expect(entry).toContain('./density.css');
   });
 
+  describe('token layer', () => {
+    test('the --density-* properties are declared exactly once, on :root', () => {
+      // One source of truth for density. A second :root declaration of any
+      // --density-* property would let two values fight.
+      const css = density();
+      for (const name of [
+        'member-row-pad-y',
+        'member-divider',
+        'member-gap',
+        'member-foldout-pad',
+        'outline-font',
+        'outline-line',
+        'outline-pad',
+        'outline-indent',
+        'sidebar-font',
+        'sidebar-line',
+        'sidebar-pad-y',
+        'sidebar-pad-x',
+        'sidebar-indent',
+        'table-cell-pad-y',
+        'table-cell-pad-x',
+        'table-margin',
+        'section-header-font',
+      ]) {
+        const occurrences = (css.match(new RegExp(`--density-${name}:`, 'g')) ?? []).length;
+        expect(occurrences).toBe(1);
+      }
+    });
+
+    test('empty compact and spacious preset seams sit next to :root', () => {
+      const css = density();
+      expect(css).toContain('[data-density="compact"]');
+      expect(css).toContain('[data-density="spacious"]');
+    });
+  });
+
   describe('doc-body tables', () => {
     test('cell padding is tighter than the default theme (8px 16px)', () => {
       // Both dimensions shrink: the override must target .vp-doc th/td so
-      // the sidebar and aside outline stay untouched.
+      // the sidebar and aside outline stay untouched. The literals now live
+      // in the --density-table-cell-pad-* tokens.
       const block = density().slice(density().indexOf('.vp-doc th'));
-      const padding = block.match(/padding:\s*(\d+)px\s+(\d+)px/);
+      const padding = block.match(/padding:\s*var\(--density-table-cell-pad-y\)\s+var\(--density-table-cell-pad-x\)/);
       expect(padding).not.toBeNull();
-      expect(Number(padding![1])).toBeLessThan(8);
-      expect(Number(padding![2])).toBeLessThan(16);
+      expect(Number(densityToken('table-cell-pad-y').replace('px', ''))).toBeLessThan(8);
+      expect(Number(densityToken('table-cell-pad-x').replace('px', ''))).toBeLessThan(16);
     });
 
     test('table block margin is tighter than the default theme (20px)', () => {
       const block = density().slice(density().indexOf('.vp-doc table'));
-      const margin = block.match(/margin:\s*(\d+)px/);
+      const margin = block.match(/margin:\s*var\(--density-table-margin\)\s+0/);
       expect(margin).not.toBeNull();
-      expect(Number(margin![1])).toBeLessThan(20);
+      expect(Number(densityToken('table-margin').replace('px', ''))).toBeLessThan(20);
     });
 
     test('density does not shrink font sizes — spacing only', () => {
-      expect(density()).not.toContain('font-size');
+      // The table rules carry no font-size. (The density token layer DOES
+      // name small font-size tokens for the outline and sidebar, which is a
+      // different surface; this assertion is scoped to the .vp-doc table
+      // rules this file owns.)
+      const tableRules = density().slice(density().indexOf('.vp-doc table'));
+      expect(tableRules).not.toContain('font-size');
     });
   });
 
@@ -63,10 +118,12 @@ describe('type page information density', () => {
       const from = css.indexOf('.member-list .member-row {');
       expect(from).toBeGreaterThan(-1);
       const block = css.slice(from, css.indexOf('}', from));
-      const padding = block.match(/padding:\s*(\d+)px\s+(\d+)(?:px)?/);
+      // The vertical padding is the --density-member-row-pad-y token (10px
+      // today); the horizontal inset stays a literal 0.
+      const padding = block.match(/padding:\s*var\(--density-member-row-pad-y\)\s+(\d+)(?:px)?/);
       expect(padding).not.toBeNull();
-      expect(Number(padding![1])).toBe(10);
-      expect(Number(padding![2])).toBe(0);
+      expect(Number(densityToken('member-row-pad-y').replace('px', ''))).toBe(10);
+      expect(Number(padding![1])).toBe(0);
     });
 
     test('rows are separated by a divider, and the last one is not', () => {
@@ -79,7 +136,8 @@ describe('type page information density', () => {
       const from = css.indexOf('.member-list .member-row {');
       expect(from).toBeGreaterThan(-1);
       const row = css.slice(from, css.indexOf('}', from));
-      expect(row).toMatch(/border-bottom:\s*1px solid var\(--vp-c-border\)/);
+      expect(row).toMatch(/border-bottom:\s*var\(--density-member-divider\)\s+solid\s+var\(--vp-c-border\)/);
+      expect(densityToken('member-divider')).toBe('1px');
 
       const lastFrom = css.indexOf('.member-list .member-row:last-child {');
       expect(lastFrom).toBeGreaterThan(-1);
@@ -130,9 +188,11 @@ describe('type page information density', () => {
       // line above it.
       const css = apiLayout();
       const block = css.slice(css.indexOf('.member-disclosure > summary {'));
-      const margin = block.match(/margin:\s*(\d+)px\s+0\s+(\d+)/);
+      // The top value is the --density-member-foldout-pad token (4px today),
+      // the trailing values stay literal `0`.
+      const margin = block.match(/margin:\s*var\(--density-member-foldout-pad\)\s+0\s+0/);
       expect(margin).not.toBeNull();
-      expect(Number(margin![1])).toBeLessThan(24);
+      expect(Number(densityToken('member-foldout-pad').replace('px', ''))).toBeLessThan(24);
     });
 
     test('the disclosure is declared once, for both sections at once', () => {
