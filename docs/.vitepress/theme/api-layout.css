@@ -783,6 +783,17 @@ a.chain-item:hover {
   margin: 6px 0;
 }
 
+/* The row's own padding is symmetric (the --density-member-row-pad-* token),
+   but the last prose paragraph's 6px bottom margin left every row with a
+   description or a folded-out detail reading bottom-heavy — measured at a
+   uniform 6px across all density levels. Drop that trailing margin so the gap
+   below the last line equals the gap above the member name. The token padding,
+   not this reset, owns the per-level spacing. */
+.member-extra > :last-child,
+.member-details > :last-child {
+  margin-bottom: 0;
+}
+
 /* ---------- Disclosure control, shared by both sections ----------
 
    Declared ONCE for both: a page teaches one expand affordance,

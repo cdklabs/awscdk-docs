@@ -140,6 +140,59 @@ test.describe('member rows', () => {
   });
 });
 
+test.describe('member row vertical balance', () => {
+  // Each row sits centered between its two dividers: the space above the member
+  // name equals the space below the last line, so a row never reads pushed up
+  // against the divider above it. The row's padding comes from the density
+  // token layer, so this must hold at every density level; the gap is measured
+  // against the row's own content box, which excludes that symmetric padding.
+  const ROW_TYPES = [
+    { name: 'summary-only', pick: 'r.querySelector(".member-summary") && !r.querySelector(".member-extra,.member-details,.member-default")' },
+    { name: 'with a Default line', pick: 'r.querySelector(".member-default")' },
+    { name: 'folded-out detail', pick: 'r.querySelector("details.member-disclosure")' },
+  ] as const;
+  // 'unset' is Balanced (no attribute); the picker's other two levels change
+  // the padding but must keep top and bottom equal.
+  const LEVELS = ['', 'compact', 'spacious'] as const;
+
+  for (const level of LEVELS) {
+    for (const row of ROW_TYPES) {
+      test(`${level || 'balanced'}: a ${row.name} row has equal space above and below`, async ({ page }) => {
+        await page.goto(TOPIC_PAGE);
+        await page.evaluate((lvl) => {
+          const h = document.documentElement;
+          if (lvl) h.setAttribute('data-density', lvl); else h.removeAttribute('data-density');
+          // Open every disclosure so a folded-out row can be measured expanded.
+          document
+            .querySelectorAll('.props-table details.member-disclosure, .methods-table details.member-disclosure')
+            .forEach((d) => ((d as HTMLDetailsElement).open = true));
+        }, level);
+
+        const gap = await page.evaluate((pickExpr) => {
+          const rows = [...document.querySelectorAll('.props-table .member-row, .methods-table .member-row')];
+          // eslint-disable-next-line no-new-func
+          const match = new Function('r', `return ${pickExpr}`) as (r: Element) => boolean;
+          const target = rows.find((r) => match(r));
+          if (!target) return null;
+          const cs = getComputedStyle(target);
+          const rect = target.getBoundingClientRect();
+          const contentTop = rect.top + parseFloat(cs.paddingTop);
+          const contentBottom = rect.bottom - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth);
+          const firstTop = target.querySelector('.member-line')!.getBoundingClientRect().top;
+          const blocks = [...target.querySelectorAll('.member-details, .member-extra, .member-summary, .member-line')]
+            .filter((e) => (e as HTMLElement).offsetParent !== null);
+          const lastBottom = blocks[blocks.length - 1].getBoundingClientRect().bottom;
+          return { top: firstTop - contentTop, bottom: contentBottom - lastBottom };
+        }, row.pick);
+
+        expect(gap, `no ${row.name} row found on the page`).not.toBeNull();
+        // 1px tolerance matches the subpixel floor used elsewhere in this spec.
+        expect(Math.abs(gap!.top - gap!.bottom)).toBeLessThanOrEqual(1);
+      });
+    }
+  }
+});
+
 test.describe('member permalinks', () => {
   test('every row carries a named permalink that is always in the tab order', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
