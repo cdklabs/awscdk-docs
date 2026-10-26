@@ -109,8 +109,12 @@ test.describe('navigation style', () => {
     expect(requests.filter((name) => name.startsWith('chunks/'))).toHaveLength(1);
     expect(requests.filter((name) => name.startsWith('chunks/'))[0]).toMatch(/^chunks\/sqs\./);
 
+    // Let the load-time reveal finish scrolling the sidebar before clicking a
+    // row near the bottom of the list, or the click can land on a neighbour.
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
     const sns = topGroup(page, 'aws-cdk-lib.aws_sns');
-    await topButton(page, 'aws-cdk-lib.aws_sns').click();
+    await page.getByRole('button', { name: 'aws-cdk-lib.aws_sns', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'aws-cdk-lib.aws_sns', exact: true })).toHaveAttribute('aria-expanded', 'true');
     await expect(sns.locator('.api-sidebar-section-title').first()).toHaveText('Constructs');
     await expect(sns.locator('a.api-sidebar-link', { hasText: 'Topic' }).first()).toBeVisible();
     const chunks = requests.filter((name) => name.startsWith('chunks/'));
