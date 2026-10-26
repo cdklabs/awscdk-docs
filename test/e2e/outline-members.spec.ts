@@ -143,7 +143,7 @@ test.describe('outline method entries show parameters', () => {
   });
 
   // WCAG 1.4.3 contrast of the parameter list, measured on the rendered site in both themes. The list is the content
-  // the entry exists to show and the entry is at rest almost all the time, so the resting colour is the one that
+  // the entry exists to show and the entry is at rest almost all the time, so the resting color is the one that
   // counts; a quieter token than the name's failed this floor once (sidebar-level-tags.spec.ts measures the same way).
   async function paramsContrast(page: import('@playwright/test').Page, selector: string): Promise<number> {
     return page.evaluate((sel) => {
@@ -187,7 +187,7 @@ test.describe('outline method entries show parameters', () => {
       await page.evaluate((d) => {
         document.documentElement.classList.toggle('dark', d);
       }, dark);
-      // The link's colour transitions over half a second after a theme switch; poll past it.
+      // The link's color transitions over half a second after a theme switch; poll past it.
       await expect.poll(() => paramsContrast(page, resting)).toBeGreaterThanOrEqual(4.5);
     }
   });

@@ -58,7 +58,7 @@ exists to show, so they are painted like the name.
   unambiguous and needs no quoting. The rendered signature is never parsed.
 - **The theme renders names only: `name(a, b?, ...rest)`.** `ApiDocOutlineItem.vue`,
   already this repository's own outline item, renders the list in a
-  `.outline-params` span after the name, in the link's own colour, so it meets
+  `.outline-params` span after the name, in the link's own color, so it meets
   the same contrast the name does at rest, on hover and when active. A `<wbr>`
   before the opening parenthesis gives a long entry a break point there, so the
   column's `overflow-wrap: anywhere` does not split a word first. The link's

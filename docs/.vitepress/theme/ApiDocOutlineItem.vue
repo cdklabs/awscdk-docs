@@ -5,7 +5,7 @@
 // method entry shows its parameter names after the name: `grantRead(identity, objectsKeyPattern?)`, a trailing `?`
 // on an optional parameter, `...` before a variadic one, `()` when empty. Those marks are glyphs too, so a screen
 // reader gets hidden words instead: "optional" after the parameter, "variadic" before the rest parameter
-// (docs/adr/2026-10-26-outline-method-parameters.md). The list takes the link's own colour: it is the content the
+// (docs/adr/2026-10-26-outline-method-parameters.md). The list takes the link's own color: it is the content the
 // entry exists to show, so it meets the same contrast the name does. A `<wbr>` between the name and the list gives
 // a long entry a break point at the parenthesis, so the column's `overflow-wrap: anywhere` does not split a word
 // first. Markup, classes and styles are otherwise the default theme's own, so outline.css applies unchanged.
@@ -87,7 +87,7 @@ function onClick(event: Event) {
 }
 
 /* The marks and the parameter list are display only: never part of a copied name. The list inherits the link's
-   colour on purpose: a quieter token fails the 4.5:1 contrast floor at rest. */
+   color on purpose: a quieter token fails the 4.5:1 contrast floor at rest. */
 .outline-optional,
 .outline-params {
   user-select: none;
