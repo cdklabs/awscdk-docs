@@ -1,5 +1,5 @@
 import { moduleReadmeLink } from '../src/docgen/links.js';
-import { assemblyOwner, buildServiceSidebar, CONSTRUCTS_SECTION, frameworkSectionCompare, frameworkSectionName, FRAMEWORK_SECTION, isConstructsPackage, isCore, isEventsSubmodule, isServiceSubmodule, resourceStem, sectionName, SERVICES_SECTION, serviceSubmodule, shortTypeName, SidebarEntry, SidebarItem, splitSidebarChunks } from '../src/docgen/sidebar.js';
+import { assemblyOwner, buildPackageSidebarModules, buildServiceSidebar, CONSTRUCTS_SECTION, encodePackageSidebarModules, frameworkSectionCompare, frameworkSectionName, FRAMEWORK_SECTION, isConstructsPackage, isCore, isEventsSubmodule, isPackageServiceModule, isServiceSubmodule, packageSidebarKind, resourceStem, sectionName, SERVICES_SECTION, serviceSubmodule, shortTypeName, SidebarEntry, SidebarItem, splitSidebarChunks } from '../src/docgen/sidebar.js';
 
 function entry(overrides: Partial<SidebarEntry>): SidebarEntry {
   return {
@@ -1127,7 +1127,12 @@ describe('buildServiceSidebar', () => {
     const general = sidebar[0].items!.find((g) => g.text === 'General')!;
     const others = general.items!.find((g) => g.text === 'Others')!;
     expect(others.items).toEqual([
-      { text: 'IBucket', link: '/api/modules/aws-cdk-lib/aws-s3/ibucket' },
+      {
+        text: 'IBucket',
+        link: '/api/modules/aws-cdk-lib/aws-s3/ibucket',
+        module: 'aws-cdk-lib.aws_s3',
+        kind: 'interface',
+      },
       { text: 'Type index', link: '/api/modules/aws-cdk-lib/aws-s3' },
     ]);
   });
@@ -1164,11 +1169,18 @@ describe('buildServiceSidebar', () => {
         text: 'CfnBucket.PolicyProperty',
         label: 'PolicyProperty',
         link: '/cfn-bucket-policyproperty',
+        module: 'aws-cdk-lib.aws_s3',
+        kind: 'cfn-property',
       },
     ]);
     // Non-nested leaves carry no label field at all (asset unchanged).
     // The construct sits flat inside the resource.
-    expect(bucket.items![0]).toEqual({ text: 'CfnBucket', link: '/cfn-bucket' });
+    expect(bucket.items![0]).toEqual({
+      text: 'CfnBucket',
+      link: '/cfn-bucket',
+      module: 'aws-cdk-lib.aws_s3',
+      kind: 'cfn-resource',
+    });
   });
 
   test('omits empty kind groups', () => {
@@ -1177,7 +1189,12 @@ describe('buildServiceSidebar', () => {
     ]));
     const bucket = sidebar[0].items!.find((g) => g.text === 'Bucket')!;
     // Only the flat construct link — no empty kind headings.
-    expect(bucket.items).toEqual([{ text: 'Bucket', link: '/x' }]);
+    expect(bucket.items).toEqual([{
+      text: 'Bucket',
+      link: '/x',
+      module: 'aws-cdk-lib.aws_s3',
+      kind: 'construct',
+    }]);
   });
 
   test('rolls interfaces.* submodule types into their owning service', () => {
@@ -1200,6 +1217,8 @@ describe('buildServiceSidebar', () => {
     expect(others.items).toContainEqual({
       text: 'IBucketRef',
       link: '/api/modules/aws-cdk-lib/interfaces-aws-s3/ibucket-ref',
+      module: 'aws-cdk-lib.interfaces.aws_s3',
+      kind: 'interface',
     });
   });
 
@@ -1220,6 +1239,8 @@ describe('buildServiceSidebar', () => {
     expect(mixins.items).toContainEqual({
       text: 'BucketVersioning',
       link: '/api/modules/aws-cdk-lib/aws-s3-mixins/bucket-versioning',
+      module: 'aws-cdk-lib.aws_s3.mixins',
+      kind: 'mixin',
     });
   });
 
@@ -1574,6 +1595,47 @@ describe('construct ordering by level', () => {
   });
 });
 
+describe('package sidebar metadata', () => {
+  test('classifies package leaves from the existing service inputs', () => {
+    expect(packageSidebarKind(entry({ name: 'Bucket', kind: 'Construct (L2)' }))).toBe('construct');
+    expect(packageSidebarKind(entry({ name: 'CfnBucket', kind: 'Construct (L1)' }))).toBe('cfn-resource');
+    expect(packageSidebarKind(entry({ name: 'CfnBucket.PolicyProperty', kind: 'Struct' }))).toBe('cfn-property');
+    expect(packageSidebarKind(entry({ name: 'BucketGrants', kind: 'Facade' }))).toBe('class');
+    expect(packageSidebarKind(entry({ name: 'IResourceWithPolicy', kind: 'Trait' }))).toBe('interface');
+  });
+
+  test('builds module rows with overview and section ownership', () => {
+    const modules = buildPackageSidebarModules([
+      entry({ name: 'App', kind: 'Class', submodule: '', indexLink: moduleReadmeLink('aws-cdk-lib') }),
+      entry({ name: 'Bucket', kind: 'Construct (L2)' }),
+      entry({
+        name: 'CfnOnly',
+        kind: 'Construct (L1)',
+        assemblyName: '@aws-cdk/aws-only-alpha',
+        submodule: '',
+        indexLink: moduleReadmeLink('@aws-cdk/aws-only-alpha'),
+      }),
+    ]);
+
+    expect(modules.find((module) => module.fqn === 'aws-cdk-lib')).toMatchObject({
+      assembly: 'aws-cdk-lib',
+      service: false,
+      overview: moduleReadmeLink('aws-cdk-lib'),
+      sectionStems: ['aws-cdk-lib'],
+    });
+    expect(modules.find((module) => module.fqn === 'aws-cdk-lib.aws_s3')).toMatchObject({
+      service: true,
+      cloudFormationOnly: false,
+      sectionStems: ['aws-cdk-lib.aws_s3'],
+    });
+    expect(modules.find((module) => module.fqn === '@aws-cdk/aws-only-alpha')).toMatchObject({
+      service: true,
+      cloudFormationOnly: true,
+    });
+    expect(isPackageServiceModule('aws-cdk-lib.alexa_ask')).toBe(true);
+  });
+});
+
 describe('section modules and splitSidebarChunks', () => {
   const entries = [
     entry({ name: 'Bucket', kind: 'Construct (L2)', link: '/v2/docs/aws-cdk-lib.aws_s3.Bucket' }),
@@ -1598,8 +1660,11 @@ describe('section modules and splitSidebarChunks', () => {
 
   test('the skeleton keeps every section minus its items and the chunks hold exactly those items', () => {
     const tree = buildServiceSidebar(entries);
-    const { skeleton, chunks } = splitSidebarChunks(tree);
+    const packageModules = buildPackageSidebarModules(entries);
+    const { skeleton, chunks } = splitSidebarChunks(tree, packageModules);
     expect(skeleton.map((r) => r.text)).toEqual(tree.map((r) => r.text));
+    expect(skeleton[0].packageModules).toEqual(encodePackageSidebarModules(packageModules, skeleton));
+    expect(skeleton.slice(1).every((root) => root.packageModules === undefined)).toBe(true);
     const skeletonSections = skeleton.flatMap((r) => r.items ?? []);
     const treeSections = tree.flatMap((r) => r.items ?? []);
     expect(skeletonSections.map((s) => s.text)).toEqual(treeSections.map((s) => s.text));

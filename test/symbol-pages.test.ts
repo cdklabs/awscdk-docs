@@ -142,12 +142,16 @@ describe('symbol page generation', () => {
       link: '/v2/docs/aws-cdk-lib.aws_s3.Bucket',
       // Construct leaves carry their level.
       level: 'L2',
+      module: 'aws-cdk-lib.aws_s3',
+      kind: 'construct',
     });
     const others = bucket.items.find((g: any) => g.text === 'Others');
     expect(others.collapsed).toBe(true);
     expect(others.items).toContainEqual({
       text: 'BucketEncryption',
       link: '/v2/docs/aws-cdk-lib.aws_s3.BucketEncryption',
+      module: 'aws-cdk-lib.aws_s3',
+      kind: 'enum',
     });
   });
 

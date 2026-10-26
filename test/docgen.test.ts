@@ -1158,11 +1158,23 @@ describe('docgen generation', () => {
     // proves the field survives the whole generate path into the asset.
     expect(bucket.items).toEqual(
       expect.arrayContaining([
-        { text: 'Bucket', link: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', level: 'L2' },
-        { text: 'CfnBucket', link: '/v2/docs/aws-cdk-lib.aws_s3.CfnBucket', level: 'L1' },
+        {
+          text: 'Bucket',
+          link: '/v2/docs/aws-cdk-lib.aws_s3.Bucket',
+          level: 'L2',
+          module: 'aws-cdk-lib.aws_s3',
+          kind: 'construct',
+        },
+        {
+          text: 'CfnBucket',
+          link: '/v2/docs/aws-cdk-lib.aws_s3.CfnBucket',
+          level: 'L1',
+          module: 'aws-cdk-lib.aws_s3',
+          kind: 'cfn-resource',
+        },
       ]),
     );
-    // Non-constructs carry none: the Others group's leaves are bare.
+    // Non-constructs carry no construct level, but do carry module and kind.
     const bucketProps = bucket.items
       .find((i: any) => i.text === 'Others')
       .items.find((i: any) => i.text === 'BucketProps');
@@ -1183,9 +1195,27 @@ describe('docgen generation', () => {
     const vpc = ec2.items.find((i: any) => i.text === 'Vpc');
     expect(vpc.items).toEqual(
       expect.arrayContaining([
-        { text: 'Vpc', link: '/v2/docs/aws-cdk-lib.aws_ec2.Vpc', level: 'L2' },
-        { text: 'VpcV2', link: '/v2/docs/@aws-cdk_aws-ec2-alpha.VpcV2', level: 'L2' },
-        { text: 'CfnVPC', link: '/v2/docs/aws-cdk-lib.aws_ec2.CfnVPC', level: 'L1' },
+        {
+          text: 'Vpc',
+          link: '/v2/docs/aws-cdk-lib.aws_ec2.Vpc',
+          level: 'L2',
+          module: 'aws-cdk-lib.aws_ec2',
+          kind: 'construct',
+        },
+        {
+          text: 'VpcV2',
+          link: '/v2/docs/@aws-cdk_aws-ec2-alpha.VpcV2',
+          level: 'L2',
+          module: '@aws-cdk/aws-ec2-alpha',
+          kind: 'construct',
+        },
+        {
+          text: 'CfnVPC',
+          link: '/v2/docs/aws-cdk-lib.aws_ec2.CfnVPC',
+          level: 'L1',
+          module: 'aws-cdk-lib.aws_ec2',
+          kind: 'cfn-resource',
+        },
       ]),
     );
     // Related types follow their construct into the merged group.

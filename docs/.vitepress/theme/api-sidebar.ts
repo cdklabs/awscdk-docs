@@ -13,6 +13,31 @@
  * be unit-tested in plain Node.
  */
 
+export type ApiSidebarKind =
+  | 'construct'
+  | 'mixin'
+  | 'class'
+  | 'struct'
+  | 'interface'
+  | 'enum'
+  | 'cfn-resource'
+  | 'cfn-property';
+
+export type ApiSidebarPackageModuleData = readonly [
+  flags: string,
+  scopedAssemblies: readonly string[],
+  extras?: readonly (readonly [fqn: string, flags: number])[],
+];
+
+export interface ApiSidebarPackageModule {
+  readonly fqn: string;
+  readonly assembly: string;
+  readonly service: boolean;
+  readonly cloudFormationOnly: boolean;
+  readonly overview?: string;
+  readonly sectionStems: readonly string[];
+}
+
 export interface ApiSidebarNode {
   readonly text: string;
   /**
@@ -54,6 +79,16 @@ export interface ApiSidebarNode {
    * a filter for `l2`. Absent on groups and non-leveled constructs.
    */
   readonly level?: 'L1' | 'L2' | 'L3';
+  /** Owning jsii module FQN for a type leaf. */
+  readonly module?: string;
+  /** Stable package-view kind for a type leaf. */
+  readonly kind?: ApiSidebarKind;
+  /** Compact module metadata used to regroup existing leaves by package. Present on the served skeleton root only. */
+  readonly packageModules?: ApiSidebarPackageModuleData;
+  /** Whether a package entry contains only CloudFormation types. */
+  readonly cloudFormationOnly?: boolean;
+  /** Chunk files needed to materialize a package-view entry. */
+  readonly chunks?: readonly string[];
   /** Page-id stems (`<docId>[.<submodule>]`) whose pages this section owns. Section nodes only. */
   readonly modules?: readonly string[];
   /** Name of the chunk file holding this section's items, which the served skeleton omits. */

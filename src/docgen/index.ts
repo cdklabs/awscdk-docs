@@ -54,6 +54,7 @@ import { upstreamReadmeUrl, upstreamSourceUrl } from './provenance.js';
 import { ExampleTranslations, loadTablet, RosettaTablet } from './rosetta.js';
 import { searchFilterHtml, searchKind, searchModule } from './search.js';
 import {
+  buildPackageSidebarModules,
   buildServiceSidebar,
   isEventsSubmodule,
   renameChunks,
@@ -719,7 +720,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     fs.rmSync(apiSidebarDir, { recursive: true, force: true });
     const chunksDir = path.join(apiSidebarDir, 'chunks');
     fs.mkdirSync(chunksDir, { recursive: true });
-    const { skeleton, chunks } = splitSidebarChunks(sidebar);
+    const { skeleton, chunks } = splitSidebarChunks(sidebar, buildPackageSidebarModules(sidebarEntries));
     const chunkFiles = new Map<string, string>();
     for (const chunk of chunks) {
       const body = JSON.stringify(chunk.items);
