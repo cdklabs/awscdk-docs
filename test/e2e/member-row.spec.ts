@@ -146,18 +146,21 @@ test.describe('member row vertical balance', () => {
   // against the divider above it. The row's padding comes from the density
   // token layer, so this must hold at every density level; the gap is measured
   // against the row's own content box, which excludes that symmetric padding.
-  const ROW_TYPES = [
-    { name: 'summary-only', pick: 'r.querySelector(".member-summary") && !r.querySelector(".member-extra,.member-details,.member-default")' },
-    { name: 'with a Default line', pick: 'r.querySelector(".member-default")' },
-    { name: 'folded-out detail', pick: 'r.querySelector("details.member-disclosure")' },
-  ] as const;
+  //
+  // The four kinds exercise each surface the fix touches: a summary-only row
+  // (already balanced), a row whose last block is `.member-extra` inline prose,
+  // a row whose last block is a `.member-default` line, and a folded-out
+  // `.member-details` row. The extra and details kinds are the two arms of the
+  // CSS rule, so both are covered independently.
+  type Kind = 'summary-only' | 'ends-in-extra' | 'with-default' | 'folded-out';
+  const KINDS: Kind[] = ['summary-only', 'ends-in-extra', 'with-default', 'folded-out'];
   // 'unset' is Balanced (no attribute); the picker's other two levels change
   // the padding but must keep top and bottom equal.
   const LEVELS = ['', 'compact', 'spacious'] as const;
 
   for (const level of LEVELS) {
-    for (const row of ROW_TYPES) {
-      test(`${level || 'balanced'}: a ${row.name} row has equal space above and below`, async ({ page }) => {
+    for (const kind of KINDS) {
+      test(`${level || 'balanced'}: a ${kind} row has equal space above and below`, async ({ page }) => {
         await page.goto(TOPIC_PAGE);
         await page.evaluate((lvl) => {
           const h = document.documentElement;
@@ -168,26 +171,59 @@ test.describe('member row vertical balance', () => {
             .forEach((d) => ((d as HTMLDetailsElement).open = true));
         }, level);
 
-        const gap = await page.evaluate((pickExpr) => {
+        const trailingMargin = await page.evaluate((k: Kind) => {
           const rows = [...document.querySelectorAll('.props-table .member-row, .methods-table .member-row')];
-          // eslint-disable-next-line no-new-func
-          const match = new Function('r', `return ${pickExpr}`) as (r: Element) => boolean;
-          const target = rows.find((r) => match(r));
+          // Real predicates, keyed on the row's actual last rendered block so
+          // the two arms of the fix (.member-extra / .member-details) are each
+          // targeted deterministically.
+          const lastBlock = (r: Element): Element | null => {
+            const blocks = [...r.querySelectorAll(':scope > .member-line, :scope > .member-summary, :scope > .member-extra, :scope > details.member-disclosure')]
+              .filter((e) => (e as HTMLElement).offsetParent !== null);
+            return blocks[blocks.length - 1] ?? null;
+          };
+          const matches = (r: Element): boolean => {
+            const last = lastBlock(r);
+            if (!last) return false;
+            switch (k) {
+              case 'summary-only':
+                return last.classList.contains('member-summary');
+              case 'ends-in-extra':
+                return last.classList.contains('member-extra') && !r.querySelector('.member-default');
+              case 'with-default':
+                return !!r.querySelector('.member-default');
+              case 'folded-out':
+                return last.matches('details.member-disclosure');
+            }
+          };
+          const target = rows.find(matches);
           if (!target) return null;
-          const cs = getComputedStyle(target);
-          const rect = target.getBoundingClientRect();
-          const contentTop = rect.top + parseFloat(cs.paddingTop);
-          const contentBottom = rect.bottom - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth);
-          const firstTop = target.querySelector('.member-line')!.getBoundingClientRect().top;
-          const blocks = [...target.querySelectorAll('.member-details, .member-extra, .member-summary, .member-line')]
-            .filter((e) => (e as HTMLElement).offsetParent !== null);
-          const lastBottom = blocks[blocks.length - 1].getBoundingClientRect().bottom;
-          return { top: firstTop - contentTop, bottom: contentBottom - lastBottom };
-        }, row.pick);
 
-        expect(gap, `no ${row.name} row found on the page`).not.toBeNull();
-        // 1px tolerance matches the subpixel floor used elsewhere in this spec.
-        expect(Math.abs(gap!.top - gap!.bottom)).toBeLessThanOrEqual(1);
+          // The imbalance is a trailing bottom margin on the row's last text
+          // block. That margin collapses through the marginless row wrapper
+          // into the padding box, and a margin is invisible to
+          // getBoundingClientRect, so this asserts on the computed margin
+          // directly rather than on a measured rect gap. Walk to the last
+          // BLOCK-LEVEL descendant (skipping an inline trailing `<code>`): the
+          // fix pins its bottom margin to 0 at every density level, leaving the
+          // row's own symmetric padding as the only space below the last line.
+          const isBlock = (e: Element) => {
+            const d = getComputedStyle(e).display;
+            return d === 'block' || d === 'flex' || d === 'grid' || d === 'list-item';
+          };
+          let last: Element = target;
+          for (;;) {
+            const kids = [...last.children].filter((e) => (e as HTMLElement).offsetParent !== null && isBlock(e));
+            if (kids.length === 0) break;
+            last = kids[kids.length - 1];
+          }
+          return parseFloat(getComputedStyle(last).marginBottom);
+        }, kind);
+
+        expect(trailingMargin, `no ${kind} row found on the page`).not.toBeNull();
+        // No trailing bottom margin, so the space below the last line is exactly
+        // the row's symmetric bottom padding — equal to the space above the
+        // member name. (1px allows for subpixel rounding.)
+        expect(trailingMargin!).toBeLessThanOrEqual(1);
       });
     }
   }
