@@ -62,7 +62,7 @@ type ScopedToken = {
  * `NOLINK_CLASS`, from the token's grammar scopes. Needs the highlight call to
  * pass `includeExplanation: "scopeName"`.
  *
- * Shiki merges neighbouring parts that share a color into one token, so a
+ * Shiki merges neighboring parts that share a color into one token, so a
  * token can hold both code and literal text. Such a token is split first, at
  * the scope boundary, so each piece is decided on its own.
  */

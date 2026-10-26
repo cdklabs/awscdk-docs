@@ -136,7 +136,7 @@ describe('type links skip strings and comments', () => {
 
   test('a fence highlighted without the marker links as before', () => {
     // applyTypeLinks on plain Shiki output (no NOLINK_CLASS) keeps the old
-    // behaviour, so a cache entry is never half-marked.
+    // behavior, so a cache entry is never half-marked.
     const html = highlighter.codeToHtml("new Bucket(this, 'Bucket')", {
       lang: 'typescript',
       themes: THEMES,

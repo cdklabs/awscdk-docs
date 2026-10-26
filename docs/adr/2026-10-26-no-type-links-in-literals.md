@@ -35,7 +35,7 @@ work started.
   `meta.fstring`, a format placeholder) means code. So `${Bucket.name}` in a
   template string, a Python f-string hole and a C# interpolation still link,
   while an escaped quote or a `//` inside a string stays text.
-- **Split merged tokens.** Shiki merges neighbouring parts with the same
+- **Split merged tokens.** Shiki merges neighboring parts with the same
   color into one token. The transformer splits such a token at the scope
   boundary first, so code and text in one merged token are each decided on
   their own.
