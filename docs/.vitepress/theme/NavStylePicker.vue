@@ -2,7 +2,7 @@
 // Navigation-style control: By service / By package, rendered as the same
 // segmented aria-pressed toggle the theme pickers use, so the Settings panel
 // reads as one family of controls. The segments carry text rather than icons:
-// "service" and "package" have no glyph a reader would recognise unprompted,
+// "service" and "package" have no glyph a reader would recognize unprompted,
 // and the panel has the room.
 //
 // State and persistence live in nav-style.ts; ApiSidebar.vue regroups the data
