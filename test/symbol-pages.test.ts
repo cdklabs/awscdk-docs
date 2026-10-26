@@ -74,7 +74,7 @@ describe('symbol page generation', () => {
     // Module-root type: breadcrumb links the module page only
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><strong>Duration</strong>');
     expect(page).toContain('## Methods');
-    expect(page).toContain('<div class="member-row" id="toseconds">');
+    expect(page).toContain('<div class="member-row" id="toseconds" data-params="opts?">');
   });
 
   test('class pages have no Extends fact -- the inheritance chain conveys it', () => {
@@ -166,7 +166,7 @@ describe('symbol page generation', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ILocalBundling.md'), 'utf-8');
     expect(page).toContain('# <span data-pagefind-weight="10">ILocalBundling</span> <Badge type="info" class="api-badge api-badge-interface" text="Interface" />');
     expect(page).not.toContain('| **Kind** |');
-    expect(page).toContain('<div class="member-row" id="trybundle">');
+    expect(page).toContain('<div class="member-row" id="trybundle" data-params="outputDir,options">');
   });
 
   test.each([

@@ -36,6 +36,10 @@ settled with the maintainer before the work started.
   leave them out) and class, interface and mixin properties (outputs: the value
   may be undefined). Each property table says which it is
   (`PropsRenderOptions.optionalKind`). Methods and parameters are out of scope.
+  *Superseded for parameters — see
+  [method parameters in the outline](./2026-10-26-outline-method-parameters.md):
+  the outline marks an optional parameter with the same `?` and hidden word.
+  Method rows are still unmarked.*
 - **Accessible text by kind.** The visible `?` is `aria-hidden`. A visually
   hidden label beside it reads `optional` for an input and `may be undefined`
   for an output, so a screen reader never announces a bare question mark.

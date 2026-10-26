@@ -31,7 +31,9 @@ The outline is fed from data, and nothing else about the page changes:
   at a different place than the row's own `#` permalink. The list is a plain
   value with no presentation in it, so another consumer can read it later.
   *Extended — see [optional property marker](./2026-10-23-optional-prop-marker.md):
-  an entry may carry a third `extras` element, `[anchor, name, { optional }]`.*
+  an entry may carry a third `extras` element, `[anchor, name, { optional }]`;
+  and [method parameters in the outline](./2026-10-26-outline-method-parameters.md):
+  a method entry's `extras` carries `params`.*
 - **Only the type's own properties and its methods are listed.** *Superseded —
   see [construct props in the outline](./2026-10-23-outline-construct-props.md),
   which lists the inlined props as a third group. The empty-section and
