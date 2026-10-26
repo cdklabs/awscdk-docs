@@ -29,7 +29,7 @@
 :root {
   /* Member rows (api-layout.css): vertical padding, divider width, the gap
      between header parts, and the fold-out disclosure's top margin. */
-  --density-member-row-pad-y: 10px;
+  --density-member-row-pad-y: 12px;
   --density-member-divider: 1px;
   --density-member-gap: 12px;
   --density-member-foldout-pad: 4px;
@@ -46,19 +46,22 @@
      (vertical and horizontal), and the per-level nesting indent. */
   --density-sidebar-font: 14px;
   --density-sidebar-line: 1.5;
-  --density-sidebar-pad-y: 5px;
+  --density-sidebar-pad-y: 6px;
   --density-sidebar-pad-x: 4px;
   --density-sidebar-indent: 14px;
 
   /* Doc-body tables (below): cell padding (vertical and horizontal) and the
      table block margin. */
-  --density-table-cell-pad-y: 5px;
-  --density-table-cell-pad-x: 10px;
-  --density-table-margin: 14px;
+  --density-table-cell-pad-y: 6px;
+  --density-table-cell-pad-x: 12px;
+  --density-table-margin: 16px;
 
   /* Section headers (api-layout.css): the Properties / Methods / Construct
-     Props heading font size. */
+     Props heading font size, and the space above vs. below each heading so a
+     section boundary reads clearly (more room above than below). */
   --density-section-header-font: 1.4rem;
+  --density-section-header-margin-top: 40px;
+  --density-section-header-margin-bottom: 16px;
 }
 
 /* Preset seams for the next step. Compact is never looser than Balanced and

@@ -472,9 +472,9 @@ a.chain-item:hover {
 .member-list .member-row {
   /* Separator uses the stronger --vp-c-border rather than the lower-contrast
      --vp-c-divider so the boundary between members stays visible in dark mode;
-     width stays 1px. The 10px vertical padding gives the Properties and Methods
-     rows, which share this selector, room to read as separate entries while the
-     horizontal inset stays 0. */
+     width stays 1px. The vertical padding (the --density-member-row-pad-y
+     token) gives the Properties and Methods rows, which share this selector,
+     room to read as separate entries while the horizontal inset stays 0. */
   border-bottom: var(--density-member-divider) solid var(--vp-c-border);
   padding: var(--density-member-row-pad-y) 0;
 }
@@ -985,4 +985,9 @@ a.chain-item:hover {
   font-size: var(--density-section-header-font);
   font-weight: 700;
   color: var(--vp-c-text-1);
+  /* More space above than below so each section reads as starting a new block
+     rather than floating between its neighbours. Tokenized so the density
+     presets can vary it. */
+  margin-top: var(--density-section-header-margin-top);
+  margin-bottom: var(--density-section-header-margin-bottom);
 }

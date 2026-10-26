@@ -48,8 +48,10 @@ test.describe('layout density attribute', () => {
 
   test('built output: the --density-* tokens resolve on :root in the built CSS', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
-    // The token layer survives the build: today's values are readable from the
-    // document root. Asserting a representative token from each tokenized area.
+    // The token layer survives the build: the Balanced values are readable from
+    // the document root. Asserting a representative token from each tokenized
+    // area. #38 raised member-row padding and the table margin over the
+    // foundation's original values.
     const tokens = await page.evaluate(() => {
       const s = getComputedStyle(document.documentElement);
       return {
@@ -60,10 +62,24 @@ test.describe('layout density attribute', () => {
         sectionHeaderFont: s.getPropertyValue('--density-section-header-font').trim(),
       };
     });
-    expect(tokens.memberRowPadY).toBe('10px');
+    expect(tokens.memberRowPadY).toBe('12px');
     expect(tokens.outlineFont).toBe('13px');
     expect(tokens.sidebarIndent).toBe('14px');
-    expect(tokens.tableMargin).toBe('14px');
+    expect(tokens.tableMargin).toBe('16px');
     expect(tokens.sectionHeaderFont).toBe('1.4rem');
+  });
+
+  test('a Properties/Methods section header has more space above than below', async ({ page }) => {
+    // #38: sections read as separate blocks because the heading carries more
+    // margin above than below. Measured on the rendered Queue page's
+    // `## Methods` heading rather than on the token, so it survives the build.
+    await page.goto(QUEUE_PAGE);
+    const heading = page.locator('h2#methods');
+    await expect(heading).toBeVisible();
+    const margins = await heading.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { top: parseFloat(s.marginTop), bottom: parseFloat(s.marginBottom) };
+    });
+    expect(margins.top).toBeGreaterThan(margins.bottom);
   });
 });
