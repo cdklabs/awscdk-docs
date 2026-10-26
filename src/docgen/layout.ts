@@ -13,6 +13,7 @@ import {
   translateTypeRef,
 } from './languages.js';
 import { pageHref } from './links.js';
+import { encodeOutlineParams } from './outline-members.js';
 import { PAGEFIND_IGNORE } from './search.js';
 import {
   LinkResolver,
@@ -386,7 +387,12 @@ function disclosureLabel(parts: readonly string[]): string {
   return parts.length === 0 ? 'more detail' : parts.join(' · ');
 }
 
-/** A member's header line, summary line, and either inline prose or a disclosure. */
+/**
+ * A member's header line, summary line, and either inline prose or a disclosure. `optional` and `params` are the
+ * row's display data for the in-page outline: `data-optional` carries the optional state as data and `data-params`
+ * a method's encoded parameter list, so the outline reads both from the same jsii declaration that drew the row
+ * (see outline-members.ts), never from the rendered name or signature.
+ */
 function memberRow(
   anchorId: string,
   label: string,
@@ -396,11 +402,11 @@ function memberRow(
   detail: { readonly lines: string[]; readonly labels: readonly string[] },
   indexBody = true,
   optional?: OptionalKind,
+  params?: string,
 ): string[] {
-  // `data-optional` carries the row's optional state as data, so the outline reads it from the same jsii flag that
-  // drew the row's `?` (see outline-members.ts), never from the rendered name.
   const optionalAttr = optional ? ` data-optional="${optional}"` : '';
-  const lines = [`<div class="member-row" id="${anchorId}"${optionalAttr}>`];
+  const paramsAttr = params === undefined ? '' : ` data-params="${params}"`;
+  const lines = [`<div class="member-row" id="${anchorId}"${optionalAttr}${paramsAttr}>`];
   lines.push(
     '<div class="member-line">'
     + headerParts.join('')
@@ -719,6 +725,7 @@ function renderMethodRow(
     detail.push(...codeFence(method.docs.example, 'ts'), '');
     labels.push('example');
   }
+  // The outline shows the parameter names: encoded from the same declaration the signature above was built from.
   return memberRow(memberAnchor(method.name), method.name, header, summary, prose,
-    { lines: detail, labels });
+    { lines: detail, labels }, true, undefined, encodeOutlineParams(method.parameters));
 }

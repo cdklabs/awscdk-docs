@@ -81,7 +81,7 @@ describe('variant helpers', () => {
     expect(section).toContain('data-pagefind-ignore><code class="member-signature">def grant_read(');
     // The anchor is the row's own permalink rather than a heading pin, and the
     // slug is the canonical one, which is what keeps existing deep links alive.
-    expect(section).toContain('<div class="member-row" id="grantread">');
+    expect(section).toContain('<div class="member-row" id="grantread" data-params="sourceBucket">');
     expect(section).toContain('href="#grantread"');
     // Documented parameter names transliterate; the summary stays single-copy.
     expect(section).toContain('<span class="lang-variant" data-lang="ts">`sourceBucket`</span>');
@@ -91,7 +91,7 @@ describe('variant helpers', () => {
     // Single language: today's bare output, no wrapper, no pinned anchor.
     const single = renderMethodsSection([documented], noLink, 'aws-cdk-lib.aws_s3.Bucket', ['ts'])
       .join('\n');
-    expect(single).toContain('<div class="member-row" id="grantread">');
+    expect(single).toContain('<div class="member-row" id="grantread" data-params="sourceBucket">');
     expect(single).not.toContain('### grantRead');
     expect(single).toContain('- `sourceBucket` — The bucket to read from.');
   });
@@ -417,7 +417,7 @@ describe('multi-language page generation', () => {
     // survive a client-side language switch. It lives on the row's id and
     // permalink, and the slug is deliberately the canonical one, which is what
     // keeps every existing deep link resolving.
-    expect(page).toContain('<div class="member-row" id="adddependency">');
+    expect(page).toContain('<div class="member-row" id="adddependency" data-params="...deps">');
     expect(page).toContain('href="#adddependency"');
     expect(page).not.toContain('{#adddependency}');
     // No bare-text heading remains (it would double-render the TS name).

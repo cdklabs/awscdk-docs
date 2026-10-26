@@ -1,5 +1,6 @@
-import { nestOutlineMembers } from '../docs/.vitepress/theme/outline-members.js';
-import { outlineMembers, withOutlineMembers } from '../src/docgen/outline-members.js';
+import * as spec from '@jsii/spec';
+import { formatParams, nestOutlineMembers, OutlineItem } from '../docs/.vitepress/theme/outline-members.js';
+import { decodeOutlineParams, encodeOutlineParams, outlineMembers, withOutlineMembers } from '../src/docgen/outline-members.js';
 
 /** One member row as the layout renderers emit it: the row id and a permalink naming the member. */
 function row(id: string, name: string): string[] {
@@ -118,8 +119,89 @@ describe('outline member list', () => {
   });
 });
 
+/** A method row as the layout renderer emits it: the row id, the encoded parameter list and the permalink. */
+function methodRow(id: string, name: string, params: string): string[] {
+  const [, ...rest] = row(id, name);
+  return [`<div class="member-row" id="${id}" data-params="${params}">`, ...rest];
+}
+
+const STRING: spec.TypeReference = { primitive: spec.PrimitiveType.String };
+
+describe('method parameters in the outline', () => {
+  test('encodes the parameter names in declared order, with no types, from the jsii declaration', () => {
+    const encoded = encodeOutlineParams([
+      { name: 'identity', type: { fqn: 'aws-cdk-lib.aws_iam.IGrantable' } },
+      { name: 'objectsKeyPattern', type: { primitive: spec.PrimitiveType.Any }, optional: true },
+    ]);
+    expect(encoded).toBe('identity,objectsKeyPattern?');
+    expect(encoded).not.toContain('IGrantable');
+  });
+
+  test('a method without parameters encodes to the empty value, so the outline renders ()', () => {
+    expect(encodeOutlineParams(undefined)).toBe('');
+    expect(encodeOutlineParams([])).toBe('');
+    expect(decodeOutlineParams('')).toEqual([]);
+  });
+
+  test('marks a variadic parameter and reads the marks back', () => {
+    const encoded = encodeOutlineParams([
+      { name: 'a', type: STRING },
+      { name: 'b', type: STRING, optional: true },
+      { name: 'rest', type: STRING, variadic: true },
+    ]);
+    expect(encoded).toBe('a,b?,...rest');
+    expect(decodeOutlineParams(encoded)).toEqual([{ name: 'a' }, { name: 'b', optional: true }, { name: 'rest', variadic: true }]);
+  });
+
+  test('refuses a malformed encoded parameter instead of guessing', () => {
+    expect(() => decodeOutlineParams('a,,b')).toThrow(/Malformed outline parameter/);
+    expect(() => decodeOutlineParams('a?b')).toThrow(/Malformed outline parameter/);
+  });
+
+  test('formats required, optional, variadic and empty parameter lists the way the outline shows them', () => {
+    expect(formatParams([{ name: 'identity' }, { name: 'objectsKeyPattern', optional: true }])).toBe('(identity, objectsKeyPattern?)');
+    expect(formatParams([{ name: 'statements', variadic: true }])).toBe('(...statements)');
+    expect(formatParams([{ name: 'a' }, { name: 'b', optional: true }, { name: 'rest', variadic: true }])).toBe('(a, b?, ...rest)');
+    expect(formatParams([])).toBe('()');
+  });
+
+  test('a method row carries its parameters as the third element, read from the row\'s data and not its signature', () => {
+    const page = [
+      '## Properties {#properties}',
+      ...row('queuearn', 'queueArn'),
+      '## Methods {#methods}',
+      ...methodRow('grantsend', 'grantSend', 'grantee'),
+      ...methodRow('tostring', 'toString', ''),
+      ...methodRow('addtopolicy', 'addToPolicy', 'scope?,...statements'),
+    ].join('\n');
+    expect(outlineMembers(page)).toEqual({
+      // A property row stays a plain pair.
+      properties: [['queuearn', 'queueArn']],
+      methods: [
+        ['grantsend', 'grantSend', { params: [{ name: 'grantee' }] }],
+        ['tostring', 'toString', { params: [] }],
+        ['addtopolicy', 'addToPolicy', { params: [{ name: 'scope', optional: true }, { name: 'statements', variadic: true }] }],
+      ],
+    });
+  });
+
+  test('a row with both data attributes carries both in one extras object', () => {
+    const [, ...rest] = row('x', 'x');
+    const page = ['## Methods {#methods}', '<div class="member-row" id="x" data-optional="output" data-params="a">', ...rest].join('\n');
+    expect(outlineMembers(page)).toEqual({ methods: [['x', 'x', { optional: 'output', params: [{ name: 'a' }] }]] });
+  });
+
+  test('the parameter list is written to the frontmatter and the body is unchanged', () => {
+    const page = ['---', 'title: "Queue"', '---', '', '## Methods {#methods}', ...methodRow('grantsend', 'grantSend', 'grantee'), ''].join('\n');
+    const out = withOutlineMembers(page);
+    const frontmatter = out.slice(0, out.indexOf('\n---\n', 3));
+    expect(frontmatter).toContain('"grantsend","grantSend",{"params":[{"name":"grantee"}]}');
+    expect(out.slice(out.indexOf('\n---\n', 3))).toBe(page.slice(page.indexOf('\n---\n', 3)));
+  });
+});
+
 describe('outline nesting', () => {
-  const header = (id: string, title: string) => ({ title, link: `#${id}`, level: 2, children: [] });
+  const header = (id: string, title: string): OutlineItem => ({ title, link: `#${id}`, level: 2, children: [] });
 
   test('nests each member under the matching section heading, linked to its anchor', () => {
     const out = nestOutlineMembers(
@@ -172,5 +254,26 @@ describe('outline nesting', () => {
       { methods: [['grantsend', 'grantSend']] },
     );
     expect(out[0].children.map((c) => c.link)).toEqual(['#static', '#grantsend']);
+  });
+
+  test('carries a method entry\'s parameters onto its item and leaves the link as the row anchor', () => {
+    const out = nestOutlineMembers(
+      [header('properties', 'Properties'), header('methods', 'Methods')],
+      {
+        properties: [['queuearn', 'queueArn']],
+        methods: [
+          ['grantsend', 'grantSend', { params: [{ name: 'grantee' }] }],
+          ['tostring', 'toString', { params: [] }],
+          ['bogus', 'bogus', { params: [{ nope: 1 }] as any }],
+        ],
+      },
+    );
+    expect(out[0].children[0]).toEqual({ title: 'queueArn', link: '#queuearn', level: 3, children: [] });
+    expect(out[1].children).toEqual([
+      { title: 'grantSend', link: '#grantsend', level: 3, children: [], params: [{ name: 'grantee' }] },
+      { title: 'toString', link: '#tostring', level: 3, children: [], params: [] },
+      // A malformed list is dropped whole rather than rendered.
+      { title: 'bogus', link: '#bogus', level: 3, children: [] },
+    ]);
   });
 });

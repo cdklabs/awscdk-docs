@@ -8,16 +8,59 @@
  * (`docs/adr/2026-10-22-outline-members.md`; the construct props group is
  * `docs/adr/2026-10-23-outline-construct-props.md`).
  */
+import type * as spec from '@jsii/spec';
 import { PROPS_ANCHOR_PREFIX, SECTION_ANCHORS } from './anchors.js';
 import { tokenizeFences } from './fences.js';
 import type { OptionalKind } from './layout.js';
 
+/** One method parameter as the outline shows it: the canonical (TypeScript) name and its optional / variadic marks. */
+export interface OutlineParam {
+  readonly name: string;
+  readonly optional?: true;
+  readonly variadic?: true;
+}
+
 /**
  * Display data an outline entry may carry beside its anchor and name. `optional` is the row's optional kind, so the
- * outline marks the same members the rows mark (`docs/adr/2026-10-23-optional-prop-marker.md`).
+ * outline marks the same members the rows mark (`docs/adr/2026-10-23-optional-prop-marker.md`). `params` is present
+ * on every method entry (empty for a method without parameters, so the theme renders `()`) and absent on property
+ * and prop entries (`docs/adr/2026-10-26-outline-method-parameters.md`).
  */
 export interface OutlineMemberExtras {
   readonly optional?: OptionalKind;
+  readonly params?: readonly OutlineParam[];
+}
+
+/**
+ * The `data-params` value a method row carries: its jsii parameters in declared order as `name`, `name?` for an
+ * optional one and `...name` for a variadic one, comma-separated, empty for no parameters. The row emitter writes it
+ * from the same declaration the signature is built from; {@link decodeOutlineParams} reads it back, so the outline
+ * never parses the rendered signature. Parameter names are identifiers, so the value needs no quoting.
+ */
+export function encodeOutlineParams(parameters: readonly spec.Parameter[] | undefined): string {
+  return (parameters ?? [])
+    .map((param) => `${param.variadic ? '...' : ''}${param.name}${param.optional ? '?' : ''}`)
+    .join(',');
+}
+
+const ENCODED_PARAM = /^(\.\.\.)?([^?]+)(\?)?$/;
+
+/** The parameter list {@link encodeOutlineParams} wrote; an empty value is a method with no parameters. */
+export function decodeOutlineParams(encoded: string): OutlineParam[] {
+  if (encoded === '') {
+    return [];
+  }
+  return encoded.split(',').map((part) => {
+    const match = ENCODED_PARAM.exec(part);
+    if (!match) {
+      throw new Error(`Malformed outline parameter: ${JSON.stringify(part)}`);
+    }
+    return {
+      name: match[2],
+      ...(match[3] ? { optional: true as const } : {}),
+      ...(match[1] ? { variadic: true as const } : {}),
+    };
+  });
 }
 
 /**
@@ -51,7 +94,7 @@ function isOutlineSection(anchor: string): boolean {
 }
 
 const SECTION_HEADING = /^## .*\{#([^}\s]+)\}\s*$/;
-const MEMBER_ROW = /^<div class="member-row" id="([^"]+)"(?: data-optional="(input|output)")?>/;
+const MEMBER_ROW = /^<div class="member-row" id="([^"]+)"(?: data-optional="(input|output)")?(?: data-params="([^"]*)")?>/;
 const PERMALINK_NAME = /class="member-permalink" href="#([^"]+)" aria-label="Permalink to ([^"]+)"/;
 
 function unescapeHtml(text: string): string {
@@ -67,13 +110,14 @@ function unescapeHtml(text: string): string {
  * Collect the member rows of a rendered type page, grouped by the `##` section they sit under: the type's own
  * properties and methods, and the inlined construct props. Fenced code is skipped, so an example that happens to
  * contain a heading or row markup cannot add an entry. A section with no member rows gets no key, so the outline
- * never shows an empty group.
+ * never shows an empty group. A row's `data-optional` and `data-params` attributes become the entry's extras; a row
+ * with neither stays a plain `[anchor, name]` pair.
  */
 export function outlineMembers(page: string): OutlineMembers {
   const groups: Record<string, OutlineMember[]> = {};
   let section: string | undefined;
   let pendingRow: string | undefined;
-  let pendingOptional: OptionalKind | undefined;
+  let pendingExtras: OutlineMemberExtras | undefined;
   for (const span of tokenizeFences(page)) {
     if (span.kind === 'code') {
       continue;
@@ -88,7 +132,7 @@ export function outlineMembers(page: string): OutlineMembers {
       const row = MEMBER_ROW.exec(line);
       if (row) {
         pendingRow = row[1];
-        pendingOptional = row[2] as OptionalKind | undefined;
+        pendingExtras = rowExtras(row[2] as OptionalKind | undefined, row[3]);
         continue;
       }
       if (pendingRow === undefined || section === undefined) {
@@ -97,12 +141,23 @@ export function outlineMembers(page: string): OutlineMembers {
       const link = PERMALINK_NAME.exec(line);
       if (link && link[1] === pendingRow) {
         const name = unescapeHtml(link[2]);
-        (groups[section] ??= []).push(pendingOptional ? [pendingRow, name, { optional: pendingOptional }] : [pendingRow, name]);
+        (groups[section] ??= []).push(pendingExtras ? [pendingRow, name, pendingExtras] : [pendingRow, name]);
         pendingRow = undefined;
       }
     }
   }
   return groups;
+}
+
+/** The extras a row's data attributes describe, or `undefined` when it carries none. */
+function rowExtras(optional: OptionalKind | undefined, params: string | undefined): OutlineMemberExtras | undefined {
+  if (optional === undefined && params === undefined) {
+    return undefined;
+  }
+  return {
+    ...(optional ? { optional } : {}),
+    ...(params !== undefined ? { params: decodeOutlineParams(params) } : {}),
+  };
 }
 
 /**

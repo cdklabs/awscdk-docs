@@ -296,7 +296,7 @@ describe('mixin page generation', () => {
     expect(page).not.toContain('| **Module** |');
     expect(page).not.toContain('| **FQN** |');
     expect(page).toContain('## Methods');
-    expect(page).toContain('<div class="member-row" id="applyto">');
+    expect(page).toContain('<div class="member-row" id="applyto" data-params="construct">');
     // A row of the hierarchy bar rather than a section of its own: the classes
     // carrying the mixin are the inverse of the interfaces it extends, so both
     // sit in one block.

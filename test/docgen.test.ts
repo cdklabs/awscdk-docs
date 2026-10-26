@@ -1,14 +1,40 @@
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
+import { toAgentMarkdown } from '../src/docgen/agent-markdown.js';
 import { convertMathFences, generateDocs, loadConfig, renderApiOverviewPage, renderOverviewPage, submoduleSegments, TypeEntry } from '../src/docgen/index.js';
 import { escapeCell, escapeProse } from '../src/docgen/layout.js';
+import { OutlineMembers } from '../src/docgen/outline-members.js';
+import { signatureText } from '../src/docgen/signatures.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
 // Overview/index pages open with frontmatter suppressing the redundant
 // right-hand outline; a blank line then the page heading follow.
 const OUTLINE_OFF = '---\noutline: false\n---\n\n';
+
+/** The `outlineMembers` frontmatter of a generated type page, or undefined when the page has none. */
+function frontmatterMembers(page: string): OutlineMembers | undefined {
+  const head = page.slice(0, page.indexOf('\n---\n', 3));
+  const line = head.split('\n').find((l) => l.startsWith('outlineMembers: '));
+  return line ? JSON.parse(line.slice('outlineMembers: '.length)) : undefined;
+}
+
+/**
+ * The method anchors of the built `Bucket` page as they were before the outline showed parameters, in page order.
+ * Captured from the generated page at the commit before that change; the outline's display data must never move
+ * a row anchor, so an existing permalink or external link keeps resolving.
+ */
+const BUCKET_METHOD_ANCHORS: readonly string[] = [
+  'addcorsrule', 'addeventnotification', 'addinventory', 'addlifecyclerule', 'addmetric',
+  'addobjectcreatednotification', 'addobjectremovednotification', 'addreplicationpolicy', 'addtoresourcepolicy',
+  'applycrossstackreferencestrength', 'applyremovalpolicy', 'arnforobjects', 'enableeventbridgenotification',
+  'frombucketarn', 'frombucketattributes', 'frombucketname', 'fromcfnbucket', 'grantdelete', 'grantonkey',
+  'grantpublicaccess', 'grantput', 'grantputacl', 'grantread', 'grantreadwrite', 'grantreplicationpermission',
+  'grantwrite', 'isconstruct', 'isownedresource', 'isresource', 'oncloudtrailevent', 'oncloudtrailputobject',
+  'oncloudtrailwriteobject', 's3urlforobject', 'tostring', 'transferaccelerationurlforobject', 'urlforobject',
+  'validatebucketname', 'virtualhostedurlforobject', 'with',
+];
 
 describe('escapeProse inline links', () => {
   test('converts an external URL with a multi-word label', () => {
@@ -789,15 +815,10 @@ describe('docgen generation', () => {
   });
 
   test('type pages list their properties, methods and construct props for the outline, keyed by the rows\' own anchors', () => {
-    const frontmatterMembers = (page: string): Record<string, [string, string][]> | undefined => {
-      const head = page.slice(0, page.indexOf('\n---\n', 3));
-      const line = head.split('\n').find((l) => l.startsWith('outlineMembers: '));
-      return line ? JSON.parse(line.slice('outlineMembers: '.length)) : undefined;
-    };
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     const members = frontmatterMembers(bucket)!;
     expect(members.properties).toContainEqual(['bucketarn', 'bucketArn']);
-    expect(members.methods).toContainEqual(['addtoresourcepolicy', 'addToResourcePolicy']);
+    expect(members.methods.map(([anchor, name]) => [anchor, name])).toContainEqual(['addtoresourcepolicy', 'addToResourcePolicy']);
     // The inlined BucketProps rows are listed too, as a third group keyed by the Construct Props section anchor,
     // each entry carrying the props-based row id.
     expect(Object.keys(members).sort()).toEqual(['methods', 'properties', 'props-bucketprops']);
@@ -805,7 +826,8 @@ describe('docgen generation', () => {
     expect(bucket).toContain('## Construct Props {#props-bucketprops}');
     // Every entry points at a member row that exists on the page; no per-member heading is added.
     for (const [anchor] of [...members.properties, ...members.methods, ...members['props-bucketprops']]) {
-      // An optional row also carries its kind as `data-optional`, so match up to the id.
+      // An optional row also carries its kind as `data-optional`, and a method row its `data-params`, so match up
+      // to the id.
       expect(bucket).toContain(`<div class="member-row" id="${anchor}"`);
       expect(bucket).not.toMatch(new RegExp(`^#+ .*\\{#${anchor}\\}$`, 'm'));
     }
@@ -816,6 +838,50 @@ describe('docgen generation', () => {
     const props = frontmatterMembers(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8'))!;
     expect(props.properties.length).toBeGreaterThan(0);
     expect(Object.keys(props)).toEqual(['properties']);
+  });
+
+  test('a method\'s outline entry carries its parameter names, from the same declaration as its row signature', () => {
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    const members = frontmatterMembers(bucket)!;
+    const grantRead = members.methods.find(([anchor]) => anchor === 'grantread')!;
+    expect(grantRead).toEqual(['grantread', 'grantRead', { params: [{ name: 'identity' }, { name: 'objectsKeyPattern', optional: true }] }]);
+    // The row carries the same list as data, and its signature spells the same parameters, so the two cannot disagree.
+    const row = bucket.slice(bucket.indexOf('<div class="member-row" id="grantread"'));
+    expect(row.startsWith('<div class="member-row" id="grantread" data-params="identity,objectsKeyPattern?">')).toBe(true);
+    expect(signatureText(row.slice(0, row.indexOf('</code>'))).trim()).toMatch(/^grantRead\(identity: \S+, objectsKeyPattern\?: \S+\)/);
+    // Every method entry has a parameter list, a parameterless one an empty list; no entry carries a type.
+    for (const [, , extras] of members.methods) {
+      expect(Array.isArray(extras?.params)).toBe(true);
+    }
+    expect(members.methods.find(([anchor]) => anchor === 'tostring')).toEqual(['tostring', 'toString', { params: [] }]);
+    expect(JSON.stringify(members.methods)).not.toContain('IGrantable');
+    // Properties carry no parameter list; props carry only their optional kind.
+    for (const [, , extras] of [...members.properties, ...members['props-bucketprops']]) {
+      expect(extras?.params).toBeUndefined();
+    }
+  });
+
+  test('the outline parameter text is display data only: it is in the frontmatter and the row attribute, not the anchors or the markdown twin', () => {
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    const body = bucket.slice(bucket.indexOf('\n---\n', 3));
+    expect(body).not.toContain('"params"');
+    // The encoded list is on the row's opening tag only, never in an id, a permalink or the visible line.
+    expect(body).not.toMatch(/id="[^"]*[,?]/);
+    expect(body).not.toMatch(/href="#[^"]*[,?]/);
+    // The agent-facing markdown twin of the page has no outline and no row attributes, so no parameter data.
+    const twin = toAgentMarkdown(bucket).markdown;
+    expect(twin).not.toContain('outlineMembers');
+    expect(twin).not.toContain('"params"');
+    expect(twin).not.toContain('data-params');
+  });
+
+  test('every method anchor on the Bucket page is the one it had before the outline showed parameters', () => {
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    const members = frontmatterMembers(bucket)!;
+    expect(members.methods.map(([anchor]) => anchor)).toEqual(BUCKET_METHOD_ANCHORS);
+    for (const anchor of BUCKET_METHOD_ANCHORS) {
+      expect(bucket).toContain(`<div class="member-row" id="${anchor}"`);
+    }
   });
 
   test('a value default longer than sixteen characters is in the row header in full', () => {
