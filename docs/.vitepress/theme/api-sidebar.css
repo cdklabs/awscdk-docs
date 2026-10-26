@@ -128,10 +128,10 @@
   display: flex;
   align-items: flex-start;
   width: 100%;
-  padding: 5px 4px;
-  padding-left: calc(min(max(var(--api-sidebar-depth) - 1, 0), 1) * 14px);
-  font-size: 14px;
-  line-height: 1.5;
+  padding: var(--density-sidebar-pad-y) var(--density-sidebar-pad-x);
+  padding-left: calc(min(max(var(--api-sidebar-depth) - 1, 0), 1) * var(--density-sidebar-indent));
+  font-size: var(--density-sidebar-font);
+  line-height: var(--density-sidebar-line);
   text-align: left;
   color: var(--vp-c-text-2);
   border-radius: 4px;
@@ -173,7 +173,7 @@
    headers and type links alike -- lines up in one text column instead of
    links sitting left of their own group's label. */
 .api-sidebar-link {
-  padding-left: calc(min(max(var(--api-sidebar-depth) - 1, 0), 1) * 14px + 16px);
+  padding-left: calc(min(max(var(--api-sidebar-depth) - 1, 0), 1) * var(--density-sidebar-indent) + 16px);
 }
 
 .api-sidebar-group:hover,

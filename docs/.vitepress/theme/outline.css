@@ -26,6 +26,6 @@
   /* The default 32px line-height doubled as per-entry spacing; wrapped
      entries need a compact line box plus explicit padding so each entry
      stays dense yet visually grouped. */
-  line-height: 1.3;
-  padding: 5px 0;
+  line-height: var(--density-outline-line);
+  padding: var(--density-outline-pad) 0;
 }

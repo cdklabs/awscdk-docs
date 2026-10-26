@@ -859,15 +859,22 @@ describe('API page layout', () => {
       // symbol name. rulesFor() fails outright if the rule is absent.
       const NAME_SIZE_REM = 0.875; // .member-list .member-line font-size
       const NAME_WEIGHT = 600; // .member-signature .sig-name font-weight
+      // The header font size is now the --density-section-header-font token
+      // (declared once on :root in density.css at today's value, 1.4rem), per
+      // ADR 2026-10-23-layout-density. Resolve it from that :root block.
+      const dcss = readFileSync(resolve(THEME_DIR, 'density.css'), 'utf-8');
+      const root = dcss.slice(dcss.indexOf(':root {'), dcss.indexOf('}', dcss.indexOf(':root {')));
+      const headerSize = Number(
+        (root.match(/--density-section-header-font:\s*([\d.]+)rem;/) ?? [])[1],
+      );
+      expect(headerSize).toBeGreaterThan(NAME_SIZE_REM);
       for (const anchor of ['#properties', '#methods']) {
         const rules = rulesFor(css(), `h2${anchor}`);
         expect(rules).toContain('font-family: var(--vp-font-family-base)');
         expect(rules).toContain('color: var(--vp-c-text-1)');
-        const size = rules.match(/font-size:\s*([\d.]+)rem/);
+        expect(rules).toContain('font-size: var(--density-section-header-font)');
         const weight = rules.match(/font-weight:\s*(\d+)/);
-        expect(size).not.toBeNull();
         expect(weight).not.toBeNull();
-        expect(Number(size![1])).toBeGreaterThan(NAME_SIZE_REM);
         expect(Number(weight![1])).toBeGreaterThan(NAME_WEIGHT);
       }
     });

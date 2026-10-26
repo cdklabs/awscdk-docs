@@ -191,8 +191,8 @@ onUnmounted(() => {
 .content {
   position: relative;
   border-left: 1px solid var(--vp-c-divider);
-  padding-left: 16px;
-  font-size: 13px;
+  padding-left: var(--density-outline-indent);
+  font-size: var(--density-outline-font);
   font-weight: 500;
 }
 
