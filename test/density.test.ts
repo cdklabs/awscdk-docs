@@ -118,9 +118,8 @@ describe('type page information density', () => {
       const from = css.indexOf('.member-list .member-row {');
       expect(from).toBeGreaterThan(-1);
       const block = css.slice(from, css.indexOf('}', from));
-      // The vertical padding is the --density-member-row-pad-y token. #38
-      // raised the Balanced value from 10px to 12px (maintainer-approved); the
-      // horizontal inset stays a literal 0.
+      // The vertical padding is the --density-member-row-pad-y token; Balanced
+      // pins it to 12px. The horizontal inset stays a literal 0.
       const padding = block.match(/padding:\s*var\(--density-member-row-pad-y\)\s+(\d+)(?:px)?/);
       expect(padding).not.toBeNull();
       expect(Number(densityToken('member-row-pad-y').replace('px', ''))).toBe(12);

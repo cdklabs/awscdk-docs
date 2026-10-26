@@ -986,7 +986,7 @@ a.chain-item:hover {
   font-weight: 700;
   color: var(--vp-c-text-1);
   /* More space above than below so each section reads as starting a new block
-     rather than floating between its neighbours. Tokenized so the density
+     rather than floating between its neighbors. Tokenized so the density
      presets can vary it. */
   margin-top: var(--density-section-header-margin-top);
   margin-bottom: var(--density-section-header-margin-bottom);

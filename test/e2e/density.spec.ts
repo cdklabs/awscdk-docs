@@ -50,7 +50,7 @@ test.describe('layout density attribute', () => {
     await page.goto(QUEUE_PAGE);
     // The token layer survives the build: the Balanced values are readable from
     // the document root. Asserting a representative token from each tokenized
-    // area. #38 raised member-row padding and the table margin over the
+    // area. Balanced raises member-row padding and the table margin above the
     // foundation's original values.
     const tokens = await page.evaluate(() => {
       const s = getComputedStyle(document.documentElement);
@@ -70,9 +70,9 @@ test.describe('layout density attribute', () => {
   });
 
   test('a Properties/Methods section header has more space above than below', async ({ page }) => {
-    // #38: sections read as separate blocks because the heading carries more
-    // margin above than below. Measured on the rendered Queue page's
-    // `## Methods` heading rather than on the token, so it survives the build.
+    // Sections read as separate blocks because the heading carries more margin
+    // above than below. Measured on the rendered Queue page's `## Methods`
+    // heading rather than on the token, so it survives the build.
     await page.goto(QUEUE_PAGE);
     const heading = page.locator('h2#methods');
     await expect(heading).toBeVisible();
