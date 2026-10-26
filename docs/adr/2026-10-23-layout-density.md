@@ -65,8 +65,23 @@ maintainer before the work started.
     little; Compact keeps today's values; Spacious is looser than Balanced.
   - Outline: Spacious keeps today's values; Balanced is a little tighter and
     smaller in font size; Compact is tighter still.
-  - Sidebar: Balanced keeps today's values; Compact is tighter and Spacious
-    looser.
+  - Sidebar: Balanced is today's values loosened a little; Compact is tighter
+    and Spacious looser.
+
+- **Balanced values.** The foundation shipped the tokens at the then-current
+  values; the Balanced loosening step raised them a little so the default reads
+  more openly, keeping room below for Compact (today's values) and above for
+  Spacious:
+  - Member rows: vertical padding `12px` (was `10px`), divider `1px`
+    (unchanged, already the stronger `--vp-c-border`).
+  - Section headers: `40px` above / `16px` below, so a section reads as
+    starting a new block; font size `1.4rem` unchanged.
+  - Sidebar: item vertical padding `6px` (was `5px`); font, line height and
+    indent unchanged.
+  - Doc-body tables: cell padding `6px 12px` (was `5px 10px`), block margin
+    `16px` (was `14px`) — still tighter than the stock theme's `8px 16px` /
+    `20px`.
+  - Outline: unchanged here. The outline values are owned by their own step.
 
 - **Deliberately not tokenized.** Body prose, code blocks and the navbar keep
   their own type sizes untouched. Density is about the generated API layout's
