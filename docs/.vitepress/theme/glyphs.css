@@ -40,3 +40,12 @@
 .glyph-top {
   --glyph: url("./icons/top.svg");
 }
+.glyph-density-compact {
+  --glyph: url("./icons/density-compact.svg");
+}
+.glyph-density-balanced {
+  --glyph: url("./icons/density-balanced.svg");
+}
+.glyph-density-spacious {
+  --glyph: url("./icons/density-spacious.svg");
+}

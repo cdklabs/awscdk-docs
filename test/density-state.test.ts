@@ -108,6 +108,23 @@ describe('layout density state', () => {
       expect(store['cdk-docs-density']).toBe('balanced');
       expect('data-density' in attrs).toBe(false);
     });
+
+    test('a choice made with the picker survives a reload', async () => {
+      // The Layout picker calls setDensity. A reload is a fresh module over the
+      // same localStorage and a fresh <html> with no attribute.
+      const first = await import('../docs/.vitepress/theme/density.js');
+      first.setDensity('compact');
+      expect(first.density.value).toBe('compact');
+      expect(attrs['data-density']).toBe('compact');
+
+      jest.resetModules();
+      attrs = {};
+      const reloaded = await import('../docs/.vitepress/theme/density.js');
+      expect(reloaded.density.value).toBe('balanced');
+      reloaded.initDensity();
+      expect(reloaded.density.value).toBe('compact');
+      expect(attrs['data-density']).toBe('compact');
+    });
   });
 
   describe('no flash on reload', () => {

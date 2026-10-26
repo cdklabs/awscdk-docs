@@ -11,10 +11,9 @@
  *
  * The values declared here are TODAY's values: at the default level (Balanced,
  * the absence of a `data-density` attribute on <html>) every tokenized area
- * renders exactly as the site does now. The empty `[data-density="compact"]`
- * and `[data-density="spacious"]` blocks are deliberate seams for a later
- * step to fill; this step adds no preset values and changes
- * nothing a reader can see.
+ * renders exactly as the site does now. The `[data-density="compact"]` and
+ * `[data-density="spacious"]` blocks below override some of them; the Layout
+ * group in ThemePicker.vue is how a reader picks one.
  *
  * What is NOT tokenized, and why: body prose, code blocks and the navbar keep
  * their own type sizes untouched — density is about the generated API layout's
@@ -29,7 +28,7 @@
 :root {
   /* Member rows (api-layout.css): vertical padding, divider width, the gap
      between header parts, and the fold-out disclosure's top margin. */
-  --density-member-row-pad-y: 10px;
+  --density-member-row-pad-y: 12px;
   --density-member-divider: 1px;
   --density-member-gap: 12px;
   --density-member-foldout-pad: 4px;
@@ -46,31 +45,62 @@
      (vertical and horizontal), and the per-level nesting indent. */
   --density-sidebar-font: 14px;
   --density-sidebar-line: 1.5;
-  --density-sidebar-pad-y: 5px;
+  --density-sidebar-pad-y: 6px;
   --density-sidebar-pad-x: 4px;
   --density-sidebar-indent: 14px;
 
   /* Doc-body tables (below): cell padding (vertical and horizontal) and the
      table block margin. */
-  --density-table-cell-pad-y: 5px;
-  --density-table-cell-pad-x: 10px;
-  --density-table-margin: 14px;
+  --density-table-cell-pad-y: 6px;
+  --density-table-cell-pad-x: 12px;
+  --density-table-margin: 16px;
 
   /* Section headers (api-layout.css): the Properties / Methods / Construct
-     Props heading font size. */
+     Props heading font size, and the space above vs. below each heading so a
+     section boundary reads clearly (more room above than below). */
   --density-section-header-font: 1.4rem;
+  --density-section-header-margin-top: 40px;
+  --density-section-header-margin-bottom: 16px;
 }
 
-/* Preset seams for the next step. Compact is never looser than Balanced and
-   Balanced is never looser than Spacious, in every area — the order the
-   maintainer settled. Left empty here on purpose: this step ships only the
-   foundation. */
+/* Presets. Compact is never looser than Balanced and Balanced is never looser
+   than Spacious, in every area — the order the maintainer settled (see
+   docs/adr/2026-10-23-layout-density.md, "Levels"):
+
+   - Member rows, section headers, tables: Compact keeps today's values, which
+     are also Balanced's until Balanced is loosened in its own step, so Compact
+     sets nothing for them here. Spacious is looser.
+   - Outline: Spacious keeps today's values. The tighter Balanced and Compact
+     outline numbers are set in their own step, so neither block touches the
+     outline tokens yet.
+   - Sidebar: Balanced keeps today's values; Compact is tighter, Spacious
+     looser. Compact sidebar items stay at least 24px tall (WCAG 2.5.8):
+     13px x 1.4 + 2 x 3px = 24.2px.
+
+   Final numbers were picked from screenshots, starting from roughly a quarter
+   less (Compact) or more (Spacious) vertical space than Balanced. */
 [data-density="compact"] {
-  /* preset values filled by a later step */
+  --density-sidebar-font: 13px;
+  --density-sidebar-line: 1.4;
+  --density-sidebar-pad-y: 3px;
+  --density-sidebar-indent: 12px;
 }
 
 [data-density="spacious"] {
-  /* preset values filled by a later step */
+  --density-member-row-pad-y: 13px;
+  --density-member-divider: 2px;
+  --density-member-gap: 14px;
+  --density-member-foldout-pad: 6px;
+
+  --density-sidebar-line: 1.6;
+  --density-sidebar-pad-y: 8px;
+  --density-sidebar-indent: 16px;
+
+  --density-table-cell-pad-y: 7px;
+  --density-table-cell-pad-x: 12px;
+  --density-table-margin: 18px;
+
+  --density-section-header-font: 1.5rem;
 }
 
 /**

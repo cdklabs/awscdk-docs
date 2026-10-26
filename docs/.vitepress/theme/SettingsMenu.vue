@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Settings dropdown: a compact gear-icon disclosure in the desktop navbar that
-// hosts the low-frequency reader preferences — both tri-state pickers, Site
-// theme and Code theme, and the API sidebar's Navigation style — behind the
-// gear to keep the nav row uncluttered.
+// hosts the low-frequency reader preferences — the three tri-state pickers,
+// Site theme, Code theme and Layout, and the API sidebar's Navigation style —
+// behind the gear to keep the nav row uncluttered.
 //
 // Disclosure pattern: the trigger is a real <button> with aria-expanded /
 // aria-controls, Enter/Space toggle natively, Escape closes and returns focus to

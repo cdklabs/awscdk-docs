@@ -80,6 +80,26 @@ describe('three-state theme picker', () => {
     expect(config).not.toMatch(/appearance\s*:/);
   });
 
+  test('offers a Layout density group: Compact, Balanced, Spacious, in that order', () => {
+    // Third group, built like the other two: an icon button per state, the
+    // descriptive title doubling as its accessible name, the active state on
+    // aria-pressed, and a visible "Layout" caption in the Settings panel.
+    expect(component).toContain('from "./density"');
+    expect(component).toContain('aria-label="Layout"');
+    expect(component).toMatch(/v-if="groupLabels" class="theme-picker-group-label">Layout</);
+    const order = [...component.matchAll(/\{ value: "(compact|balanced|spacious)", label: "(\w+)"/g)]
+      .map((m) => m[2]);
+    expect(order).toEqual(['Compact', 'Balanced', 'Spacious']);
+    expect(component).toContain('setDensity(value)');
+    expect(component).toContain(':aria-pressed="mounted && density === option.value"');
+    expect(component).toContain(':class="{ active: mounted && density === option.value }"');
+    expect(component).toContain('initDensity()');
+    // The Layout group sits after Site theme and Code theme.
+    expect(component.indexOf('aria-label="Layout"')).toBeGreaterThan(
+      component.indexOf('aria-label="Code theme"'),
+    );
+  });
+
   test('@vueuse/core is a declared dependency', () => {
     const pkg = JSON.parse(
       readFileSync(resolve(ROOT, 'package.json'), 'utf-8'),

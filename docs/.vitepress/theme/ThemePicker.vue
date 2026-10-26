@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Two tri-state theme controls, rendered as compact segmented icon toggles:
+// Three tri-state controls, rendered as compact segmented icon toggles:
 //
 // - SITE theme: Light / Device / Dark. "Device" follows the OS
 //   `prefers-color-scheme` and reacts live to OS changes.
@@ -7,6 +7,9 @@
 //   site theme; Light or Dark decouples them. State and persistence live in
 //   code-theme.ts; the rendering switch is pure CSS over the Shiki dual-theme
 //   vars (code-theme.css), no re-highlighting.
+// - LAYOUT density: Compact / Balanced / Spacious. Balanced is the default.
+//   State and persistence live in density.ts; the values are the
+//   `--density-*` tokens and their presets in density.css.
 //
 // Placement: the desktop navbar renders this inside the Settings dropdown, which
 // passes `group-labels` for a visible caption per group; the mobile nav screen
@@ -25,7 +28,7 @@
 //   bootstrap script in config.mts.
 //
 // Icon-only buttons take their accessible names from the descriptive `title`
-// strings so the two groups' buttons stay distinguishable by name alone. The
+// strings so the three groups' buttons stay distinguishable by name alone. The
 // active state is exposed through aria-pressed, never color alone.
 import { useColorMode } from "@vueuse/core";
 import { onMounted, ref } from "vue";
@@ -35,6 +38,7 @@ import {
   setCodeTheme,
   type CodeTheme,
 } from "./code-theme";
+import { density, initDensity, setDensity, type Density } from "./density";
 
 // VitePress's appearance storage key. Not re-exported from the public
 // 'vitepress' entry point, so mirrored here and guarded by a test that
@@ -67,6 +71,19 @@ const CODE_OPTIONS: { value: CodeTheme; label: string; title: string }[] = [
   { value: "dark", label: "Dark", title: "Dark code blocks" },
 ];
 
+// LAYOUT density: Compact / Balanced / Spacious, in that order. Balanced is
+// the default and removes the `data-density` attribute; state, storage and the
+// pre-hydration bootstrap live in density.ts and config.mts.
+const DENSITY_OPTIONS: { value: Density; label: string; title: string }[] = [
+  { value: "compact", label: "Compact", title: "Compact layout" },
+  { value: "balanced", label: "Balanced", title: "Balanced layout" },
+  { value: "spacious", label: "Spacious", title: "Spacious layout" },
+];
+
+function selectDensity(value: Density) {
+  setDensity(value);
+}
+
 function selectSite(value: Mode) {
   mode.value = value;
 }
@@ -83,9 +100,11 @@ function selectCode(value: CodeTheme) {
 const mounted = ref(false);
 
 // Idempotent: the navbar and the mobile nav-screen each mount a copy; both
-// share the one codeTheme ref, so their active states stay in sync.
+// share the one codeTheme and density refs, so their active states stay in
+// sync.
 onMounted(() => {
   initCodeTheme();
+  initDensity();
   mounted.value = true;
 });
 </script>
@@ -138,6 +157,24 @@ onMounted(() => {
         <span v-else class="glyph glyph-moon theme-picker-icon" aria-hidden="true" />
       </button>
     </div>
+
+    <span v-if="groupLabels" class="theme-picker-group-label">Layout</span>
+    <div class="theme-picker-group" role="group" aria-label="Layout">
+      <button
+        v-for="option in DENSITY_OPTIONS"
+        :key="option.value"
+        type="button"
+        class="theme-picker-option"
+        :class="{ active: mounted && density === option.value }"
+        :aria-pressed="mounted && density === option.value"
+        :aria-label="option.title"
+        :title="option.title"
+        @click="selectDensity(option.value)"
+      >
+        <!-- Rows drawn closer together or further apart, per level. -->
+        <span :class="`glyph glyph-density-${option.value} theme-picker-icon`" aria-hidden="true" />
+      </button>
+    </div>
   </div>
 </template>
 
@@ -145,14 +182,14 @@ onMounted(() => {
 .ThemePicker {
   display: inline-flex;
   align-items: center;
-  /* Tight gap: two tri-state groups render side by side, so the doubled
-   * control must not squeeze the centered search out of the nav row.
+  /* Tight gap: in the mobile nav screen the three tri-state groups render
+   * side by side, so the row must stay narrow.
    * Width is recovered from chrome, never from the segments, which stay
    * at or above the 24px WCAG 2.5.8 minimum target size. */
   gap: 2px;
 }
 
-/* Labeled layout (SettingsMenu.vue's panel): the two groups stack under
+/* Labeled layout (SettingsMenu.vue's panel): the three groups stack under
  * their captions instead of competing for nav-row width. Segments and the
  * 40px track are unchanged, so state, target sizes and accessible names
  * are identical in both layouts. */
