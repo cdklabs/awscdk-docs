@@ -45,6 +45,9 @@ the presentation of the existing required state changes. Optional properties
 carry no required marker, so they remain clearly distinguishable. *Superseded —
 see [optional property marker](./2026-10-23-optional-prop-marker.md): optional
 properties now show a trailing `?`. The badge rules above stand.*
+*Superseded — see [required badge on inputs only](./2026-10-26-required-badge-inputs-only.md):
+the badge is emitted for non-optional inputs (struct props) only, never for
+class or interface properties.*
 
 ## Consequences
 

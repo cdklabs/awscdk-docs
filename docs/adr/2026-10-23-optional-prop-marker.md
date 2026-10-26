@@ -31,7 +31,8 @@ settled with the maintainer before the work started.
   `<span class="member-optional">` right after `<code class="member-name">`, in
   every language variant: optionality is a fact about the member, not about one
   language's spelling. Required properties get no mark. The `required` badge is
-  kept.
+  kept. *Narrowed — see [required badge on inputs only](./2026-10-26-required-badge-inputs-only.md):
+  the badge is now kept on inputs only.*
 - **Inputs and outputs.** The mark covers struct props (inputs: the caller may
   leave them out) and class, interface and mixin properties (outputs: the value
   may be undefined). Each property table says which it is
