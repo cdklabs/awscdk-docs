@@ -28,7 +28,7 @@
 //   bootstrap script in config.mts.
 //
 // Icon-only buttons take their accessible names from the descriptive `title`
-// strings so the two groups' buttons stay distinguishable by name alone. The
+// strings so the three groups' buttons stay distinguishable by name alone. The
 // active state is exposed through aria-pressed, never color alone.
 import { useColorMode } from "@vueuse/core";
 import { onMounted, ref } from "vue";
@@ -100,7 +100,8 @@ function selectCode(value: CodeTheme) {
 const mounted = ref(false);
 
 // Idempotent: the navbar and the mobile nav-screen each mount a copy; both
-// share the one codeTheme ref, so their active states stay in sync.
+// share the one codeTheme and density refs, so their active states stay in
+// sync.
 onMounted(() => {
   initCodeTheme();
   initDensity();
@@ -181,14 +182,14 @@ onMounted(() => {
 .ThemePicker {
   display: inline-flex;
   align-items: center;
-  /* Tight gap: two tri-state groups render side by side, so the doubled
-   * control must not squeeze the centered search out of the nav row.
+  /* Tight gap: in the mobile nav screen the three tri-state groups render
+   * side by side, so the row must stay narrow.
    * Width is recovered from chrome, never from the segments, which stay
    * at or above the 24px WCAG 2.5.8 minimum target size. */
   gap: 2px;
 }
 
-/* Labeled layout (SettingsMenu.vue's panel): the two groups stack under
+/* Labeled layout (SettingsMenu.vue's panel): the three groups stack under
  * their captions instead of competing for nav-row width. Segments and the
  * 40px track are unchanged, so state, target sizes and accessible names
  * are identical in both layouts. */
