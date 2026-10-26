@@ -82,6 +82,13 @@ pre.signature code {
   text-decoration-style: solid;
 }
 
+/* A clear focus ring for keyboard users, on signature and example links alike. */
+.vp-code a.code-type-link:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
 /* Generic type parameters (T, K, V, ...) -- distinct from concrete types */
 .signature .type-param {
   color: var(--sig-c-type-param);
