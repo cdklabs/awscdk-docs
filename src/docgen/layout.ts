@@ -305,9 +305,10 @@ export interface PropsRenderOptions {
    */
   readonly anchorPrefix?: string;
   /**
-   * What an optional property means in this table, which picks the words a screen reader hears for its `?` mark:
-   * a struct prop is an INPUT the caller may leave out (`optional`), a class or interface property is an OUTPUT
-   * whose value may be missing (`may be undefined`). Defaults to `input`.
+   * Whether this table lists inputs or outputs. A struct prop is an INPUT the caller supplies: a required one gets
+   * the `required` badge, an optional one a `?` spoken as `optional`. A class or interface property is an OUTPUT
+   * the caller reads: it never gets the `required` badge, and an optional one gets a `?` spoken as
+   * `may be undefined`. Defaults to `input`.
    */
   readonly optionalKind?: OptionalKind;
 }
@@ -526,11 +527,15 @@ function propRowHtml(
       `<span class="member-default" data-pagefind-ignore>= ${escHtml(fullDefault)}</span>`,
     );
   }
-  if (!prop.optional) {
+  if (!prop.optional && optionalKind === 'input') {
     // A distinct badge, not muted inline text: a reader skimming a long props
     // table must be able to spot the mandatory properties at a glance. The
     // badge styling lives on the `.member-required` rule; the class also lets a
     // test assert the required row carries it while optional rows do not.
+    // Inputs only: a non-optional OUTPUT (a class or interface property such as
+    // `bucketArn`) is always set, and nobody supplies it, so "required" would
+    // misread as "you must pass this". See
+    // `docs/adr/2026-10-26-required-badge-inputs-only.md`.
     parts.push('<span class="member-required">required</span>');
   }
   if (prop.static) {

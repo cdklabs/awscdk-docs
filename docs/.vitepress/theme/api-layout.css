@@ -695,8 +695,8 @@ a.chain-item:hover {
    (issue #20). The amber `--api-c-badge-*` pair is the kind-chip palette,
    reused here and defined for light AND dark at the top of this file, so the
    badge stays legible in both modes. The rendered markup carries the
-   `member-required` span unconditionally, so the badge is present without
-   JavaScript. */
+   `member-required` span for every non-optional INPUT (struct prop), never an
+   output, so the badge is present without JavaScript. */
 .member-required {
   display: inline-block;
   font-family: var(--vp-font-family-base);

@@ -477,6 +477,47 @@ describe('API page layout', () => {
       expect(bucket).toContain('<div class="member-row" id="encryptionkey" data-optional="output">');
     });
 
+    test('the required badge marks inputs only, never an output', () => {
+      // One row of a built page, from its opening div to the next row.
+      const row = (page: string, id: string): string => {
+        const start = page.indexOf(`<div class="member-row" id="${id}"`);
+        expect(start).toBeGreaterThanOrEqual(0);
+        const next = page.indexOf('<div class="member-row" id=', start + 1);
+        return page.slice(start, next < 0 ? undefined : next);
+      };
+
+      // Class properties are outputs: always-set bucketArn and bucketName carry no badge and no mark, and the
+      // optional encryptionKey keeps its `?`, spoken as "may be undefined".
+      const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+      for (const id of ['bucketarn', 'bucketname']) {
+        expect(row(bucket, id)).not.toContain('member-required');
+        expect(row(bucket, id)).not.toContain('member-optional');
+      }
+      expect(row(bucket, 'encryptionkey')).not.toContain('member-required');
+      expect(row(bucket, 'encryptionkey')).toContain('<span class="member-optional-label">may be undefined</span>');
+      // No output on the page carries the badge: BucketProps has no required prop, so the page has none at all.
+      expect(bucket).not.toContain('member-required');
+
+      // Struct props are inputs and keep the badge, on the struct page and in a construct's inlined props.
+      const functionProps = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_lambda.FunctionProps.md'), 'utf-8');
+      expect(row(functionProps, 'code')).toContain('<span class="member-required">required</span>');
+      const fn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_lambda.Function.md'), 'utf-8');
+      expect(row(fn, 'props-functionprops-code')).toContain('<span class="member-required">required</span>');
+      // ...while the same construct's own always-set output does not.
+      expect(row(fn, 'functionarn')).not.toContain('member-required');
+
+      // Behavioral interfaces are outputs too.
+      const iBucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
+      expect(row(iBucket, 'bucketarn')).not.toContain('member-required');
+
+      // The rule lives in the row renderer, keyed on the table's kind.
+      const required = { name: 'code', type: { primitive: 'string' } } as any;
+      expect(renderExpandableProps([required], () => undefined, { optionalKind: 'input' }).join('\n'))
+        .toContain('<span class="member-required">required</span>');
+      expect(renderExpandableProps([required], () => undefined, { optionalKind: 'output' }).join('\n'))
+        .not.toContain('member-required');
+    });
+
     test('a value default renders inline in the header line', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
       // A value default (one token, within budget) renders inline as `= value`
