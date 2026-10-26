@@ -33,18 +33,20 @@ function onClick(event: Event) {
         :href="link"
         @click="onClick"
         :title="params ? `${title}${formatParams(params)}` : title"
-        >{{ title
-        }}<span v-if="optional" class="outline-optional"
-          ><span aria-hidden="true">?</span
-          ><span class="outline-optional-label">{{ OPTIONAL_LABELS[optional] }}</span></span
-        ><wbr v-if="params" /><span v-if="params" class="outline-params"
-          >(<template v-for="(param, index) in params" :key="param.name"
-            ><template v-if="index > 0">, </template><template v-if="param.variadic"
-              ><span aria-hidden="true">...</span><span class="outline-optional-label">variadic </span></template
-            >{{ param.name }}<template v-if="param.optional"
-              ><span aria-hidden="true">?</span><span class="outline-optional-label"> optional</span></template
-            ></template
-          >)</span
+        ><span class="outline-link-content"
+          >{{ title
+          }}<span v-if="optional" class="outline-optional"
+            ><span aria-hidden="true">?</span
+            ><span class="outline-optional-label">{{ OPTIONAL_LABELS[optional] }}</span></span
+          ><wbr v-if="params" /><span v-if="params" class="outline-params"
+            >(<template v-for="(param, index) in params" :key="param.name"
+              ><template v-if="index > 0">, </template><template v-if="param.variadic"
+                ><span aria-hidden="true">...</span><span class="outline-optional-label">variadic </span></template
+              >{{ param.name }}<template v-if="param.optional"
+                ><span aria-hidden="true">?</span><span class="outline-optional-label"> optional</span></template
+              ></template
+            >)</span
+          ></span
         ></a
       >
       <template v-if="children?.length">
@@ -69,11 +71,18 @@ function onClick(event: Event) {
 }
 
 .outline-link {
-  display: block;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 24px;
+  font-size: var(--density-outline-font);
   font-weight: 400;
   color: var(--vp-c-text-2);
   transition: color 0.5s;
+}
+
+.outline-link-content {
+  min-width: 0;
 }
 
 .outline-link:hover,

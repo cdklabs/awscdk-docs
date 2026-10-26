@@ -130,13 +130,21 @@ Added with the density picker step. The decisions above stand.
   | `sidebar-line` | 1.4 | 1.5 | 1.6 |
   | `sidebar-pad-y` | 3px | 5px | 8px |
   | `sidebar-indent` | 12px | 14px | 16px |
-  | `outline-*` | today's | today's | today's |
+  | `outline-font` | 12px | 13px | 14px |
+  | `outline-line` | 1.2 | 1.25 | 1.3 |
+  | `outline-pad` | 2px | 4px | 5px |
+  | `outline-indent` | 16px | 16px | 16px |
 
 - **Why Compact rows match Balanced for now.** Per the levels above, Compact
   keeps today's member rows, headers and tables, and Balanced is loosened in
-  its own step. Until that step lands, the two are equal in those areas. The
-  outline's tighter Balanced and Compact values are also set in their own step;
-  Spacious keeps today's outline.
+  its own step. Until that step lands, the two are equal in those areas.
+- **Outline levels.** Spacious preserves the pre-density outline exactly:
+  14px text, 1.3 line height, 5px vertical padding, and a 16px content indent.
+  Balanced uses 13px text, 1.25 line height and 4px padding. Compact uses 12px
+  text, 1.2 line height and 2px padding. All levels keep the 16px indent so
+  wrapping width and hierarchy stay stable; only type and vertical spacing
+  change. `ApiDocOutlineItem.vue` reads the font token directly, and the active
+  marker measures its link instead of relying on one fixed row height.
 - **Sidebar targets.** A Compact sidebar item is 13px x 1.4 + 2 x 3px = 24.2px
   tall, so it stays a 24px target.
 - `test/density.test.ts` checks the level order for every token, the areas
@@ -144,3 +152,6 @@ Added with the density picker step. The decisions above stand.
   `test/e2e/density-picker.spec.ts` checks the picker's place, order, storage,
   reload, keyboard use, the mobile nav screen, the rendered heights per level,
   and that body prose, code blocks and the navbar do not change.
+  `test/e2e/outline-density.spec.ts` pins each level's computed font, line
+  height and padding, checks long names do not clip, and keeps the active marker
+  centered as row heights change.

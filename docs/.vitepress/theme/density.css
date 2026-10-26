@@ -9,11 +9,10 @@
  * these properties rather than hard-coding them, so a later step can vary
  * density in one place and a reader's stored choice can drive it.
  *
- * The values declared here are TODAY's values: at the default level (Balanced,
- * the absence of a `data-density` attribute on <html>) every tokenized area
- * renders exactly as the site does now. The `[data-density="compact"]` and
- * `[data-density="spacious"]` blocks below override some of them; the Layout
- * group in ThemePicker.vue is how a reader picks one.
+ * The values declared here are the Balanced defaults. The
+ * `[data-density="compact"]` and `[data-density="spacious"]` blocks below
+ * override them; the Layout group in ThemePicker.vue is how a reader picks
+ * one. The ADR records which level preserves each pre-density value.
  *
  * What is NOT tokenized, and why: body prose, code blocks and the navbar keep
  * their own type sizes untouched — density is about the generated API layout's
@@ -37,8 +36,8 @@
      line height, per-entry padding, and the member indent (the border-left
      offset of the outline content column). */
   --density-outline-font: 13px;
-  --density-outline-line: 1.3;
-  --density-outline-pad: 5px;
+  --density-outline-line: 1.25;
+  --density-outline-pad: 4px;
   --density-outline-indent: 16px;
 
   /* API sidebar (api-sidebar.css): item font size, line height, item padding
@@ -70,9 +69,9 @@
    - Member rows, section headers, tables: Compact keeps today's values, which
      are also Balanced's until Balanced is loosened in its own step, so Compact
      sets nothing for them here. Spacious is looser.
-   - Outline: Spacious keeps today's values. The tighter Balanced and Compact
-     outline numbers are set in their own step, so neither block touches the
-     outline tokens yet.
+   - Outline: Spacious keeps today's values. Balanced is tighter and smaller,
+     and Compact is tighter still. All three levels keep the 16px content
+     indent; only entry type and spacing change.
    - Sidebar: Balanced keeps today's values; Compact is tighter, Spacious
      looser. Compact sidebar items stay at least 24px tall (WCAG 2.5.8):
      13px x 1.4 + 2 x 3px = 24.2px.
@@ -80,6 +79,10 @@
    Final numbers were picked from screenshots, starting from roughly a quarter
    less (Compact) or more (Spacious) vertical space than Balanced. */
 [data-density="compact"] {
+  --density-outline-font: 12px;
+  --density-outline-line: 1.2;
+  --density-outline-pad: 2px;
+
   --density-sidebar-font: 13px;
   --density-sidebar-line: 1.4;
   --density-sidebar-pad-y: 3px;
@@ -91,6 +94,10 @@
   --density-member-divider: 2px;
   --density-member-gap: 14px;
   --density-member-foldout-pad: 6px;
+
+  --density-outline-font: 14px;
+  --density-outline-line: 1.3;
+  --density-outline-pad: 5px;
 
   --density-sidebar-line: 1.6;
   --density-sidebar-pad-y: 8px;
