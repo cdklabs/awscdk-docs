@@ -147,13 +147,16 @@ test.describe('member row vertical balance', () => {
   // token layer, so this must hold at every density level; the gap is measured
   // against the row's own content box, which excludes that symmetric padding.
   //
-  // The four kinds exercise each surface the fix touches: a summary-only row
-  // (already balanced), a row whose last block is `.member-extra` inline prose,
-  // a row whose last block is a `.member-default` line, and a folded-out
-  // `.member-details` row. The extra and details kinds are the two arms of the
-  // CSS rule, so both are covered independently.
-  type Kind = 'summary-only' | 'ends-in-extra' | 'with-default' | 'folded-out';
-  const KINDS: Kind[] = ['summary-only', 'ends-in-extra', 'with-default', 'folded-out'];
+  // The three kinds exercise each surface the fix touches: a summary-only row
+  // (already balanced, so it must stay balanced), a row whose last block is a
+  // `.member-extra` inline description, and a folded-out row whose last block
+  // is `.member-details`. The extra and details kinds are the two arms of the
+  // CSS rule, so both are covered independently. (A prose `Default:` line
+  // renders as a `<p>` inside `.member-extra`, so it is already an ends-in-extra
+  // row — there is no separate `.member-default` block to target; the inline
+  // value-default `<span>` lives inside `.member-line`, never last.)
+  type Kind = 'summary-only' | 'ends-in-extra' | 'folded-out';
+  const KINDS: Kind[] = ['summary-only', 'ends-in-extra', 'folded-out'];
   // 'unset' is Balanced (no attribute); the picker's other two levels change
   // the padding but must keep top and bottom equal.
   const LEVELS = ['', 'compact', 'spacious'] as const;
@@ -188,9 +191,7 @@ test.describe('member row vertical balance', () => {
               case 'summary-only':
                 return last.classList.contains('member-summary');
               case 'ends-in-extra':
-                return last.classList.contains('member-extra') && !r.querySelector('.member-default');
-              case 'with-default':
-                return !!r.querySelector('.member-default');
+                return last.classList.contains('member-extra');
               case 'folded-out':
                 return last.matches('details.member-disclosure');
             }
