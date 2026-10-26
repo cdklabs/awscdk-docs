@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Settings dropdown: a compact gear-icon disclosure in the desktop navbar that
-// hosts the low-frequency appearance controls — both tri-state pickers, Site
-// theme and Code theme — behind the gear to keep the nav row uncluttered.
+// hosts the low-frequency reader preferences — both tri-state pickers, Site
+// theme and Code theme, and the API sidebar's Navigation style — behind the
+// gear to keep the nav row uncluttered.
 //
 // Disclosure pattern: the trigger is a real <button> with aria-expanded /
 // aria-controls, Enter/Space toggle natively, Escape closes and returns focus to
@@ -9,6 +10,7 @@
 // the rest of the navbar stays tabbable. The panel is a plain labeled region;
 // its content (ThemePicker) carries its own group semantics and state.
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import NavStylePicker from "./NavStylePicker.vue";
 import ThemePicker from "./ThemePicker.vue";
 
 const open = ref(false);
@@ -65,6 +67,9 @@ onBeforeUnmount(() => {
       <!-- group-labels: the panel has room for a visible caption on each
            tri-state group. -->
       <ThemePicker group-labels />
+      <!-- Navigation style (by service / by package) for the API sidebar: a
+           reader preference like the themes, so it lives in the same panel. -->
+      <NavStylePicker />
     </div>
   </div>
 </template>

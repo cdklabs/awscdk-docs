@@ -185,7 +185,8 @@ describe('ApiSidebar wiring', () => {
 
   test('explicit toggles are persisted', () => {
     const toggleBody = /function toggle\(key: string\) \{[\s\S]*?\n\}/.exec(sidebarSource)?.[0] ?? '';
-    expect(toggleBody).toMatch(/collapseMemory\.set\(/);
+    // `collapseMemory` resolves to the active navigation style's store.
+    expect(toggleBody).toMatch(/collapseMemory\.value\.set\(/);
   });
 
   test('the auto-reveal path never writes to the store', () => {
@@ -198,9 +199,14 @@ describe('ApiSidebar wiring', () => {
     expect(sidebarSource).toMatch(/effectiveExpanded\(/);
     // Pruning is scoped to loaded sections: a store pruned against the bare
     // group keys of a skeleton would forget every choice inside a section
-    // still in its chunk file.
-    expect(sidebarSource).toMatch(/collapseMemory\.prune\(\s*retainedGroupKeys\(/);
-    expect(sidebarSource).not.toMatch(/collapseMemory\.prune\(groupKeys\(/);
+    // still in its chunk file. The package style has no unloaded sections
+    // (its only collapsible groups are the top-level entries the skeleton
+    // already names), so its store prunes against the whole tree.
+    const initBody = /function initStyle\(style: NavStyle\) \{[\s\S]*?\n\}/.exec(sidebarSource)?.[0] ?? '';
+    expect(initBody).toMatch(/style === "package"\s*\?\s*groupKeys\(styleTree\)\s*:\s*retainedGroupKeys\(styleTree/);
+    expect(initBody).toMatch(/memory\.prune\(live\)/);
+    // Each style prunes only its own store, never the other's.
+    expect(initBody).toMatch(/const memory = collapseMemories\[style\]/);
   });
 
   test('the filter force-open path still does not touch the persisted set', () => {
@@ -209,7 +215,9 @@ describe('ApiSidebar wiring', () => {
     expect(displayRegion).not.toMatch(/collapseMemory/);
   });
 
-  test('sidebar scroll memory is untouched and still sessionStorage', () => {
-    expect(sidebarSource).toMatch(/createScrollMemory\(\s*typeof window !== "undefined" \? window\.sessionStorage : undefined/);
+  test('sidebar scroll memory is still sessionStorage, one store per navigation style', () => {
+    expect(sidebarSource).toMatch(/const sessionStore = typeof window !== "undefined" \? window\.sessionStorage : undefined/);
+    expect(sidebarSource).toMatch(/createScrollMemory\(sessionStore, styleStorageKey\(SCROLL_STORE_KEY, "service"\)\)/);
+    expect(sidebarSource).toMatch(/createScrollMemory\(sessionStore, styleStorageKey\(SCROLL_STORE_KEY, "package"\)\)/);
   });
 });
