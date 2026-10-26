@@ -12,8 +12,8 @@
  * The values declared here are TODAY's values: at the default level (Balanced,
  * the absence of a `data-density` attribute on <html>) every tokenized area
  * renders exactly as the site does now. The empty `[data-density="compact"]`
- * and `[data-density="spacious"]` blocks are deliberate seams for the next
- * step (#35/#37/#38) to fill; this step adds no preset values and changes
+ * and `[data-density="spacious"]` blocks are deliberate seams for a later
+ * step to fill; this step adds no preset values and changes
  * nothing a reader can see.
  *
  * What is NOT tokenized, and why: body prose, code blocks and the navbar keep
@@ -66,11 +66,11 @@
    maintainer settled. Left empty here on purpose: this step ships only the
    foundation. */
 [data-density="compact"] {
-  /* filled by #35/#37 */
+  /* preset values filled by a later step */
 }
 
 [data-density="spacious"] {
-  /* filled by #35/#37/#38 */
+  /* preset values filled by a later step */
 }
 
 /**

@@ -58,16 +58,15 @@ maintainer before the work started.
   `[data-density="spacious"]` blocks sit next to the `:root` tokens in
   `density.css` for the later step to fill. This step adds no preset values.
 
-- **Levels (ordering fixed here; the numbers land in later steps).** Compact is
-  never looser than Balanced and Balanced is never looser than Spacious, in
-  every area:
+- **Levels (ordering fixed here; the concrete numbers land in later steps).**
+  Compact is never looser than Balanced and Balanced is never looser than
+  Spacious, in every area:
   - Member rows, section headers, tables: Balanced is today's values loosened a
-    little (#38); Compact keeps today's values (#37); Spacious is looser than
-    Balanced (#37).
+    little; Compact keeps today's values; Spacious is looser than Balanced.
   - Outline: Spacious keeps today's values; Balanced is a little tighter and
-    smaller in font size; Compact is tighter still (#35).
+    smaller in font size; Compact is tighter still.
   - Sidebar: Balanced keeps today's values; Compact is tighter and Spacious
-    looser (#37).
+    looser.
 
 - **Deliberately not tokenized.** Body prose, code blocks and the navbar keep
   their own type sizes untouched. Density is about the generated API layout's
