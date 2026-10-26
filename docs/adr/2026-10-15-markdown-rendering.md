@@ -172,7 +172,10 @@ Accepted tradeoffs: a type name appearing in both live code and a
 literal/comment in the same example is linked in both (the post-highlight
 hook sees text runs, not token classes); `#private` fields and ambiguous
 names are never linked. Both fail toward a missing link, never a wrong
-one. No parser (jsii-rosetta or a per-example TS AST) is used — too costly
+one. *Superseded in part — see [no type links inside strings or
+comments](./2026-10-26-no-type-links-in-literals.md): the highlighter now
+marks string and comment tokens, and the hook skips them. The rest of this
+paragraph stands.* No parser (jsii-rosetta or a per-example TS AST) is used — too costly
 per page, and the result would still be per-language.
 
 ### Strip the inline README Table of Contents
