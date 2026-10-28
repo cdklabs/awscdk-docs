@@ -293,8 +293,9 @@
 /* Construct level tag: L1/L2/L3 before a construct's name.
    `--vp-c-text-2`, not the dimmer `--vp-c-text-3` the caret above uses: this
    tag is `aria-hidden`, so it is the only sighted channel for the level and
-   owes the full 4.5:1. Height is `14px * 1.5` and not `1em * 1.5`, which
-   would resolve against the tag's own 10px. Measured ratios in the ADR. */
+   owes the full 4.5:1. Height is the name's line box from the density
+   tokens (`sidebar-font * sidebar-line`), not `1em * ...`, which would
+   resolve against the tag's own 10px. Measured ratios in the ADR. */
 .api-sidebar-level {
   flex-shrink: 0;
   margin-right: 6px;
