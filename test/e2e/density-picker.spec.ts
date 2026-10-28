@@ -151,6 +151,34 @@ test.describe('layout density picker', () => {
     expect(await openCount()).toBe(count);
   });
 
+  test('a client-side navigation at Spacious opens the new page\'s fold-outs', async ({ page }) => {
+    // The pre-paint bootstrap only runs on a full load. After an in-app route
+    // change the new page's fold-outs start closed, so the router hook in the
+    // theme entry has to reapply the level.
+    await page.goto(QUEUE_PAGE);
+    const layout = await openSettings(page);
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    await page.keyboard.press('Escape');
+    // A marker that a full load would wipe, so the test proves the SPA path.
+    await page.evaluate(() => {
+      (window as unknown as { __spa: boolean }).__spa = true;
+    });
+    await page.locator('.vp-doc a[href$="/aws-cdk-lib.aws_sqs.QueueProps.html"]').first().click();
+    await page.waitForURL(/aws_sqs\.QueueProps\.html/);
+    await expect(page.locator('h1')).toContainText('QueueProps');
+    expect(await page.evaluate(() => (window as unknown as { __spa?: boolean }).__spa)).toBe(true);
+
+    const foldouts = page.locator('.vp-doc details.member-disclosure, .vp-doc details.chain-more');
+    await expect.poll(() => foldouts.count()).toBeGreaterThan(0);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.querySelectorAll('.vp-doc details.member-disclosure:not([open]), .vp-doc details.chain-more:not([open])').length,
+        ),
+      )
+      .toBe(0);
+  });
+
   test('loading a page adds no transition-off stylesheet, and the site theme still toggles', async ({ page }) => {
     // VueUse's appearance handler adds a global `transition: none` sheet and
     // forces a whole-page style recalc on every apply. Skipping it when the
