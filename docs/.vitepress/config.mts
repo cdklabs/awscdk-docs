@@ -172,6 +172,19 @@ function apiSidebarAssets(): { apiSidebarAsset: string; symbolsAsset: string; ty
 // UserConfig, so it cannot type the async factory this config has to be (the highlighter is awaited).
 const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   title: SITE_TITLE,
+  // VitePress's appearance is VueUse's useDark, which on every apply adds a
+  // global `transition: none` stylesheet and forces a style recalc of the
+  // whole page — including on mount, when the pre-paint script has already
+  // set the class. On a large open page (constructs.Construct at Spacious,
+  // ~2,700 inheritance names) those recalcs made a ~250ms long task. Apply only
+  // when the class actually changes; a real toggle still disables transitions.
+  // An arrow function: VitePress ships it to the client by its source text.
+  appearance: {
+    onChanged: (isDark: boolean, apply: (mode: 'dark' | 'light' | 'auto') => void, mode: 'dark' | 'light' | 'auto') => {
+      if (typeof document === 'undefined') return apply(mode);
+      if (document.documentElement.classList.contains('dark') !== isDark) apply(mode);
+    },
+  },
   description:
     "The API reference for the AWS Cloud Development Kit (AWS CDK)",
   // Hosted path and output directory are the SAME string:
@@ -310,11 +323,14 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
     // Re-apply a stored density choice before first paint, mirroring the code-theme bootstrap above, so a
     // reload never flashes the wrong spacing. Storage key is DENSITY_KEY in theme/density.ts; 'balanced'
     // (today's values) is the absence of the attribute, so only compact/spacious apply. Unknown stored
-    // values are ignored here, matching the module's fall-back-to-balanced rule.
+    // values are ignored here, matching the module's fall-back-to-balanced rule. With stored 'spacious' it
+    // also opens every fold-out (FOLDOUT_SELECTOR in theme/density.ts) as the parser inserts it: observer
+    // callbacks run before the next paint, so no fold-out is ever painted closed. It stops at
+    // DOMContentLoaded; theme/density.ts owns the rule after that (level switch, navigation).
     [
       "script",
       {},
-      `;(function () { try { var d = localStorage.getItem("cdk-docs-density"); if (d === "compact" || d === "spacious") document.documentElement.setAttribute("data-density", d); } catch (e) {} })();`,
+      `;(function () { try { var d = localStorage.getItem("cdk-docs-density"); if (d === "compact" || d === "spacious") document.documentElement.setAttribute("data-density", d); if (d === "spacious" && window.MutationObserver) { var s = "details.member-disclosure, details.chain-more"; var open = function (n) { if (n.nodeType !== 1) return; if (n.matches(s)) n.open = true; var all = n.querySelectorAll(s); for (var i = 0; i < all.length; i++) all[i].open = true; }; var o = new MutationObserver(function (ms) { for (var i = 0; i < ms.length; i++) { var a = ms[i].addedNodes; for (var j = 0; j < a.length; j++) open(a[j]); } }); o.observe(document.documentElement, { childList: true, subtree: true }); document.addEventListener("DOMContentLoaded", function () { o.disconnect(); open(document.documentElement); }); } } catch (e) {} })();`,
     ],
     // The standard AWS docs boot script: cookie-consent banner, footer "Cookie preferences" hook, and
     // consent-gated analytics, which reports the page under the two meta tags.

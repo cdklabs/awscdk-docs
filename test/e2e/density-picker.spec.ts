@@ -90,14 +90,120 @@ test.describe('layout density picker', () => {
     expect(spacious.sidebar).toBeGreaterThan(balanced.sidebar);
     // Compact sidebar items keep a 24px target.
     expect(compact.sidebar).toBeGreaterThanOrEqual(24);
-    // Member rows: Spacious is taller. Compact keeps today's rows, which are
-    // Balanced's until Balanced is loosened in its own step.
+    // Member rows: Compact is shorter than Balanced, Spacious taller.
+    expect(compact.row).toBeLessThan(balanced.row);
     expect(spacious.row).toBeGreaterThan(balanced.row);
-    expect(compact.row).toBeLessThanOrEqual(balanced.row);
     // Outline: Spacious keeps today's values; the tighter Balanced and Compact
     // outline is set in its own step, so no level is looser than Spacious.
     expect(compact.outline).toBeLessThanOrEqual(balanced.outline);
     expect(balanced.outline).toBeLessThanOrEqual(spacious.outline);
+  });
+
+  test('member-row type and padding follow the level', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const layout = await openSettings(page);
+    const read = () =>
+      page.evaluate(() => {
+        const style = (sel: string) => {
+          const el = document.querySelector(sel);
+          if (!el) throw new Error(`missing ${sel}`);
+          return getComputedStyle(el);
+        };
+        return {
+          name: style('.member-list .member-line').fontSize,
+          type: style('.member-list .member-type').fontSize,
+          prose: style('.member-list .member-summary').fontSize,
+          pad: style('.member-list .member-row').paddingTop,
+        };
+      });
+    const expected = {
+      compact: { name: '14px', type: '13px', prose: '13px', pad: '12px' },
+      balanced: { name: '15px', type: '14px', prose: '14px', pad: '13px' },
+      spacious: { name: '15px', type: '14px', prose: '14px', pad: '16px' },
+    };
+    expect(await read()).toEqual(expected.balanced);
+    await layout.getByRole('button', { name: 'Compact layout' }).click();
+    expect(await read()).toEqual(expected.compact);
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    expect(await read()).toEqual(expected.spacious);
+  });
+
+  test('Spacious opens every fold-out; Balanced and Compact close them', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const layout = await openSettings(page);
+    const foldouts = page.locator('.vp-doc details.member-disclosure, .vp-doc details.chain-more');
+    const count = await foldouts.count();
+    expect(count).toBeGreaterThan(0);
+    const openCount = () =>
+      page.evaluate(
+        () => document.querySelectorAll('.vp-doc details.member-disclosure[open], .vp-doc details.chain-more[open]').length,
+      );
+    expect(await openCount()).toBe(0);
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    expect(await openCount()).toBe(count);
+    await layout.getByRole('button', { name: 'Compact layout' }).click();
+    expect(await openCount()).toBe(0);
+
+    // A stored Spacious choice opens them on load, too.
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-density', 'spacious');
+    expect(await openCount()).toBe(count);
+  });
+
+  test('a client-side navigation at Spacious opens the new page\'s fold-outs', async ({ page }) => {
+    // The pre-paint bootstrap only runs on a full load. After an in-app route
+    // change the new page's fold-outs start closed, so the router hook in the
+    // theme entry has to reapply the level.
+    await page.goto(QUEUE_PAGE);
+    const layout = await openSettings(page);
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    await page.keyboard.press('Escape');
+    // A marker that a full load would wipe, so the test proves the SPA path.
+    await page.evaluate(() => {
+      (window as unknown as { __spa: boolean }).__spa = true;
+    });
+    await page.locator('.vp-doc a[href$="/aws-cdk-lib.aws_sqs.QueueProps.html"]').first().click();
+    await page.waitForURL(/aws_sqs\.QueueProps\.html/);
+    await expect(page.locator('h1')).toContainText('QueueProps');
+    expect(await page.evaluate(() => (window as unknown as { __spa?: boolean }).__spa)).toBe(true);
+
+    const foldouts = page.locator('.vp-doc details.member-disclosure, .vp-doc details.chain-more');
+    await expect.poll(() => foldouts.count()).toBeGreaterThan(0);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.querySelectorAll('.vp-doc details.member-disclosure:not([open]), .vp-doc details.chain-more:not([open])').length,
+        ),
+      )
+      .toBe(0);
+  });
+
+  test('loading a page adds no transition-off stylesheet, and the site theme still toggles', async ({ page }) => {
+    // VueUse's appearance handler adds a global `transition: none` sheet and
+    // forces a whole-page style recalc on every apply. Skipping it when the
+    // class is already right keeps a big open page (constructs.Construct at
+    // Spacious) free of a long task. A real toggle must still apply.
+    await page.addInitScript(() => {
+      localStorage.setItem('cdk-docs-density', 'spacious');
+      (window as unknown as { __sheets: number }).__sheets = 0;
+      const append = Node.prototype.appendChild;
+      Node.prototype.appendChild = function <T extends Node>(this: Node, node: T): T {
+        if (node instanceof HTMLStyleElement && /transition:\s*none/.test(node.textContent ?? '')) {
+          (window as unknown as { __sheets: number }).__sheets++;
+        }
+        return append.call(this, node) as T;
+      };
+    });
+    await page.goto(QUEUE_PAGE);
+    await page.waitForLoadState('networkidle');
+    expect(await page.evaluate(() => (window as unknown as { __sheets: number }).__sheets)).toBe(0);
+
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Dark site theme' }).click();
+    await expect(page.locator('html')).toHaveClass(/(^|\s)dark(\s|$)/);
+    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Light site theme' }).click();
+    await expect(page.locator('html')).not.toHaveClass(/(^|\s)dark(\s|$)/);
   });
 
   test('body prose, code blocks and the navbar do not change with the level', async ({ page }) => {
