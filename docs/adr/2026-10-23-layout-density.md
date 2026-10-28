@@ -121,7 +121,7 @@ Added with the density picker step. The decisions above stand.
   `setDensity`, which applies and stores the choice at once.
 - **Preset values.** A token a preset leaves out falls back to `:root`
   (Balanced). The table is the current set, after the Balanced loosening and
-  the member-row type step (#50 / upstream #115).
+  the member-row type step.
 
   | Token | Compact | Balanced (`:root`) | Spacious |
   |---|---|---|---|

@@ -76,7 +76,7 @@
    docs/adr/2026-10-23-layout-density.md, "Levels"):
 
    - Member rows and tables: Compact is tighter than Balanced in type and
-     spacing (Compact's spacing is the pre-#50 Balanced values). Spacious is
+     spacing (Compact's spacing is Balanced's earlier values). Spacious is
      looser in spacing at Balanced type sizes, and opens every fold-out
      (density.ts and the config.mts bootstrap; CSS cannot open a <details>).
    - Section headers: the font keeps its per-level values (Spacious is a step
