@@ -127,10 +127,10 @@ test.describe('sidebar nesting guide lines', () => {
   test('the accent follows client-side navigation', async ({ page }) => {
     await open(page);
     await page.getByRole('textbox', { name: 'Filter navigation in the sidebar' }).fill('QueueProps');
-    const target = page.locator('.api-sidebar a.api-sidebar-link[href$="aws_sqs.QueueProps.html"]').first();
+    const target = page.locator('.api-sidebar a.api-sidebar-link[href$=".aws_sqs.QueueProps"]').first();
     await expect(target).toBeVisible();
     await target.click();
-    await expect(page).toHaveURL(/aws_sqs\.QueueProps\.html/);
+    await expect(page).toHaveURL(/aws_sqs\.QueueProps/);
 
     const holder = page.locator('li[data-active-parent]');
     await expect(holder).toHaveCount(1);
@@ -142,12 +142,15 @@ test.describe('sidebar nesting guide lines', () => {
   test('guides do not change row geometry or the accessibility tree', async ({ page }) => {
     await open(page);
     const boxes = () =>
-      page.locator('.api-sidebar .api-sidebar-group, .api-sidebar .api-sidebar-link').evaluateAll((els) =>
-        els.map((el) => {
+      page.locator('.api-sidebar .api-sidebar-group, .api-sidebar .api-sidebar-link').evaluateAll((els) => {
+        // Relative to the first row, so a scroll of the sidebar between the
+        // two reads does not count as a geometry change.
+        const origin = els[0].getBoundingClientRect().top;
+        return els.map((el) => {
           const r = el.getBoundingClientRect();
-          return [r.top, r.height, r.width];
-        }),
-      );
+          return [r.top - origin, r.height, r.width];
+        });
+      });
     const sidebar = page.locator('.api-sidebar');
     const withGuides = await boxes();
     const treeWith = await sidebar.ariaSnapshot();
