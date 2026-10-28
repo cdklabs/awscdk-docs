@@ -160,10 +160,10 @@ const CORE_SUBMODULES = new Set(['', 'core', 'assets']);
 const LAMBDA_LAYER_PREFIX = 'lambda_layer_';
 
 /**
- * Irregular service names the token heuristic cannot derive: AWS brand names with internal capitalization
- * ("DynamoDB", "ElastiCache"), multi-word names collapsed into one submodule token ("Amazon MQ",
- * "Global Accelerator"), and mixed-case acronyms ("IoT", "FSx"). Keyed by the first `_`-token after the `aws_`
- * prefix; tokens absent here fall back to the heuristic (<=3 chars uppercased as an acronym, else title-case).
+ * Curated service display names: AWS brands with internal capitalization ("DynamoDB", "ElastiCache"), multi-word
+ * names collapsed into one submodule token ("Amazon MQ", "Global Accelerator"), and renamed services ("Data
+ * Firehose", "Cloud Map"). Keyed by the first `_`-token after the `aws_` prefix; tokens absent here fall back to
+ * the acronym/title-case heuristic.
  */
 const SERVICE_NAMES: Record<string, string> = {
   accessanalyzer: 'Access Analyzer',
