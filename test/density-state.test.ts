@@ -126,7 +126,7 @@ describe('layout density state', () => {
       const mod = await import('../docs/.vitepress/theme/density.js');
       mod.setDensity('spacious');
       expect(foldouts.map((d) => d.open)).toEqual([true, true, true]);
-      expect(selectors.at(-1)).toBe('details.member-disclosure, details.chain-more');
+      expect(selectors.at(-1)).toBe(mod.FOLDOUT_SELECTOR);
 
       mod.setDensity('balanced');
       expect(foldouts.map((d) => d.open)).toEqual([false, false, false]);
@@ -174,6 +174,15 @@ describe('layout density state', () => {
 
     test('enhanceApp re-applies the stored choice at client boot', () => {
       expect(entry).toContain('initDensity()');
+    });
+
+    test('the bootstrap opens exactly the fold-outs density.ts opens', () => {
+      // The pre-paint script must stay self-contained, so it carries its own
+      // copy of the selector. Tie that copy to FOLDOUT_SELECTOR, so renaming a
+      // fold-out class cannot silently stop Spacious opening it before paint.
+      const m = state.match(/export const FOLDOUT_SELECTOR\s*=\s*'([^']+)'/);
+      expect(m).not.toBeNull();
+      expect(config).toContain(`var s = "${m![1]}";`);
     });
   });
 });

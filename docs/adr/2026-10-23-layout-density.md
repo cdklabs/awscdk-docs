@@ -179,7 +179,11 @@ Added with the density picker step. The decisions above stand.
   list made a ~255ms long task. Both instances now pass an `onChanged` that
   applies only when the `dark` class actually changes, so a real toggle still
   disables transitions. The page's longest task at Spacious drops to ~120ms
-  (Balanced ~100ms) and scrolling it end to end raises none.
+  (Balanced ~100ms) and scrolling it end to end raises none. Measured on the
+  e2e fixture build (`docs:e2e`'s site, which keeps `constructs.Construct`),
+  served locally and loaded in headless Chromium with a `longtask`
+  PerformanceObserver, three runs each, before and after this change; the
+  four recalcs were counted by intercepting the `transition: none` sheet.
 - **Outline levels.** Spacious preserves the pre-density outline exactly:
   14px text, 1.3 line height, 5px vertical padding, and a 16px content indent.
   Balanced uses 13px text, 1.25 line height and 4px padding. Compact uses 12px
