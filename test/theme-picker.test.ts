@@ -78,7 +78,7 @@ describe('three-state theme picker', () => {
     // (prefers-color-scheme). 'dark'/'force-dark' would change the default;
     // 'force-auto' would remove user choice; false kills it all. The only
     // override allowed is the options object carrying `onChanged` (which skips
-    // a no-op restyle on mount): it keeps `true`'s behaviour, so it must not
+    // a no-op restyle on mount): it keeps `true`'s behavior, so it must not
     // set `initialValue` or take any string/boolean form.
     const settings = config.match(/^\s*appearance\s*:\s*([^\n]*)$/gm) ?? [];
     expect(settings.length).toBeLessThanOrEqual(1);
