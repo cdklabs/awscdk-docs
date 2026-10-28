@@ -137,24 +137,48 @@ describe('sectionName', () => {
     expect(sectionName('region_info')).toBe('Region Info');
   });
 
-  test('service names are correctly capitalized and spaced', () => {
-    // The one the issue calls out, plus known mis-casings the naive
-    // title-case heuristic produced.
-    expect(sectionName('aws_amazonmq')).toBe('Amazon MQ');
-    expect(sectionName('aws_docdb')).toBe('DocDB');
-    expect(sectionName('aws_elasticache')).toBe('ElastiCache');
-    expect(sectionName('aws_globalaccelerator')).toBe('Global Accelerator');
-    expect(sectionName('aws_sagemaker')).toBe('SageMaker');
-    expect(sectionName('aws_quicksight')).toBe('QuickSight');
-    // Mixed-case acronyms the <=3-chars-uppercase rule gets wrong.
-    expect(sectionName('aws_iot')).toBe('IoT');
-    expect(sectionName('aws_iotsitewise')).toBe('IoT SiteWise');
-    expect(sectionName('aws_fsx')).toBe('FSx');
-    expect(sectionName('aws_lex')).toBe('Lex');
-    // A short module token that is not an acronym readers recognize.
-    expect(sectionName('aws_ce')).toBe('Cost Explorer');
-    // Already-correct names stay as they were.
-    expect(sectionName('alexa_ask')).toBe('Alexa ASK');
+  test('service names use the approved display labels', () => {
+    const approvedNames: Record<string, string> = {
+      accountaccess: 'Account Access Manager',
+      agentregistry: 'Agent Registry',
+      appfabric: 'AppFabric',
+      appstream: 'WorkSpaces Applications',
+      awsexternalanthropic: 'External Anthropic',
+      bedrockmantle: 'Bedrock Mantle',
+      cassandra: 'Keyspaces',
+      cloudhsm: 'CloudHSM',
+      dataexchange: 'Data Exchange',
+      devopsagent: 'DevOps Agent',
+      elementalinference: 'Elemental Inference',
+      eventsv2: 'Events V2',
+      gamelift: 'GameLift Servers',
+      healthagent: 'Health Agent',
+      iotsecuretunneling: 'IoT Secure Tunneling',
+      kinesisanalytics: 'Managed Service for Apache Flink',
+      kinesisanalyticsv2: 'Managed Service for Apache Flink V2',
+      kinesisfirehose: 'Data Firehose',
+      licensemanagerlinuxsubscriptions: 'License Manager Linux Subscriptions',
+      networkmonitor: 'Network Monitor',
+      networksecuritymanager: 'Network Security Manager',
+      neptunegraph: 'Neptune Analytics',
+      omics: 'HealthOmics',
+      opensearch: 'OpenSearch',
+      osis: 'OpenSearch Ingestion',
+      pricingplanmanager: 'Pricing Plan Manager',
+      s3files: 'S3 Files',
+      sagemaker: 'SageMaker AI',
+      securityagent: 'Security Agent',
+      securityhub: 'Security Hub CSPM',
+      serverlessrepo: 'Serverless Application Repository',
+      servicediscovery: 'Cloud Map',
+      sso: 'IAM Identity Center',
+      supportauthz: 'Support Authorization',
+      workspacesweb: 'WorkSpaces Secure Browser',
+    };
+
+    for (const [token, name] of Object.entries(approvedNames)) {
+      expect(sectionName(`aws_${token}`)).toBe(name);
+    }
   });
 
   test('lambda_layer_* packages fold into the Lambda service', () => {
