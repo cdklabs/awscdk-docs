@@ -1,12 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { TOPIC_PAGE } from './fixture.js';
 
-// Sidebar indentation cap. The Jest test only string-matches
-// api-sidebar.css; these assertions run against the BUILT, hydrated site,
-// so they catch what a unit test cannot: a specificity conflict or
-// load-order change that silently re-enables a per-depth compounding
-// indent even though the CSS text still contains the clamped rule.
-test.describe('sidebar indentation capped at one level', () => {
+// Sidebar indentation. The Jest test only string-matches api-sidebar.css;
+// these assertions run against the built, hydrated site and pin each
+// parent/child step plus sibling alignment.
+test.describe('sidebar indentation steps at every nesting level', () => {
   interface Row {
     depth: number;
     kind: 'group' | 'link';
@@ -43,90 +41,73 @@ test.describe('sidebar indentation capped at one level', () => {
     });
   }
 
-  test('indent does not compound below the first nesting level', async ({ page }) => {
+  test('each nesting level adds one density-token indent', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.api-sidebar-nav')).toBeVisible();
-
-    // Force the deep branches open: the filter keeps matching nodes with
-    // their ancestor chain (original depths preserved) and forces every
-    // surviving group open, so type links at the deepest nesting level
-    // become visible without scripting per-level clicks.
     await page
       .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
       .fill('Topic');
-    await expect(
-      page.locator('.api-sidebar a.api-sidebar-link').first(),
-    ).toBeVisible();
+    await expect(page.locator('.api-sidebar a.api-sidebar-link').first()).toBeVisible();
 
     const rows = await collectRows(page);
-    const maxDepth = Math.max(...rows.map((r) => r.depth));
-
-    // The cap is only exercised by nodes MORE than one level deep; the
-    // fixture's service -> group -> type tree must provide them, or this
-    // spec is vacuous.
-    expect(maxDepth).toBeGreaterThanOrEqual(2);
-    expect(rows.some((r) => r.kind === 'link' && r.depth >= 2)).toBe(true);
-
+    expect(Math.max(...rows.map((row) => row.depth))).toBeGreaterThanOrEqual(3);
     for (const row of rows) {
-      // Leaf links carry a constant +16px so their text lines up with
-      // group labels, whose 16px caret occupies that width.
       const caretOffset = row.kind === 'link' ? 16 : 0;
-      // The Framework/Services section headers occupy depth 0, so services
-      // (depth 1) sit flush; EVERY deeper level shares the single 14px
-      // indent -- a compounding depth*12px would put a depth-3 type at
-      // 36px+ and fail here.
-      const expected = (row.depth <= 1 ? 0 : 14) + caretOffset;
+      const expected = Math.max(row.depth - 1, 0) * 14 + caretOffset;
       expect(row.paddingLeft).toBeCloseTo(expected, 1);
     }
   });
 
-  test('type links align in one text column with their group labels', async ({ page }) => {
+  test('children step right and siblings share one text column', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.api-sidebar-nav')).toBeVisible();
     await page
       .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
       .fill('Topic');
-    await expect(
-      page.locator('.api-sidebar a.api-sidebar-link').first(),
-    ).toBeVisible();
+    await expect(page.locator('.api-sidebar a.api-sidebar-link').first()).toBeVisible();
 
-    // A nested group's TEXT starts after its 16px caret; a leaf link at any
-    // nested depth must start at that same x position (14px indent + 16px
-    // caret width), so all labels under a service form one column. Measure
-    // the label start of EVERY visible nested row and require one column.
-    // Depth 0 is the Framework/Services section header, depth 1 the flush
-    // service groups -- the shared indent applies below them.
-    const labelStarts = await page.evaluate(() => {
-      const xs: number[] = [];
-      document
-        .querySelectorAll<HTMLElement>('.api-sidebar .api-sidebar-item')
-        .forEach((li) => {
-          const depth = parseInt(
-            li.style.getPropertyValue('--api-sidebar-depth'),
-            10,
-          );
-          if (Number.isNaN(depth) || depth < 2) return; // depth <= 1 sits flush
-          const el = li.querySelector<HTMLElement>(
-            ':scope > .api-sidebar-group, :scope > .api-sidebar-link',
-          );
-          if (!el || el.offsetParent === null) return;
-          if (el.classList.contains('api-sidebar-group')) {
-            const text = el.querySelector<HTMLElement>('.api-sidebar-text')!;
-            xs.push(text.getBoundingClientRect().x);
-          } else {
-            const rect = el.getBoundingClientRect();
-            xs.push(rect.x + parseFloat(getComputedStyle(el).paddingLeft));
-          }
+    const measurements = await page.evaluate(() => {
+      const labelX = (li: HTMLElement) => {
+        const row = li.querySelector<HTMLElement>(
+          ':scope > .api-sidebar-group, :scope > .api-sidebar-link',
+        );
+        if (!row || row.offsetParent === null) return undefined;
+        if (row.classList.contains('api-sidebar-group')) {
+          return row.querySelector<HTMLElement>('.api-sidebar-text')?.getBoundingClientRect().x;
+        }
+        return row.getBoundingClientRect().x + parseFloat(getComputedStyle(row).paddingLeft);
+      };
+
+      return [...document.querySelectorAll<HTMLElement>('.api-sidebar .api-sidebar-item')]
+        .flatMap((li) => {
+          const x = labelX(li);
+          const parent = li.parentElement?.closest<HTMLElement>('.api-sidebar-item');
+          const parentX = parent ? labelX(parent) : undefined;
+          if (x === undefined || parentX === undefined) return [];
+          return [{
+            depth: parseInt(li.style.getPropertyValue('--api-sidebar-depth'), 10),
+            x,
+            parentX,
+            parentKey: parent!.dataset.key ?? parent!.textContent ?? '',
+          }];
         });
-      return xs;
     });
 
-    // Nested groups AND nested links must both be represented (>= 3 rows
-    // in the fixture's service -> group -> type tree), all in one column.
-    expect(labelStarts.length).toBeGreaterThanOrEqual(3);
-    const first = labelStarts[0];
-    for (const x of labelStarts) {
-      expect(Math.abs(x - first)).toBeLessThanOrEqual(1);
+    expect(measurements.some((row) => row.depth >= 3)).toBe(true);
+    for (const row of measurements.filter((item) => item.depth >= 2)) {
+      expect(row.x - row.parentX).toBeCloseTo(14, 1);
+    }
+
+    const siblingColumns = new Map<string, number[]>();
+    for (const row of measurements) {
+      const xs = siblingColumns.get(row.parentKey) ?? [];
+      xs.push(row.x);
+      siblingColumns.set(row.parentKey, xs);
+    }
+    const mixedSiblings = [...siblingColumns.values()].find((xs) => xs.length >= 2);
+    expect(mixedSiblings).toBeDefined();
+    for (const x of mixedSiblings!) {
+      expect(Math.abs(x - mixedSiblings![0])).toBeLessThanOrEqual(1);
     }
   });
 

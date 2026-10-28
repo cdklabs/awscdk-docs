@@ -426,19 +426,15 @@ describe('sidebar width and name wrapping', () => {
   });
 });
 
-describe('sidebar indentation capped at one level', () => {
+describe('sidebar indentation steps at every nesting level', () => {
   const css = readFileSync(
     resolve(import.meta.dirname, '../docs/.vitepress/theme/api-sidebar.css'),
     'utf-8',
   );
 
-  test('indent is capped at one level instead of scaling with depth', () => {
-    // Scaling padding by raw depth pushes types 3+ levels deep well to the
-    // right, so the depth factor is clamped: everything below a top-level
-    // service shares a single indent, one level down from the fixed section
-    // headers.
-    expect(css).toContain('min(max(var(--api-sidebar-depth) - 1, 0), 1)');
-    expect(css).not.toMatch(/calc\(var\(--api-sidebar-depth\) \*/);
+  test('each level below a service adds one density-token indent', () => {
+    expect(css).toContain('max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent)');
+    expect(css).not.toContain('min(max(var(--api-sidebar-depth) - 1, 0), 1)');
   });
 });
 

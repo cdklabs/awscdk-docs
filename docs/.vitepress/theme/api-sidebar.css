@@ -83,14 +83,9 @@
   padding: 0;
 }
 
-/* Indentation is capped at ONE level: the Framework /
-   Services section headers (depth 0) and the service groups directly
-   under them (depth 1) sit flush, and everything beneath a service --
-   resource groups, kind groups, and the types themselves -- shares a
-   single 14px indent instead of compounding per nesting level. The
-   service→type relationship stays visually clear via the one indent
-   plus the group headers/carets, while long type names keep the
-   horizontal space reclaimed by the widened column. */
+/* Framework / Services section headers (depth 0) and service groups
+   (depth 1) stay flush. Every level below a service adds one density-token
+   indent, so resource, kind, and type depth remains visible. */
 .api-sidebar-item {
   --api-sidebar-depth: 0;
 }
@@ -129,7 +124,7 @@
   align-items: flex-start;
   width: 100%;
   padding: var(--density-sidebar-pad-y) var(--density-sidebar-pad-x);
-  padding-left: calc(min(max(var(--api-sidebar-depth) - 1, 0), 1) * var(--density-sidebar-indent));
+  padding-left: calc(max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent));
   font-size: var(--density-sidebar-font);
   line-height: var(--density-sidebar-line);
   text-align: left;
@@ -168,12 +163,11 @@
   color: var(--vp-c-text-2);
 }
 
-/* Leaf links render no caret, so pad them by the caret's 16px width: with
-   the capped single indent every label under a service -- group
-   headers and type links alike -- lines up in one text column instead of
-   links sitting left of their own group's label. */
+/* Leaf links render no caret, so add the caret's 16px width after the
+   same per-level indent. This aligns each link with group labels at its
+   own depth while preserving the parent/child step. */
 .api-sidebar-link {
-  padding-left: calc(min(max(var(--api-sidebar-depth) - 1, 0), 1) * var(--density-sidebar-indent) + 16px);
+  padding-left: calc(max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent) + 16px);
 }
 
 .api-sidebar-group:hover,
