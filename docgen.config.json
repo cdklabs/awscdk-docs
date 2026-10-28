@@ -16,7 +16,6 @@
     "@aws-cdk/aws-ec2-alpha",
     "@aws-cdk/aws-elasticache-alpha",
     "@aws-cdk/aws-gamelift-alpha",
-    "@aws-cdk/aws-glue-alpha",
     "@aws-cdk/aws-imagebuilder-alpha",
     "@aws-cdk/aws-iot-actions-alpha",
     "@aws-cdk/aws-iot-alpha",
