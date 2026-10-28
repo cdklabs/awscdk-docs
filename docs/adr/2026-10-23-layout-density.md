@@ -170,6 +170,16 @@ Added with the density picker step. The decisions above stand.
   switch, once after hydration, and after each client-side route change. The
   inheritance bar's clamp (ADR 2026-10-15-api-reference-pages) therefore stays
   closed at Compact and Balanced and opens at Spacious.
+- **Cost on the largest page.** An open fold-out is styled and laid out, and
+  `constructs.Construct` holds about 2,700 inheritance names. VueUse's
+  appearance handler (VitePress's `useDark` and the Site theme picker's
+  `useColorMode`) adds a global `transition: none` sheet and forces a
+  whole-page style recalc each time it applies, including on mount when the
+  pre-paint script has already set the class; four such recalcs over the open
+  list made a ~255ms long task. Both instances now pass an `onChanged` that
+  applies only when the `dark` class actually changes, so a real toggle still
+  disables transitions. The page's longest task at Spacious drops to ~120ms
+  (Balanced ~100ms) and scrolling it end to end raises none.
 - **Outline levels.** Spacious preserves the pre-density outline exactly:
   14px text, 1.3 line height, 5px vertical padding, and a 16px content indent.
   Balanced uses 13px text, 1.25 line height and 4px padding. Compact uses 12px
