@@ -289,8 +289,12 @@ describe('alpha lockstep resolution', () => {
   test('derives the module list from the installed devDependencies, duplicating no list', () => {
     const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8'));
     const modules = documentedAlphaModules(pkg.devDependencies);
+    // Compare against the committed module list rather than a named module:
+    // any alpha module can graduate into aws-cdk-lib in a future release.
+    const config = JSON.parse(readFileSync(join(ROOT, 'docgen.config.json'), 'utf-8'));
+    const configured = (config.modules as string[]).filter((name) => name.endsWith('-alpha')).sort();
+    expect(modules).toEqual(configured);
     expect(modules.length).toBeGreaterThan(30);
-    expect(modules).toContain('@aws-cdk/aws-glue-alpha');
     expect(modules.every((name) => name.endsWith('-alpha'))).toBe(true);
     // The non-alpha devDeps are not swept in.
     expect(modules).not.toContain('aws-cdk-lib');

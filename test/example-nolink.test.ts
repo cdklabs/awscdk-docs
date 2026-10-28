@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { createHighlighter, createJavaScriptRegexEngine, type Highlighter } from 'shiki';
 import {
   NOLINK_CLASS,
@@ -22,14 +23,23 @@ beforeAll(async () => {
   });
 });
 
+// The options config.mts passes when a fence offers type links. `tokenizeTimeLimit: 0`
+// matters: with scopes on, Shiki tokenizes each line twice (scopes, then colors), each
+// pass under its own time limit, and a timeout in only one pass throws.
+const OPTIONS = {
+  themes: THEMES,
+  defaultColor: false,
+  includeExplanation: 'scopeName',
+  tokenizeTimeLimit: 0,
+  transformers: [codeNolinkTransformer as never],
+} as const;
+
+function highlightWith(hl: Highlighter, code: string, lang: string): string {
+  return hl.codeToHtml(code, { lang, ...OPTIONS });
+}
+
 function highlight(code: string, lang: string): string {
-  return highlighter.codeToHtml(code, {
-    lang,
-    themes: THEMES,
-    defaultColor: false,
-    includeExplanation: 'scopeName',
-    transformers: [codeNolinkTransformer as never],
-  });
+  return highlightWith(highlighter, code, lang);
 }
 
 const ATTRS = 'type-links=Bucket:/v2/docs/b.html,BucketProps:/v2/docs/bp.html,RemovalPolicy:/v2/docs/rp.html';
@@ -124,6 +134,37 @@ describe('type links skip strings and comments', () => {
       expect(html).not.toMatch(/(['"`]|&#x27;|&quot;|&#39;)<a class="code-type-link"/);
     });
   }
+
+  test('a slow first tokenize pass does not throw (no tokenize time limit)', async () => {
+    // A cold highlighter under a loaded test run can spend over the 500 ms default
+    // in the scope pass while the color pass finishes; the two token lists then
+    // disagree and Shiki throws reading `startIndex`. vscode-textmate times each
+    // line with Date.now, so jumping only its second read (the elapsed check in
+    // the first pass) by 1000 ms reproduces that race on every run.
+    const fresh = await createHighlighter({
+      langs: ['typescript'],
+      themes: [THEMES.light, THEMES.dark],
+      engine: createJavaScriptRegexEngine(),
+    });
+    const realNow = Date.now.bind(Date);
+    let calls = 0;
+    const spy = jest.spyOn(Date, 'now').mockImplementation(() => {
+      calls += 1;
+      return calls === 2 ? realNow() + 1000 : realNow();
+    });
+    try {
+      const { code, expected } = cases[0];
+      let html = '';
+      expect(() => {
+        html = applyTypeLinks(highlightWith(fresh, code, 'typescript'), ATTRS);
+      }).not.toThrow();
+      expect(linked(html)).toEqual(expected);
+      expect(expected).toEqual(['Bucket', 'RemovalPolicy', 'Bucket']);
+    } finally {
+      spy.mockRestore();
+      fresh.dispose();
+    }
+  });
 
   test('a signature fence still links every type', () => {
     const code = 'public static fromBucketArn(scope: Construct, id: string, bucketArn: string): IBucket';
