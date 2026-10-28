@@ -196,6 +196,7 @@ const SERVICE_NAMES: Record<string, string> = {
   bcmpricingcalculator: 'BCM Pricing Calculator',
   bedrockagentcore: 'Bedrock AgentCore',
   billingconductor: 'Billing Conductor',
+  ce: 'Cost Explorer',
   certificatemanager: 'Certificate Manager',
   cleanrooms: 'Clean Rooms',
   cleanroomsml: 'Clean Rooms ML',

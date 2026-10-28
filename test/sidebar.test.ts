@@ -151,6 +151,8 @@ describe('sectionName', () => {
     expect(sectionName('aws_iotsitewise')).toBe('IoT SiteWise');
     expect(sectionName('aws_fsx')).toBe('FSx');
     expect(sectionName('aws_lex')).toBe('Lex');
+    // A short module token that is not an acronym readers recognize.
+    expect(sectionName('aws_ce')).toBe('Cost Explorer');
     // Already-correct names stay as they were.
     expect(sectionName('alexa_ask')).toBe('Alexa ASK');
   });
