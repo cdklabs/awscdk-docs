@@ -501,7 +501,7 @@ a.chain-item:hover {
   row-gap: 2px;
   min-width: 0;
   font-family: var(--vp-font-family-mono);
-  font-size: 0.875rem;
+  font-size: var(--density-member-name-font);
 }
 
 .member-name,
@@ -579,7 +579,7 @@ a.chain-item:hover {
 
 .member-type {
   font-family: var(--vp-font-family-mono);
-  font-size: 0.8125rem;
+  font-size: var(--density-member-type-font);
   color: var(--api-c-type);
 }
 
@@ -637,7 +637,7 @@ a.chain-item:hover {
 /* With a single language the name and the mark are both flex items of the
    header line, so the line's column-gap would push the mark away. */
 .member-list .member-line > .member-name + .member-optional {
-  margin-left: -12px;
+  margin-left: calc(-1 * var(--density-member-gap));
 }
 
 /* The words a screen reader hears in place of the `?`. Read, never painted.
@@ -682,7 +682,7 @@ a.chain-item:hover {
    `flex-wrap: wrap` moves it onto its own line instead of clipping it. */
 .member-default {
   font-family: var(--vp-font-family-mono);
-  font-size: 0.8125rem;
+  font-size: var(--density-member-prose-font);
   /* --vp-c-text-3 is a placeholder-weight gray and misses the AA 4.5:1 floor
      at this size; text-2 is the muted-but-readable step. Checked by the
      axe-core audit, which failed on this element before the change. */
@@ -767,7 +767,7 @@ a.chain-item:hover {
    badge, and it no longer does. It wraps. */
 .member-summary {
   color: var(--vp-c-text-2);
-  font-size: 0.8125rem;
+  font-size: var(--density-member-prose-font);
   margin-top: 2px;
 }
 
@@ -775,7 +775,22 @@ a.chain-item:hover {
 .member-extra,
 .member-details {
   color: var(--vp-c-text-2);
-  font-size: 0.875rem;
+  font-size: var(--density-member-prose-font);
+}
+
+/* Every prose line in a row shares the row's prose size. The default theme
+   sets a quote's paragraphs to 16px (`.vp-doc blockquote > p`) and a custom
+   block to a fixed 14px; inherit the row size instead. Code blocks keep their
+   own size. */
+.member-extra blockquote,
+.member-extra blockquote > p,
+.member-extra .custom-block,
+.member-extra .custom-block p,
+.member-details blockquote,
+.member-details blockquote > p,
+.member-details .custom-block,
+.member-details .custom-block p {
+  font-size: inherit;
 }
 
 .member-extra p,
@@ -807,7 +822,7 @@ a.chain-item:hover {
   margin: var(--density-member-foldout-pad) 0 0;
   display: inline-block;
   font-family: var(--vp-font-family-base);
-  font-size: 0.8125rem;
+  font-size: var(--density-member-prose-font);
   /* Same AA floor as the row markers: axe reported this summary once the
      other two were fixed, because it reports one violation per page. */
   color: var(--vp-c-text-2);

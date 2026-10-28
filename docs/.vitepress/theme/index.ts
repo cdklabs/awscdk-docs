@@ -9,7 +9,7 @@ import DefaultTheme from "vitepress/theme-without-fonts";
 import { h } from "vue";
 import ApiSidebar from "./ApiSidebar.vue";
 import { initCodeTheme } from "./code-theme";
-import { initDensity } from "./density";
+import { applyFoldoutsAfterNavigation, initDensity } from "./density";
 import { installFavoritesSearchBoost } from "./favorites-client";
 import FavoriteStar from "./FavoriteStar.vue";
 import FavoritesList from "./FavoritesList.vue";
@@ -79,7 +79,7 @@ const theme: Theme = {
       // client router's fallback for a page module it cannot load.
       "not-found": () => h(NotFound),
     }),
-  enhanceApp({ app, siteData }) {
+  enhanceApp({ app, router, siteData }) {
     // Client-side language tabs sharing one global language state. Registered
     // globally because generated markdown pages instantiate them directly.
     app.component("LanguageTabs", LanguageTabs);
@@ -89,6 +89,14 @@ const theme: Theme = {
     // Re-apply a stored layout-density choice at client boot. No-op on the
     // server and at the default (Balanced) level, which carries no attribute.
     initDensity();
+    // Spacious opens every fold-out; a client-side navigation renders a new
+    // page whose fold-outs start closed, so reapply the level after each one.
+    // Chained so any hook another module set keeps running.
+    const previousAfterRouteChange = router.onAfterRouteChange;
+    router.onAfterRouteChange = async (to) => {
+      await previousAfterRouteChange?.(to);
+      applyFoldoutsAfterNavigation();
+    };
     installTypeTooltips(siteData.value.themeConfig.typeSummariesAsset ?? "");
     installFavoritesSearchBoost();
     // Eagerly initialize Pagefind: the plugin's own idle loader leaves a window
