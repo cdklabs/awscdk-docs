@@ -72,10 +72,10 @@ test.describe('sidebar indentation capped at one level', () => {
       // group labels, whose 16px caret occupies that width.
       const caretOffset = row.kind === 'link' ? 16 : 0;
       // The Framework/Services section headers occupy depth 0, so services
-      // (depth 1) sit flush; EVERY deeper level shares the single 14px
-      // indent -- a compounding depth*12px would put a depth-3 type at
-      // 36px+ and fail here.
-      const expected = (row.depth <= 1 ? 0 : 14) + caretOffset;
+      // (depth 1) sit flush; EVERY deeper level shares the single 12px
+      // indent (Balanced) -- a compounding depth*12px would put a depth-3
+      // type at 36px+ and fail here.
+      const expected = (row.depth <= 1 ? 0 : 12) + caretOffset;
       expect(row.paddingLeft).toBeCloseTo(expected, 1);
     }
   });
@@ -91,7 +91,7 @@ test.describe('sidebar indentation capped at one level', () => {
     ).toBeVisible();
 
     // A nested group's TEXT starts after its 16px caret; a leaf link at any
-    // nested depth must start at that same x position (14px indent + 16px
+    // nested depth must start at that same x position (12px indent + 16px
     // caret width), so all labels under a service form one column. Measure
     // the label start of EVERY visible nested row and require one column.
     // Depth 0 is the Framework/Services section header, depth 1 the flush

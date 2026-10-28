@@ -63,8 +63,8 @@ test.describe('layout density attribute', () => {
       };
     });
     expect(tokens.memberRowPadY).toBe('12px');
-    expect(tokens.outlineFont).toBe('13px');
-    expect(tokens.sidebarIndent).toBe('14px');
+    expect(tokens.outlineFont).toBe('14px');
+    expect(tokens.sidebarIndent).toBe('12px');
     expect(tokens.tableMargin).toBe('16px');
     expect(tokens.sectionHeaderFont).toBe('1.4rem');
   });

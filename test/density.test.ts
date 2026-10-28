@@ -93,29 +93,41 @@ describe('type page information density', () => {
       }
 
       // Compact keeps today's member rows, headers and tables. Outline values
-      // are owned by this step: Compact is tighter than Balanced, while
-      // Spacious keeps the pre-density outline.
+      // are owned by this step: line and padding are strictly ordered, the font
+      // is one step smaller at Compact and the same at Balanced and Spacious.
       for (const name of Object.keys(root).filter((n) => /^(member|section|table)-/.test(n))) {
         expect([name, compact[name]]).toEqual([name, root[name]]);
       }
-      for (const name of ['outline-font', 'outline-line', 'outline-pad']) {
+      for (const name of ['outline-line', 'outline-pad']) {
         expect([name, num(compact[name]) < num(root[name])]).toEqual([name, true]);
         expect([name, num(root[name]) < num(spacious[name])]).toEqual([name, true]);
       }
+      expect(num(compact['outline-font'])).toBeLessThan(num(root['outline-font']));
+      expect(spacious['outline-font']).toBe(root['outline-font']);
       expect(compact['outline-indent']).toBe(root['outline-indent']);
       expect(spacious['outline-indent']).toBe(root['outline-indent']);
 
-      // Compact is tighter and Spacious looser in the sidebar, and Spacious is
+      // The sidebar: Compact is one font step and one indent step tighter
+      // than Balanced, Spacious is looser in line and padding, and Spacious is
       // looser in the rows.
-      expect(num(compact['sidebar-pad-y'])).toBeLessThan(num(root['sidebar-pad-y']));
+      expect(num(compact['sidebar-font'])).toBeLessThan(num(root['sidebar-font']));
+      expect(num(compact['sidebar-indent'])).toBeLessThan(num(root['sidebar-indent']));
       expect(num(spacious['sidebar-pad-y'])).toBeGreaterThan(num(root['sidebar-pad-y']));
+      expect(num(spacious['sidebar-line'])).toBeGreaterThan(num(root['sidebar-line']));
       expect(num(spacious['member-row-pad-y'])).toBeGreaterThan(num(root['member-row-pad-y']));
 
-      // A compact sidebar item stays a 24px target (WCAG 2.5.8):
+      // The outline font equals the sidebar link font at every level.
+      for (const level of [compact, root, spacious]) {
+        expect(level['outline-font']).toBe(level['sidebar-font']);
+      }
+
+      // Every sidebar item stays a 24px target (WCAG 2.5.8) at every level:
       // font x line height + 2 x vertical padding.
-      const itemHeight = num(compact['sidebar-font']) * num(compact['sidebar-line'])
-        + 2 * num(compact['sidebar-pad-y']);
-      expect(itemHeight).toBeGreaterThanOrEqual(24);
+      for (const level of [compact, root, spacious]) {
+        const itemHeight = num(level['sidebar-font']) * num(level['sidebar-line'])
+          + 2 * num(level['sidebar-pad-y']);
+        expect(itemHeight).toBeGreaterThanOrEqual(24);
+      }
     });
 
     test('outline tokens drive links at the three settled levels', () => {
@@ -134,10 +146,10 @@ describe('type page information density', () => {
 
       expect([
         compact['outline-font'], compact['outline-line'], compact['outline-pad'], compact['outline-indent'],
-      ]).toEqual(['12px', '1.2', '2px', '16px']);
+      ]).toEqual(['13px', '1.2', '2px', '16px']);
       expect([
         balanced['outline-font'], balanced['outline-line'], balanced['outline-pad'], balanced['outline-indent'],
-      ]).toEqual(['13px', '1.25', '4px', '16px']);
+      ]).toEqual(['14px', '1.25', '4px', '16px']);
       expect([
         spacious['outline-font'], spacious['outline-line'], spacious['outline-pad'], spacious['outline-indent'],
       ]).toEqual(['14px', '1.3', '5px', '16px']);

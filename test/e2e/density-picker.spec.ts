@@ -2,8 +2,9 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { QUEUE_PAGE } from './fixture.js';
 
 // The Layout density picker (ADR 2026-10-23-layout-density): a third tri-state
-// group in the Settings menu, after Site theme and Code theme. Compact /
-// Balanced / Spacious set the `--density-*` presets in density.css.
+// group in the Settings menu, after Site theme and Code theme. Spacious /
+// Balanced / Compact (loosest to tightest) set the `--density-*` presets in
+// density.css.
 //
 // The e2e fixture site keeps aws_sqs and aws_sns, not aws_s3, so the built
 // Queue page stands in for Bucket: it has the same member rows and outline.
@@ -32,7 +33,7 @@ async function heights(page: Page): Promise<{ row: number; outline: number; side
 }
 
 test.describe('layout density picker', () => {
-  test('sits after Site theme and Code theme, labeled Layout, in Compact / Balanced / Spacious order', async ({ page }) => {
+  test('sits after Site theme and Code theme, labeled Layout, in Spacious / Balanced / Compact order', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     const layout = await openSettings(page);
     await expect(layout).toBeVisible();
@@ -44,7 +45,7 @@ test.describe('layout density picker', () => {
     const names = await layout.getByRole('button').evaluateAll((els) =>
       els.map((el) => el.getAttribute('aria-label')),
     );
-    expect(names).toEqual(['Compact layout', 'Balanced layout', 'Spacious layout']);
+    expect(names).toEqual(['Spacious layout', 'Balanced layout', 'Compact layout']);
     // Out of the box the layout is Balanced, with no attribute.
     await expect(layout.getByRole('button', { name: 'Balanced layout' })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('html')).not.toHaveAttribute('data-density');
@@ -88,16 +89,40 @@ test.describe('layout density picker', () => {
     // Sidebar: Compact is tighter, Spacious looser.
     expect(compact.sidebar).toBeLessThan(balanced.sidebar);
     expect(spacious.sidebar).toBeGreaterThan(balanced.sidebar);
-    // Compact sidebar items keep a 24px target.
-    expect(compact.sidebar).toBeGreaterThanOrEqual(24);
+    // Sidebar items keep a 24px target at every level.
+    for (const level of [compact, balanced, spacious]) expect(level.sidebar).toBeGreaterThanOrEqual(24);
     // Member rows: Spacious is taller. Compact keeps today's rows, which are
     // Balanced's until Balanced is loosened in its own step.
     expect(spacious.row).toBeGreaterThan(balanced.row);
     expect(compact.row).toBeLessThanOrEqual(balanced.row);
-    // Outline: Spacious keeps today's values; the tighter Balanced and Compact
-    // outline is set in its own step, so no level is looser than Spacious.
+    // Outline: Compact <= Balanced <= Spacious (Compact's 24px floor can meet
+    // a tight Balanced).
     expect(compact.outline).toBeLessThanOrEqual(balanced.outline);
     expect(balanced.outline).toBeLessThanOrEqual(spacious.outline);
+  });
+
+  test('the sidebar link reads the settled font, line height and padding per level', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(QUEUE_PAGE);
+    const layout = await openSettings(page);
+    const read = () =>
+      page.evaluate(() => {
+        const el = document.querySelector('.api-sidebar a.api-sidebar-link')!;
+        const s = getComputedStyle(el);
+        // Group headings carry the caret, whose box follows the same line
+        // token, so a group row is never taller than a link row.
+        const group = document.querySelector('.api-sidebar button.api-sidebar-group')!.getBoundingClientRect().height;
+        const link = el.getBoundingClientRect().height;
+        return { font: s.fontSize, line: s.lineHeight, padding: s.paddingTop, groupNoTaller: group <= link + 0.5 };
+      });
+    // Balanced: 14px x 1.4 with 3px padding, 25.6px items.
+    expect(await read()).toEqual({ font: '14px', line: '19.6px', padding: '3px', groupNoTaller: true });
+    await layout.getByRole('button', { name: 'Compact layout' }).click();
+    // Compact: one font step down, same line and padding, 24.2px items.
+    expect(await read()).toEqual({ font: '13px', line: '18.2px', padding: '3px', groupNoTaller: true });
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    // Spacious: the roomy pre-density line and padding, 38.4px items.
+    expect(await read()).toEqual({ font: '14px', line: '22.4px', padding: '8px', groupNoTaller: true });
   });
 
   test('body prose, code blocks and the navbar do not change with the level', async ({ page }) => {
@@ -125,11 +150,12 @@ test.describe('layout density picker', () => {
   test('keyboard: Tab reaches the group and Enter selects a level', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     const layout = await openSettings(page);
-    const compact = layout.getByRole('button', { name: 'Compact layout' });
-    await compact.focus();
-    await expect(compact).toBeFocused();
+    // Tab order follows the visual order: Spacious, then Balanced, then Compact.
+    const spacious = layout.getByRole('button', { name: 'Spacious layout' });
+    await spacious.focus();
+    await expect(spacious).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
+    await expect(page.locator('html')).toHaveAttribute('data-density', 'spacious');
     await page.keyboard.press('Tab');
     await expect(layout.getByRole('button', { name: 'Balanced layout' })).toBeFocused();
     await page.keyboard.press('Space');

@@ -196,11 +196,11 @@
   align-items: center;
   justify-content: center;
   width: 16px;
-  /* Pin the caret to the FIRST text line (1.5 line-height at 14px), so
-     it stays aligned with the label even when a long name wraps, and
-     the open/closed rotation spins around the glyph's own center
-     (the caret sat visibly off-line). */
-  height: calc(1em * 1.5);
+  /* Pin the caret to the FIRST text line, so it stays aligned with the label
+     even when a long name wraps, and the open/closed rotation spins around the
+     glyph's own center (the caret sat visibly off-line). The line box follows
+     the density token, so group rows are never taller than link rows. */
+  height: calc(1em * var(--density-sidebar-line));
   align-self: flex-start;
   flex-shrink: 0;
   transition: transform 0.2s ease;
@@ -273,7 +273,9 @@
    * the subset lacks `tnum`. `tabular-nums` below is kept as a second line
    * of defense, not as the mechanism. */
   min-width: 22px;
-  height: calc(14px * 1.5);
+  /* The name's first line box, from the density tokens, so the tag stays
+     centered on that line at every level. */
+  height: calc(var(--density-sidebar-font) * var(--density-sidebar-line));
   display: inline-flex;
   align-items: center;
   justify-content: center;

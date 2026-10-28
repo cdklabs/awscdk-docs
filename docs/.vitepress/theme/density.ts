@@ -2,10 +2,10 @@
 //
 // Spacing and small font sizes across the API layout are expressed as
 // `--density-*` custom properties (declared once on `:root` in density.css at
-// today's values). A reader's density choice drives which preset block wins:
+// the Balanced values). A reader's density choice drives which preset block wins:
 //
 // - 'balanced' (the default): the attribute is removed entirely, so the bare
-//   `:root` tokens apply and every area renders exactly as it does today.
+//   `:root` tokens apply.
 // - 'compact' / 'spacious': `data-density="compact" | "spacious"` on <html>,
 //   and the matching `[data-density=...]` block in density.css overrides the
 //   tokens. The Layout group in ThemePicker.vue sets the choice.
