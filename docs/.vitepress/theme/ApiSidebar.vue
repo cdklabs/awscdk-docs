@@ -26,6 +26,7 @@ import { initNavStyle, navStyle, styleStorageKey, type NavStyle } from "./nav-st
 import { sidebarFilterQuery, toggleFilterCollapsed } from "./sidebar-filter";
 import { jumpToCurrentRequest } from "./sidebar-jump";
 import { animateScrollTop } from "./smooth-scroll";
+import { enclosingStickyHeight, StickyHeadings } from "./sidebar-sticky";
 import { createCollapseMemory, effectiveExpanded, EXPANDED_STORE_KEY } from "./sidebar-collapse";
 import {
   createScrollMemory,
@@ -137,8 +138,13 @@ function findScrollContainer(): HTMLElement | null {
     el.addEventListener("scroll", onSidebarScroll, { passive: true });
     scrollContainer = el;
   }
+  if (scrollContainer) sticky.attach(scrollContainer);
   return scrollContainer;
 }
+
+// Pinned group headings: the nearest enclosing group stays visible under the
+// header block while its entries scroll. Items register their own `<li>`.
+const sticky = new StickyHeadings();
 
 // Remember the position for the current route. Route and position are
 // read here and handed over as values: reading either when the frame
@@ -189,9 +195,12 @@ function scrollActiveIntoView(container: HTMLElement): boolean {
   // top padding, and this measurement handles both without a breakpoint value.
   const containerBox = container.getBoundingClientRect();
   const header = container.querySelector<HTMLElement>(".sidebar-header");
-  const visibleTop = header
-    ? Math.max(containerBox.top, header.getBoundingClientRect().bottom)
-    : containerBox.top;
+  // Once the entry is in view, its nearest enclosing group heading is pinned
+  // directly under the header, so that heading's height is occluded too.
+  const visibleTop =
+    (header
+      ? Math.max(containerBox.top, header.getBoundingClientRect().bottom)
+      : containerBox.top) + enclosingStickyHeight(active);
   const occluded = visibleTop - containerBox.top;
   // Keep the browser's OWN scroll-into-view clear of the block too: keyboard
   // focus landing on a row near the top would otherwise park it behind the
@@ -422,7 +431,17 @@ watch(navStyle, () => {
 // The display language is the shared client-side language selection
 // driving every LanguageTabs group. Item labels flip with it in place;
 // links, keys, and expansion state stay canonical.
-provide("apiSidebar", { expanded, activePath, base, toggle, filtering, filterCollapsed, displayLang: activeLanguage });
+provide("apiSidebar", {
+  expanded,
+  activePath,
+  base,
+  toggle,
+  filtering,
+  filterCollapsed,
+  displayLang: activeLanguage,
+  sticky,
+  findScrollContainer,
+});
 
 onMounted(() => {
   // Idempotent; the sidebar renders on pages without any LanguageTabs
@@ -436,6 +455,7 @@ onMounted(() => {
 });
 onUnmounted(() => {
   window.removeEventListener("popstate", onPopState);
+  sticky.detach();
   if (packageCooldown !== undefined) clearTimeout(packageCooldown);
 });
 // Client-side navigation keeps this component mounted, so react to route
