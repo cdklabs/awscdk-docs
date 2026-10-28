@@ -25,7 +25,9 @@
  *    flyout, which embeds its own VPSwitchAppearance next to the one we
  *    already render — hide the flyout's appearance item so exactly one
  *    appearance control (the Settings dropdown's picker) is reachable at
- *    every breakpoint. The stock navbar/nav-screen switches are already
+ *    every breakpoint. With that item gone the flyout is empty, so the
+ *    whole flyout, trigger included, is hidden while it has nothing left
+ *    to show. The stock navbar/nav-screen switches are already
  *    hidden in theme-picker.css.
  *
  * 5. The nav row's geometry does not depend on whether the page has a
@@ -278,6 +280,16 @@
 
 /* Collapse the now-empty flyout group so no stray divider remains. */
 .VPNavBarExtra .group:has(> .item.appearance) {
+  display: none !important;
+}
+
+/* With the appearance item hidden, the flyout has nothing left to show
+ * unless locale links or social links are configured, so hide the whole
+ * flyout, trigger included: otherwise the (…) button opens an empty menu.
+ * The rule is conditional, so adding either brings the flyout back.
+ * `!important` because the stock scoped rule sets `display: block` from
+ * 768px. */
+.VPNavBarExtra:not(:has(.group.translations, .item.social-links)) {
   display: none !important;
 }
 
