@@ -118,8 +118,11 @@ offers and are repositioned with flex `order` in `nav-controls.css`.
 - The medium-width (768–1279px) `VPNavBarExtra` "extra navigation" flyout
   embeds its own `VPSwitchAppearance`; it is hidden (and its emptied group
   collapsed) so **exactly one appearance control is reachable at every
-  breakpoint**. The stock navbar and nav-screen two-state switches are hidden in
-  `theme-picker.css`.
+  breakpoint**. The whole flyout, trigger included, is hidden while it has
+  nothing left to show (no locale links and no social links), so the (…)
+  button never opens an empty menu; the rule is conditional (`:has()`), so
+  adding either brings the flyout back. The stock navbar and nav-screen
+  two-state switches are hidden in `theme-picker.css`.
 
 The `order`/centering overrides are gated on
 `:has(.VPNavBar .content-body > .language-toggle)`, so a single-language build
