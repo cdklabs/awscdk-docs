@@ -208,8 +208,8 @@ test.describe('pinned group heading', () => {
 
   test('while the nav filter is active, collapsing the pinned heading also parks its row', async ({ page }) => {
     await open(page);
-    // The filter keeps the active entry's branch open; folds now go to the
-    // filter session (#123) instead of being ignored, and the park still applies.
+    // While filtering, the active entry's branch stays open and a fold lands in
+    // the filter session; the park under the header still applies.
     await page.getByRole('textbox', { name: 'Filter navigation in the sidebar' }).fill('Topic');
     await expect(page.locator(groupSelector('Topic')).first()).toBeVisible();
     await page.waitForTimeout(300);
