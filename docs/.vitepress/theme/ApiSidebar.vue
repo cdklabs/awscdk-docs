@@ -23,9 +23,10 @@ import { API_ROOT } from "../../../src/site-routes";
 import { splitTerms, termRank } from "./filterSymbols";
 import { activeLanguage, initLanguageState } from "./language-state";
 import { initNavStyle, navStyle, styleStorageKey, type NavStyle } from "./nav-style";
-import { sidebarFilterQuery } from "./sidebar-filter";
+import { sidebarFilterQuery, toggleFilterCollapsed } from "./sidebar-filter";
 import { jumpToCurrentRequest } from "./sidebar-jump";
 import { animateScrollTop } from "./smooth-scroll";
+import { enclosingStickyHeight, StickyHeadings } from "./sidebar-sticky";
 import { createCollapseMemory, effectiveExpanded, EXPANDED_STORE_KEY } from "./sidebar-collapse";
 import {
   createScrollMemory,
@@ -137,8 +138,13 @@ function findScrollContainer(): HTMLElement | null {
     el.addEventListener("scroll", onSidebarScroll, { passive: true });
     scrollContainer = el;
   }
+  if (scrollContainer) sticky.attach(scrollContainer);
   return scrollContainer;
 }
+
+// Pinned group headings: the nearest enclosing group stays visible under the
+// header block while its entries scroll. Items register their own `<li>`.
+const sticky = new StickyHeadings();
 
 // Remember the position for the current route. Route and position are
 // read here and handed over as values: reading either when the frame
@@ -189,9 +195,12 @@ function scrollActiveIntoView(container: HTMLElement): boolean {
   // top padding, and this measurement handles both without a breakpoint value.
   const containerBox = container.getBoundingClientRect();
   const header = container.querySelector<HTMLElement>(".sidebar-header");
-  const visibleTop = header
-    ? Math.max(containerBox.top, header.getBoundingClientRect().bottom)
-    : containerBox.top;
+  // Once the entry is in view, its nearest enclosing group heading is pinned
+  // directly under the header, so that heading's height is occluded too.
+  const visibleTop =
+    (header
+      ? Math.max(containerBox.top, header.getBoundingClientRect().bottom)
+      : containerBox.top) + enclosingStickyHeight(active);
   const occluded = visibleTop - containerBox.top;
   // Keep the browser's OWN scroll-into-view clear of the block too: keyboard
   // focus landing on a row near the top would otherwise park it behind the
@@ -229,13 +238,19 @@ function scrollActiveIntoView(container: HTMLElement): boolean {
 
 // In-sidebar symbol filter: the navbar filter input publishes its query
 // into shared state; a non-blank query prunes the tree to matching
-// entries (plus their ancestor groups) and forces the remaining groups
-// open. Whitespace-separated terms combine with AND, and a term satisfied
+// entries (plus their ancestor groups) and opens the remaining groups by
+// default. Whitespace-separated terms combine with AND, and a term satisfied
 // by an ancestor heading counts for the whole subtree. The user's own
 // `expanded` set is never touched, so clearing the query restores the
 // pre-filter sidebar.
 const filterTerms = computed(() => splitTerms(sidebarFilterQuery.value));
 const filtering = computed(() => filterTerms.value.length > 0);
+// Groups the reader folded during the current filter session. Kept apart from
+// `expanded` so a fold made in the temporary filtered view is never saved:
+// the set is emptied when the filter ends or the navigation style switches,
+// and it is never written to storage. Editing the query keeps it, so refining
+// a search does not undo the reader's own clicks.
+const filterCollapsed = ref(new Set<string>());
 const displayTree = computed(() =>
   filtering.value
     ? filterSidebarTree(
@@ -370,6 +385,13 @@ function ensureLoaded() {
 }
 
 function toggle(key: string) {
+  // While filtering, a toggle folds or unfolds the group for this filter
+  // session only. Every chunk is already loaded for the filter, so nothing
+  // needs fetching, and neither `expanded` nor the store is touched.
+  if (filtering.value) {
+    filterCollapsed.value = toggleFilterCollapsed(filterCollapsed.value, key);
+    return;
+  }
   const next = new Set(expanded.value);
   const open = !next.has(key);
   if (open) next.add(key);
@@ -393,6 +415,8 @@ function toggle(key: string) {
 // the active page is revealed in it, and the packages it has open fetch any
 // chunk they still miss.
 watch(navStyle, () => {
+  // Folds made while filtering belong to the tree they were made in.
+  filterCollapsed.value = new Set();
   if (status.value !== "ready") return;
   if (navStyle.value === "package") ensurePackageTree();
   initStyle(navStyle.value);
@@ -407,7 +431,17 @@ watch(navStyle, () => {
 // The display language is the shared client-side language selection
 // driving every LanguageTabs group. Item labels flip with it in place;
 // links, keys, and expansion state stay canonical.
-provide("apiSidebar", { expanded, activePath, base, toggle, filtering, displayLang: activeLanguage });
+provide("apiSidebar", {
+  expanded,
+  activePath,
+  base,
+  toggle,
+  filtering,
+  filterCollapsed,
+  displayLang: activeLanguage,
+  sticky,
+  findScrollContainer,
+});
 
 onMounted(() => {
   // Idempotent; the sidebar renders on pages without any LanguageTabs
@@ -421,13 +455,20 @@ onMounted(() => {
 });
 onUnmounted(() => {
   window.removeEventListener("popstate", onPopState);
+  sticky.detach();
   if (packageCooldown !== undefined) clearTimeout(packageCooldown);
 });
 // Client-side navigation keeps this component mounted, so react to route
 // changes: load on first entry into /api/, and re-open the active branch.
 watch(isApi, ensureLoaded);
 watch(filtering, (active) => {
-  if (active && status.value === "ready") loadAllChunks();
+  if (active) {
+    if (status.value === "ready") loadAllChunks();
+    return;
+  }
+  // The filter ended (cleared, shortened, or Enter jumped): drop the folds
+  // made in the filtered view so the pre-filter tree comes back exactly.
+  filterCollapsed.value = new Set();
 });
 // "Locate current page": unfold and reveal an off-screen entry, or flash an entry that is already visible.
 watch(jumpToCurrentRequest, () => {

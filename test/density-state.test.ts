@@ -34,22 +34,31 @@ describe('layout density state', () => {
 
   // Behavioral tests. The repo runs node-env Jest with no jsdom (and adding
   // one is out of scope — no new dependency), so we install the minimal
-  // window/document surface the module actually touches: localStorage and
-  // documentElement's attribute methods.
+  // window/document surface the module actually touches: localStorage,
+  // documentElement's attribute methods, requestAnimationFrame, and
+  // querySelectorAll for the page's fold-outs.
   describe('behavior', () => {
     let store: Record<string, string>;
     let attrs: Record<string, string>;
+    let foldouts: { open: boolean }[];
+    let selectors: string[];
 
     beforeEach(() => {
       jest.resetModules();
       store = {};
       attrs = {};
+      foldouts = [{ open: false }, { open: false }, { open: true }];
+      selectors = [];
       const fakeWindow = {
         localStorage: {
           getItem: (k: string) => (k in store ? store[k] : null),
           setItem: (k: string, v: string) => {
             store[k] = v;
           },
+        },
+        requestAnimationFrame: (cb: () => void) => {
+          cb();
+          return 0;
         },
       };
       const documentElement = {
@@ -64,6 +73,10 @@ describe('layout density state', () => {
       (globalThis as Record<string, unknown>).window = fakeWindow;
       (globalThis as Record<string, unknown>).document = {
         documentElement,
+        querySelectorAll: (selector: string) => {
+          selectors.push(selector);
+          return foldouts;
+        },
         // Vue's runtime-dom touches document.createElement at import time;
         // a no-op element keeps the import from throwing under node-env.
         createElement: () => ({ style: {}, setAttribute() {}, removeAttribute() {} }),
@@ -109,6 +122,28 @@ describe('layout density state', () => {
       expect('data-density' in attrs).toBe(false);
     });
 
+    test('Spacious opens every fold-out on the page; Balanced and Compact close them', async () => {
+      const mod = await import('../docs/.vitepress/theme/density.js');
+      mod.setDensity('spacious');
+      expect(foldouts.map((d) => d.open)).toEqual([true, true, true]);
+      expect(selectors.at(-1)).toBe(mod.FOLDOUT_SELECTOR);
+
+      mod.setDensity('balanced');
+      expect(foldouts.map((d) => d.open)).toEqual([false, false, false]);
+
+      foldouts[1].open = true; // a reader opened one
+      mod.setDensity('compact');
+      expect(foldouts.map((d) => d.open)).toEqual([false, false, false]);
+    });
+
+    test('a stored spacious choice reopens fold-outs once the app has hydrated', async () => {
+      store['cdk-docs-density'] = 'spacious';
+      const mod = await import('../docs/.vitepress/theme/density.js');
+      mod.initDensity();
+      expect(attrs['data-density']).toBe('spacious');
+      expect(foldouts.map((d) => d.open)).toEqual([true, true, true]);
+    });
+
     test('a choice made with the picker survives a reload', async () => {
       // The Layout picker calls setDensity. A reload is a fresh module over the
       // same localStorage and a fresh <html> with no attribute.
@@ -139,6 +174,15 @@ describe('layout density state', () => {
 
     test('enhanceApp re-applies the stored choice at client boot', () => {
       expect(entry).toContain('initDensity()');
+    });
+
+    test('the bootstrap opens exactly the fold-outs density.ts opens', () => {
+      // The pre-paint script must stay self-contained, so it carries its own
+      // copy of the selector. Tie that copy to FOLDOUT_SELECTOR, so renaming a
+      // fold-out class cannot silently stop Spacious opening it before paint.
+      const m = state.match(/export const FOLDOUT_SELECTOR\s*=\s*'([^']+)'/);
+      expect(m).not.toBeNull();
+      expect(config).toContain(`var s = "${m![1]}";`);
     });
   });
 });

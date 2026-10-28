@@ -162,6 +162,12 @@ the row's continuation. The disclosure is plain HTML, so pages work before
 hydration and nothing is dropped even on `constructs.Construct` (2,332
 descendants) or `IConstruct`.
 
+The clamp's `<details class="chain-more">` starts closed at the Compact and
+Balanced layout levels and opens at Spacious, where a reader has asked to see
+everything at once; they can still close it. The generated HTML and the budget
+are unchanged; the level sets the `open` attribute at runtime (ADR
+2026-10-23-layout-density, "Spacious opens every fold-out").
+
 A row's names are one `<ul>` with `role="list"`/`"listitem"` **re-asserted
 explicitly** — WebKit strips native list semantics from inline-styled lists,
 and the row must flow as text (`display: inline; list-style: none`) for the

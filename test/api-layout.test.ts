@@ -916,17 +916,19 @@ describe('API page layout', () => {
       // easy to miss, so these two headings take the base (non-mono) heading
       // font, the standard heading color, and a size/weight clearly above a
       // symbol name. rulesFor() fails outright if the rule is absent.
-      const NAME_SIZE_REM = 0.875; // .member-list .member-line font-size
       const NAME_WEIGHT = 600; // .member-signature .sig-name font-weight
-      // The header font size is now the --density-section-header-font token
-      // (declared once on :root in density.css at today's value, 1.4rem), per
-      // ADR 2026-10-23-layout-density. Resolve it from that :root block.
+      // The header font size is the --density-section-header-font token and
+      // the name size (`.member-list .member-line`) is --density-member-name-font,
+      // both declared once on :root in density.css (Balanced), per ADR
+      // 2026-10-23-layout-density. Resolve them from that :root block.
       const dcss = readFileSync(resolve(THEME_DIR, 'density.css'), 'utf-8');
       const root = dcss.slice(dcss.indexOf(':root {'), dcss.indexOf('}', dcss.indexOf(':root {')));
-      const headerSize = Number(
-        (root.match(/--density-section-header-font:\s*([\d.]+)rem;/) ?? [])[1],
-      );
-      expect(headerSize).toBeGreaterThan(NAME_SIZE_REM);
+      const remToken = (name: string) => Number((root.match(new RegExp(`--density-${name}:\\s*([\\d.]+)rem;`)) ?? [])[1]);
+      const headerSize = remToken('section-header-font');
+      const nameSize = remToken('member-name-font');
+      expect(nameSize).toBeGreaterThan(0);
+      expect(headerSize).toBe(1.4);
+      expect(headerSize).toBeGreaterThan(nameSize);
       for (const anchor of ['#properties', '#methods']) {
         const rules = rulesFor(css(), `h2${anchor}`);
         expect(rules).toContain('font-family: var(--vp-font-family-base)');

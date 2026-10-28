@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { filterSymbols, matchRank, splitTerms, SymbolEntry, termRank } from '../docs/.vitepress/theme/filterSymbols.js';
+import { isOpenWhileFiltering, toggleFilterCollapsed } from '../docs/.vitepress/theme/sidebar-filter.js';
 
 const THEME_DIR = resolve(import.meta.dirname, '../docs/.vitepress/theme');
 
@@ -340,8 +341,72 @@ describe('shared sidebar filter state', () => {
     expect(sidebar).toContain('splitTerms');
   });
 
-  test('groups are forced open while filtering without touching user state', () => {
+  test('groups start open while filtering and the user state is never consulted', () => {
     const item = readFileSync(resolve(THEME_DIR, 'ApiSidebarItem.vue'), 'utf-8');
-    expect(item).toContain('ctx.filtering.value || ctx.expanded.value.has(key.value)');
+    const openBody = /const open = computed\(\(\) =>[\s\S]*?\n\);/.exec(item)?.[0] ?? '';
+    // Filtering: open unless folded this session. Otherwise: the saved set.
+    expect(openBody).toMatch(/ctx\.filtering\.value\s*\?\s*isOpenWhileFiltering\(ctx\.filterCollapsed\.value, key\.value\)\s*:\s*ctx\.expanded\.value\.has\(key\.value\)/);
+    // The heading keeps working as a disclosure button while filtering.
+    const toggleBody = /function onToggle\(\) \{[\s\S]*?\n\}/.exec(item)?.[0] ?? '';
+    expect(toggleBody).not.toMatch(/if \(ctx\.filtering\.value\) return/);
+    expect(toggleBody).toMatch(/ctx\.toggle\(key\.value\)/);
+  });
+});
+
+describe('filter-session folds', () => {
+  test('a surviving group is open until the reader folds it', () => {
+    const none = new Set<string>();
+    expect(isOpenWhileFiltering(none, 'aws-s3')).toBe(true);
+    const folded = toggleFilterCollapsed(none, 'aws-s3');
+    expect(isOpenWhileFiltering(folded, 'aws-s3')).toBe(false);
+    // Other groups are untouched.
+    expect(isOpenWhileFiltering(folded, 'aws-sqs')).toBe(true);
+  });
+
+  test('folding again reopens the group', () => {
+    const folded = toggleFilterCollapsed(new Set(), 'aws-s3');
+    const reopened = toggleFilterCollapsed(folded, 'aws-s3');
+    expect(isOpenWhileFiltering(reopened, 'aws-s3')).toBe(true);
+    expect(reopened.size).toBe(0);
+  });
+
+  test('returns a new set and leaves the input alone', () => {
+    const before = new Set(['aws-sqs']);
+    const after = toggleFilterCollapsed(before, 'aws-s3');
+    expect(after).not.toBe(before);
+    expect([...before]).toEqual(['aws-sqs']);
+    expect([...after].sort()).toEqual(['aws-s3', 'aws-sqs']);
+  });
+
+  test('the sidebar routes filter-time toggles into the session set, not the saved state', () => {
+    const sidebar = readFileSync(resolve(THEME_DIR, 'ApiSidebar.vue'), 'utf-8');
+    expect(sidebar).toMatch(/const filterCollapsed = ref\(new Set<string>\(\)\)/);
+    const toggleBody = /function toggle\(key: string\) \{[\s\S]*?\n\}/.exec(sidebar)?.[0] ?? '';
+    // The filtering branch writes only the session set and returns before
+    // `expanded` or the collapse store are reached.
+    const branch = /if \(filtering\.value\) \{([\s\S]*?)\n  \}/.exec(toggleBody)?.[1] ?? '';
+    expect(branch).toMatch(/filterCollapsed\.value = toggleFilterCollapsed\(filterCollapsed\.value, key\)/);
+    expect(branch).toMatch(/return;/);
+    expect(branch).not.toMatch(/setExpanded|collapseMemory|localStorage/);
+    // The set is shared with the items through the provide context.
+    expect(sidebar).toMatch(/provide\("apiSidebar", \{[^}]*filterCollapsed[^}]*\}\)/);
+  });
+
+  test('the session set resets when the filter ends', () => {
+    const sidebar = readFileSync(resolve(THEME_DIR, 'ApiSidebar.vue'), 'utf-8');
+    const watchBody = /watch\(filtering, \(active\) => \{[\s\S]*?\n\}\);/.exec(sidebar)?.[0] ?? '';
+    expect(watchBody).toMatch(/filterCollapsed\.value = new Set\(\)/);
+    // Query edits that keep the filter active do not reach the reset: the
+    // watcher only fires on the boolean flip, and the reset sits on the
+    // inactive side of it.
+    expect(watchBody).toMatch(/if \(active\) \{[\s\S]*?return;[\s\S]*?\}[\s\S]*?filterCollapsed\.value = new Set\(\)/);
+  });
+
+  test('the session set resets on a navigation style switch', () => {
+    const sidebar = readFileSync(resolve(THEME_DIR, 'ApiSidebar.vue'), 'utf-8');
+    const watchBody = /watch\(navStyle, \(\) => \{[\s\S]*?\n\}\);/.exec(sidebar)?.[0] ?? '';
+    // Before the ready check, so a switch while the skeleton is in flight
+    // still starts the new style's filtered tree fully open.
+    expect(watchBody).toMatch(/filterCollapsed\.value = new Set\(\);[\s\S]*?if \(status\.value !== "ready"\) return;/);
   });
 });

@@ -60,12 +60,17 @@ test.describe('layout density attribute', () => {
         sidebarIndent: s.getPropertyValue('--density-sidebar-indent').trim(),
         tableMargin: s.getPropertyValue('--density-table-margin').trim(),
         sectionHeaderFont: s.getPropertyValue('--density-section-header-font').trim(),
+        memberNameFont: s.getPropertyValue('--density-member-name-font').trim(),
+        memberProseFont: s.getPropertyValue('--density-member-prose-font').trim(),
       };
     });
-    expect(tokens.memberRowPadY).toBe('12px');
+    expect(tokens.memberRowPadY).toBe('13px');
     expect(tokens.outlineFont).toBe('14px');
     expect(tokens.sidebarIndent).toBe('12px');
-    expect(tokens.tableMargin).toBe('16px');
+    expect(tokens.tableMargin).toBe('18px');
+    // The built CSS is minified, which drops a leading zero.
+    expect(tokens.memberNameFont).toBe('.9375rem');
+    expect(tokens.memberProseFont).toBe('.875rem');
     expect(tokens.sectionHeaderFont).toBe('1.4rem');
   });
 

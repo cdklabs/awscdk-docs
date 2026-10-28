@@ -211,6 +211,16 @@ single chunk is ~26 KB gzip. Server-rendered page content and its inline
 cross-links are unaffected, so the crawlable link graph and Pagefind
 indexing ([search and filter](./2026-10-15-search-and-filter.md)) still work.
 
+### Nesting depth stays visible
+
+The Framework and Services section headers and service rows remain flush.
+Every level below a service adds one `--density-sidebar-indent`; leaf links
+add the caret's 16px width after that same depth offset. Resource groups, kind
+groups, and types therefore form distinct parent/child steps while siblings
+at each depth share one text column. The density setting owns the step size,
+so Compact, Balanced, and Spacious remain consistent. Long names still wrap
+within the widened sidebar instead of being clipped.
+
 ### Collapsed subtrees are not rendered
 
 `ApiSidebarItem.vue` renders a group's children under **`v-if`**, not
@@ -218,9 +228,10 @@ indexing ([search and filter](./2026-10-15-search-and-filter.md)) still work.
 corpus mounted-but-hidden cost ~96,500 DOM elements on every API page
 (Total Blocking Time ~570ms); `v-if` drops that to ~3,400. Unmounting is
 safe here because no child holds its own state (expansion lives in the
-`ApiSidebar` root's shared `expanded` set), `syncActive()` works off tree
-data not the DOM, both reveal paths wait for `nextTick`, the filter forces
-surviving groups open, and `.api-sidebar-list` has no CSS transition.
+`ApiSidebar` root's shared `expanded` set, and filter-time folds in its
+`filterCollapsed` set), `syncActive()` works off tree
+data not the DOM, both reveal paths wait for `nextTick`, the filter opens
+surviving groups by default, and `.api-sidebar-list` has no CSS transition.
 Expanding a group pays the mount cost (~577 rows for the widest) only when a
 reader opens it. This is deliberately opposite to the Favorites section
 (below), which keeps its handful of entries mounted: the discriminator is
@@ -286,6 +297,10 @@ header `bottom`, so keyboard focus landing near the top clears the block —
 box-containment alone would wrongly treat an occluded entry as visible
 (WCAG 2.4.11). Specs assert visibility by hit-testing a painted point, not
 by coordinates, which are invariant under exactly these faults.
+
+The nearest enclosing group heading is pinned directly under this block too
+(`2026-10-28-sidebar-sticky-group-heading.md`), so the visible region and
+`scrollPaddingTop` are also inset by that heading's measured height.
 
 ### Locate current page
 

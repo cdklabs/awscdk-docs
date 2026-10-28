@@ -120,6 +120,10 @@ test.describe('navbar layout', () => {
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.VPNavBarAppearance')).toBeHidden();
     await expect(page.locator('.VPNavBarExtra .item.appearance')).toBeHidden();
+    // With its only item hidden the flyout has nothing to show, so the
+    // whole flyout, trigger included, is hidden too.
+    await expect(page.locator('.VPNavBarExtra')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'extra navigation' })).toBeHidden();
     const trigger = page.getByRole('button', { name: 'Settings' });
     await expect(trigger).toBeVisible();
     const triggerBox = await trigger.boundingBox();
@@ -135,6 +139,39 @@ test.describe('navbar layout', () => {
       .getByRole('button', { name: 'Dark site theme' })
       .click();
     await expect(page.locator('html')).toHaveClass(/dark/);
+  });
+
+  for (const width of [768, 1000, 1279]) {
+    test(`no empty "extra navigation" flyout at ${width}px`, async ({ page }) => {
+      // The flyout's only content is the hidden appearance item, so its
+      // trigger would open an empty menu. It must be neither visible nor
+      // focusable, on the home page and on an API page.
+      await page.setViewportSize({ width, height: 800 });
+      for (const path of ['/', TOPIC_PAGE]) {
+        await page.goto(path);
+        await expect(page.locator('.VPNavBarExtra')).toBeHidden();
+        await expect(page.getByRole('button', { name: 'extra navigation' })).toBeHidden();
+      }
+    });
+  }
+
+  test('tabbing at 1000px skips straight from the badge to the Settings gear', async ({ page }) => {
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await page.goto(TOPIC_PAGE);
+    const focusedNavControls: string[] = [];
+    for (let i = 0; i < 40; i++) {
+      await page.keyboard.press('Tab');
+      const label = await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement | null;
+        if (!el || !el.closest('.VPNavBar')) return null;
+        return el.getAttribute('aria-label') ?? el.textContent?.trim() ?? '';
+      });
+      if (label === null) continue;
+      focusedNavControls.push(label);
+      if (label === 'Settings') break;
+    }
+    expect(focusedNavControls).toContain('Settings');
+    expect(focusedNavControls).not.toContain('extra navigation');
   });
 
   for (const width of [768, 800, 960]) {

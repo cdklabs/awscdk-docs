@@ -39,6 +39,9 @@ describe('type page information density', () => {
         'member-divider',
         'member-gap',
         'member-foldout-pad',
+        'member-name-font',
+        'member-type-font',
+        'member-prose-font',
         'outline-font',
         'outline-line',
         'outline-pad',
@@ -92,12 +95,29 @@ describe('type page information density', () => {
         expect([name, num(root[name]) <= num(spacious[name])]).toEqual([name, true]);
       }
 
-      // Compact keeps today's member rows, headers and tables. Outline values
-      // are owned by this step: line and padding are strictly ordered, the font
-      // is one step smaller at Compact and the same at Balanced and Spacious.
-      for (const name of Object.keys(root).filter((n) => /^(member|section|table)-/.test(n))) {
+      // Member rows: Compact is tighter than Balanced in both type and spacing
+      // (ADR 2026-10-23-layout-density, "Levels"). Section headers keep their
+      // per-level font, and the same margins at every level.
+      for (const name of [
+        'member-row-pad-y',
+        'member-divider',
+        'member-gap',
+        'member-foldout-pad',
+        'member-name-font',
+        'member-type-font',
+        'member-prose-font',
+      ]) {
+        expect([name, num(compact[name]) < num(root[name])]).toEqual([name, true]);
+      }
+      for (const name of Object.keys(root).filter((n) => /^section-header-/.test(n))) {
         expect([name, compact[name]]).toEqual([name, root[name]]);
       }
+      // At every level the type is never larger than the name.
+      for (const [level, tokens] of [['compact', compact], ['balanced', root], ['spacious', spacious]] as const) {
+        expect([level, num(tokens['member-type-font']) <= num(tokens['member-name-font'])]).toEqual([level, true]);
+      }
+      // Outline: line and padding are strictly ordered; the font is one step
+      // smaller at Compact and the same at Balanced and Spacious.
       for (const name of ['outline-line', 'outline-pad']) {
         expect([name, num(compact[name]) < num(root[name])]).toEqual([name, true]);
         expect([name, num(root[name]) < num(spacious[name])]).toEqual([name, true]);
@@ -217,10 +237,10 @@ describe('type page information density', () => {
       expect(from).toBeGreaterThan(-1);
       const block = css.slice(from, css.indexOf('}', from));
       // The vertical padding is the --density-member-row-pad-y token; Balanced
-      // pins it to 12px. The horizontal inset stays a literal 0.
+      // pins it to 13px. The horizontal inset stays a literal 0.
       const padding = block.match(/padding:\s*var\(--density-member-row-pad-y\)\s+(\d+)(?:px)?/);
       expect(padding).not.toBeNull();
-      expect(Number(densityToken('member-row-pad-y').replace('px', ''))).toBe(12);
+      expect(Number(densityToken('member-row-pad-y').replace('px', ''))).toBe(13);
       expect(Number(padding![1])).toBe(0);
     });
 
@@ -229,18 +249,42 @@ describe('type page information density', () => {
       // separating one member from the next — and a trailing border under the
       // last row would draw a line with nothing below it. The separator uses
       // --vp-c-border, the stronger token, so it stays visible in dark mode;
-      // width 1px.
+      // width 2px at Balanced.
       const css = apiLayout();
       const from = css.indexOf('.member-list .member-row {');
       expect(from).toBeGreaterThan(-1);
       const row = css.slice(from, css.indexOf('}', from));
       expect(row).toMatch(/border-bottom:\s*var\(--density-member-divider\)\s+solid\s+var\(--vp-c-border\)/);
-      expect(densityToken('member-divider')).toBe('1px');
+      expect(densityToken('member-divider')).toBe('2px');
 
       const lastFrom = css.indexOf('.member-list .member-row:last-child {');
       expect(lastFrom).toBeGreaterThan(-1);
       const last = css.slice(lastFrom, css.indexOf('}', lastFrom));
       expect(last).toMatch(/border-bottom:\s*none/);
+    });
+
+    test('every prose line in a member row reads the prose font token', () => {
+      // One prose size per row, at every level (ADR 2026-10-23-layout-density).
+      // Comments are stripped first: some carry `{ … }` that would end a slice early.
+      const css = apiLayout().replace(/\/\*[\s\S]*?\*\//g, '');
+      const rule = (selector: string): string => {
+        const from = css.indexOf(`${selector} {`);
+        expect([selector, from > -1]).toEqual([selector, true]);
+        return css.slice(from, css.indexOf('}', from));
+      };
+      for (const selector of [
+        '.member-summary',
+        '.member-extra,\n.member-details',
+        '.member-default',
+        '.member-disclosure > summary',
+      ]) {
+        expect([selector, rule(selector)]).toEqual([
+          selector,
+          expect.stringMatching(/font-size:\s*var\(--density-member-prose-font\)/),
+        ]);
+      }
+      expect(rule('.member-list .member-line')).toMatch(/font-size:\s*var\(--density-member-name-font\)/);
+      expect(rule('.member-type')).toMatch(/font-size:\s*var\(--density-member-type-font\)/);
     });
 
     test('only the permalink is positioned out of flow, in the gutter of a relative line', () => {

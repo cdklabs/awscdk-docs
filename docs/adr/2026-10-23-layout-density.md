@@ -61,8 +61,11 @@ maintainer before the work started.
 - **Levels (ordering fixed here; the concrete numbers land in later steps).**
   Compact is never looser than Balanced and Balanced is never looser than
   Spacious, in every area:
-  - Member rows, section headers, tables: Balanced is today's values loosened a
-    little; Compact keeps today's values; Spacious is looser than Balanced.
+  - Member rows and tables: Compact is tighter than Balanced in type and
+    spacing; Spacious is looser than Balanced in spacing, at Balanced type
+    sizes, and opens every fold-out.
+  - Section headers: the font keeps its per-level values (Spacious a step
+    larger); the margins are the same at every level.
   - Outline: Spacious keeps today's values; Balanced takes today's Balanced
     outline spacing at the sidebar font (14px); Compact is one font step (14px
     to 13px) smaller and tighter still.
@@ -86,10 +89,12 @@ maintainer before the work started.
     `20px`.
   - Outline: unchanged here. The outline values are owned by their own step.
 
-- **Deliberately not tokenized.** Body prose, code blocks and the navbar keep
-  their own type sizes untouched. Density is about the generated API layout's
-  spacing and its own small labels, not the reading column: tokenizing body
-  text size would let a density preset shrink prose, which is out of scope.
+- **Deliberately not tokenized.** Body prose outside member rows, code blocks
+  and the navbar keep their own type sizes untouched: tokenizing the reading
+  column's text size would let a density preset shrink prose, which is out of
+  scope. Member-row text sizes are density tokens (`--density-member-name-font`,
+  `--density-member-type-font`, `--density-member-prose-font`), because how
+  much of a type's members a reader sees at once is what density is for.
 
 ## Consequences
 
@@ -118,20 +123,24 @@ Added with the density picker step. The decisions above stand.
   (`Spacious layout`, `Balanced layout`, `Compact layout`), `aria-pressed`
   state and 24px minimum targets as the other two groups. A click calls
   `setDensity`, which applies and stores the choice at once.
-- **Preset values.** Only the tokens a preset owns are set. A token a preset
-  leaves out falls back to `:root` (Balanced). The table lists the real token
-  values; the nav and outline rows were retuned in the information-density
-  step for the nav and outline, the rest in the Balanced loosening step.
+- **Preset values.** A token a preset leaves out falls back to `:root`
+  (Balanced). The table is the current set, after the Balanced loosening, the
+  member-row type step, and the information-density step for the nav and
+  outline.
 
   | Token | Compact | Balanced (`:root`) | Spacious |
   |---|---|---|---|
-  | `member-row-pad-y` | 12px | 12px | 13px |
-  | `member-divider` | 1px | 1px | 2px |
-  | `member-gap` | 12px | 12px | 14px |
-  | `member-foldout-pad` | 4px | 4px | 6px |
+  | `member-name-font` | 0.875rem | 0.9375rem | 0.9375rem |
+  | `member-type-font` | 0.8125rem | 0.875rem | 0.875rem |
+  | `member-prose-font` | 0.8125rem | 0.875rem | 0.875rem |
+  | `member-row-pad-y` | 12px | 13px | 16px |
+  | `member-divider` | 1px | 2px | 2px |
+  | `member-gap` | 12px | 14px | 16px |
+  | `member-foldout-pad` | 4px | 6px | 8px |
   | `section-header-font` | 1.4rem | 1.4rem | 1.5rem |
-  | `table-cell-pad-y` / `-x` | 6px / 12px | 6px / 12px | 7px / 12px |
-  | `table-margin` | 16px | 16px | 18px |
+  | `section-header-margin-top` / `-bottom` | 40px / 16px | 40px / 16px | 40px / 16px |
+  | `table-cell-pad-y` / `-x` | 6px / 12px | 7px / 12px | 8px / 16px |
+  | `table-margin` | 16px | 18px | 20px |
   | `sidebar-font` | 13px | 14px | 14px |
   | `sidebar-line` | 1.4 | 1.4 | 1.6 |
   | `sidebar-pad-y` | 3px | 3px | 8px |
@@ -142,9 +151,45 @@ Added with the density picker step. The decisions above stand.
   | `outline-pad` | 2px | 4px | 5px |
   | `outline-indent` | 16px | 16px | 16px |
 
-- **Why Compact rows match Balanced for now.** Per the levels above, Compact
-  keeps today's member rows, headers and tables, and Balanced is loosened in
-  its own step. Until that step lands, the two are equal in those areas.
+- **Member-row type.** Every prose line in a row (summary, inline default,
+  extra prose, folded-out details, the disclosure label) reads
+  `--density-member-prose-font`, so a row shows one prose size; a quote or a
+  custom block inside a row inherits it instead of the default theme's 16px or
+  fixed 14px. The header line (name, optional mark, inline signature) reads
+  `--density-member-name-font` and the type `--density-member-type-font`, which
+  is never larger than the name. Compact's spacing is the values Balanced had
+  before this step. Spacious stays at Balanced type sizes and only adds room;
+  its table cells return to the stock `8px 16px` and `20px` margin. Badges,
+  anchors, row order, body prose outside rows, code blocks, the navbar, and the
+  inheritance bar and metadata block keep their sizes.
+- **Spacious opens every fold-out.** At Spacious every
+  `details.member-disclosure` and `details.chain-more` in the page content is
+  open; at Balanced and Compact they are closed. A script sets the real `open`
+  attribute rather than a CSS rule revealing the content, so assistive
+  technology hears the true expanded state and a reader can still close one
+  (mouse, or Enter / Space on its summary). Per fold-out state is not stored:
+  the level's default returns on the next level switch, navigation or reload.
+  The bootstrap in `config.mts` stays the single source of first paint: with a
+  stored `spacious` it opens each fold-out as the parser inserts it (a
+  MutationObserver, whose callbacks run before the next paint) and stops at
+  `DOMContentLoaded`. `theme/density.ts` applies the same rule on a level
+  switch, once after hydration, and after each client-side route change. The
+  inheritance bar's clamp (ADR 2026-10-15-api-reference-pages) therefore stays
+  closed at Compact and Balanced and opens at Spacious.
+- **Cost on the largest page.** An open fold-out is styled and laid out, and
+  `constructs.Construct` holds about 2,700 inheritance names. VueUse's
+  appearance handler (VitePress's `useDark` and the Site theme picker's
+  `useColorMode`) adds a global `transition: none` sheet and forces a
+  whole-page style recalc each time it applies, including on mount when the
+  pre-paint script has already set the class; four such recalcs over the open
+  list made a ~255ms long task. Both instances now pass an `onChanged` that
+  applies only when the `dark` class actually changes, so a real toggle still
+  disables transitions. The page's longest task at Spacious drops to ~120ms
+  (Balanced ~100ms) and scrolling it end to end raises none. Measured on the
+  e2e fixture build (`docs:e2e`'s site, which keeps `constructs.Construct`),
+  served locally and loaded in headless Chromium with a `longtask`
+  PerformanceObserver, three runs each, before and after this change; the
+  four recalcs were counted by intercepting the `transition: none` sheet.
 - **Outline levels.** Spacious preserves the pre-density outline exactly:
   14px text, 1.3 line height, 5px vertical padding, and a 16px content indent.
   Balanced uses 14px text, 1.25 line height and 4px padding (25.5px entries).

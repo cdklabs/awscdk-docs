@@ -164,9 +164,12 @@ floating listbox:
   narrowing, no Enter target, no hint.
 - `filterSidebarTree` prunes (never mutates) the loaded tree: a node whose path
   satisfies every term keeps its whole subtree, a group survives only if a
-  descendant does. While filtering, surviving groups render force-expanded and
-  caret clicks are ignored; the user's own expansion state is never written, so
-  clearing the input restores the exact pre-filter sidebar.
+  descendant does. While filtering, surviving groups start open so matches are
+  reachable, and the reader can fold and unfold them; those choices live only
+  for the active filter (a separate `filterCollapsed` set in the sidebar root,
+  emptied when the filter ends or the navigation style switches) and are never
+  saved. The user's own expansion state is never written, so clearing the input
+  restores the exact pre-filter sidebar.
 - **Enter-to-jump** navigates to the best-ranked `filterSymbols` match from the
   lazily fetched index, with an inline `aria-live` hint naming the target while
   typing; Escape clears. On non-`/api/` pages the sidebar does not render but

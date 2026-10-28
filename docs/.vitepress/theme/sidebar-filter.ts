@@ -21,3 +21,24 @@ export const MIN_FILTER_QUERY_LENGTH = 2;
 export function isFilterActive(query: string): boolean {
   return query.trim().length >= MIN_FILTER_QUERY_LENGTH;
 }
+
+/**
+ * Folds made while the filter is active. A surviving group starts open so its
+ * matches are reachable; a key in this set is a group the reader folded during
+ * the current filter session. The set is separate from the reader's saved
+ * expansion state on purpose: it lives only while the filter is active (the
+ * sidebar empties it when the filter ends or the navigation style switches) and
+ * is never written to storage, so clearing the filter restores the exact
+ * pre-filter tree. Returns a new set so a Vue ref holding it sees the change.
+ */
+export function toggleFilterCollapsed(collapsed: ReadonlySet<string>, key: string): Set<string> {
+  const next = new Set(collapsed);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  return next;
+}
+
+/** Whether a group shows its children while filtering: open unless folded this session. */
+export function isOpenWhileFiltering(collapsed: ReadonlySet<string>, key: string): boolean {
+  return !collapsed.has(key);
+}

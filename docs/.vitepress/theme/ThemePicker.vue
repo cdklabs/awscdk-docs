@@ -58,6 +58,13 @@ const mode = useColorMode({
   storageKey: APPEARANCE_KEY,
   emitAuto: true,
   modes: { light: "", dark: "dark" },
+  // Apply only when the class changes. VueUse's default handler adds a global
+  // `transition: none` stylesheet and forces a whole-page style recalc each
+  // time, which on mount (class already set) is pure cost; see config.mts.
+  onChanged: (value, apply) => {
+    if (typeof document === "undefined") return apply(value);
+    if (document.documentElement.classList.contains("dark") !== (value === "dark")) apply(value);
+  },
 });
 
 const SITE_OPTIONS: { value: Mode; label: string; title: string }[] = [

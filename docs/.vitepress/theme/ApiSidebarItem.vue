@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { withBase } from "vitepress";
 import type { Ref } from "vue";
 import { displayLabel, groupKey, isActiveLink, type ApiSidebarNode } from "./api-sidebar";
+import { isOpenWhileFiltering } from "./sidebar-filter";
+import { collapseScrollDelta, isStuck, type StickyHeadings } from "./sidebar-sticky";
 
 interface ApiSidebarContext {
   expanded: Ref<Set<string>>;
@@ -11,8 +13,14 @@ interface ApiSidebarContext {
   toggle: (key: string) => void;
   /** True while the in-sidebar symbol filter is active. */
   filtering: Ref<boolean>;
+  /** Groups folded during the current filter session; empty outside it. */
+  filterCollapsed: Ref<Set<string>>;
   /** Shared display language; label variants flip with it. */
   displayLang: Ref<string>;
+  /** Tracks which group heading is pinned under the header block. */
+  sticky: StickyHeadings;
+  /** The sidebar's scroll container, once mounted. */
+  findScrollContainer: () => HTMLElement | null;
 }
 
 const props = defineProps<{
@@ -51,20 +59,63 @@ const accessibleName = computed(() => {
   const base = canonicalName.value ?? label.value;
   return level ? `${base} (${level} construct)` : canonicalName.value;
 });
-// While the symbol filter is active every surviving group is forced open so
-// matches are reachable; the user's own expanded set is left untouched and
-// takes over again the moment the filter is cleared.
-const open = computed(() => ctx.filtering.value || ctx.expanded.value.has(key.value));
+// While the symbol filter is active every surviving group starts open so
+// matches are reachable, and the reader may fold it for the rest of the filter
+// session; those folds live in the root's `filterCollapsed` set. The user's own
+// expanded set is left untouched and takes over again the moment the filter
+// is cleared.
+const open = computed(() =>
+  ctx.filtering.value
+    ? isOpenWhileFiltering(ctx.filterCollapsed.value, key.value)
+    : ctx.expanded.value.has(key.value),
+);
 const active = computed(() =>
   isActiveLink(props.node.link, ctx.activePath.value, ctx.base.value),
 );
 
 function onToggle() {
-  // Collapsing a forced-open branch mid-filter would fight the filter (and
-  // silently mutate the saved expansion state); ignore clicks until cleared.
-  if (ctx.filtering.value) return;
+  // The root decides where the toggle lands: the filter session's fold set
+  // while filtering, the saved expansion state otherwise.
+  const group = itemEl.value;
+  const heading = group?.firstElementChild;
+  // A heading clicked while pinned is far below its natural row. Collapsing
+  // shrinks the group to that row, so bring it back under the header block
+  // instead of leaving the reader at an unrelated position.
+  const wasPinned =
+    open.value &&
+    !!group &&
+    heading instanceof HTMLElement &&
+    isStuck(heading.getBoundingClientRect().top, group.getBoundingClientRect().top);
   ctx.toggle(key.value);
+  if (!wasPinned) return;
+  nextTick(() => {
+    const container = ctx.findScrollContainer();
+    if (!container || !group) return;
+    const header = container.querySelector<HTMLElement>(".sidebar-header");
+    const headerBottom = header
+      ? header.getBoundingClientRect().bottom
+      : container.getBoundingClientRect().top;
+    container.scrollTop += collapseScrollDelta(group.getBoundingClientRect().top, headerBottom);
+  });
 }
+
+// Eligible to pin under the header: a collapsible group that is not a kind
+// group. Only those `<li>`s are handed to the sticky tracker.
+const itemEl = ref<HTMLElement | null>(null);
+const sticky = computed(() => isGroup.value && !props.node.kindGroup);
+watch(
+  [itemEl, sticky],
+  ([el, eligible], [prevEl]) => {
+    if (prevEl && prevEl !== el) ctx.sticky.unregister(prevEl);
+    if (!el) return;
+    if (eligible) ctx.sticky.register(el);
+    else ctx.sticky.unregister(el);
+  },
+  { flush: "post" },
+);
+onBeforeUnmount(() => {
+  if (itemEl.value) ctx.sticky.unregister(itemEl.value);
+});
 </script>
 
 <template>
@@ -86,7 +137,7 @@ function onToggle() {
       />
     </ul>
   </li>
-  <li v-else class="api-sidebar-item" :style="{ '--api-sidebar-depth': depth }" :data-depth="depth" :data-kind-group="node.kindGroup ? '' : undefined">
+  <li v-else ref="itemEl" class="api-sidebar-item" :style="{ '--api-sidebar-depth': depth }" :data-depth="depth" :data-kind-group="node.kindGroup ? '' : undefined">
     <button
       v-if="isGroup"
       type="button"
@@ -119,7 +170,8 @@ function onToggle() {
          descendant and only set `display: none`, putting the whole ~96,500-node
          symbol tree in the DOM of every API page. Unmounting is safe because a
          child holds no state of its own: expansion lives in the root's shared
-         `expanded` key set, and `syncActive` derives the active page's ancestors
+         `expanded` key set (and, while filtering, its `filterCollapsed` set), and
+         `syncActive` derives the active page's ancestors
          from the tree data rather than the DOM. -->
     <ul v-if="isGroup && open" class="api-sidebar-list">
       <ApiSidebarItem

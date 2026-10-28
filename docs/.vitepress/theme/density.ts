@@ -14,7 +14,7 @@
 // re-applies a stored non-default choice before first paint, so a reload never
 // flashes the wrong density. This module is the single source for the key, the
 // value set, the attribute, and the apply rule the bootstrap script duplicates.
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 export type Density = 'compact' | 'balanced' | 'spacious';
 
@@ -37,6 +37,23 @@ function apply(value: Density): void {
   }
 }
 
+/** The page-content fold-outs a level opens or closes: member-row disclosures
+ *  and the inheritance bar's "more" list. Also hard-coded in config.mts's
+ *  bootstrap script. */
+export const FOLDOUT_SELECTOR = 'details.member-disclosure, details.chain-more';
+
+/** Spacious opens every fold-out; Balanced and Compact close them. A real
+ *  `open` attribute, not CSS, so assistive technology hears the true state and
+ *  a reader can still close one (ADR 2026-10-23-layout-density). Per fold-out
+ *  state is not stored: the level's default returns on the next level switch,
+ *  navigation or reload. */
+export function applyFoldouts(value: Density, root: ParentNode = document): void {
+  const open = value === 'spacious';
+  root.querySelectorAll<HTMLDetailsElement>(FOLDOUT_SELECTOR).forEach((details) => {
+    details.open = open;
+  });
+}
+
 let initialized = false;
 
 /** Initialize from localStorage. Client-only, idempotent. Unknown stored
@@ -49,12 +66,27 @@ export function initDensity(): void {
     density.value = stored;
   }
   apply(density.value);
+  // The bootstrap already opened Spacious fold-outs before first paint. Reapply
+  // once the app has hydrated, so the `open` attribute is guaranteed to survive
+  // it (a no-op when nothing changed, so nothing visibly toggles).
+  if (density.value === 'spacious') {
+    window.requestAnimationFrame(() => applyFoldouts(density.value));
+  }
 }
 
-/** Switch the shared density; persists and applies immediately. */
+/** Switch the shared density; persists and applies immediately, including the
+ *  level's fold-out default on the current page. */
 export function setDensity(value: Density): void {
   density.value = value;
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(DENSITY_KEY, value);
   apply(value);
+  applyFoldouts(value);
+}
+
+/** Re-apply the level's fold-out default after a client-side navigation, once
+ *  the new page has rendered. */
+export function applyFoldoutsAfterNavigation(): void {
+  if (typeof window === 'undefined' || density.value !== 'spacious') return;
+  void nextTick(() => applyFoldouts(density.value));
 }

@@ -393,6 +393,13 @@ describe('navbar layout', () => {
       );
     });
 
+    test('hides the whole flyout only while it holds nothing but the appearance item', () => {
+      // Conditional, so locale links or social links bring the flyout back.
+      expect(css).toMatch(
+        /\.VPNavBarExtra:not\(:has\(\.group\.translations,\s*\.item\.social-links\)\)\s*\{[^}]*display:\s*none\s*!important/,
+      );
+    });
+
     test('the stock switches stay hidden (theme-picker.css)', () => {
       const pickerCss = readFileSync(
         resolve(THEME_DIR, 'theme-picker.css'),

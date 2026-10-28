@@ -395,4 +395,146 @@ test.describe('in-sidebar symbol filter', () => {
     await expect(page.locator('.nav-filter-key .glyph')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.locator('.nav-filter-hint')).toContainText('Enter opens');
   });
+
+  // Folding while filtering. Surviving groups start open, the reader can fold
+  // and unfold them for the rest of the filter session, and nothing of that
+  // survives the filter: clearing it restores the exact pre-filter tree and
+  // the persisted collapse store is never written.
+  test.describe('folding while filtering', () => {
+    const EXPANDED_KEY = 'cdk-docs:sidebar-expanded:v1';
+    const groups = (page: Page) => page.locator('.api-sidebar-nav button.api-sidebar-group');
+    /** Every group heading with its disclosure state, in document order. */
+    const disclosureSnapshot = (page: Page) =>
+      groups(page).evaluateAll((els) =>
+        els.map((el) => [el.textContent?.trim() ?? '', el.getAttribute('aria-expanded')] as const),
+      );
+    const storedRaw = (page: Page) =>
+      page.evaluate((key) => window.localStorage.getItem(key), EXPANDED_KEY);
+    /**
+     * Type a query and wait for the filtered tree to settle. Activating the
+     * filter fetches every sidebar chunk, and each arriving chunk re-renders
+     * the pruned tree, so a click issued mid-stream can land on a row that has
+     * since moved. The reader never clicks that fast; the test must not either.
+     */
+    async function filterFor(page: Page, query: string) {
+      await filterInput(page).fill(query);
+      await page.waitForLoadState('networkidle');
+      await expect.poll(() => groups(page).count()).toBeGreaterThan(0);
+    }
+    /** The first surviving group that has rendered children. */
+    const groupWithChildren = (page: Page) =>
+      page
+        .locator('.api-sidebar-nav li.api-sidebar-item')
+        .filter({ has: page.locator(':scope > button.api-sidebar-group') })
+        .filter({ has: page.locator(':scope > ul.api-sidebar-list') })
+        .first();
+
+    test('a surviving group folds and unfolds by click and keyboard, and the query can keep changing', async ({ page }) => {
+      await page.goto(TOPIC_PAGE);
+      await waitForSidebar(page);
+
+      // "TopicPolicy" survives in more than one service of the fixture (SNS's
+      // own, plus Bedrock's guardrail topic policy): at least two groups
+      // remain, every one of them open. A broader query like "Cfn" would keep
+      // thousands of groups through the mixins package and bog the test down.
+      await filterFor(page, 'TopicPolicy');
+      await expect(groups(page).first()).toBeVisible();
+      expect(await groups(page).count()).toBeGreaterThanOrEqual(2);
+      expect((await disclosureSnapshot(page)).every(([, expanded]) => expanded === 'true')).toBe(true);
+
+      const name = (await groupWithChildren(page).locator(':scope > button.api-sidebar-group .api-sidebar-text').innerText()).trim();
+      // Pin the row by its heading from here on: "first group with children"
+      // would resolve to a different group once this one is folded.
+      const heading = page.getByRole('button', { name, exact: true });
+      const children = heading.locator('..').locator(':scope > ul.api-sidebar-list');
+      await expect(children).toHaveCount(1);
+
+      // Click folds: children unmount, the state announces closed.
+      await heading.click();
+      await expect(heading).toHaveAttribute('aria-expanded', 'false');
+      await expect(children).toHaveCount(0);
+
+      // Editing the query while the filter stays active keeps the fold.
+      // "TopicPolic" matches a superset of "TopicPolicy", so the folded group
+      // still survives.
+      await filterFor(page, 'TopicPolic');
+      await expect(heading).toHaveAttribute('aria-expanded', 'false');
+      await filterFor(page, 'TopicPolicy');
+      await expect(heading).toHaveAttribute('aria-expanded', 'false');
+
+      // Space on the focused heading unfolds it, and focus stays put.
+      await heading.focus();
+      await page.keyboard.press('Space');
+      await expect(heading).toHaveAttribute('aria-expanded', 'true');
+      await expect(heading).toBeFocused();
+      await expect(children).toHaveCount(1);
+
+      // Enter folds it again.
+      await page.keyboard.press('Enter');
+      await expect(heading).toHaveAttribute('aria-expanded', 'false');
+      await expect(heading).toBeFocused();
+    });
+
+    test('clearing the filter restores the pre-filter tree and the store stays untouched', async ({ page }) => {
+      await page.goto(TOPIC_PAGE);
+      await waitForSidebar(page);
+      await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeVisible();
+      const input = filterInput(page);
+
+      const before = await disclosureSnapshot(page);
+      const storeBefore = await storedRaw(page);
+      expect(before.length).toBeGreaterThan(0);
+
+      await filterFor(page, 'TopicPolicy');
+      const heading = groupWithChildren(page).locator(':scope > button.api-sidebar-group');
+      const name = (await heading.locator('.api-sidebar-text').innerText()).trim();
+      await heading.click();
+      await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-expanded', 'false');
+
+      // Clear button: the exact pre-filter disclosure state comes back, and
+      // nothing from the filter session reached localStorage.
+      await page.getByRole('button', { name: 'Clear filter' }).click();
+      await expect(input).toHaveValue('');
+      await expect.poll(() => disclosureSnapshot(page)).toEqual(before);
+      expect(await storedRaw(page)).toBe(storeBefore);
+
+      // Same through Escape, after folding a group again.
+      await filterFor(page, 'TopicPolicy');
+      await groupWithChildren(page).locator(':scope > button.api-sidebar-group').click();
+      await input.press('Escape');
+      await expect.poll(() => disclosureSnapshot(page)).toEqual(before);
+      expect(await storedRaw(page)).toBe(storeBefore);
+
+      // A reload shows the pre-filter state too: nothing was persisted.
+      await page.reload();
+      await waitForSidebar(page);
+      await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeVisible();
+      await expect.poll(() => disclosureSnapshot(page)).toEqual(before);
+      expect(await storedRaw(page)).toBe(storeBefore);
+    });
+
+    test('switching the navigation style while filtering starts the new tree fully open', async ({ page }) => {
+      await page.goto(TOPIC_PAGE);
+      await waitForSidebar(page);
+
+      await filterFor(page, 'TopicPolicy');
+      const heading = groupWithChildren(page).locator(':scope > button.api-sidebar-group');
+      const name = (await heading.locator('.api-sidebar-text').innerText()).trim();
+      await heading.click();
+      await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-expanded', 'false');
+
+      const accept = page.getByRole('button', { name: 'Accept' });
+      if (await accept.count()) await accept.first().click();
+      const trigger = page.getByRole('button', { name: 'Settings' });
+      if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click();
+      await page.getByRole('group', { name: 'Navigation' }).getByRole('button', { name: 'By package' }).click();
+
+      // The filtered package tree renders with every surviving group open.
+      await expect(groups(page).first()).toBeVisible();
+      await expect.poll(async () =>
+        (await disclosureSnapshot(page)).every(([, expanded]) => expanded === 'true'),
+      ).toBe(true);
+      expect(await storedRaw(page)).toBeNull();
+    });
+  });
 });
