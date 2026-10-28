@@ -181,13 +181,16 @@ describe('sectionName', () => {
     }
   });
 
-  test('established branded names keep their casing', () => {
+  test('established names and token paths stay covered', () => {
     expect(sectionName('aws_amazonmq')).toBe('Amazon MQ');
     expect(sectionName('aws_dynamodb')).toBe('DynamoDB');
     expect(sectionName('aws_elasticache')).toBe('ElastiCache');
     expect(sectionName('aws_iot')).toBe('IoT');
     expect(sectionName('aws_fsx')).toBe('FSx');
     expect(sectionName('aws_quicksight')).toBe('QuickSight');
+    expect(sectionName('aws_lex')).toBe('Lex');
+    expect(sectionName('aws_ce')).toBe('Cost Explorer');
+    expect(sectionName('alexa_ask')).toBe('Alexa ASK');
   });
 
   test('lambda_layer_* packages fold into the Lambda service', () => {
