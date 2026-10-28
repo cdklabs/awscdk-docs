@@ -221,6 +221,28 @@ at each depth share one text column. The density setting owns the step size,
 so Compact, Balanced, and Spacious remain consistent. Long names still wrap
 within the widened sidebar instead of being clipped.
 
+### Nesting guide lines
+
+Every open group draws a vertical guide line along its child list, so a
+row's parents stay readable after their headings scroll away. The line sits
+at the center of the group's 16px caret, `(depth - 1) * --density-sidebar-indent
++ 8px` from the row's left edge, which leaves it left of every child's caret
+and text at all three densities. Neutral guides are 1px `--vp-c-border`. The
+innermost group whose own list holds the current page carries
+`data-active-parent`, and its guide is 2px `--vp-c-brand-1` instead, at least
+3:1 against the sidebar surface in light and dark; only one guide is accented,
+and it follows SPA navigation. Section headings and the package entries that
+hold them draw none, since those headings start flush. The filter's
+forced-open groups draw guides the same way.
+
+Each row draws its ancestors' guides across its own left indent, from a
+`::before` whose negative margins cancel its width, so no row moves, wraps or
+changes height. Drawing them per row keeps them unbroken through opaque group
+headings; only a pinned heading hides them, as it hides every row under it.
+The guides are decorative: no DOM text, nothing focusable, no change to roles,
+names, `aria-expanded` or keyboard order. Under `forced-colors: active` they
+draw in system colors.
+
 ### Collapsed subtrees are not rendered
 
 `ApiSidebarItem.vue` renders a group's children under **`v-if`**, not

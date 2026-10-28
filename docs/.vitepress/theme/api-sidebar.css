@@ -209,6 +209,107 @@
   padding-left: calc(max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent) + 16px);
 }
 
+/* Nesting guide lines: every open group draws a thin vertical line along its
+   child list, centered on the group's 16px caret, so a row's parents stay
+   readable after their headings scroll away.
+
+   Each row draws the guides of all of its ancestor groups across its own
+   left indent, from a `::before` that takes no net space (its negative
+   margins cancel its width) and stretches over the row's vertical padding.
+   The guides therefore run unbroken through every row, including over the
+   opaque background of a group heading, and are hidden only by a pinned
+   heading, which covers the rows scrolled under it. A line painted under
+   the rows would be cut by every opaque heading, and a positioned list
+   would paint its rows over its own pinned heading.
+
+   The guide for ancestor depth `k` sits at `(k - 1) * indent + 8px`: one
+   period of the repeating gradient per depth, with the line at the caret
+   center. Depth 0 is a section or a package entry and never has a guide.
+   A section resets the first guided depth to the one below it, so section
+   headings and the package entries holding them draw none.
+
+   Decorative only: no DOM text, nothing focusable, no change to roles,
+   names or row geometry. */
+.api-sidebar-section {
+  --api-sidebar-guide-from: calc(var(--api-sidebar-depth) + 1);
+}
+
+.api-sidebar-group,
+.api-sidebar-link {
+  --api-sidebar-guide-color: var(--vp-c-border);
+  --api-sidebar-guide-accent-color: var(--vp-c-brand-1);
+}
+
+.api-sidebar-group::before,
+.api-sidebar-link::before {
+  --api-sidebar-guide-start: calc((var(--api-sidebar-guide-from, 1) - 1) * var(--density-sidebar-indent));
+  --api-sidebar-guide-width: calc(
+    max(var(--api-sidebar-depth) - var(--api-sidebar-guide-from, 1), 0) * var(--density-sidebar-indent)
+  );
+  --api-sidebar-guide-pad: calc(max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent));
+  content: '';
+  flex: none;
+  align-self: stretch;
+  width: var(--api-sidebar-guide-width);
+  margin-top: calc(-1 * var(--density-sidebar-pad-y));
+  margin-bottom: calc(-1 * var(--density-sidebar-pad-y));
+  margin-left: calc(var(--api-sidebar-guide-start) - var(--api-sidebar-guide-pad));
+  margin-right: calc(var(--api-sidebar-guide-pad) - var(--api-sidebar-guide-start) - var(--api-sidebar-guide-width));
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0 7.5px,
+    var(--api-sidebar-guide-color) 7.5px 8.5px,
+    transparent 8.5px var(--density-sidebar-indent)
+  );
+  pointer-events: none;
+}
+
+/* Leaf links sit 16px further in than group headings at the same depth. */
+.api-sidebar-link::before {
+  --api-sidebar-guide-pad: calc(max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent) + 16px);
+}
+
+/* The group whose own list holds the current page carries
+   `data-active-parent` (ApiSidebarItem.vue). Its guide is 2px in the brand
+   color in every row below it, layered over the neutral line at that depth.
+   Only one group is marked, so only one guide is accented. Contrast against
+   the sidebar surface is pinned at 3:1 in `test/a11y-gate.test.ts`. */
+.api-sidebar-item[data-active-parent] {
+  --api-sidebar-guide-accent-depth: var(--api-sidebar-depth);
+}
+
+.api-sidebar-item[data-active-parent] .api-sidebar-item > .api-sidebar-group::before,
+.api-sidebar-item[data-active-parent] .api-sidebar-item > .api-sidebar-link::before {
+  background-image:
+    linear-gradient(var(--api-sidebar-guide-accent-color), var(--api-sidebar-guide-accent-color)),
+    repeating-linear-gradient(
+      to right,
+      transparent 0 7.5px,
+      var(--api-sidebar-guide-color) 7.5px 8.5px,
+      transparent 8.5px var(--density-sidebar-indent)
+    );
+  background-repeat: no-repeat, repeat;
+  background-size: 2px 100%, auto;
+  background-position:
+    calc((var(--api-sidebar-guide-accent-depth) - var(--api-sidebar-guide-from, 1)) * var(--density-sidebar-indent) + 7px) 0,
+    0 0;
+}
+
+/* Forced colors drop gradient backgrounds. The guide carries no text, so it
+   opts out of the forced palette and draws in system colors instead. */
+@media (forced-colors: active) {
+  .api-sidebar-group,
+  .api-sidebar-link {
+    --api-sidebar-guide-color: CanvasText;
+    --api-sidebar-guide-accent-color: Highlight;
+  }
+
+  .api-sidebar-group::before,
+  .api-sidebar-link::before {
+    forced-color-adjust: none;
+  }
+}
+
 .api-sidebar-group:hover,
 .api-sidebar-link:hover {
   color: var(--vp-c-brand-1);

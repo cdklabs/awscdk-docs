@@ -201,6 +201,49 @@ describe('accessibility gate configuration', () => {
     );
   });
 
+  test('the accented nesting guide clears 3:1 on the sidebar in light and dark', () => {
+    // The accent guide is the only sighted cue for which group holds the
+    // current page, so it is a graphical object under WCAG 1.4.11. Its
+    // color is read from the rule that draws it, and both the color and the
+    // sidebar surface (`--vp-sidebar-bg-color` defaults to `--vp-c-bg-alt`)
+    // are read from the theme, so a later change to either fails here.
+    const luminance = (hex: string) => {
+      const channel = (v: number) => {
+        const c = v / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      const h = hex.replace('#', '');
+      const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+      return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    };
+    const ratio = (a: string, b: string) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const theme = (file: string) =>
+      fs.readFileSync(path.join(import.meta.dirname, '..', 'docs', '.vitepress', 'theme', file), 'utf-8');
+    const valueOf = (css: string, variable: string) => {
+      const match = css.match(new RegExp(`${variable}:\\s*(#[0-9a-fA-F]{6})`));
+      expect(match).not.toBeNull();
+      return match![1];
+    };
+
+    const sidebar = theme('api-sidebar.css');
+    const accent = sidebar.match(/--api-sidebar-guide-accent-color:\s*var\((--[\w-]+)\)/);
+    expect(accent).not.toBeNull();
+    expect(accent![1]).toBe('--vp-c-brand-1');
+    expect(sidebar).toMatch(
+      /\.api-sidebar-item\[data-active-parent\] \.api-sidebar-item > \.api-sidebar-link::before[^{]*\{[^}]*--api-sidebar-guide-accent-color[^}]*background-size: 2px 100%/,
+    );
+
+    const custom = theme('custom.css');
+    const dark = custom.slice(custom.indexOf('.dark {'));
+    expect(ratio(valueOf(custom, accent![1]), valueOf(custom, '--vp-c-bg-alt')))
+      .toBeGreaterThanOrEqual(3);
+    expect(ratio(valueOf(dark, accent![1]), valueOf(dark, '--vp-c-bg-alt')))
+      .toBeGreaterThanOrEqual(3);
+  });
+
   test('the audit workflow is projen-generated, not hand-written YAML', () => {
     // Acceptance criterion on the issue. projen marks what it owns in
     // .gitattributes, so a hand-written workflow is detectable: it would be
