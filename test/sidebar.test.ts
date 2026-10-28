@@ -181,6 +181,15 @@ describe('sectionName', () => {
     }
   });
 
+  test('established branded names keep their casing', () => {
+    expect(sectionName('aws_amazonmq')).toBe('Amazon MQ');
+    expect(sectionName('aws_dynamodb')).toBe('DynamoDB');
+    expect(sectionName('aws_elasticache')).toBe('ElastiCache');
+    expect(sectionName('aws_iot')).toBe('IoT');
+    expect(sectionName('aws_fsx')).toBe('FSx');
+    expect(sectionName('aws_quicksight')).toBe('QuickSight');
+  });
+
   test('lambda_layer_* packages fold into the Lambda service', () => {
     expect(sectionName('lambda_layer_awscli')).toBe('Lambda');
     expect(sectionName('lambda_layer_node_proxy_agent')).toBe('Lambda');
