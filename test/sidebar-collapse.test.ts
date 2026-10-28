@@ -209,7 +209,7 @@ describe('ApiSidebar wiring', () => {
     expect(initBody).toMatch(/const memory = collapseMemories\[style\]/);
   });
 
-  test('the filter force-open path still does not touch the persisted set', () => {
+  test('the filter path (default-open groups and filter-time folds) still does not touch the persisted set', () => {
     const filterRegion = sidebarSource.slice(sidebarSource.indexOf('const filterTerms'));
     const displayRegion = filterRegion.slice(0, filterRegion.indexOf('function syncActive'));
     expect(displayRegion).not.toMatch(/collapseMemory/);

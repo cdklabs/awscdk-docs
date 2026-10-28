@@ -218,9 +218,10 @@ indexing ([search and filter](./2026-10-15-search-and-filter.md)) still work.
 corpus mounted-but-hidden cost ~96,500 DOM elements on every API page
 (Total Blocking Time ~570ms); `v-if` drops that to ~3,400. Unmounting is
 safe here because no child holds its own state (expansion lives in the
-`ApiSidebar` root's shared `expanded` set), `syncActive()` works off tree
-data not the DOM, both reveal paths wait for `nextTick`, the filter forces
-surviving groups open, and `.api-sidebar-list` has no CSS transition.
+`ApiSidebar` root's shared `expanded` set, and filter-time folds in its
+`filterCollapsed` set), `syncActive()` works off tree
+data not the DOM, both reveal paths wait for `nextTick`, the filter opens
+surviving groups by default, and `.api-sidebar-list` has no CSS transition.
 Expanding a group pays the mount cost (~577 rows for the widest) only when a
 reader opens it. This is deliberately opposite to the Favorites section
 (below), which keeps its handful of entries mounted: the discriminator is
