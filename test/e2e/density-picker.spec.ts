@@ -90,14 +90,65 @@ test.describe('layout density picker', () => {
     expect(spacious.sidebar).toBeGreaterThan(balanced.sidebar);
     // Compact sidebar items keep a 24px target.
     expect(compact.sidebar).toBeGreaterThanOrEqual(24);
-    // Member rows: Spacious is taller. Compact keeps today's rows, which are
-    // Balanced's until Balanced is loosened in its own step.
+    // Member rows: Compact is shorter than Balanced, Spacious taller.
+    expect(compact.row).toBeLessThan(balanced.row);
     expect(spacious.row).toBeGreaterThan(balanced.row);
-    expect(compact.row).toBeLessThanOrEqual(balanced.row);
     // Outline: Spacious keeps today's values; the tighter Balanced and Compact
     // outline is set in its own step, so no level is looser than Spacious.
     expect(compact.outline).toBeLessThanOrEqual(balanced.outline);
     expect(balanced.outline).toBeLessThanOrEqual(spacious.outline);
+  });
+
+  test('member-row type and padding follow the level', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const layout = await openSettings(page);
+    const read = () =>
+      page.evaluate(() => {
+        const style = (sel: string) => {
+          const el = document.querySelector(sel);
+          if (!el) throw new Error(`missing ${sel}`);
+          return getComputedStyle(el);
+        };
+        return {
+          name: style('.member-list .member-line').fontSize,
+          type: style('.member-list .member-type').fontSize,
+          prose: style('.member-list .member-summary').fontSize,
+          pad: style('.member-list .member-row').paddingTop,
+        };
+      });
+    const expected = {
+      compact: { name: '14px', type: '13px', prose: '13px', pad: '12px' },
+      balanced: { name: '15px', type: '14px', prose: '14px', pad: '13px' },
+      spacious: { name: '15px', type: '14px', prose: '14px', pad: '16px' },
+    };
+    expect(await read()).toEqual(expected.balanced);
+    await layout.getByRole('button', { name: 'Compact layout' }).click();
+    expect(await read()).toEqual(expected.compact);
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    expect(await read()).toEqual(expected.spacious);
+  });
+
+  test('Spacious opens every fold-out; Balanced and Compact close them', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const layout = await openSettings(page);
+    const foldouts = page.locator('.vp-doc details.member-disclosure, .vp-doc details.chain-more');
+    const count = await foldouts.count();
+    expect(count).toBeGreaterThan(0);
+    const openCount = () =>
+      page.evaluate(
+        () => document.querySelectorAll('.vp-doc details.member-disclosure[open], .vp-doc details.chain-more[open]').length,
+      );
+    expect(await openCount()).toBe(0);
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    expect(await openCount()).toBe(count);
+    await layout.getByRole('button', { name: 'Compact layout' }).click();
+    expect(await openCount()).toBe(0);
+
+    // A stored Spacious choice opens them on load, too.
+    await layout.getByRole('button', { name: 'Spacious layout' }).click();
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-density', 'spacious');
+    expect(await openCount()).toBe(count);
   });
 
   test('body prose, code blocks and the navbar do not change with the level', async ({ page }) => {
