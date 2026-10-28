@@ -211,6 +211,16 @@ single chunk is ~26 KB gzip. Server-rendered page content and its inline
 cross-links are unaffected, so the crawlable link graph and Pagefind
 indexing ([search and filter](./2026-10-15-search-and-filter.md)) still work.
 
+### Nesting depth stays visible
+
+The Framework and Services section headers and service rows remain flush.
+Every level below a service adds one `--density-sidebar-indent`; leaf links
+add the caret's 16px width after that same depth offset. Resource groups, kind
+groups, and types therefore form distinct parent/child steps while siblings
+at each depth share one text column. The density setting owns the step size,
+so Compact, Balanced, and Spacious remain consistent. Long names still wrap
+within the widened sidebar instead of being clipped.
+
 ### Collapsed subtrees are not rendered
 
 `ApiSidebarItem.vue` renders a group's children under **`v-if`**, not
