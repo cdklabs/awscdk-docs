@@ -298,6 +298,10 @@ box-containment alone would wrongly treat an occluded entry as visible
 (WCAG 2.4.11). Specs assert visibility by hit-testing a painted point, not
 by coordinates, which are invariant under exactly these faults.
 
+The nearest enclosing group heading is pinned directly under this block too
+(`2026-10-28-sidebar-sticky-group-heading.md`), so the visible region and
+`scrollPaddingTop` are also inset by that heading's measured height.
+
 ### Locate current page
 
 A `JumpToCurrent.vue` control (label **Locate current page**, which is also

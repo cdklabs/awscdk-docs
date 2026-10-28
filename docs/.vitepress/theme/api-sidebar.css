@@ -163,6 +163,45 @@
   color: var(--vp-c-text-2);
 }
 
+/* Pinned group heading: the nearest enclosing bold group heading stays
+   visible directly under the pinned header block while its entries scroll.
+   It is the group's own button made sticky, not a copy, so its name, caret,
+   state and keyboard behavior are unchanged. The `<li>` is its containing
+   block, so the browser pushes it up as the group ends and the next heading
+   takes over. `--api-sidebar-sticky-top` is the header's measured height
+   (sidebar-sticky.ts). `z-index: 0` keeps every pinned heading under the
+   header block (z-index 1) and above the unpositioned rows; nested headings
+   pin at the same offset and a deeper one, later in the DOM, paints above its
+   ancestors. The ancestors are also hidden, so a taller ancestor never shows
+   below it. Kind groups and section titles never pin. */
+.api-sidebar-item:not([data-kind-group]) > .api-sidebar-group {
+  position: sticky;
+  top: var(--api-sidebar-sticky-top, 0px);
+  z-index: 0;
+  background-color: var(--vp-sidebar-bg-color);
+  /* Square corners: rounded ones would let rows show through at the edges. */
+  border-radius: 0;
+}
+
+/* Hidden but still focusable: Shift+Tab from the pinned heading reaches its
+   ancestor, which then shows above it until focus moves on. No pointer events,
+   so the rows it would cover stay clickable. */
+.api-sidebar-item[data-sticky-covered] > .api-sidebar-group:not(:focus-visible) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.api-sidebar-item[data-sticky-covered] > .api-sidebar-group:focus-visible {
+  z-index: 1;
+}
+
+/* The header block paints over anything above the pinned band, so the focus
+   ring is drawn inside a pinned heading to stay fully visible. */
+.api-sidebar-item[data-sticky-pinned] > .api-sidebar-group:focus-visible,
+.api-sidebar-item[data-sticky-covered] > .api-sidebar-group:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Leaf links render no caret, so add the caret's 16px width after the
    same per-level indent. This aligns each link with group labels at its
    own depth while preserving the parent/child step. */
