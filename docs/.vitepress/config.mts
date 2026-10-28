@@ -74,7 +74,11 @@ async function makeHighlight() {
     // Grammar scope names per token, so `codeNolinkTransformer` can mark strings and comments. The marker is part
     // of the cached HTML. Shiki's `codeToHtml` passes this tokenizer option through to `codeToTokens`, but its
     // `CodeToHastOptions` type does not list it, so it is spread in rather than written as a literal key.
-    const scopes = { includeExplanation: needsMarks ? ("scopeName" as const) : false };
+    // `tokenizeTimeLimit: 0` turns off the per-line tokenize timeout. With scopes on, Shiki tokenizes each line
+    // twice (once for scopes, once for colors), each pass timed on its own; if only one pass times out under load,
+    // the two token lists disagree and Shiki throws. The grammars are fixed and the input is generated, so the
+    // runaway-regex guard buys nothing here (ADR 2026-10-26-no-type-links-in-literals).
+    const scopes = { includeExplanation: needsMarks ? ("scopeName" as const) : false, tokenizeTimeLimit: 0 };
     const html = highlighter.codeToHtml(code, {
       lang: language,
       themes: CODE_THEMES,

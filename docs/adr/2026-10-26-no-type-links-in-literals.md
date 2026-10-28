@@ -66,3 +66,11 @@ work started.
   an escaped quote, a comment marker inside a string, and an interpolation
   hole, plus a signature fence. `test/e2e/example-type-links.spec.ts` checks
   the built `Queue` page.
+- The highlighter requests scopes with no tokenize time limit
+  (`tokenizeTimeLimit: 0`). With scopes on, Shiki tokenizes each line twice,
+  once for scopes and once for colors, and times each pass on its own. If
+  only one pass times out, as a cold highlighter can under a loaded test run
+  or build, the two token lists disagree and Shiki throws. The grammars are
+  fixed and the input is generated, so the runaway-regex guard buys nothing.
+  `test/example-nolink.test.ts` reproduces the race with a mocked clock.
+  Requesting scopes still roughly doubles highlight time.
