@@ -13,6 +13,7 @@
 /.github/workflows/deploy-and-release.yml linguist-generated
 /.github/workflows/docs-a11y.yml linguist-generated
 /.github/workflows/docs-agent-readiness.yml linguist-generated
+/.github/workflows/docs-build.yml linguist-generated
 /.github/workflows/docs-e2e.yml linguist-generated
 /.github/workflows/docs-lighthouse.yml linguist-generated
 /.github/workflows/pull-request-lint.yml linguist-generated

@@ -20,7 +20,8 @@ run several shards at once.
 
 ## Decision
 
-Build the site in a single `build` job of `deploy-and-release.yml` on a self-hosted AWS CodeBuild runner.
+Build the site in a single `build` job on a self-hosted AWS CodeBuild runner. The job is defined once and runs in
+`docs-build.yml` (pull requests, merge queue) and `deploy-and-release.yml` (`main`, manual dispatch).
 
 ### Runner and parameters
 
@@ -41,7 +42,8 @@ Build the site in a single `build` job of `deploy-and-release.yml` on a self-hos
 
 ### Trust model
 
-The same job builds pull requests, merge-queue entries and pushes to `main`, and only the `main` run is published.
+The same job definition builds pull requests and merge-queue entries (in `docs-build`) and pushes to `main` (in
+`deploy-and-release`), and only the `deploy-and-release` run on `main` is published.
 Builds stay isolated from each other, so a pull request build cannot affect what gets published.
 
 - **Who can start a build.** Anyone who opens a pull request. Fork pull requests build without maintainer approval,

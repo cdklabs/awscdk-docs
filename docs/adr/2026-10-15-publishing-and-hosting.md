@@ -18,9 +18,18 @@ deploy time — the one build that matters — with a site whose assets all 404.
 
 ### Deploy-and-release workflow
 
-A single projen-managed workflow (`deploy-and-release.yml`, authored in
-`.projenrc.ts`, never by hand-editing the YAML) builds, publishes, and
-releases. Job graph:
+The site build job is defined once in `.projenrc.ts` and rendered into two
+projen-managed workflows (never hand-edit the YAML):
+
+- `docs-build.yml` runs it on pull requests and in the merge queue, so
+  docs-build breakage is caught before merge. It only builds: it has no
+  release, publish or tag job, no environment and no secrets.
+- `deploy-and-release.yml` runs it on pushes to `main` and on manual
+  dispatch, then publishes and releases.
+
+Both report the required `build-docs` check, and a unit test pins the two
+rendered jobs as identical. Disabling `deploy-and-release` stops releases and
+publishing without touching the pull request checks. Release job graph:
 
 ```
 build ───┬─> release_docs_awscdk-docs ─> release_github
@@ -38,8 +47,7 @@ Publishing is gated to `github.ref == 'refs/heads/main' && !inputs.dry_run`,
 and skipped when the version tag already exists
 (`needs.release.outputs.tag_exists != 'true'`). On a dry run the publish job
 is skipped and `release_github` still runs with its release step skipped by
-projen's dry-run guard. The build itself also runs on pull requests and the
-merge queue, so docs-build breakage is caught before merge.
+projen's dry-run guard.
 
 Two deviations from projen's defaults, both applied as task/workflow overrides
 in `.projenrc.ts`:
@@ -61,10 +69,11 @@ in `.projenrc.ts`:
 Commits whose queued runs are canceled by the concurrency group get no
 individual release; their changes land in the next successful run's changelog.
 
-Pull request runs cancel instead of queueing: a new push to a pull request
-cancels the build still running for its previous commit, which would only
-delay the latest one. Every other event keeps `cancel-in-progress` off, so
-runs on `main` are never interrupted mid-deploy.
+Pull request runs of `docs-build` cancel instead of queueing: a new push to a
+pull request cancels the build still running for its previous commit, which
+would only delay the latest one. Merge queue runs keep queueing. In
+`deploy-and-release`, `cancel-in-progress` is always off, so runs on `main`
+are never interrupted mid-deploy.
 
 ### S3 versioned-zip target
 

@@ -11,6 +11,7 @@
     ".github/workflows/deploy-and-release.yml",
     ".github/workflows/docs-a11y.yml",
     ".github/workflows/docs-agent-readiness.yml",
+    ".github/workflows/docs-build.yml",
     ".github/workflows/docs-e2e.yml",
     ".github/workflows/docs-lighthouse.yml",
     ".github/workflows/pull-request-lint.yml",
