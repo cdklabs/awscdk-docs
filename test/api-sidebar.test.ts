@@ -641,6 +641,8 @@ describe('sticky sidebar header', () => {
     // `top: 0` is measured, not derived — see the comment on the rule itself.
     expect(declarations).toContain('top: 0');
     expect(declarations).toContain('background-color: var(--vp-sidebar-bg-color)');
-    expect(declarations).toContain('z-index: 1');
+    // Above the pinned group headings (1); the layer plan is pinned in
+    // test/sidebar-sticky.test.ts.
+    expect(declarations).toContain('z-index: 2');
   });
 });
