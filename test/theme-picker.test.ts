@@ -74,17 +74,10 @@ describe('three-state theme picker', () => {
       resolve(ROOT, 'docs/.vitepress/config.mts'),
       'utf-8',
     );
-    // The default appearance starts fresh visitors on 'auto'
-    // (prefers-color-scheme). 'dark'/'force-dark' would change the default;
-    // 'force-auto' would remove user choice; false kills it all. The only
-    // override allowed is the options object carrying `onChanged` (which skips
-    // a no-op restyle on mount): it keeps `true`'s behavior, so it must not
-    // set `initialValue` or take any string/boolean form.
-    const settings = config.match(/^\s*appearance\s*:\s*([^\n]*)$/gm) ?? [];
-    expect(settings.length).toBeLessThanOrEqual(1);
-    for (const line of settings) expect(line).toMatch(/appearance\s*:\s*\{\s*$/);
-    expect(config).not.toMatch(/initialValue/);
-    if (settings.length) expect(config).toMatch(/appearance\s*:\s*\{\s*\n\s*onChanged\s*:/);
+    // No appearance override: the default (true) starts fresh visitors on
+    // 'auto' (prefers-color-scheme). 'dark'/'force-dark' would change the
+    // default; 'force-auto' would remove user choice; false kills it all.
+    expect(config).not.toMatch(/appearance\s*:/);
   });
 
   test('offers a Layout density group: Compact, Balanced, Spacious, in that order', () => {
