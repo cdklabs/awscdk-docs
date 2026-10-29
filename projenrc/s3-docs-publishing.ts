@@ -47,7 +47,9 @@ export interface S3DocsPublishingProps {
 }
 
 /**
- * Publishes a versioned zip of the docs site to S3 from the deploy-and-release workflow. The site zip is produced
+ * Publishes a versioned zip of the docs site to S3 from the deploy-and-release workflow, the release workflow that
+ * runs on `main` and manual dispatch. The pull request build lives in the separate `docs-build` workflow, which
+ * never publishes. The site zip is produced
  * by the `build` job (`docs-site` artifact). The artifact is versioned by
  * the documented aws-cdk-lib, read at publish time from the `api/versions.json` the built site carries inside
  * the zip, so the manifest can never disagree with the artifact it describes.

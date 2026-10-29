@@ -245,7 +245,7 @@ project.addTask('modules:pr-body', {
 project.gitignore.addPatterns('.version-plan.json', '.module-plan.json');
 
 // VitePress docs tasks. No explicit heap flags: Node sizes the heap from machine memory. The CI shard build is
-// the one deliberate exception and passes --heap explicitly (see the deploy-and-release build job).
+// the one deliberate exception and passes --heap explicitly (see addDocsBuildJob).
 const docsDev = project.addTask('docs:dev', {
   description: 'Start VitePress dev server',
   exec: 'vitepress dev docs',
@@ -569,20 +569,26 @@ project.gitignore.addPatterns(
   'docs/public/versions.json',
 );
 
-// Combined build + release workflow (projen-managed). Job graph:
+// The docs site is built by one job definition (addDocsBuildJob below) rendered into two workflows:
 //
-//   build ───┬─> release_docs_<stream> ─> release_github
-//   release ─┘
+// - `docs-build` runs it on pull requests and in the merge queue, so docs-build breakage is caught before merge.
+//   It only builds: no release, publish or tag job, no environment and no secrets.
+// - `deploy-and-release` (projen-managed release workflow) runs it on pushes to main and on manual dispatch, then
+//   publishes and releases. Job graph:
+//
+//     build ───┬─> release_docs_<stream> ─> release_github
+//     release ─┘
 //
 // Projen's Release component generates `release` (version bump and changelog) and `release_github` (the GitHub
 // release, which also creates the tag); the build and publish jobs are folded in here. `release` needs nothing
 // from the build, so the two run side by side. The GitHub release comes last and needs every publish job, so a
 // version is only tagged once the site is published.
+//
+// Keeping the two apart lets maintainers disable `deploy-and-release` to stop releases and publishing without
+// removing the required `build-docs` check from pull requests and the merge queue.
 const combined = project.github!.tryFindWorkflow('deploy-and-release')!;
-
-// Build docs on PRs and in the merge queue too, so docs-build breakage is caught before merge. Releasing and
-// publishing are gated to main, so on those refs only the build and its verification run.
-combined.on({ pullRequest: {}, mergeGroup: {} });
+const docsBuildWorkflow = project.github!.addWorkflow('docs-build');
+docsBuildWorkflow.on({ pullRequest: {}, mergeGroup: {} });
 
 // Number of parallel build shards. Rollup's chunk-graph memory is superlinear in per-shard content, so the
 // heaviest page-balanced slice can OOM-kill the 16 GB runner. The prune plan balances page count while the
@@ -608,7 +614,10 @@ const DOCS_STREAM = 'awscdk-docs';
 // Single build job on a self-hosted CodeBuild runner: builds every shard in parallel on one large machine, then
 // merges, indexes with Pagefind and verifies, all inside docs:build:sharded. This is the required `build-docs`
 // check; the name keeps it apart from the `build` check of projen's build workflow, which is also required.
-combined.addJob('build', {
+// Required checks match the job's check name, not the workflow, so both workflows report `build-docs`. Defined
+// once and added to both workflows, so the PR build and the release build cannot drift apart
+// (test/publish.test.ts compares the two rendered jobs).
+const addDocsBuildJob = (workflow: github.GithubWorkflow) => workflow.addJob('build', {
   name: 'build-docs',
   runsOn: [CODEBUILD_RUNNER],
   permissions: {
@@ -660,16 +669,24 @@ combined.addJob('build', {
     },
   ],
 });
+addDocsBuildJob(docsBuildWorkflow);
+addDocsBuildJob(combined);
+
+// One group per ref, so PR builds run independently of each other. A new push to a PR supersedes its running
+// build, so cancel it rather than delay the latest commit; merge queue runs keep queueing.
+docsBuildWorkflow.file!.addOverride('concurrency', {
+  'group': '${{ github.workflow }}-${{ github.ref }}',
+  'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
+});
 
 // `release` runs on main only, including dry runs, which are dispatched on main.
 combined.file!.addOverride('jobs.release.if', "github.ref == 'refs/heads/main'");
 
-// Projen's release concurrency group is workflow-wide, which would coalesce queued PR runs since PR builds share
-// this workflow. Scope the group per ref instead: pushes to main still serialize, PR builds run independently.
+// Projen's release concurrency group is workflow-wide; scope it per ref so pushes to main serialize (the removed
+// anti-race gate below relies on that) and a branch dry run does not wait on main. Runs never cancel each other,
+// so main deploys in order.
 combined.file!.addOverride('concurrency.group', '${{ github.workflow }}-${{ github.ref }}');
-// A new push to a PR supersedes its running build, so cancel it rather than delay the latest commit. Every other
-// event keeps queueing, so main deploys in order.
-combined.file!.addOverride('concurrency.cancel-in-progress', "${{ github.event_name == 'pull_request' }}");
+combined.file!.addOverride('concurrency.cancel-in-progress', false);
 
 // Restore GitHub Releases + drop the redundant release build.
 //
