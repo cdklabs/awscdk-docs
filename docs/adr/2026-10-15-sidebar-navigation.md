@@ -33,9 +33,9 @@ The optional package regrouping of this same data is recorded in
 
 - **Section per service.** A jsii submodule maps to its service via the
   first token after the `aws_` prefix, so integration submodules fold in
-  (`aws_s3` and `aws_s3_deployment` both land in *S3*). Display names come
-  from a small irregular-name map (`dynamodb` → *DynamoDB*, `cloudfront` →
-  *CloudFront*) with an acronym/title-case fallback. Types from different
+  (`aws_s3` and `aws_s3_deployment` both land in *S3*). Display names use
+  curated entries for branded, renamed, and multi-word services, with an
+  acronym/title-case fallback for unchanged names. Types from different
   packages that map to the same service merge into one section.
 - **Core section.** Foundational types — the `constructs` package,
   module-root types (`Stack`, `App`, ...), and `assets` — lead, with a flat
@@ -364,8 +364,8 @@ collapsed (`v-show`), and the section renders nothing with zero favorites.
 
 - Readers navigate by AWS service and CDK framework feature; package layout
   and `interfaces.*`/`*.mixins` structural submodules are invisible in the
-  nav. The service-name and resource-stem heuristics need occasional
-  irregular-name entries but fail readable rather than wrong.
+  nav. Service name changes require a curated display entry and a pinned
+  output test; the resource-stem heuristic still fails readable rather than wrong.
 - Per-page HTML is the shallow "Overview" baseline; the tree is session-
   cached assets fetched incrementally, so build time, artifact size,
   cold-load transfer, and rendered DOM are all bounded independent of page
