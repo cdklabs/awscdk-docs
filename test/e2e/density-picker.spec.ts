@@ -204,26 +204,12 @@ test.describe('layout density picker', () => {
       .toBe(0);
   });
 
-  test('loading a page adds no transition-off stylesheet, and the site theme still toggles', async ({ page }) => {
-    // VueUse's appearance handler adds a global `transition: none` sheet and
-    // forces a whole-page style recalc on every apply. Skipping it when the
-    // class is already right keeps a big open page (constructs.Construct at
-    // Spacious) free of a long task. A real toggle must still apply.
+  test('the site theme toggles at Spacious', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('cdk-docs-density', 'spacious');
-      (window as unknown as { __sheets: number }).__sheets = 0;
-      const append = Node.prototype.appendChild;
-      Node.prototype.appendChild = function <T extends Node>(this: Node, node: T): T {
-        if (node instanceof HTMLStyleElement && /transition:\s*none/.test(node.textContent ?? '')) {
-          (window as unknown as { __sheets: number }).__sheets++;
-        }
-        return append.call(this, node) as T;
-      };
     });
     await page.goto(QUEUE_PAGE);
     await page.waitForLoadState('networkidle');
-    expect(await page.evaluate(() => (window as unknown as { __sheets: number }).__sheets)).toBe(0);
-
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.locator('#settings-menu-panel').getByRole('button', { name: 'Dark site theme' }).click();
     await expect(page.locator('html')).toHaveClass(/(^|\s)dark(\s|$)/);

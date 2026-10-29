@@ -172,19 +172,6 @@ function apiSidebarAssets(): { apiSidebarAsset: string; symbolsAsset: string; ty
 // UserConfig, so it cannot type the async factory this config has to be (the highlighter is awaited).
 const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   title: SITE_TITLE,
-  // VitePress's appearance is VueUse's useDark, which on every apply adds a
-  // global `transition: none` stylesheet and forces a style recalc of the
-  // whole page — including on mount, when the pre-paint script has already
-  // set the class. On a large open page (constructs.Construct at Spacious,
-  // ~2,700 inheritance names) those recalcs made a ~250ms long task. Apply only
-  // when the class actually changes; a real toggle still disables transitions.
-  // An arrow function: VitePress ships it to the client by its source text.
-  appearance: {
-    onChanged: (isDark: boolean, apply: (mode: 'dark' | 'light' | 'auto') => void, mode: 'dark' | 'light' | 'auto') => {
-      if (typeof document === 'undefined') return apply(mode);
-      if (document.documentElement.classList.contains('dark') !== isDark) apply(mode);
-    },
-  },
   description:
     "The API reference for the AWS Cloud Development Kit (AWS CDK)",
   // Hosted path and output directory are the SAME string:

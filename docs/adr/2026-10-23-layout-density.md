@@ -182,10 +182,15 @@ Added with the density picker step. The decisions above stand.
   `useColorMode`) adds a global `transition: none` sheet and forces a
   whole-page style recalc each time it applies, including on mount when the
   pre-paint script has already set the class; four such recalcs over the open
-  list made a ~255ms long task. Both instances now pass an `onChanged` that
-  applies only when the `dark` class actually changes, so a real toggle still
-  disables transitions. The page's longest task at Spacious drops to ~120ms
-  (Balanced ~100ms) and scrolling it end to end raises none. Measured on the
+  list made a ~255ms long task. The Site theme picker passes an `onChanged`
+  that applies only when the `dark` class actually changes, so a real toggle
+  still disables transitions. VitePress's own `useDark` keeps its default
+  handler: an `appearance.onChanged` in the site config reaches the client as
+  source text that VitePress evaluates with `new Function`, which the hosted
+  Content Security Policy blocks, and the site then fails to boot. With both
+  handlers skipping, the page's longest task at Spacious dropped to ~120ms
+  (Balanced ~100ms) and scrolling it end to end raised none; with only the
+  picker's, VitePress's mount-time recalcs remain. Measured on the
   e2e fixture build (`docs:e2e`'s site, which keeps `constructs.Construct`),
   served locally and loaded in headless Chromium with a `longtask`
   PerformanceObserver, three runs each, before and after this change; the
