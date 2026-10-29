@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { QUEUE_PAGE } from './fixture.js';
 
 const LEVELS = [
-  { name: 'compact', font: 12, line: 14.4, padding: 2, height: 24 },
-  { name: 'balanced', font: 13, line: 16.25, padding: 4, height: 24.25 },
+  { name: 'compact', font: 13, line: 15.6, padding: 2, height: 24 },
+  { name: 'balanced', font: 14, line: 17.5, padding: 4, height: 25.5 },
   { name: 'spacious', font: 14, line: 18.2, padding: 5, height: 28.2 },
 ] as const;
 

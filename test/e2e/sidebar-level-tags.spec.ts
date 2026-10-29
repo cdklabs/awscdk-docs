@@ -123,8 +123,9 @@ test.describe('sidebar construct level tags', () => {
     await expect(l2).toBeVisible();
 
     // The tag's box must sit on the name's FIRST line box, not float above
-    // it: its height is the row's line box (14px * 1.5), which an `em`-based
-    // height would get wrong by resolving against the tag's own 10px.
+    // it: its height is the row's line box (14px * 1.4 at Balanced, from the
+    // density tokens), which an `em`-based height would get wrong by
+    // resolving against the tag's own 10px.
     const geom = await l2.evaluate((el) => {
       const level = el.querySelector<HTMLElement>('.api-sidebar-level')!.getBoundingClientRect();
       const name = el.querySelector<HTMLElement>('.api-sidebar-name')!;
@@ -136,7 +137,7 @@ test.describe('sidebar construct level tags', () => {
       };
     });
     expect(Math.abs(geom.tagCenter - geom.lineCenter)).toBeLessThanOrEqual(1);
-    expect(geom.tagHeight).toBeCloseTo(21, 0);
+    expect(geom.tagHeight).toBeCloseTo(19.6, 0);
   });
 
   // WCAG contrast of the tag, measured on the rendered site rather than

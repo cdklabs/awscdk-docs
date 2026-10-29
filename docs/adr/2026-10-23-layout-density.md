@@ -12,8 +12,8 @@ doc-body tables — are hard-coded as literals spread across several theme
 stylesheets. There is no single place to vary density and no way to remember a
 reader's choice.
 
-A later step will give readers a layout-density choice (Compact, Balanced,
-Spacious). This record covers only the foundation that choice needs: a spacing
+A later step will give readers a layout-density choice (Spacious, Balanced,
+Compact). This record covers only the foundation that choice needs: a spacing
 token layer and a stored density setting, both wired so the default renders
 exactly as the site does today. It changes nothing a reader can see.
 
@@ -66,10 +66,13 @@ maintainer before the work started.
     sizes, and opens every fold-out.
   - Section headers: the font keeps its per-level values (Spacious a step
     larger); the margins are the same at every level.
-  - Outline: Spacious keeps today's values; Balanced is a little tighter and
-    smaller in font size; Compact is tighter still.
-  - Sidebar: Balanced is today's values loosened a little; Compact is tighter
-    and Spacious looser.
+  - Outline: Spacious keeps today's values; Balanced takes today's Balanced
+    outline spacing at the sidebar font (14px); Compact is one font step (14px
+    to 13px) smaller and tighter still.
+  - Sidebar: Balanced takes today's Compact sidebar spacing (1.4 line, 3px
+    padding) at the 14px font with a 12px indent; Compact is one font step
+    (14px to 13px) and one indent step (12px to 10px) tighter; Spacious is
+    looser.
 
 - **Balanced values.** The foundation shipped the tokens at the then-current
   values; the Balanced loosening step raised them a little so the default reads
@@ -114,14 +117,16 @@ Added with the density picker step. The decisions above stand.
 
 - **Picker.** A third tri-state group, **Layout**, sits in `ThemePicker.vue`
   after Site theme and Code theme, so it shows in the Settings menu (with its
-  visible caption) and in the mobile nav screen. It offers Compact, Balanced
-  and Spacious, in that order, with the same segmented icon buttons, accessible
-  names (`Compact layout`, `Balanced layout`, `Spacious layout`), `aria-pressed`
+  visible caption) and in the mobile nav screen. It offers Spacious, Balanced
+  and Compact, in that order, so the row reads as a scale from loosest to
+  tightest, with the same segmented icon buttons, accessible names
+  (`Spacious layout`, `Balanced layout`, `Compact layout`), `aria-pressed`
   state and 24px minimum targets as the other two groups. A click calls
   `setDensity`, which applies and stores the choice at once.
 - **Preset values.** A token a preset leaves out falls back to `:root`
-  (Balanced). The table is the current set, after the Balanced loosening and
-  the member-row type step.
+  (Balanced). The table is the current set, after the Balanced loosening, the
+  member-row type step, and the information-density step for the nav and
+  outline.
 
   | Token | Compact | Balanced (`:root`) | Spacious |
   |---|---|---|---|
@@ -137,10 +142,11 @@ Added with the density picker step. The decisions above stand.
   | `table-cell-pad-y` / `-x` | 6px / 12px | 7px / 12px | 8px / 16px |
   | `table-margin` | 16px | 18px | 20px |
   | `sidebar-font` | 13px | 14px | 14px |
-  | `sidebar-line` | 1.4 | 1.5 | 1.6 |
-  | `sidebar-pad-y` | 3px | 6px | 8px |
-  | `sidebar-indent` | 12px | 14px | 16px |
-  | `outline-font` | 12px | 13px | 14px |
+  | `sidebar-line` | 1.4 | 1.4 | 1.6 |
+  | `sidebar-pad-y` | 3px | 3px | 8px |
+  | `sidebar-pad-x` | 4px | 4px | 4px |
+  | `sidebar-indent` | 10px | 12px | 16px |
+  | `outline-font` | 13px | 14px | 14px |
   | `outline-line` | 1.2 | 1.25 | 1.3 |
   | `outline-pad` | 2px | 4px | 5px |
   | `outline-indent` | 16px | 16px | 16px |
@@ -186,15 +192,26 @@ Added with the density picker step. The decisions above stand.
   four recalcs were counted by intercepting the `transition: none` sheet.
 - **Outline levels.** Spacious preserves the pre-density outline exactly:
   14px text, 1.3 line height, 5px vertical padding, and a 16px content indent.
-  Balanced uses 13px text, 1.25 line height and 4px padding. Compact uses 12px
-  text, 1.2 line height and 2px padding. All levels keep the 16px indent so
-  wrapping width and hierarchy stay stable; only type and vertical spacing
-  change. `ApiDocOutlineItem.vue` reads the font token directly, and the active
+  Balanced uses 14px text, 1.25 line height and 4px padding (25.5px entries).
+  Compact uses 13px text, 1.2 line height and 2px padding, held at the
+  existing 24px minimum height. At every level the outline font equals the
+  sidebar link font. All levels keep the 16px indent so wrapping width and
+  hierarchy stay stable; only type and vertical spacing change.
+  `ApiDocOutlineItem.vue` reads the font token directly, and the active
   marker measures its link instead of relying on one fixed row height.
-- **Sidebar targets.** A Compact sidebar item is 13px x 1.4 + 2 x 3px = 24.2px
-  tall, so it stays a 24px target.
+- **Sidebar targets.** A Balanced sidebar item is 14px x 1.4 + 2 x 3px =
+  25.6px tall and a Compact one 13px x 1.4 + 2 x 3px = 24.2px, the only 13px
+  combination above the 24px target floor (1.35 would give 23.55px), so
+  Compact keeps Balanced's line and padding and its extra tightness comes from
+  the font step and the 10px indent. Spacious items are 14px x 1.6 + 2 x 8px =
+  38.4px. The caret and the construct level tag size their boxes from the
+  sidebar font and line tokens (`calc(1em * var(--density-sidebar-line))` and
+  `calc(var(--density-sidebar-font) * var(--density-sidebar-line))`), so group
+  rows are never taller than link rows and the tag stays centered on the
+  name's first line at each level.
 - `test/density.test.ts` checks the level order for every token, the areas
-  each preset must leave alone, and the Compact sidebar target height.
+  each preset must leave alone, the 24px sidebar target height at every level,
+  and that the outline font equals the sidebar font per level.
   `test/e2e/density-picker.spec.ts` checks the picker's place, order, storage,
   reload, keyboard use, the mobile nav screen, the rendered heights per level,
   and that body prose, code blocks and the navbar do not change.

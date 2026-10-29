@@ -7,7 +7,8 @@
 //   site theme; Light or Dark decouples them. State and persistence live in
 //   code-theme.ts; the rendering switch is pure CSS over the Shiki dual-theme
 //   vars (code-theme.css), no re-highlighting.
-// - LAYOUT density: Compact / Balanced / Spacious. Balanced is the default.
+// - LAYOUT density: Spacious / Balanced / Compact, loosest to tightest. Balanced
+//   is the default.
 //   State and persistence live in density.ts; the values are the
 //   `--density-*` tokens and their presets in density.css.
 //
@@ -78,13 +79,15 @@ const CODE_OPTIONS: { value: CodeTheme; label: string; title: string }[] = [
   { value: "dark", label: "Dark", title: "Dark code blocks" },
 ];
 
-// LAYOUT density: Compact / Balanced / Spacious, in that order. Balanced is
-// the default and removes the `data-density` attribute; state, storage and the
-// pre-hydration bootstrap live in density.ts and config.mts.
+// LAYOUT density: Spacious / Balanced / Compact, in that order, so the row
+// reads as a scale from loosest to tightest. Balanced is the default and
+// removes the `data-density` attribute; state, storage and the pre-hydration
+// bootstrap live in density.ts and config.mts. The stored values and the
+// accessible names do not depend on this order.
 const DENSITY_OPTIONS: { value: Density; label: string; title: string }[] = [
-  { value: "compact", label: "Compact", title: "Compact layout" },
-  { value: "balanced", label: "Balanced", title: "Balanced layout" },
   { value: "spacious", label: "Spacious", title: "Spacious layout" },
+  { value: "balanced", label: "Balanced", title: "Balanced layout" },
+  { value: "compact", label: "Compact", title: "Compact layout" },
 ];
 
 function selectDensity(value: Density) {

@@ -87,7 +87,7 @@ describe('three-state theme picker', () => {
     if (settings.length) expect(config).toMatch(/appearance\s*:\s*\{\s*\n\s*onChanged\s*:/);
   });
 
-  test('offers a Layout density group: Compact, Balanced, Spacious, in that order', () => {
+  test('offers a Layout density group: Spacious, Balanced, Compact, loosest to tightest', () => {
     // Third group, built like the other two: an icon button per state, the
     // descriptive title doubling as its accessible name, the active state on
     // aria-pressed, and a visible "Layout" caption in the Settings panel.
@@ -96,7 +96,7 @@ describe('three-state theme picker', () => {
     expect(component).toMatch(/v-if="groupLabels" class="theme-picker-group-label">Layout</);
     const order = [...component.matchAll(/\{ value: "(compact|balanced|spacious)", label: "(\w+)"/g)]
       .map((m) => m[2]);
-    expect(order).toEqual(['Compact', 'Balanced', 'Spacious']);
+    expect(order).toEqual(['Spacious', 'Balanced', 'Compact']);
     expect(component).toContain('setDensity(value)');
     expect(component).toContain(':aria-pressed="mounted && density === option.value"');
     expect(component).toContain(':class="{ active: mounted && density === option.value }"');

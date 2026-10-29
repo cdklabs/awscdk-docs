@@ -53,7 +53,7 @@ test.describe('sidebar indentation steps at every nesting level', () => {
     expect(Math.max(...rows.map((row) => row.depth))).toBeGreaterThanOrEqual(3);
     for (const row of rows) {
       const caretOffset = row.kind === 'link' ? 16 : 0;
-      const expected = Math.max(row.depth - 1, 0) * 14 + caretOffset;
+      const expected = Math.max(row.depth - 1, 0) * 12 + caretOffset;
       expect(row.paddingLeft).toBeCloseTo(expected, 1);
     }
   });
@@ -95,7 +95,7 @@ test.describe('sidebar indentation steps at every nesting level', () => {
 
     expect(measurements.some((row) => row.depth >= 3)).toBe(true);
     for (const row of measurements.filter((item) => item.depth >= 2)) {
-      expect(row.x - row.parentX).toBeCloseTo(14, 1);
+      expect(row.x - row.parentX).toBeCloseTo(12, 1);
     }
 
     const siblingColumns = new Map<string, number[]>();
