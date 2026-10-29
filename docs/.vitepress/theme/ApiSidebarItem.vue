@@ -72,6 +72,17 @@ const open = computed(() =>
 const active = computed(() =>
   isActiveLink(props.node.link, ctx.activePath.value, ctx.base.value),
 );
+// An open group whose own child list holds the active page link. The
+// stylesheet accents this group's nesting guide line, so only the innermost
+// group around the current page is marked.
+const activeParent = computed(
+  () =>
+    isGroup.value &&
+    open.value &&
+    (props.node.items ?? []).some(
+      (child) => !child.section && isActiveLink(child.link, ctx.activePath.value, ctx.base.value),
+    ),
+);
 
 function onToggle() {
   // The root decides where the toggle lands: the filter session's fold set
@@ -137,7 +148,7 @@ onBeforeUnmount(() => {
       />
     </ul>
   </li>
-  <li v-else ref="itemEl" class="api-sidebar-item" :style="{ '--api-sidebar-depth': depth }" :data-depth="depth" :data-kind-group="node.kindGroup ? '' : undefined">
+  <li v-else ref="itemEl" class="api-sidebar-item" :style="{ '--api-sidebar-depth': depth }" :data-depth="depth" :data-kind-group="node.kindGroup ? '' : undefined" :data-active-parent="activeParent ? '' : undefined">
     <button
       v-if="isGroup"
       type="button"
