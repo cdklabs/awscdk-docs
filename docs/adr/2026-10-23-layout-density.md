@@ -66,13 +66,12 @@ maintainer before the work started.
     sizes, and opens every fold-out.
   - Section headers: the font keeps its per-level values (Spacious a step
     larger); the margins are the same at every level.
-  - Outline: Spacious keeps today's values; Balanced takes today's Balanced
-    outline spacing at the sidebar font (14px); Compact is one font step (14px
-    to 13px) smaller and tighter still.
-  - Sidebar: Balanced takes today's Compact sidebar spacing (1.4 line, 3px
-    padding) at the 14px font with a 12px indent; Compact is one font step
-    (14px to 13px) and one indent step (12px to 10px) tighter; Spacious is
-    looser.
+  - Outline: one 1.3 line (1.25 at Compact); Compact and Balanced share the
+    14px sidebar font, Spacious steps to 15px; the padding steps 4px / 5px /
+    6px.
+  - Sidebar: one 1.4 line; Compact and Balanced share the 14px font, Spacious
+    steps to 15px; the padding steps 3px / 4px / 5px and the indent 12px /
+    14px / 16px.
 
 - **Balanced values.** The foundation shipped the tokens at the then-current
   values; the Balanced loosening step raised them a little so the default reads
@@ -141,14 +140,14 @@ Added with the density picker step. The decisions above stand.
   | `section-header-margin-top` / `-bottom` | 40px / 16px | 40px / 16px | 40px / 16px |
   | `table-cell-pad-y` / `-x` | 6px / 12px | 7px / 12px | 8px / 16px |
   | `table-margin` | 16px | 18px | 20px |
-  | `sidebar-font` | 13px | 14px | 14px |
-  | `sidebar-line` | 1.4 | 1.4 | 1.6 |
-  | `sidebar-pad-y` | 3px | 3px | 8px |
+  | `sidebar-font` | 14px | 14px | 15px |
+  | `sidebar-line` | 1.4 | 1.4 | 1.4 |
+  | `sidebar-pad-y` | 3px | 4px | 5px |
   | `sidebar-pad-x` | 4px | 4px | 4px |
-  | `sidebar-indent` | 10px | 12px | 16px |
-  | `outline-font` | 13px | 14px | 14px |
-  | `outline-line` | 1.2 | 1.25 | 1.3 |
-  | `outline-pad` | 2px | 4px | 5px |
+  | `sidebar-indent` | 12px | 14px | 16px |
+  | `outline-font` | 14px | 14px | 15px |
+  | `outline-line` | 1.25 | 1.3 | 1.3 |
+  | `outline-pad` | 4px | 5px | 6px |
   | `outline-indent` | 16px | 16px | 16px |
 
 - **Member-row type.** Every prose line in a row (summary, inline default,
@@ -195,21 +194,19 @@ Added with the density picker step. The decisions above stand.
   served locally and loaded in headless Chromium with a `longtask`
   PerformanceObserver, three runs each, before and after this change; the
   four recalcs were counted by intercepting the `transition: none` sheet.
-- **Outline levels.** Spacious preserves the pre-density outline exactly:
-  14px text, 1.3 line height, 5px vertical padding, and a 16px content indent.
-  Balanced uses 14px text, 1.25 line height and 4px padding (25.5px entries).
-  Compact uses 13px text, 1.2 line height and 2px padding, held at the
-  existing 24px minimum height. At every level the outline font equals the
-  sidebar link font. All levels keep the 16px indent so wrapping width and
-  hierarchy stay stable; only type and vertical spacing change.
-  `ApiDocOutlineItem.vue` reads the font token directly, and the active
-  marker measures its link instead of relying on one fixed row height.
-- **Sidebar targets.** A Balanced sidebar item is 14px x 1.4 + 2 x 3px =
-  25.6px tall and a Compact one 13px x 1.4 + 2 x 3px = 24.2px, the only 13px
-  combination above the 24px target floor (1.35 would give 23.55px), so
-  Compact keeps Balanced's line and padding and its extra tightness comes from
-  the font step and the 10px indent. Spacious items are 14px x 1.6 + 2 x 8px =
-  38.4px. The caret and the construct level tag size their boxes from the
+- **Outline levels.** Compact uses 14px text, 1.25 line height and 4px
+  vertical padding (25.5px entries); Balanced 14px, 1.3 and 5px (28.2px, the
+  pre-density outline); Spacious 15px, 1.3 and 6px (31.5px). At every level
+  the outline font equals the sidebar link font. All levels keep the 16px
+  indent so wrapping width and hierarchy stay stable; only type and vertical
+  spacing change. `ApiDocOutlineItem.vue` reads the font token directly, and
+  the active marker measures its link instead of relying on one fixed row
+  height.
+- **Sidebar targets.** One 1.4 line at every level. Compact is 14px x 1.4 +
+  2 x 3px = 25.6px tall with a 12px indent, Balanced 14px x 1.4 + 2 x 4px =
+  27.6px with a 14px indent, Spacious 15px x 1.4 + 2 x 5px = 31px with a 16px
+  indent; all clear the 24px target. The caret and the construct level tag
+  size their boxes from the
   sidebar font and line tokens (`calc(1em * var(--density-sidebar-line))` and
   `calc(var(--density-sidebar-font) * var(--density-sidebar-line))`), so group
   rows are never taller than link rows and the tag stays centered on the

@@ -31,8 +31,9 @@ Locate current page, Favorites) is pinned today
 - **Offset follows the header.** `--api-sidebar-sticky-top` is set on the
   scroll container to the measured height of `.sidebar-header`, refreshed from
   a `ResizeObserver` on the header (Favorites expanding or collapsing) and on
-  the container. Pinned headings use `z-index: 0`, under the header block's
-  `z-index: 1` and above the unpositioned rows.
+  the container. Pinned headings use `z-index: 1`, under the header block's
+  `z-index: 2` and above every scrolling row, including a row's rotated
+  caret, whose `transform` makes it a stacking context at level 0.
 - **Deepest only.** Nested eligible headings pin at the same offset and a
   deeper one, later in the DOM, paints above its ancestors. Because an ancestor whose name wraps
   to more lines would still show below it, the ancestors are hidden while a

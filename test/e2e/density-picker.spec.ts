@@ -114,14 +114,14 @@ test.describe('layout density picker', () => {
         const link = el.getBoundingClientRect().height;
         return { font: s.fontSize, line: s.lineHeight, padding: s.paddingTop, groupNoTaller: group <= link + 0.5 };
       });
-    // Balanced: 14px x 1.4 with 3px padding, 25.6px items.
-    expect(await read()).toEqual({ font: '14px', line: '19.6px', padding: '3px', groupNoTaller: true });
+    // Balanced: 14px x 1.4 with 4px padding, 27.6px items.
+    expect(await read()).toEqual({ font: '14px', line: '19.6px', padding: '4px', groupNoTaller: true });
     await layout.getByRole('button', { name: 'Compact layout' }).click();
-    // Compact: one font step down, same line and padding, 24.2px items.
-    expect(await read()).toEqual({ font: '13px', line: '18.2px', padding: '3px', groupNoTaller: true });
+    // Compact: same type and line, one padding step tighter, 25.6px items.
+    expect(await read()).toEqual({ font: '14px', line: '19.6px', padding: '3px', groupNoTaller: true });
     await layout.getByRole('button', { name: 'Spacious layout' }).click();
-    // Spacious: the roomy pre-density line and padding, 38.4px items.
-    expect(await read()).toEqual({ font: '14px', line: '22.4px', padding: '8px', groupNoTaller: true });
+    // Spacious: one font step up and one padding step looser, 31px items.
+    expect(await read()).toEqual({ font: '15px', line: '21px', padding: '5px', groupNoTaller: true });
   });
 
   test('member-row type and padding follow the level', async ({ page }) => {

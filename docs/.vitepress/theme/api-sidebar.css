@@ -18,11 +18,13 @@
 /* Keep the filter, jump control and favorites pinned while the tree scrolls.
    `top: 0` pins the block to the scrollport's content edge at both breakpoints:
    the desktop scrollport begins below the navbar, while the drawer keeps its
-   own top padding. The background stays opaque as tree rows scroll under it. */
+   own top padding. The background stays opaque as tree rows scroll under it.
+   `z-index: 2`: above the pinned group headings (1) and a covered heading
+   that holds focus (2, later in the DOM). */
 .VPSidebar .sidebar-header {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   background-color: var(--vp-sidebar-bg-color);
 }
 
@@ -169,15 +171,18 @@
    state and keyboard behavior are unchanged. The `<li>` is its containing
    block, so the browser pushes it up as the group ends and the next heading
    takes over. `--api-sidebar-sticky-top` is the header's measured height
-   (sidebar-sticky.ts). `z-index: 0` keeps every pinned heading under the
-   header block (z-index 1) and above the unpositioned rows; nested headings
-   pin at the same offset and a deeper one, later in the DOM, paints above its
-   ancestors. The ancestors are also hidden, so a taller ancestor never shows
-   below it. Kind groups and section titles never pin. */
+   (sidebar-sticky.ts). `z-index: 1` keeps every pinned heading under the
+   header block (z-index 2) and above every scrolling row, including a row's
+   rotated caret: the `transform` makes the caret a stacking context at level
+   0, which a pinned heading at level 0 would lose to when the caret comes
+   later in the DOM. Nested headings pin at the same offset and a deeper one,
+   later in the DOM, paints above its ancestors. The ancestors are also
+   hidden, so a taller ancestor never shows below it. Kind groups and section
+   titles never pin. */
 .api-sidebar-item:not([data-kind-group]) > .api-sidebar-group {
   position: sticky;
   top: var(--api-sidebar-sticky-top, 0px);
-  z-index: 0;
+  z-index: 1;
   background-color: var(--vp-sidebar-bg-color);
   /* Square corners: rounded ones would let rows show through at the edges. */
   border-radius: 0;
@@ -192,7 +197,7 @@
 }
 
 .api-sidebar-item[data-sticky-covered] > .api-sidebar-group:focus-visible {
-  z-index: 1;
+  z-index: 2;
 }
 
 /* The header block paints over anything above the pinned band, so the focus

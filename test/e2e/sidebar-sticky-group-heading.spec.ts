@@ -114,6 +114,19 @@ test.describe('pinned group heading', () => {
     expect(snsPainted).toBe(false);
   });
 
+  test('no scrolling row paints over the pinned heading at any scroll offset', async ({ page }) => {
+    // A row's caret rotates with `transform`, which makes it its own stacking
+    // context; without a higher z-index on the pinned heading the caret of a
+    // row sliding under it showed through. Sweep the offsets at which the
+    // open-kind-group rows of Topic cross the band while Topic is still pinned.
+    await open(page);
+    for (let above = 96; above <= 132; above += 4) {
+      await scrollGroup(page, 'Topic', above);
+      const { hits } = await band(page);
+      expect([above, hits]).toEqual([above, ['Topic', 'Topic', 'Topic']]);
+    }
+  });
+
   test('the pinned heading is the real button, with an opaque background', async ({ page }) => {
     await open(page);
     await scrollGroup(page, 'Topic', 120);
