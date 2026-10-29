@@ -59,6 +59,13 @@ export function searchModule(assemblyName: string, submodule: string): string {
 }
 
 /**
+ * `kind:` filter value of every module overview page (submodule and package).
+ * The search client pins the overview for a one-word service query with it.
+ * The theme's `OVERVIEW_KIND` holds the same value.
+ */
+export const OVERVIEW_SEARCH_KIND = 'overview';
+
+/**
  * Hidden elements carrying explicit-value Pagefind filters. Emitted
  * inside the indexed body; invisible in the rendered page.
  */

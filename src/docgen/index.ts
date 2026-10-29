@@ -53,7 +53,7 @@ import {
 import { upstreamReadmeUrl, upstreamSourceUrl } from './provenance.js';
 import { ImportModules, importModules, readmeTypeLinksAttr } from './readme-links.js';
 import { ExampleTranslations, importStatements, loadTablet, RosettaTablet } from './rosetta.js';
-import { searchFilterHtml, searchKind, searchModule } from './search.js';
+import { OVERVIEW_SEARCH_KIND, searchFilterHtml, searchKind, searchModule } from './search.js';
 import {
   buildPackageSidebarModules,
   buildServiceSidebar,
@@ -645,7 +645,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           }),
         breadcrumb,
       });
-      const filters = searchFilterHtml({ module: searchModule(assembly.name, sub) });
+      // `kind:overview` lets the search client pin this page for a query that names the service.
+      const filters = searchFilterHtml({ module: searchModule(assembly.name, sub), kind: OVERVIEW_SEARCH_KIND });
       emitOverview(subId, moduleReadmeLink(assembly.name, sub), `${page}\n\n${filters}\n`, readmeHistory(ledger, subId));
     }
 
@@ -679,9 +680,11 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     // alert, then the module README, then the submodule links and the root type list. `kind: 'generated'` opts back
     // in to the artificial index page.
     const rootOverview = resolveOverview(assembly.name);
+    // Same filters as a submodule overview, under the module value the package's root types carry.
+    const rootFilters = `\n\n${searchFilterHtml({ module: searchModule(assembly.name, ''), kind: OVERVIEW_SEARCH_KIND })}\n`;
     if (rootOverview.generated) {
       const indexSubmodules = submoduleNames.filter((sub) => emittedSubmodules.has(sub));
-      emitOverview(assembly.name, moduleLink, renderModuleIndex(assembly, rootTypes, indexSubmodules), readmeHistory(ledger, assembly.name));
+      emitOverview(assembly.name, moduleLink, `${renderModuleIndex(assembly, rootTypes, indexSubmodules)}${rootFilters}`, readmeHistory(ledger, assembly.name));
     } else {
       const sections: string[] = [];
       const linkedSubmodules = submoduleNames.filter((sub) => emittedSubmodules.has(sub));
@@ -692,7 +695,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         }
         sections.push('');
       }
-      emitOverview(assembly.name, moduleLink, renderOverviewPage({
+      emitOverview(assembly.name, moduleLink, `${renderOverviewPage({
         title: assembly.name,
         types: rootTypes,
         ...(rootOverview.readme ? { readme: rootOverview.readme } : {}),
@@ -704,7 +707,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         // is not: the README's own opening prose says the same thing at length, directly below.
         preamble: [`> Version ${assembly.version}`, '', ...renderSeparateInstallAlert(assembly)],
         sections,
-      }), readmeHistory(ledger, assembly.name));
+      })}${rootFilters}`, readmeHistory(ledger, assembly.name));
     }
 
   }
