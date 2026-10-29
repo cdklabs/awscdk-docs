@@ -2,9 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { QUEUE_PAGE } from './fixture.js';
 
 const LEVELS = [
-  { name: 'compact', font: 13, line: 15.6, padding: 2, height: 24 },
-  { name: 'balanced', font: 14, line: 17.5, padding: 4, height: 25.5 },
-  { name: 'spacious', font: 14, line: 18.2, padding: 5, height: 28.2 },
+  { name: 'compact', font: 14, line: 17.5, padding: 4, height: 25.5 },
+  { name: 'balanced', font: 14, line: 18.2, padding: 5, height: 28.2 },
+  { name: 'spacious', font: 15, line: 19.5, padding: 6, height: 31.5 },
 ] as const;
 
 type Level = (typeof LEVELS)[number]['name'];

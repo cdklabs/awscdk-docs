@@ -45,17 +45,17 @@
      line height, per-entry padding, and the member indent (the border-left
      offset of the outline content column). */
   --density-outline-font: 14px;
-  --density-outline-line: 1.25;
-  --density-outline-pad: 4px;
+  --density-outline-line: 1.3;
+  --density-outline-pad: 5px;
   --density-outline-indent: 16px;
 
   /* API sidebar (api-sidebar.css): item font size, line height, item padding
      (vertical and horizontal), and the per-level nesting indent. */
   --density-sidebar-font: 14px;
   --density-sidebar-line: 1.4;
-  --density-sidebar-pad-y: 3px;
+  --density-sidebar-pad-y: 4px;
   --density-sidebar-pad-x: 4px;
-  --density-sidebar-indent: 12px;
+  --density-sidebar-indent: 14px;
 
   /* Doc-body tables (below): cell padding (vertical and horizontal) and the
      table block margin. */
@@ -81,15 +81,14 @@
      (density.ts and the config.mts bootstrap; CSS cannot open a <details>).
    - Section headers: the font keeps its per-level values (Spacious is a step
      larger); the margins are the same at every level.
-   - Outline: Spacious keeps the pre-density values. Balanced is tighter at
-     the same 14px font (the outline font equals the sidebar link font at
-     every level), and Compact is one font step smaller and tighter still. All
-     three levels keep the 16px content indent.
-   - Sidebar: Spacious keeps the roomy pre-density line and padding. Balanced
-     takes the tight 1.4 line and 3px padding at 14px (25.6px items) with a
-     12px indent. Compact keeps that line and padding — 13px x 1.4 + 2 x 3px =
-     24.2px is the only 13px combination above the 24px floor (WCAG 2.5.8) —
-     and gets its extra tightness from the font step and a 10px indent.
+   - Outline: one 1.3 line (1.25 at Compact); the font and the padding step.
+     Compact 14px / 4px, Balanced 14px / 5px, Spacious 15px / 6px. The outline
+     font equals the sidebar link font at every level. All three levels keep
+     the 16px content indent.
+   - Sidebar: one 1.4 line; the font, the padding and the indent step. Compact
+     14px / 3px / 12px (25.6px items), Balanced 14px / 4px / 14px (27.6px),
+     Spacious 15px / 5px / 16px (31px). Every level clears the 24px target
+     floor (WCAG 2.5.8) with room to spare.
 
    Final numbers were picked from screenshots, starting from roughly a quarter
    less (Compact) or more (Spacious) vertical space than Balanced. */
@@ -103,12 +102,11 @@
   --density-member-type-font: 0.8125rem;
   --density-member-prose-font: 0.8125rem;
 
-  --density-outline-font: 13px;
-  --density-outline-line: 1.2;
-  --density-outline-pad: 2px;
+  --density-outline-line: 1.25;
+  --density-outline-pad: 4px;
 
-  --density-sidebar-font: 13px;
-  --density-sidebar-indent: 10px;
+  --density-sidebar-pad-y: 3px;
+  --density-sidebar-indent: 12px;
 
   --density-table-cell-pad-y: 6px;
   --density-table-cell-pad-x: 12px;
@@ -121,11 +119,11 @@
   --density-member-gap: 16px;
   --density-member-foldout-pad: 8px;
 
-  --density-outline-line: 1.3;
-  --density-outline-pad: 5px;
+  --density-outline-font: 15px;
+  --density-outline-pad: 6px;
 
-  --density-sidebar-line: 1.6;
-  --density-sidebar-pad-y: 8px;
+  --density-sidebar-font: 15px;
+  --density-sidebar-pad-y: 5px;
   --density-sidebar-indent: 16px;
 
   --density-table-cell-pad-y: 8px;

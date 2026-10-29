@@ -71,10 +71,14 @@ describe('pinned group heading', () => {
       );
     });
 
-    test('pinned headings stack under the header block', () => {
+    test('pinned headings stack under the header block and above rotated carets', () => {
       const header = css.match(/\.VPSidebar \.sidebar-header \{[^}]*\}/)![0];
-      expect(header).toContain('z-index: 1;');
-      expect(css).toMatch(/:not\(\[data-kind-group\]\) > \.api-sidebar-group \{[^}]*z-index: 0;/);
+      expect(header).toContain('z-index: 2;');
+      // A row's caret rotates with `transform`, which makes it a stacking
+      // context at level 0; the pinned heading must sit above that level.
+      expect(css).toMatch(/\.api-sidebar-caret \{[^}]*transform: rotate\(0deg\);/);
+      expect(css).toMatch(/:not\(\[data-kind-group\]\) > \.api-sidebar-group \{[^}]*z-index: 1;/);
+      expect(css).toMatch(/\[data-sticky-covered\] > \.api-sidebar-group:focus-visible \{[^}]*z-index: 2;/);
     });
   });
 });

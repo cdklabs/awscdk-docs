@@ -66,7 +66,7 @@ test.describe('layout density attribute', () => {
     });
     expect(tokens.memberRowPadY).toBe('13px');
     expect(tokens.outlineFont).toBe('14px');
-    expect(tokens.sidebarIndent).toBe('12px');
+    expect(tokens.sidebarIndent).toBe('14px');
     expect(tokens.tableMargin).toBe('18px');
     // The built CSS is minified, which drops a leading zero.
     expect(tokens.memberNameFont).toBe('.9375rem');
