@@ -46,6 +46,15 @@ function ownViolations(violations: Violation[]): Violation[] {
 }
 
 test.describe('hosted content security policy', () => {
+  test('appearance options stay plain in the built site data', async ({ request }) => {
+    const html = await (await request.get(TOPIC_PAGE)).text();
+    const metadataPath = /\/assets\/chunks\/metadata\.[^"']+\.js/.exec(html)?.[0];
+    expect(metadataPath).toBeDefined();
+    const metadata = await (await request.get(metadataPath!)).text();
+    expect(metadata).toContain('\\"appearance\\":{\\"disableTransition\\":false}');
+    expect(metadata).not.toMatch(/onChanged|new Function|=>/);
+  });
+
   test('is enforced on the served page', async ({ page }) => {
     const violations = await withHostedCsp(page, { evalProbe: true });
     await page.goto(TOPIC_PAGE);

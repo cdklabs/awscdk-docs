@@ -177,23 +177,20 @@ Added with the density picker step. The decisions above stand.
   closed at Compact and Balanced and opens at Spacious.
 - **Cost on the largest page.** An open fold-out is styled and laid out, and
   `constructs.Construct` holds about 2,700 inheritance names. VueUse's
-  appearance handler (VitePress's `useDark` and the Site theme picker's
-  `useColorMode`) adds a global `transition: none` sheet and forces a
-  whole-page style recalc each time it applies, including on mount when the
-  pre-paint script has already set the class; four such recalcs over the open
-  list made a ~255ms long task. The Site theme picker passes an `onChanged`
-  that applies only when the `dark` class actually changes, so a real toggle
-  still disables transitions. VitePress's own `useDark` keeps its default
-  handler: an `appearance.onChanged` in the site config reaches the client as
-  source text that VitePress evaluates with `new Function`, which the hosted
-  Content Security Policy blocks, and the site then fails to boot. With both
-  handlers skipping, the page's longest task at Spacious dropped to ~120ms
-  (Balanced ~100ms) and scrolling it end to end raised none; with only the
-  picker's, VitePress's mount-time recalcs remain. Measured on the
-  e2e fixture build (`docs:e2e`'s site, which keeps `constructs.Construct`),
-  served locally and loaded in headless Chromium with a `longtask`
-  PerformanceObserver, three runs each, before and after this change; the
-  four recalcs were counted by intercepting the `transition: none` sheet.
+  appearance handler adds a global `transition: none` sheet and forces a
+  whole-page style recalc each time it applies. VitePress's `appearance`
+  options set `disableTransition: false`, so its startup apply adds no sheet.
+  The Site theme picker's guarded `useColorMode` keeps the default enabled, so
+  a real theme change still suppresses transitions. The options object is plain
+  data and stays CSP-safe; an `appearance.onChanged` function is still forbidden
+  because VitePress sends it as source text and evaluates it with `new Function`.
+  On the current e2e fixture, the longest task in three Spacious
+  `constructs.Construct` loads was 147ms, 148ms and 145ms before this option,
+  then 115ms, 113ms and 115ms after it (median 147ms to 115ms). Measured on the
+  `docs:e2e` fixture build, served locally and loaded in headless Chromium with
+  a `longtask` PerformanceObserver in three fresh browser contexts per build.
+  Browser tests also intercept the transition-off sheet directly: light and
+  dark startup loads add none, while a real theme change adds at least one.
 - **Outline levels.** Compact uses 14px text, 1.25 line height and 4px
   vertical padding (25.5px entries); Balanced 14px, 1.3 and 5px (28.2px, the
   pre-density outline); Spacious 15px, 1.3 and 6px (31.5px). At every level
