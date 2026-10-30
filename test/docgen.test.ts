@@ -550,6 +550,21 @@ describe('docgen generation', () => {
     expect(s3Page).toContain('`Bucket`');
   });
 
+  test.each([
+    ['struct', 'aws-cdk-lib.aws_sqs.QueueProps'],
+    ['enum', 'aws-cdk-lib.aws_sqs.QueueEncryption'],
+  ])('a generated %s page renders its tablet translations as Example variants', (_kind, fqn) => {
+    const page = readFileSync(join(outDir, 'docs', `${fqn}.md`), 'utf-8');
+    const start = page.indexOf('## Example {#example}');
+    expect(start).toBeGreaterThanOrEqual(0);
+    // The Example section runs until the next H2.
+    const next = page.indexOf('\n## ', start + 1);
+    const section = page.slice(start, next === -1 ? undefined : next);
+    expect(section).toContain('<LanguageTabs');
+    expect(section).toContain('data-lang="python"');
+    expect(section).toContain('```python');
+  });
+
   test('generates property mixins with mixin classification and service grouping', () => {
     const page = readFileSync(
       join(outDir, 'docs', '@aws-cdk_cfn-property-mixins.aws_lambda.CfnFunctionPropsMixin.md'),

@@ -189,7 +189,7 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
   lines.push(...renderExtendsBar(type, linkFor, [], usage.propsUsers.get(type.fqn) ?? []));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
-    lines.push(...exampleSection(type, assembly, languages, { linkFor }));
+    lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
   }
   lines.push(...renderStructProps(type, index, linkFor, languages));
   return lines.join('\n');
@@ -206,7 +206,7 @@ export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceTyp
   lines.push(...renderExtendsBar(type, linkFor, options.implementors?.get(type.fqn) ?? []));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
-    lines.push(...exampleSection(type, assembly, languages, { linkFor }));
+    lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
   }
   lines.push(...renderPropertiesSection(collectProperties(type, index), linkFor, languages));
   lines.push(...renderMethodsSection(collectMethods(type, index), linkFor, type.fqn, languages));
@@ -221,7 +221,7 @@ export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): strin
   lines.push(...renderDescription(type));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
-    lines.push(...exampleSection(type, assembly, languages, { linkFor }));
+    lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
   }
 
   lines.push(
