@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { QUEUE_PAGE } from './fixture.js';
+import { QUEUE_PAGE, CONSTRUCT_PAGE } from './fixture.js';
 
 // The Layout density picker (ADR 2026-10-23-layout-density): a third tri-state
 // group in the Settings menu, after Site theme and Code theme. Spacious /
@@ -14,6 +14,27 @@ async function openSettings(page: Page): Promise<Locator> {
   const panel = page.locator('#settings-menu-panel');
   await expect(panel).toBeVisible();
   return panel.getByRole('group', { name: 'Layout' });
+}
+
+async function trackTransitionSheets(page: Page, mode: 'light' | 'dark'): Promise<void> {
+  await page.addInitScript((storedMode) => {
+    localStorage.setItem('cdk-docs-density', 'spacious');
+    localStorage.setItem('vitepress-theme-appearance', storedMode);
+    (window as unknown as { __transitionSheets: number }).__transitionSheets = 0;
+    const append = Node.prototype.appendChild;
+    Node.prototype.appendChild = function <T extends Node>(this: Node, node: T): T {
+      if (node instanceof HTMLStyleElement && /transition:\s*none/.test(node.textContent ?? '')) {
+        (window as unknown as { __transitionSheets: number }).__transitionSheets++;
+      }
+      return append.call(this, node) as T;
+    };
+  }, mode);
+}
+
+async function transitionSheetCount(page: Page): Promise<number> {
+  return page.evaluate(
+    () => (window as unknown as { __transitionSheets: number }).__transitionSheets,
+  );
 }
 
 /** Rendered heights of the first member row, outline entry and sidebar item. */
@@ -204,17 +225,30 @@ test.describe('layout density picker', () => {
       .toBe(0);
   });
 
-  test('the site theme toggles at Spacious', async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem('cdk-docs-density', 'spacious');
-    });
+  for (const [pageName, path] of [
+    ['Queue', QUEUE_PAGE],
+    ['Construct', CONSTRUCT_PAGE],
+  ] as const) {
+    for (const mode of ['light', 'dark'] as const) {
+      test(`${pageName} adds no transition-off sheet on ${mode} startup`, async ({ page }) => {
+        await trackTransitionSheets(page, mode);
+        await page.goto(path);
+        await page.waitForLoadState('networkidle');
+        expect(await transitionSheetCount(page)).toBe(0);
+      });
+    }
+  }
+
+  test('a real site theme change suppresses transitions at Spacious', async ({ page }) => {
+    await trackTransitionSheets(page, 'light');
     await page.goto(QUEUE_PAGE);
     await page.waitForLoadState('networkidle');
+    expect(await transitionSheetCount(page)).toBe(0);
+
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.locator('#settings-menu-panel').getByRole('button', { name: 'Dark site theme' }).click();
     await expect(page.locator('html')).toHaveClass(/(^|\s)dark(\s|$)/);
-    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Light site theme' }).click();
-    await expect(page.locator('html')).not.toHaveClass(/(^|\s)dark(\s|$)/);
+    await expect.poll(() => transitionSheetCount(page)).toBeGreaterThan(0);
   });
 
   test('body prose, code blocks and the navbar do not change with the level', async ({ page }) => {

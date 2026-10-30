@@ -69,15 +69,19 @@ describe('three-state theme picker', () => {
     expect(css).toMatch(/\.VPNavScreenAppearance\s*\{[^}]*display:\s*none/);
   });
 
-  test('config keeps the default appearance so fresh visitors follow the OS', () => {
+  test('config keeps the device default and skips transition suppression on startup', () => {
     const config = readFileSync(
       resolve(ROOT, 'docs/.vitepress/config.mts'),
       'utf-8',
     );
-    // No appearance override: the default (true) starts fresh visitors on
-    // 'auto' (prefers-color-scheme). 'dark'/'force-dark' would change the
-    // default; 'force-auto' would remove user choice; false kills it all.
-    expect(config).not.toMatch(/appearance\s*:/);
+    // The startup option has no browser state to assert without a built site, so pin its exact plain-data shape.
+    const entries = [...config.matchAll(/\bappearance\s*:/g)];
+    expect(entries).toHaveLength(1);
+    const option = /\bappearance\s*:\s*\{([^}]*)\}/.exec(config);
+    expect(option).not.toBeNull();
+    expect(option![1].replace(/\s/g, '')).toBe('disableTransition:false');
+    expect(config).not.toMatch(/\bappearance\s*:\s*(?:false|true|["'`])/);
+    expect(option![1]).not.toMatch(/initialValue|onChanged/);
   });
 
   test('offers a Layout density group: Spacious, Balanced, Compact, loosest to tightest', () => {

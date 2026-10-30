@@ -96,8 +96,11 @@ VitePress's built-in two-state switch (hidden via `theme-picker.css`). On
 desktop the pickers live behind a gear-icon Settings dropdown (`SettingsMenu`);
 on mobile they render in the hamburger nav screen.
 
-- **Site theme** (Light / Device / Dark). `appearance` stays at its default
-  (`true`), so a fresh visitor already follows the OS, live. The picker runs
+- **Site theme** (Light / Device / Dark). `appearance` keeps the default
+  behavior for fresh visitors and sets only `disableTransition: false`, so
+  VitePress's startup apply does not add a global transition-off stylesheet.
+  The value is a plain options object, so the client site data stays JSON and
+  needs no string evaluation. The picker runs
   its own VueUse `useColorMode` on the same storage key
   `vitepress-theme-appearance` with the same mode-to-class mapping VitePress
   uses, so the two cannot diverge; `'auto'` ("Device") means follow

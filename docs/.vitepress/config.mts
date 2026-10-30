@@ -172,6 +172,9 @@ function apiSidebarAssets(): { apiSidebarAsset: string; symbolsAsset: string; ty
 // UserConfig, so it cannot type the async factory this config has to be (the highlighter is awaited).
 const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   title: SITE_TITLE,
+  // VitePress does not need to suppress transitions when it reapplies the mode during startup.
+  // The custom picker keeps VueUse's default so a real user change still suppresses transitions.
+  appearance: { disableTransition: false },
   description:
     "The API reference for the AWS Cloud Development Kit (AWS CDK)",
   // Hosted path and output directory are the SAME string:
