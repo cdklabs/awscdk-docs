@@ -234,7 +234,7 @@ describe('exampleSection', () => {
     expect(out).toContain('queue = Queue(self, "MyQueue")');
   });
 
-  test('multi-language, non-instantiable type: authored example stays a bare ts fence', () => {
+  test('multi-language, non-instantiable type with no tablet: authored example stays a bare ts fence', () => {
     const struct: spec.InterfaceType = {
       assembly: 'aws-cdk-lib',
       fqn: 'aws-cdk-lib.aws_sqs.QueueProps',
