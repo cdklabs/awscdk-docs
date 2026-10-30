@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import * as spec from '@jsii/spec';
 import {
@@ -8,13 +9,16 @@ import {
   MODULE_HINT_LIMIT,
   moduleHintText,
   normalizeModuleValue,
+  OVERVIEW_KIND,
   parseSearchQuery,
+  serviceWords,
   withQueryFilters,
 } from '../docs/.vitepress/theme/search-client.js';
 import { buildTypeIndex, renderConstructPage, TypeIndex } from '../src/docgen/constructs.js';
-import { loadAssembly as loadCachedAssembly } from '../src/docgen/index.js';
+import { generateDocs, loadAssembly as loadCachedAssembly } from '../src/docgen/index.js';
 import {
   ignoreBlock,
+  OVERVIEW_SEARCH_KIND,
   searchFilterHtml,
   searchKind,
   searchModule,
@@ -291,6 +295,115 @@ describe('query token filters', () => {
     };
     await withQueryFilters(handle).debouncedSearch!('bucket', {}, 300);
     expect(calls[0]).toEqual(['bucket', {}, 300]);
+  });
+
+  describe('service overview pin', () => {
+    const MODULES = ['aws-rds', 'aws-s3', 'aws-sqs', 'aws-lambda', 'aws-cdk-lib', 'constructs'];
+    const OVERVIEW = { id: 'rds-overview' };
+    // A fake engine: the overview search answers the overview, the text search a long ranked pool
+    // that also contains the overview further down.
+    const fakeHandle = (overviewResults: unknown[] = [OVERVIEW]) => {
+      const calls: unknown[][] = [];
+      const pool = Array.from({ length: MAX_SEARCH_CANDIDATES + 10 }, (_, i) => ({ id: `r${i}` }));
+      pool.splice(33, 0, OVERVIEW);
+      const payload = { results: pool, unfilteredResultCount: 999, filters: { kind: { class: 5 } } };
+      const answer = (_text: unknown, options?: { filters?: { kind?: unknown } }) =>
+        options?.filters?.kind ? { results: overviewResults, unfilteredResultCount: 1, filters: {} } : payload;
+      const handle = {
+        filters: async () => ({ module: Object.fromEntries(MODULES.map((m) => [m, 1])) }),
+        search: async (...args: unknown[]) => { calls.push(['search', ...args]); return answer(args[0], args[1] as never); },
+        debouncedSearch: async (...args: unknown[]) => {
+          calls.push(['debounced', ...args]); return answer(args[0], args[1] as never);
+        },
+      };
+      return { handle, calls, payload };
+    };
+    const ids = (search: unknown) => (search as { results: { id: string }[] }).results.map((r) => r.id);
+
+    test.each(['rds', 'RDS', ' rds ', 'aws_rds', 'aws-rds'])('%p pins the aws-rds overview first, once', async (query) => {
+      const { handle, calls, payload } = fakeHandle();
+      const search = await withQueryFilters(handle).search!(query);
+      // The service word, so the overview has matched terms for the dialog to render it with.
+      expect(calls).toContainEqual(['search', 'rds', { filters: { module: ['aws-rds'], kind: ['overview'] } }]);
+      expect(ids(search)[0]).toBe('rds-overview');
+      expect(ids(search).filter((id) => id === 'rds-overview')).toHaveLength(1);
+      expect(ids(search)).toHaveLength(MAX_SEARCH_CANDIDATES);
+      expect(ids(search).slice(1, 4)).toEqual(['r0', 'r1', 'r2']);
+      // Counts and filter facets stay the main search's.
+      expect((search as typeof payload).unfilteredResultCount).toBe(999);
+      expect((search as typeof payload).filters).toBe(payload.filters);
+    });
+
+    test('debouncedSearch pins too, with an undebounced overview search', async () => {
+      const { handle, calls } = fakeHandle();
+      const search = await withQueryFilters(handle).debouncedSearch!('sqs', {}, 300);
+      expect(calls).toEqual([
+        ['debounced', 'sqs', {}, 300],
+        ['search', 'sqs', { filters: { module: ['aws-sqs'], kind: ['overview'] } }],
+      ]);
+      expect(ids(search)[0]).toBe('rds-overview');
+    });
+
+    test.each(['rds instance', 'rds kind:construct', 'module:rds', 'bucket', 'cdk'])('%p makes no extra call', async (query) => {
+      const { handle, calls } = fakeHandle();
+      await withQueryFilters(handle).search!(query);
+      expect(calls).toHaveLength(1);
+      expect(calls.some(([, , options]) => JSON.stringify(options).includes('overview'))).toBe(false);
+    });
+
+    test('no pin when the engine reports no module list or the overview search finds nothing', async () => {
+      const bare = fakeHandle();
+      const noFilters = { search: bare.handle.search };
+      const unpinned = await withQueryFilters(noFilters).search!('rds');
+      expect(bare.calls).toHaveLength(1);
+      expect(ids(unpinned)[0]).toBe('r0');
+
+      const empty = fakeHandle([]);
+      const search = await withQueryFilters(empty.handle).search!('rds');
+      expect(ids(search)[0]).toBe('r0');
+      expect(ids(search)).toHaveLength(MAX_SEARCH_CANDIDATES);
+    });
+
+    test('serviceWords drops the aws- prefix and splits module words', () => {
+      expect(serviceWords('aws-rds')).toBe('rds');
+      expect(serviceWords('aws-lambda-nodejs')).toBe('lambda nodejs');
+      expect(serviceWords('constructs')).toBe('constructs');
+    });
+
+    test('the theme and docgen agree on the overview kind value', () => {
+      expect(OVERVIEW_KIND).toBe(OVERVIEW_SEARCH_KIND);
+    });
+  });
+});
+
+describe('overview pages carry the overview search filter', () => {
+  let outDir: string;
+
+  beforeAll(() => {
+    outDir = mkdtempSync(join(tmpdir(), 'search-overview-'));
+    generateDocs({ modules: ['aws-cdk-lib', 'constructs'] }, { outDir, packageRoot: ROOT, languages: ['ts'] });
+  });
+
+  afterAll(() => {
+    rmSync(outDir, { recursive: true, force: true });
+  });
+
+  test('a submodule overview carries kind:overview next to its module filter', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_sqs-readme.md'), 'utf-8');
+    expect(page).toContain('<span hidden data-pagefind-filter="module:aws-sqs"></span>');
+    expect(page).toContain('<span hidden data-pagefind-filter="kind:overview"></span>');
+  });
+
+  test('a package overview carries kind:overview and its package module filter', () => {
+    const page = readFileSync(join(outDir, 'docs', 'constructs-readme.md'), 'utf-8');
+    expect(page).toContain('<span hidden data-pagefind-filter="module:constructs"></span>');
+    expect(page).toContain('<span hidden data-pagefind-filter="kind:overview"></span>');
+  });
+
+  test('type pages keep their own kind', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_sqs.Queue.md'), 'utf-8');
+    expect(page).toContain('<span hidden data-pagefind-filter="kind:construct"></span>');
+    expect(page).not.toContain('kind:overview');
   });
 });
 

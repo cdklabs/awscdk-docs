@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { SQS_OVERVIEW_PAGE } from './fixture.js';
 import { MAX_SEARCH_RESULTS, MODULE_HINT_CLASS } from '../../docs/.vitepress/theme/search-client.js';
 
 // Pagefind static search (vitepress-plugin-pagefind): the navbar
@@ -153,6 +154,22 @@ test.describe('pagefind search', () => {
       await expect(hint).toBeHidden();
       expect(await hint.evaluate((el) => getComputedStyle(el).display)).not.toBe('none');
     });
+  });
+
+  test.describe('service overview pin', () => {
+    // The fixture documents only two services, so `SQS` and `sqs` already rank the overview first
+    // here; on the full site they do not. `aws_sqs` puts it 16th in this fixture without the pin.
+    for (const query of ['SQS', 'sqs', 'aws_sqs']) {
+      test(`typing ${query} puts the SQS overview first`, async ({ page }) => {
+        await page.goto('/');
+        await page.locator('.blog-search button').click();
+        await page.locator('#search-input').fill(query);
+        // Result items carry their page route in data-value, with the matched section's anchor.
+        const first = page.locator('.search-dialog [data-value^="/"]').first();
+        await expect(first).toBeVisible({ timeout: 15_000 });
+        expect((await first.getAttribute('data-value'))?.split('#')[0]).toBe(SQS_OVERVIEW_PAGE);
+      });
+    }
   });
 
   test('the search dialog opens and closes', async ({ page }) => {

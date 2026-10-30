@@ -60,7 +60,10 @@ bucket. Docgen counters this:
   `kind:<construct|class|struct|interface|enum|mixin|facade|trait>` on every API
   page (`searchModule`, `searchKind`, `searchFilterHtml`). The module slug is the
   submodule slug when present else the assembly slug, lowercase with hyphens,
-  matching the URL; the kind is coarse and lowercase.
+  matching the URL; the kind is coarse and lowercase. Module overview pages
+  (submodule and package, written by `emitOverview`) carry `kind:overview`
+  beside their `module:` filter; a package overview uses the module value its
+  root types carry (`constructs`, `aws-cdk-lib`).
 - A root `pagefind.yml` carries `div.aside`/`a.header-anchor` exclude selectors
   so the CI post-merge `npx pagefind` run matches the plugin's own flags.
 
@@ -95,6 +98,27 @@ forking the UI:
   The search heading says `Top 20 results` rather than implying the capped count
   is the total match count. This wrap composes with the favorites-boost property
   trap on the same handle.
+- Service overview pin. A short service name such as `RDS` has one right
+  answer, the module overview, but ranking alone cannot reach it: the overview
+  is long (its length is penalized) and its H1 is the README title, while short
+  event and property pages carry the acronym in their weighted H1. Weighting,
+  repeating or adding the acronym to the overview's H1, and `pageLength: 0`,
+  were each tried on a local Pagefind 1.5.2 index and still lost. So when the
+  query has no `module:`/`kind:` token and its trimmed text is one word that,
+  normalized like a `module:` value, equals a known module (`aws_rds`) or
+  equals `t` where `aws-t` is known (`rds`, `s3`, `lambda`), `withQueryFilters()`
+  runs one extra undebounced search for the module's service words
+  (`aws-rds` -> `rds`) with filters `{ module: [slug], kind: ["overview"] }`.
+  It searches words, not `null`, because the plugin builds each dialog entry
+  from a result's matched-term locations and a `null`-text result has none,
+  so it would not render; and it searches the service word rather than the
+  typed text, because `aws_rds` itself is not on the overview page. Its
+  first result goes first in the
+  candidate pool and its later duplicate (same `id`) is dropped; the pool stays
+  capped at 50 and keeps the main search's counts and facets. Several words, a
+  filter token, no module list, no matching module, or an empty overview search
+  leave the result exactly as it was. The favorites wrapper runs after this, so a
+  starred page can still rise above the pinned overview.
 - `warmSearchIndex()` imports and `init()`s Pagefind immediately on client mount
   instead of waiting for the plugin's `requestIdleCallback`, so the first query
   after a cold page load hits a warm engine. A `<link rel="modulepreload">` in

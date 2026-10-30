@@ -366,11 +366,55 @@ async function hintForEmptyResults(
   return known ? moduleHintText([], closeModules(parsed.filters.module[0], known)) : undefined;
 }
 
+/** `kind:` filter value docgen puts on every module overview page. */
+export const OVERVIEW_KIND = "overview";
+
+/**
+ * The module whose overview a query pins, if any. Only a single word with no
+ * filter tokens qualifies, and it must name a known module once normalized:
+ * the module itself (`aws_rds`, `aws-rds`) or the service part of an `aws-`
+ * module (`rds`, `RDS`, `s3`, `lambda`). A short service name has one correct
+ * answer, which length-penalized ranking buries under short type pages that
+ * carry the acronym in their weighted title.
+ */
+async function overviewPinModule(handle: SearchHandleLike, raw: string): Promise<string | undefined> {
+  const parsed = parseSearchQuery(raw.trim());
+  if (Object.keys(parsed.filters).length > 0 || !parsed.text || /\s/.test(parsed.text)) {
+    return undefined;
+  }
+  const known = await knownModules(handle);
+  if (!known) {
+    return undefined;
+  }
+  const word = normalizeModuleValue(parsed.text);
+  if (known.includes(word)) {
+    return word;
+  }
+  return known.includes(`aws-${word}`) ? `aws-${word}` : undefined;
+}
+
+/** The words a module's overview is searched with: `aws-rds` -> `rds`, `aws-lambda-nodejs` -> `lambda nodejs`. */
+export function serviceWords(module: string): string {
+  return module.replace(/^aws-/, "").replace(/-/g, " ");
+}
+
+/** Put the pinned overview first and drop its later duplicate; everything else is the main search's. */
+function withPinnedFirst(search: unknown, pin: unknown): unknown {
+  const pinned = (pin as SearchResultLike | null | undefined)?.results?.[0] as { id?: unknown } | undefined;
+  const results = (search as SearchResultLike | null)?.results;
+  if (!pinned || !Array.isArray(results)) {
+    return search;
+  }
+  const rest = results.filter((result) => (result as { id?: unknown } | null)?.id !== pinned.id);
+  return { ...(search as SearchResultLike), results: [pinned, ...rest] };
+}
+
 /**
  * Wrap a Pagefind handle so `search`/`debouncedSearch` understand
  * `module:` / `kind:` query tokens. A query that is ONLY filter tokens
  * searches with `null` text, which Pagefind treats as "all pages
- * matching the filters".
+ * matching the filters". A single word naming a service module also pins
+ * that module's overview page first (see {@link overviewPinModule}).
  */
 export function withQueryFilters<T extends SearchHandleLike>(handle: T): T {
   if (!handle || typeof handle !== "object") {
@@ -387,9 +431,23 @@ export function withQueryFilters<T extends SearchHandleLike>(handle: T): T {
       renderModuleHint(query.hint);
       return { ...NO_MODULE_RESULT };
     }
-    const result = await search(query.text, mergeOptions(options, query.filters));
+    const pinModule = await overviewPinModule(handle, raw);
+    // The pin runs undebounced: a second debounced call would supersede the main one. It searches the
+    // module's service words (`aws-rds` -> `rds`), not `null`: the plugin builds each dialog entry from the
+    // result's matched-term locations, and a `null`-text result has none, so it would render as nothing.
+    // The typed `aws_rds` itself is not on the overview page, so it would find nothing.
+    const pinSearch = typeof handle.search === "function"
+      ? (q: string | null, o: SearchOptions) => handle.search!.call(handle, q, o)
+      : search;
+    const [result, pin] = await Promise.all([
+      search(query.text, mergeOptions(options, query.filters)),
+      pinModule
+        ? pinSearch(serviceWords(pinModule), mergeOptions(options, { module: [pinModule], kind: [OVERVIEW_KIND] }))
+          .catch(() => undefined)
+        : undefined,
+    ]);
     renderModuleHint(query.hint ?? (await hintForEmptyResults(handle, raw, result)));
-    return limitSearchCandidates(result);
+    return limitSearchCandidates(withPinnedFirst(result, pin));
   };
   if (typeof handle.search === "function") {
     wrapped.search = (text, options) =>
