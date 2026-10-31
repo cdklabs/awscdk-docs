@@ -137,10 +137,17 @@ by Shiki with VitePress's copy button for free:
   `// Install: dotnet add package <packageId>` and the Go tab with
   `// Install: go get <module path>`.
 - Non-instantiable types (enums, structs, behavioral interfaces,
-  abstract classes, classes with no public initializer) and
-  property/method examples keep a bare TypeScript fence even in
-  multi-language mode. A module opts out of generated examples entirely
-  via `docgen.config.json` `emitExamples`.
+  abstract classes, classes with no public initializer) render their
+  authored example and its tablet translations as a `<LanguageTabs>`
+  group: TypeScript carries the authored example, each other language
+  its translation (C# and Go led by the same install line). A language
+  the tablet has no translation for gets no variant and falls back to
+  TypeScript through `LanguageTabs`' first-embedded-language fallback;
+  nothing is generated for these types, because they have no meaningful
+  instantiation. With no tablet translation at all the authored example
+  stays a bare TypeScript fence. Property/method examples keep a bare
+  TypeScript fence even in multi-language mode. A module opts out of
+  generated examples entirely via `docgen.config.json` `emitExamples`.
 
 README code examples translate the same way (`src/docgen/rosetta.ts`):
 only `moduleReadme` and `type` snippets are retained at parse time

@@ -976,11 +976,11 @@ function renderTypePage(
       return renderMixinPage({ type, assembly, index, mixins, linkFor, languages, history });
     }
     return type.datatype
-      ? renderStructPage({ type, assembly, index, usage, linkFor, languages, emitExamples, history })
-      : renderInterfacePage({ type, assembly, index, usage, linkFor, languages, emitExamples, implementors, history });
+      ? renderStructPage({ type, assembly, index, usage, linkFor, languages, tablet, emitExamples, history })
+      : renderInterfacePage({ type, assembly, index, usage, linkFor, languages, tablet, emitExamples, implementors, history });
   }
   if (spec.isEnumType(type)) {
-    return renderEnumPage({ type, assembly, index, usage, linkFor, languages, emitExamples, history });
+    return renderEnumPage({ type, assembly, index, usage, linkFor, languages, tablet, emitExamples, history });
   }
   return [`# ${entry.name}`, '', entry.summary, ''].join('\n');
 }

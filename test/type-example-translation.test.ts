@@ -121,4 +121,105 @@ describe('exampleSection with a tablet', () => {
     expect(out).toContain('// Install: go get github.com/fake/fake');
     expect(out).toContain(GO);
   });
+
+  describe('non-instantiable types', () => {
+    const ALL: Language[] = ['ts', 'python', 'java', 'dotnet', 'go'];
+    const FULL = {
+      python: 'py_translation()',
+      java: 'javaTranslation();',
+      csharp: 'CSharpTranslation();',
+      go: 'goTranslation()',
+    };
+
+    const struct: spec.InterfaceType = {
+      kind: spec.TypeKind.Interface,
+      assembly: 'fake',
+      fqn: 'fake.QueueProps',
+      name: 'QueueProps',
+      datatype: true,
+      docs: { example: AUTHORED },
+    };
+    const enumType: spec.EnumType = {
+      kind: spec.TypeKind.Enum,
+      assembly: 'fake',
+      fqn: 'fake.QueueEncryption',
+      name: 'QueueEncryption',
+      members: [{ name: 'KMS' }],
+      docs: { example: AUTHORED },
+    };
+    const abstractClass: spec.ClassType = {
+      kind: spec.TypeKind.Class,
+      assembly: 'fake',
+      fqn: 'fake.BaseThing',
+      name: 'BaseThing',
+      abstract: true,
+      initializer: { parameters: [] },
+      docs: { example: AUTHORED },
+    };
+
+    /** The `data-lang` of every variant block in the rendered section, in order. */
+    const variantLangs = (out: string): string[] =>
+      [...out.matchAll(/class="lang-variant" data-lang="(\w+)"/g)].map((m) => m[1]);
+
+    test.each([
+      ['struct', struct],
+      ['enum', enumType],
+      ['abstract class', abstractClass],
+    ] as const)('a %s with a full tablet entry renders one variant per language', (_kind, type) => {
+      const tablet = parseTablet(tabletFor(type.fqn, FULL));
+      const out = exampleSection(type, assembly, ALL, { tablet }).join('\n');
+      expect(out).toContain('<LanguageTabs');
+      expect(variantLangs(out)).toEqual(['ts', 'python', 'java', 'dotnet', 'go']);
+      expect(out).toContain(AUTHORED);
+      for (const source of Object.values(FULL)) {
+        expect(out).toContain(source);
+      }
+    });
+
+    test('a struct with only a Python translation renders exactly the ts and python variants', () => {
+      const tablet = parseTablet(tabletFor(struct.fqn, { python: PYTHON }));
+      const out = exampleSection(struct, assembly, ALL, { tablet }).join('\n');
+      expect(variantLangs(out)).toEqual(['ts', 'python']);
+      expect(out).toContain(':langs="[\'ts\', \'python\']"');
+      expect(out).toContain(PYTHON);
+      // Nothing is generated for a type with no meaningful instantiation.
+      expect(out).not.toContain('new QueueProps');
+      expect(out).not.toContain('QueueProps(');
+    });
+
+    test('the C# and Go variants of a struct lead with their install line', () => {
+      const tablet = parseTablet(tabletFor(struct.fqn, FULL));
+      const out = exampleSection(struct, assembly, ALL, { tablet }).join('\n');
+      expect(out).toContain('```csharp\n// Install: dotnet add package Fake.Pkg\nCSharpTranslation();');
+      // Same go get line a class example gets: the module path from `targets.go` plus the package directory.
+      expect(out).toMatch(/```go\n\/\/ Install: go get github\.com\/fake\/fake\S*\ngoTranslation\(\)/);
+    });
+
+    test('each variant carries its own type-links attribute', () => {
+      const tablet = parseTablet(tabletFor(struct.fqn, { python: 'x = QueueProps()' }));
+      const withStruct = { ...assembly, types: { ...assembly.types, [struct.fqn]: struct } } as spec.Assembly;
+      const linkFor = (fqn: string) => (fqn === 'fake.QueueProps' ? '/fake/QueueProps' : undefined);
+      const out = exampleSection(struct, withStruct, ['ts', 'python'], { tablet, linkFor }).join('\n');
+      // The authored TypeScript names no local type; the Python translation names QueueProps.
+      expect(out).toMatch(/```python type-links=QueueProps:/);
+      expect(out).toMatch(/```ts\n/);
+    });
+
+    test('a struct with no tablet entry keeps the bare TypeScript fence', () => {
+      const tablet = parseTablet(tabletFor('fake.Unrelated', FULL));
+      const out = exampleSection(struct, assembly, ALL, { tablet });
+      expect(out).toEqual(['## Example {#example}', '', '```ts', AUTHORED, '```', '']);
+    });
+
+    test('a struct with no authored example renders no section even with a tablet entry', () => {
+      const tablet = parseTablet(tabletFor(struct.fqn, FULL));
+      expect(exampleSection({ ...struct, docs: {} }, assembly, ALL, { tablet })).toEqual([]);
+    });
+
+    test('a single-language build keeps the bare TypeScript fence', () => {
+      const tablet = parseTablet(tabletFor(struct.fqn, FULL));
+      expect(exampleSection(struct, assembly, ['ts'], { tablet }))
+        .toEqual(['## Example {#example}', '', '```ts', AUTHORED, '```', '']);
+    });
+  });
 });
