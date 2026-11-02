@@ -12,6 +12,7 @@ import { structuredDataHead } from "./structured-data";
 import { siteOverridesHead } from "./site-overrides";
 import { injectSiteStamp } from "../../src/site-stamp";
 import { hashmapCacheBuster, resolveBuildId } from "./hashmap-cache-buster";
+import { injectAssetRecovery } from "./asset-recovery";
 import { docsSiteUrl, readVersionSnapshot, VERSION_SNAPSHOT_FILE } from "../../src/docgen/versions";
 import { assertValidVersion } from "../../src/docgen/version-format";
 import { createHighlighter, type ShikiTransformer } from "shiki";
@@ -287,8 +288,11 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   // The build stamp (src/site-stamp.ts) in every page's <head>: the one place a downstream republisher rewrites the
   // documented version and the generated-at timestamp. Values placed in `head` or `themeConfig` instead would also
   // ship inside the metadata chunk, and the client would restore them over an HTML-only replacement.
-  transformHtml(code) {
-    return injectSiteStamp(code, { version: cdkVersion ?? "", generatedAt });
+  // The asset recovery script (asset-recovery.ts) goes in the HTML for the same reason, and because it must run
+  // before the stylesheet and module tags VitePress emits ahead of `head`.
+  transformHtml(code, _id, { page, siteData }) {
+    const stamped = injectSiteStamp(code, { version: cdkVersion ?? "", generatedAt });
+    return injectAssetRecovery(stamped, siteData.base, page);
   },
 
   // Preload the Pagefind engine module so the eager warm-up in theme/search-client.ts resolves from cache
