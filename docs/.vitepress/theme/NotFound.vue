@@ -12,7 +12,7 @@ import { withBase } from "vitepress";
 import { API_ROOT, VERSIONS_ROUTE } from "../../../src/site-routes";
 import { RECOVER_GLOBAL } from "../asset-recovery";
 
-// The router also shows this view when an existing page's chunk fails to load; the head script tells the cases apart.
+// The router also shows this view when a page's chunk fails to load. The head script reloads if the URL exists.
 onMounted(() => (window as any)[RECOVER_GLOBAL]?.());
 
 const nextSteps = [

@@ -16,16 +16,20 @@ rollout atomic.
 
 ## Decision
 
-An inline script right after `<meta charset>` on every page, ahead of the stylesheet and module tags. When a `link` or
-`script` under `assets/` fails, or the not-found view mounts on a page the server rendered as a real page, it refetches
-the page's `assets/` URLs with `cache: "reload"` and reloads. Each request may reach another host.
+An inline script right after `<meta charset>` on every page, ahead of the stylesheet and module tags. It reloads only
+when it has evidence that a reload can help:
 
-It reloads a path at most twice per tab session, counted in `sessionStorage`. The 404 page the host serves for a
-missing address never reloads.
+- When a `link` (other than a prefetch) or `script` under `assets/` fails, it requests that file again with
+  `cache: "reload"`, which also replaces the cached 404, and reloads if the response is OK.
+- When the not-found view mounts, it requests the current URL and reloads if the server serves it, which means the page
+  exists and only its chunk failed.
+
+A path reloads at most twice per tab session, counted in `sessionStorage`.
 
 ## Consequences
 
-- A reader in a rollout sees a reload instead of a broken page, as long as some host has the files.
-- A link to a missing page followed client-side costs one extra page load before the not-found view.
-- A path that used up its two reloads does not recover again in that tab.
+- A reader in a rollout sees a reload instead of a broken page when another host has the file.
+- Offline, with the file gone from every host (a broken deploy, or HTML cached from a build that no longer exists), or
+  on a real 404, the page does not reload and looks as it does without the script.
+- Every not-found view costs one extra request for the current URL.
 - The race itself remains. Removing it needs the hosting side to switch builds atomically.
