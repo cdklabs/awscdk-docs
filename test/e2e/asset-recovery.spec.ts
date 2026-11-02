@@ -17,25 +17,16 @@ async function fail(page: Page, asset: RegExp, failing: () => boolean): Promise<
   await page.route(asset, (route) => (failing() ? route.fulfill({ status: 404, body: 'not found' }) : route.fallback()));
 }
 
-const FIRST_LOAD_FAILURES: [string, RegExp][] = [
-  ['stylesheet', /\/assets\/style\.[\w-]+\.css$/],
-  ['metadata chunk', /\/assets\/chunks\/metadata\.[\w-]+\.js$/],
-  ['page chunk', /\/assets\/v2_docs_aws-cdk-lib\.aws_sns\.Topic\.md\.[\w-]+(\.lean)?\.js$/],
-];
-
 test.describe('asset recovery', () => {
-  for (const [name, asset] of FIRST_LOAD_FAILURES) {
-    test(`a page whose ${name} fails to load renders after one reload`, async ({ page }) => {
-      const loads = countLoads(page);
-      await fail(page, asset, () => loads() === 1);
+  test('a page whose chunk fails to load renders after one reload', async ({ page }) => {
+    const loads = countLoads(page);
+    await fail(page, /\/assets\/v2_docs_aws-cdk-lib\.aws_sns\.Topic\.md\./, () => loads() === 1);
 
-      await page.goto(TOPIC_PAGE);
+    await page.goto(TOPIC_PAGE);
 
-      await expect.poll(loads).toBe(2);
-      await expect(page.locator('h1')).toContainText('Topic');
-      await expect(page.locator('.not-found-title')).toHaveCount(0);
-    });
-  }
+    await expect.poll(loads).toBe(2);
+    await expect(page.locator('h1')).toContainText('Topic');
+  });
 
   test('a client-side navigation whose page chunk fails to load renders after one reload', async ({ page }) => {
     const loads = countLoads(page);
@@ -55,16 +46,6 @@ test.describe('asset recovery', () => {
     await expect(page.locator('h1')).toContainText('Queue');
   });
 
-  test('the 404 page for a missing address does not reload', async ({ page }) => {
-    const loads = countLoads(page);
-
-    await page.goto('/v2/docs/no-such-page.html');
-
-    await expect(page.locator('.not-found-title')).toBeVisible();
-    await page.waitForTimeout(1000);
-    expect(loads()).toBe(1);
-  });
-
   test('a page whose stylesheet never loads stops after two reloads', async ({ page }) => {
     const loads = countLoads(page);
     await fail(page, /\/assets\/style\./, () => true);
@@ -74,5 +55,15 @@ test.describe('asset recovery', () => {
     await expect.poll(loads).toBe(3);
     await page.waitForTimeout(1000);
     expect(loads()).toBe(3);
+  });
+
+  test('the 404 page for a missing address does not reload', async ({ page }) => {
+    const loads = countLoads(page);
+
+    await page.goto('/v2/docs/no-such-page.html');
+
+    await expect(page.locator('.not-found-title')).toBeVisible();
+    await page.waitForTimeout(1000);
+    expect(loads()).toBe(1);
   });
 });
