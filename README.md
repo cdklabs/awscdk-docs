@@ -1,6 +1,6 @@
 # AWS CDK Reference Documentation
 
-The API reference for the [AWS Cloud Development Kit (AWS CDK)](https://github.com/aws/aws-cdk) — every construct, class, interface, and enum, searchable and cross-linked.
+The API reference for the [AWS Cloud Development Kit (AWS CDK)](https://github.com/aws/aws-cdk).
 
 ## 📖 Read the documentation
 
