@@ -14,12 +14,12 @@ hero:
 features:
   - icon: lucide:book-open
     title: API Reference
-    details:  Search and browse the constructs, classes, and interfaces in AWS CDK v2.
+    details: Search and browse the constructs, classes, and interfaces in AWS CDK v2.
     link: /v2/
     linkText: Browse the reference
   - icon: lucide:compass
     title: AWS CDK Developer Guide
-    details: Concepts, tutorials, and best practices from the AWS CDK Developer Guide. Start here if you are new to the CDK.
+    details: Concepts, tutorials, and best practices. Start here if you are new to the CDK.
     link: https://docs.aws.amazon.com/cdk/v2/guide/home.html
     linkText: Read the guide
   - icon: lucide:bot
@@ -40,6 +40,6 @@ The AWS Cloud Development Kit (CDK) is a framework for defining cloud infrastruc
 
 ## Getting started
 
-New to the CDK? The [Getting Started guide](https://docs.aws.amazon.com/cdk/v2/guide/getting-started.html) walks you through installing the CDK CLI, creating your first app in any of the five supported languages (TypeScript, Python, Java, C#, or Go), and deploying it. The [CDK Workshop](https://cdkworkshop.com) is a longer, hands on tutorial if you want to build something real before diving into the reference.
+New to the CDK? The [Getting Started guide](https://docs.aws.amazon.com/cdk/v2/guide/getting-started.html) walks you through installing the CDK CLI, creating your first app in any of the five supported languages (TypeScript, Python, Java, C#, or Go), and deploying it. The [CDK Workshop](https://cdkworkshop.com) is a longer, hands-on tutorial if you want to build something real before diving into the reference.
 
-Once your project is set up, use this site as your reference. Signatures, property names, and examples on construct pages are shown in whichever language you pick with the navbar's language switcher
+Once your project is set up, use this site as your reference. Signatures, property names, and examples on construct pages are shown in whichever language you pick with the language switcher in the navigation bar.

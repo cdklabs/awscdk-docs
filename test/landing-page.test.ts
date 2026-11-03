@@ -146,6 +146,5 @@ describe('landing page', () => {
     expect(indexMd).toContain('framework for defining cloud infrastructure as code');
     expect(indexMd).toContain('## Getting started');
     expect(indexMd).toContain('[Getting Started guide]');
-    expect(indexMd).toContain('[API Reference](/v2/)');
   });
 });

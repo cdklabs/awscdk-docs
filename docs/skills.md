@@ -3,7 +3,7 @@
 The **AWS CDK agent skill** teaches a coding agent how to work in a CDK codebase:
 bootstrapping and project setup, construct patterns, compliance and drift,
 importing and migrating existing resources, safe refactors, troubleshooting, and
-v1-to-v2 migration. It is published by AWS in the agent toolkit under
+v1-to-v2 migration. It is published by AWS in the Agent Toolkit for AWS under
 Apache-2.0, and it is maintained there rather than here.
 
 ## Install
