@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { QUEUE_PAGE } from './fixture.js';
+import { QUEUE_ENCRYPTION_PAGE, QUEUE_PAGE, QUEUE_PROPS_PAGE } from './fixture.js';
 
 const STORAGE_KEY = 'cdk-docs-language';
 
@@ -155,6 +155,57 @@ test.describe('C# variant (generated page)', () => {
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     expect(copied).toContain('// Install: dotnet add package');
     expect(copied).toContain('Queue');
+  });
+});
+
+// Non-instantiable types (structs, enums) show their authored example's rosetta tablet translation in the reader's
+// language, like class pages: the `## Example` section is a variant group even though nothing can be generated for
+// these types. Drives the built pages, per AGENTS.md rule 7.
+test.describe('struct and enum example variants (generated page)', () => {
+  /** The `## Example` group: the variant group whose variants are fenced code blocks. */
+  function exampleGroup(page: import('@playwright/test').Page) {
+    return page.locator('.lang-tabs', {
+      has: page.locator('.lang-variant[data-lang="python"] div[class*="language-"]'),
+    }).first();
+  }
+
+  for (const [name, path] of [['QueueProps', QUEUE_PROPS_PAGE], ['QueueEncryption', QUEUE_ENCRYPTION_PAGE]] as const) {
+    test(`${name}: choosing Python shows the Python example and hides the TypeScript one`, async ({ page }) => {
+      await page.goto(path);
+      const group = exampleGroup(page);
+      await expect(group).toBeAttached();
+      await navSlider(page).getByRole('radio', { name: 'Python' }).click();
+
+      await expect(group).toHaveAttribute('data-active', 'python');
+      await expect(group.locator('.lang-variant[data-lang="python"] pre.shiki code')).toBeVisible();
+      await expect(group.locator('.lang-variant[data-lang="ts"]')).toBeHidden();
+    });
+
+    test(`${name}: ?lang=java shows the Java example`, async ({ page }) => {
+      await page.goto(`${path}?lang=java`);
+      const group = exampleGroup(page);
+      await expect(group).toHaveAttribute('data-active', 'java');
+      await expect(group.locator('.lang-variant[data-lang="java"] pre.shiki code')).toBeVisible();
+      await expect(group.locator('.lang-variant[data-lang="ts"]')).toBeHidden();
+    });
+  }
+
+  test('copy button works on the Python example variant of QueueProps', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto(QUEUE_PROPS_PAGE);
+    await navSlider(page).getByRole('radio', { name: 'Python' }).click();
+
+    const pyBlock = exampleGroup(page).locator('.lang-variant[data-lang="python"] div[class*="language-"]');
+    await expect(pyBlock).toBeVisible();
+    const copy = pyBlock.locator('button.copy');
+    await expect(copy).toBeAttached();
+    await pyBlock.hover();
+    await copy.click();
+    await expect(copy).toHaveClass(/copied/);
+    // The tablet's Python translation, not the authored TypeScript.
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain('sqs.');
+    expect(copied).not.toContain('new ');
   });
 });
 
