@@ -74,7 +74,7 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/algolia/algoliasearch-client-javascript
 
-@babel/helper-string-parser@7.29.7
+@babel/helper-string-parser@7.29.13
   License: MIT
   Repository: https://github.com/babel/babel
 
@@ -82,11 +82,11 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/babel/babel
 
-@babel/parser@7.29.9
+@babel/parser@7.29.13
   License: MIT
   Repository: https://github.com/babel/babel
 
-@babel/types@7.29.8
+@babel/types@7.29.11
   License: MIT
   Repository: https://github.com/babel/babel
 
@@ -193,19 +193,19 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/vitejs/vite-plugin-vue
 
-@vue/compiler-core@3.5.44
+@vue/compiler-core@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/compiler-dom@3.5.44
+@vue/compiler-dom@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/compiler-sfc@3.5.44
+@vue/compiler-sfc@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/compiler-ssr@3.5.44
+@vue/compiler-ssr@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
@@ -221,23 +221,23 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/vuejs/devtools
 
-@vue/reactivity@3.5.44
+@vue/reactivity@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/runtime-core@3.5.44
+@vue/runtime-core@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/runtime-dom@3.5.44
+@vue/runtime-dom@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/server-renderer@3.5.44
+@vue/server-renderer@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
-@vue/shared@3.5.44
+@vue/shared@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
@@ -437,7 +437,7 @@ oniguruma-to-es@3.1.1
   License: MIT
   Repository: https://github.com/slevithan/oniguruma-to-es
 
-pagefind@1.5.2
+pagefind@1.6.0
   License: MIT
   Repository: https://github.com/Pagefind/pagefind
 
@@ -453,7 +453,7 @@ picocolors@1.1.1
   License: ISC
   Repository: https://github.com/alexeyraspopov/picocolors
 
-postcss@8.5.29
+postcss@8.5.32
   License: MIT
   Repository: https://github.com/postcss/postcss
 
@@ -589,7 +589,7 @@ vitepress-plugin-pagefind@0.4.26
   License: MIT
   Repository: https://github.com/ATQQ/sugar-blog
 
-vue@3.5.44
+vue@3.5.45
   License: MIT
   Repository: https://github.com/vuejs/core
 
