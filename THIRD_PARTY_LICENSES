@@ -173,7 +173,7 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
 
-@types/node@26.6.5
+@types/node@26.6.6
   License: MIT
   Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
 
