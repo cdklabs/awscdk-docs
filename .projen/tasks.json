@@ -692,7 +692,6 @@
             "jest",
             "jest-junit",
             "license-checker",
-            "lighthouse",
             "ts-jest",
             "tsx",
             "typescript"

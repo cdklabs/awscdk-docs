@@ -147,8 +147,9 @@ const project = new CdkTypeScriptProject({
     '@playwright/test',
     // Automated accessibility audit gate.
     '@axe-core/playwright',
-    // Lighthouse performance gate.
-    'lighthouse@^13.4.0',
+    // Lighthouse performance gate. Pinned to 13.5.0: 13.6.0 pulls in the Sentry CLI (`sentry`, FSL-1.1-Apache-2.0),
+    // which fails checkLicenses. Kept off the upgrade tasks below.
+    'lighthouse@13.5.0',
     // Agent-readiness gate
     'botvisibility@^3.0.0',
   ],
@@ -163,7 +164,7 @@ for (const upgrade of project.components.filter((c) => c instanceof javascript.U
   const options = (upgrade as unknown as { options: javascript.UpgradeDependenciesOptions }).options;
   (upgrade as unknown as { options: javascript.UpgradeDependenciesOptions }).options = {
     ...options,
-    exclude: [...(options.exclude ?? []), ...CDK_PINNED_PACKAGES],
+    exclude: [...(options.exclude ?? []), ...CDK_PINNED_PACKAGES, 'lighthouse'],
   };
 }
 

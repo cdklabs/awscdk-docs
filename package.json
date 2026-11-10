@@ -113,7 +113,7 @@
     "jest": "^30.5.2",
     "jest-junit": "^17",
     "license-checker": "^25.0.1",
-    "lighthouse": "^13.4.0",
+    "lighthouse": "13.5.0",
     "projen": "^0.104.21",
     "ts-jest": "^29.4.15",
     "tsx": "^4.23.15",
