@@ -29,7 +29,7 @@ Build the site in a single `build` job on a self-hosted AWS CodeBuild runner. Th
   job to the CodeBuild project; the run ID and attempt make the label unique to the job.
 - **Machine.** `BUILD_GENERAL1_2XLARGE` (72 vCPU, 145 GB). A shard is roughly single-core bound, so memory limits
   concurrency: the heaviest shard peaks at ~7.5 GB RSS and fails under a 6 GB heap.
-- **Build.** `docs:build:sharded` with 52 shards, an 8192 MB heap and a concurrency of 16, which stays well inside
+- **Build.** `docs:build:sharded` with 72 shards, an 8192 MB heap and a concurrency of 16, which stays well inside
   memory while using ~20 cores. Every shard carries a fixed ~30 s cost, so more shards lower the per-shard peak but
   lengthen the build.
 - **One job, end to end.** The job generates the docs once, builds and merges every shard, indexes the site with

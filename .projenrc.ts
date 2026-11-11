@@ -592,11 +592,11 @@ docsBuildWorkflow.on({ pullRequest: {}, mergeGroup: {} });
 
 // Number of parallel build shards. Rollup's chunk-graph memory is superlinear in per-shard content, so the
 // heaviest page-balanced slice can OOM-kill the 16 GB runner. The prune plan balances page count while the
-// bundle peak tracks per-page content, so denser markup forces a higher shard count; 52 caps the heaviest
+// bundle peak tracks per-page content, so denser markup forces a higher shard count; 72 caps the heaviest
 // slice below every shard size that has failed. The peak is not monotonic in the count (48 packs worse than
 // 40), so verify the byte peak when moving it. The plan is a pure function of SHARD_TOTAL and docs:merge
 // unions every shard, so the count is safe to raise.
-const DOCS_BUILD_SHARDS = 52;
+const DOCS_BUILD_SHARDS = 72;
 
 // Hosted path of the deployed site. The publishing target takes no loose files at the artifact root, so the
 // built tree MIRRORS the URL: `DOCS_BASE` drives both the VitePress `base` and its `outDir`
