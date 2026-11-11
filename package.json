@@ -130,6 +130,9 @@
     "vitepress-plugin-pagefind": "^0.4.26",
     "vue": "^3.5.45"
   },
+  "overrides": {
+    "@sentry/node": "file:projenrc/stubs/sentry-node"
+  },
   "devEngines": {
     "packageManager": {
       "name": "npm",

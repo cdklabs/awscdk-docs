@@ -167,6 +167,10 @@ for (const upgrade of project.components.filter((c) => c instanceof javascript.U
   };
 }
 
+// Lighthouse only imports @sentry/node for opt-in error reporting, which we never enable. Its tree pulls in the
+// FSL-licensed `sentry` CLI, so an empty local package stands in for it.
+project.package.addPackageResolutions('@sentry/node@file:projenrc/stubs/sentry-node');
+
 // The default no-extraneous-dependencies setup assumes prod deps are "what src/ imports at runtime", which is
 // meaningless for an unpublished static-site repo. Docgen (src/) may import devDeps: it runs at build time and
 // nothing it imports ships in the site.

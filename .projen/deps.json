@@ -322,6 +322,11 @@
       "type": "build"
     },
     {
+      "name": "@sentry/node",
+      "version": "file:projenrc/stubs/sentry-node",
+      "type": "override"
+    },
+    {
       "name": "@shikijs/engine-javascript",
       "version": "^2.1.0",
       "type": "runtime"
