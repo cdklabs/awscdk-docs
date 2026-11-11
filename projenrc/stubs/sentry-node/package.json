@@ -1,0 +1,7 @@
+{
+  "name": "@sentry/node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Empty stand-in for @sentry/node, see the override in .projenrc.ts",
+  "license": "Apache-2.0"
+}
