@@ -72,7 +72,7 @@ test.describe('pagefind search', () => {
       };
       return {
         property: await urlsFor('maxMessageSizeBytes'),
-        method: await urlsFor('addWarningV2'),
+        method: await urlsFor('tryRemoveChild'),
         type: await urlsFor('Node'),
       };
     });
