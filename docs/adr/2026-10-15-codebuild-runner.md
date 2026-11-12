@@ -28,10 +28,11 @@ Build the site in a single `build` job on a self-hosted AWS CodeBuild runner. Th
 - **Label.** `codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}` routes the
   job to the CodeBuild project; the run ID and attempt make the label unique to the job.
 - **Machine.** `BUILD_GENERAL1_2XLARGE` (72 vCPU, 145 GB). A shard is roughly single-core bound, so memory limits
-  concurrency: the heaviest shard peaks at ~7.5 GB RSS and fails under a 6 GB heap.
-- **Build.** `docs:build:sharded` with 72 shards, an 8192 MB heap and a concurrency of 16, which stays well inside
-  memory while using ~20 cores. Every shard carries a fixed ~30 s cost, so more shards lower the per-shard peak but
-  lengthen the build.
+  concurrency: the heaviest shard outgrows an 8 GB heap once struct, enum and interface pages carry translated
+  examples.
+- **Build.** `docs:build:sharded` with 72 shards, a 12288 MB heap and a concurrency of 10. Ten shards at their cap,
+  plus about 1 GB of off-heap memory each, stay within the machine's memory. Every shard carries a fixed ~30 s cost,
+  so more shards lower the per-shard peak but lengthen the build.
 - **One job, end to end.** The job generates the docs once, builds and merges every shard, indexes the site with
   Pagefind, verifies it and packages the site as the versioned S3 zip with `scripts/package-site.sh`. Packaging
   fails when the zip exceeds 900 MB. The publish job depends on `build` directly
@@ -66,7 +67,7 @@ Builds stay isolated from each other, so a pull request build cannot affect what
 
 - One job, one log and one check. `docs:generate` and `npm ci` run once per build, the site never leaves the machine
   between building and packaging, and CI runs exactly the path a developer runs locally.
-- Wall-clock time is bounded by the shards running 16 at a time; the heaviest wave sets the critical path. Raising
+- Wall-clock time is bounded by the shards running 10 at a time; the heaviest wave sets the critical path. Raising
   the shard count lengthens the build instead of adding runners, and changing the compute type or a content change
   that raises the per-shard peak means revisiting the concurrency.
 - The build depends on infrastructure outside this repository: the CodeBuild project, its GitHub connection and the

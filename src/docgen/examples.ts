@@ -24,7 +24,9 @@ import { languageVariantBlocks, orderedLanguages } from './variants.js';
  *   generated minimal instantiation snippet.
  * - Other languages: the authored example's translation from the package's jsii-rosetta tablet, which ships the
  *   compiler-backed translation of every documented type's example. A type the tablet has no entry for falls back
- *   to a generated minimal instantiation snippet (import + `new`-equivalent call).
+ *   to a generated minimal instantiation snippet (import + `new`-equivalent call). A non-instantiable type (struct,
+ *   enum, behavioral interface, abstract class) gets no generated snippet: a language without a translation is left
+ *   out of the group and shows the TypeScript example through the `<LanguageTabs>` fallback.
  *
  * Fenced blocks get Shiki highlighting and VitePress's copy button for free, so the per-language fence id below is
  * all the renderer needs.
@@ -162,7 +164,7 @@ function javaBuilderInstantiation(type: spec.ClassType, construct: boolean): str
  * C# tab carries its NuGet package id and the Go tab its module path. Empty when the assembly declares no
  * coordinates for that target, and for languages installed as one package per assembly.
  */
-function installLines(type: spec.ClassType, assembly: spec.Assembly, lang: Language): string[] {
+function installLines(type: spec.Type, assembly: spec.Assembly, lang: Language): string[] {
   if (lang === 'go') {
     const coords = goCoordinates(assembly, type.fqn);
     return coords ? [`// Install: go get ${coords.moduleName}`] : [];
@@ -425,8 +427,11 @@ export function exampleTypeLinksAttr(
  * - Multiple languages, instantiable class: a `<LanguageTabs>` group with one fenced block per language (authored
  *   example on the TypeScript tab when present, its tablet translation elsewhere, generated snippets where the
  *   tablet has no entry).
- * - Multiple languages, non-instantiable type (enum, struct, interface, abstract class): the authored example stays
- *   a bare TypeScript fence — there is nothing meaningful to generate for other languages.
+ * - Multiple languages, non-instantiable type (enum, struct, interface, abstract class): the authored example on the
+ *   TypeScript tab and its tablet translation on every language that has one, as a `<LanguageTabs>` group. A
+ *   language without a translation gets no variant, so `<LanguageTabs>` falls back to the first embedded language
+ *   (TypeScript); nothing is generated, because these types have no meaningful instantiation. With no tablet
+ *   translation at all the authored example stays a bare TypeScript fence.
  */
 export function exampleSection(
   type: spec.Type,
@@ -436,12 +441,44 @@ export function exampleSection(
 ): string[] {
   const langs = orderedLanguages(languages);
   const authored = type.docs?.example;
-  if (langs.length <= 1 || !canGenerateExample(type)) {
-    return authored
-      ? authoredFence(authored, exampleTypeLinksAttr(authored, assembly, options.linkFor))
-      : [];
+  const bareFence = (): string[] => (authored
+    ? authoredFence(authored, exampleTypeLinksAttr(authored, assembly, options.linkFor))
+    : []);
+  if (langs.length <= 1) {
+    return bareFence();
   }
   const translated = options.tablet?.translationsForType(type.fqn);
+  // The fenced code for one language: the tablet translation (led by the language's install line) when present.
+  const translatedCode = (lang: Language): string | undefined => {
+    const translation = lang === 'ts' ? undefined : translated?.[lang];
+    return translation !== undefined ? [...installLines(type, assembly, lang), translation].join('\n') : undefined;
+  };
+  // Per-variant attribute: each language's snippet mentions its own set of type names, and the hook is applied per
+  // fence.
+  const fence = (code: string, lang: Language): string[] => {
+    const attr = exampleTypeLinksAttr(code, assembly, options.linkFor);
+    return codeFence(code, `${FENCE_LANG[lang]}${attr ? ` ${attr}` : ''}`);
+  };
+
+  if (!canGenerateExample(type)) {
+    if (!authored) {
+      return [];
+    }
+    // Embed only the languages with something to show: TypeScript carries the authored example, the rest their
+    // tablet translation. A language left out falls back to TypeScript client-side.
+    const embedded = langs.filter((lang) => (lang === 'ts' ? true : translatedCode(lang) !== undefined));
+    if (embedded.length <= 1) {
+      return bareFence();
+    }
+    return [
+      anchoredHeading(2, 'Example', SECTION_ANCHORS.example),
+      '',
+      // hydrated: the copy-code button on every tab (see below).
+      ...languageVariantBlocks(embedded, (lang) => fence(lang === 'ts' ? authored : translatedCode(lang)!, lang), {
+        hydrated: true,
+      }),
+    ];
+  }
   return [
     anchoredHeading(2, 'Example', SECTION_ANCHORS.example),
     '',
@@ -450,16 +487,10 @@ export function exampleSection(
     // button — `v-pre` would ship that button dead on every non-canonical
     // tab (see VariantBlockOptions.hydrated).
     ...languageVariantBlocks(langs, (lang) => {
-      const translation = lang === 'ts' ? undefined : translated?.[lang];
       const code = lang === 'ts' && authored
         ? authored
-        : translation !== undefined
-          ? [...installLines(type, assembly, lang), translation].join('\n')
-          : generatedExample(type, assembly, lang, options);
-      // Per-variant attribute: each language's snippet mentions its own
-      // set of type names, and the hook is applied per fence.
-      const attr = exampleTypeLinksAttr(code, assembly, options.linkFor);
-      return codeFence(code, `${FENCE_LANG[lang]}${attr ? ` ${attr}` : ''}`);
+        : translatedCode(lang) ?? generatedExample(type, assembly, lang, options);
+      return fence(code, lang);
     }, { hydrated: true }),
   ];
 }

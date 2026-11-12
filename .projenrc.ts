@@ -601,6 +601,8 @@ docsBuildWorkflow.on({ pullRequest: {}, mergeGroup: {} });
 // 40), so verify the byte peak when moving it. The plan is a pure function of SHARD_TOTAL and docs:merge
 // unions every shard, so the count is safe to raise.
 const DOCS_BUILD_SHARDS = 72;
+const DOCS_BUILD_HEAP_MB = 12288;
+const DOCS_BUILD_CONCURRENCY = 10;
 
 // Hosted path of the deployed site. The publishing target takes no loose files at the artifact root, so the
 // built tree MIRRORS the URL: `DOCS_BASE` drives both the VitePress `base` and its `outDir`
@@ -647,10 +649,11 @@ const addDocsBuildJob = (workflow: github.GithubWorkflow) => workflow.addJob('bu
       run: 'npm ci',
     },
     {
-      // The runner is a CodeBuild 2xlarge (72 vCPU, 145 GB). The heaviest shard peaks at ~7.5 GB RSS and fails
-      // under a 6 GB heap, so an 8 GB cap leaves headroom; 16 at once stays within memory and uses ~20 cores.
+      // The runner is a CodeBuild 2xlarge (72 vCPU, 145 GB). The heaviest shard outgrows an 8 GB heap once every
+      // struct, enum and interface page carries translated examples, so each shard gets 12 GB. Ten at once keeps
+      // the worst case (every running shard at its cap plus ~1 GB off-heap each) within the machine's memory.
       name: 'Build docs',
-      run: `npx projen docs:build:sharded -- --num-shards ${DOCS_BUILD_SHARDS} --heap 8192 --concurrency 16`,
+      run: `npx projen docs:build:sharded -- --num-shards ${DOCS_BUILD_SHARDS} --heap ${DOCS_BUILD_HEAP_MB} --concurrency ${DOCS_BUILD_CONCURRENCY}`,
       env: {
         DOCS_BASE: SITE_BASE,
       },

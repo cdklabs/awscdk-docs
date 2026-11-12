@@ -133,6 +133,15 @@ describe('single build job', () => {
     expect(content).not.toContain('\n  merge:\n');
   });
 
+  // Config shape: shard memory only shows when a CI run is killed for exceeding the runner's 145 GB.
+  test('concurrent shards at their heap cap fit in the runner memory', () => {
+    const match = jobBlock('build').match(/--heap (\d+) --concurrency (\d+)\n/);
+    expect(match).not.toBeNull();
+    const [heapMb, concurrency] = [Number(match![1]), Number(match![2])];
+    const offHeapMb = 1024;
+    expect(concurrency * (heapMb + offHeapMb)).toBeLessThanOrEqual(140 * 1024);
+  });
+
   // Config shape: which steps run on which refs only shows in a CI run.
   test('every build packages and uploads the site zip', () => {
     const build = jobBlock('build');
