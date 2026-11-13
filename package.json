@@ -18,6 +18,7 @@
     "docs:agent-readiness": "projen docs:agent-readiness",
     "docs:baseline": "projen docs:baseline",
     "docs:build": "projen docs:build",
+    "docs:build:ci": "projen docs:build:ci",
     "docs:build:sharded": "projen docs:build:sharded",
     "docs:dev": "projen docs:dev",
     "docs:dist:install": "projen docs:dist:install",
