@@ -128,16 +128,17 @@ describe('single build job', () => {
     const build = jobBlock('build');
     expect(build).not.toContain('matrix:');
     expect(build).not.toContain('needs:');
-    expect(build).toMatch(/npx projen docs:build:sharded -- --num-shards \d+ --heap \d+ --concurrency \d+\n/);
+    expect(build).toContain('npx projen docs:build:ci\n');
     expect(content).not.toContain('\n  build_shards:\n');
     expect(content).not.toContain('\n  merge:\n');
   });
 
   // Config shape: shard memory only shows when a CI run is killed for exceeding the runner's 145 GB.
   test('concurrent shards at their heap cap fit in the runner memory', () => {
-    const match = jobBlock('build').match(/--heap (\d+) --concurrency (\d+)\n/);
+    const tasks = JSON.parse(readFileSync(resolve(ROOT, '.projen/tasks.json'), 'utf-8')).tasks;
+    const match = tasks['docs:build:ci'].steps[0].exec.match(/ci-shard-build\.sh (\d+) (\d+) (\d+)$/);
     expect(match).not.toBeNull();
-    const [heapMb, concurrency] = [Number(match![1]), Number(match![2])];
+    const [heapMb, concurrency] = [Number(match![2]), Number(match![3])];
     const offHeapMb = 1024;
     expect(concurrency * (heapMb + offHeapMb)).toBeLessThanOrEqual(140 * 1024);
   });
@@ -325,8 +326,8 @@ describe('S3 docs publishing target', () => {
     const buildJob = content.slice(content.indexOf('\n  build:\n'), content.indexOf('\n  deploy:\n'));
     // Packaging must come after the build, which ends by verifying the merged site, so S3 never receives an
     // unverified site.
-    expect(buildJob.indexOf('docs:build:sharded')).toBeGreaterThan(-1);
-    expect(buildJob.indexOf('docs:build:sharded')).toBeLessThan(
+    expect(buildJob.indexOf('docs:build:ci')).toBeGreaterThan(-1);
+    expect(buildJob.indexOf('docs:build:ci')).toBeLessThan(
       buildJob.indexOf('Package docs site for S3 publishing'),
     );
     expect(buildJob).toContain('cdk-docs-site.zip');

@@ -604,6 +604,16 @@ const DOCS_BUILD_SHARDS = 72;
 const DOCS_BUILD_HEAP_MB = 12288;
 const DOCS_BUILD_CONCURRENCY = 10;
 
+// The production build with the sizes above, for CI and for the CDK release pipeline. The runner is a CodeBuild
+// 2xlarge (72 vCPU, 145 GB). The heaviest shard outgrows an 8 GB heap once every struct, enum and interface page
+// carries translated examples, so each shard gets 12 GB. Ten at once keeps the worst case (every running shard at
+// its cap plus ~1 GB off-heap each) within the machine's memory. DOCS_BUILD_SHARDS, DOCS_BUILD_HEAP_MB and
+// DOCS_BUILD_CONCURRENCY override the values for a single run.
+project.addTask('docs:build:ci', {
+  description: 'Sharded production build sized for the CI runner (env overrides: DOCS_BUILD_SHARDS, DOCS_BUILD_HEAP_MB, DOCS_BUILD_CONCURRENCY)',
+  exec: `bash scripts/ci-shard-build.sh ${DOCS_BUILD_SHARDS} ${DOCS_BUILD_HEAP_MB} ${DOCS_BUILD_CONCURRENCY}`,
+});
+
 // Hosted path of the deployed site. The publishing target takes no loose files at the artifact root, so the
 // built tree MIRRORS the URL: `DOCS_BASE` drives both the VitePress `base` and its `outDir`
 // (scripts/site-paths.cjs), and the artifact root holds one directory (`cdk/`). Site routes are base-relative
@@ -618,7 +628,7 @@ const NOT_YET_RELEASED = "needs.release.outputs.tag_exists != 'true'";
 const DOCS_STREAM = 'awscdk-docs';
 
 // Single build job on a self-hosted CodeBuild runner: builds every shard in parallel on one large machine, then
-// merges, indexes with Pagefind and verifies, all inside docs:build:sharded. This is the required `build-docs`
+// merges, indexes with Pagefind and verifies, all inside docs:build:ci. This is the required `build-docs`
 // check; the name keeps it apart from the `build` check of projen's build workflow, which is also required.
 // Required checks match the job's check name, not the workflow, so both workflows report `build-docs`. Defined
 // once and added to both workflows, so the PR build and the release build cannot drift apart
@@ -649,11 +659,8 @@ const addDocsBuildJob = (workflow: github.GithubWorkflow) => workflow.addJob('bu
       run: 'npm ci',
     },
     {
-      // The runner is a CodeBuild 2xlarge (72 vCPU, 145 GB). The heaviest shard outgrows an 8 GB heap once every
-      // struct, enum and interface page carries translated examples, so each shard gets 12 GB. Ten at once keeps
-      // the worst case (every running shard at its cap plus ~1 GB off-heap each) within the machine's memory.
       name: 'Build docs',
-      run: `npx projen docs:build:sharded -- --num-shards ${DOCS_BUILD_SHARDS} --heap ${DOCS_BUILD_HEAP_MB} --concurrency ${DOCS_BUILD_CONCURRENCY}`,
+      run: 'npx projen docs:build:ci',
       env: {
         DOCS_BASE: SITE_BASE,
       },

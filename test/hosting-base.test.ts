@@ -126,7 +126,7 @@ describe('deploy workflow follows the hosted path', () => {
   // instead of a literal, so changing the hosted path in one place cannot leave
   // a step pointing at the old directory.
   test('merging, indexing and verification all use the derived site directory', () => {
-    expect(workflow).toContain('npx projen docs:build:sharded');
+    expect(workflow).toContain('npx projen docs:build:ci');
     const shardBuild = readFileSync(resolve(ROOT, 'scripts/local-shard-build.sh'), 'utf-8');
     expect(shardBuild).toContain('REL_DIST="$(node -p "require(\'./scripts/site-paths.cjs\').distDir()")"');
     expect(shardBuild).toContain('npx pagefind --site "$REL_DIST"');
