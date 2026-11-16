@@ -186,9 +186,9 @@ test.describe('navigation style', () => {
   });
 
   test('a service section stored open shows its items after switching back from By package', async ({ page }) => {
-    // Only the active page's chunk is fetched on load. A service section the
-    // reader left open must fetch its own chunk when the service style is
-    // first shown, not render an open caret over an empty list.
+    // A service section the reader left open is reopened from stored choices
+    // when the service style is first shown, and shows its items, not an
+    // empty list under an open caret.
     await page.goto(CFN_QUEUE_PAGE);
     await waitForSidebar(page);
     await page.getByRole('button', { name: 'Custom Resources', exact: true }).click();

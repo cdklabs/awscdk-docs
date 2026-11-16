@@ -165,6 +165,9 @@ function revealOnLoad() {
   nextTick(() => {
     const container = findScrollContainer();
     if (!container) return;
+    // The reveal can run after reopened sections load. A reader already
+    // working in the sidebar keeps their place.
+    if (container.contains(document.activeElement)) return;
     const saved = scrollMemory.value.get(activePath.value);
     if (saved !== undefined) {
       // A remembered position wins over revealing the active entry: a
@@ -328,10 +331,8 @@ function loadOpenPackageChunks(): Promise<void> {
   return Promise.all(pending).then(() => undefined);
 }
 
-// Load what the open groups of the service style need. A group the reader
-// opened before a reload comes back open from the stored choices, but only the
-// active page's chunk is fetched on load, so without this its child list
-// would render empty under an open caret.
+// Fetches the chunk of every open service-style section that is still
+// unloaded, so a section reopened from stored choices renders its items.
 function loadOpenServiceChunks(): Promise<void> {
   const pending: Promise<void>[] = [];
   for (const key of expandedByStyle.value.service) {
@@ -399,7 +400,12 @@ function ensureLoaded() {
       // A query typed while the skeleton was in flight is already filtering.
       if (filtering.value) loadAllChunks();
       syncActive();
-      return loadOpenChunks().then(revealOnLoad);
+      // Reveal for the route the load was for, not one the reader has
+      // navigated to since (forward navigation keeps the scroll position).
+      const loadedPath = activePath.value;
+      return loadOpenChunks().then(() => {
+        if (activePath.value === loadedPath) revealOnLoad();
+      });
     })
     .catch(() => {
       status.value = "error";
@@ -443,10 +449,15 @@ watch(navStyle, () => {
   if (navStyle.value === "package") ensurePackageTree();
   initStyle(navStyle.value);
   syncActive();
+  const switchedPath = activePath.value;
+  const switchedStyle = navStyle.value;
   loadOpenChunks().then(() =>
     nextTick(() => {
+      // Skip a reveal the reader has overtaken: another route or style, or
+      // focus already inside the sidebar.
+      if (activePath.value !== switchedPath || navStyle.value !== switchedStyle) return;
       const container = findScrollContainer();
-      if (container) scrollActiveIntoView(container);
+      if (container && !container.contains(document.activeElement)) scrollActiveIntoView(container);
     }),
   );
 });
