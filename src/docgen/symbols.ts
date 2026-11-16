@@ -7,6 +7,7 @@ import {
   ConstructLevel,
   TypeIndex,
 } from './constructs.js';
+import { escapeVueText } from './escape.js';
 import { exampleSection } from './examples.js';
 import { PageHistory } from './history.js';
 import { DEFAULT_LANGUAGE, Language, translatePropertyName } from './languages.js';
@@ -229,9 +230,7 @@ export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): strin
     '',
     '| Member | Description |',
     '| --- | --- |',
-    ...type.members.map(
-      (m) => `| <span id="${enumMemberAnchor(m.name)}"></span>\`${m.name}\` | ${escapeCell(m.docs?.summary ?? '')} |`,
-    ),
+    ...type.members.map(renderEnumMemberRow),
     '',
   );
 
@@ -249,6 +248,23 @@ export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): strin
     }))));
   }
   return lines.join('\n');
+}
+
+/**
+ * One row of an enum's Members table. A deprecated member carries the same three signals as a deprecated
+ * property row (see `layout.ts`): the struck-through name (`member-name-deprecated`), a text `deprecated`
+ * badge (`member-deprecated`), and the deprecation reason in place of the summary. A member that is not
+ * deprecated renders its backticked name and summary.
+ */
+function renderEnumMemberRow(m: spec.EnumMember): string {
+  const anchor = `<span id="${enumMemberAnchor(m.name)}"></span>`;
+  const deprecated = m.docs?.deprecated?.trim();
+  if (!deprecated) {
+    return `| ${anchor}\`${m.name}\` | ${escapeCell(m.docs?.summary ?? '')} |`;
+  }
+  // Raw HTML rather than a backtick span: the strikethrough class has to sit on the `<code>` itself.
+  const name = `<code class="member-name-deprecated">${escapeVueText(m.name)}</code> <span class="member-deprecated">deprecated</span>`;
+  return `| ${anchor}${name} | ${escapeCell(deprecated)} |`;
 }
 
 function fqnLink(fqn: string, linkFor: LinkResolver): string {
