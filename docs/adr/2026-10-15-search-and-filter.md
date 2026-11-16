@@ -132,6 +132,33 @@ forking the UI:
   `ranking` key in `pagefind.yml`), so it must be set on the loaded module in the
   browser.
 
+### Keyboard shortcuts (theme, `search-hotkeys.ts`)
+
+The plugin opens its dialog on Cmd+K and Ctrl+K and keeps the open state
+private. The theme adds `/`, the shortcut most documentation sites use, without
+forking the plugin: a document `keydown` listener opens search by clicking the
+plugin's navbar trigger (`.nav-search-btn-wait`) and prevents the default so the
+slash is not typed. It fires only for a plain `/` (no Ctrl, Meta or Alt) while
+focus is outside every editable element (`input`, `textarea`, `select`,
+`contenteditable`) and the dialog is closed, so the navigation filter and the
+query input still receive a typed slash. AltGr counts as a plain key, since on
+Windows it reports as Ctrl+Alt while typing a character. The navbar button
+announces every opening shortcut through `aria-keyshortcuts` (`/ Control+K
+Meta+K`), stamped once from the theme's `setup()` after mount; its visible text
+and accessible name stay the plugin's own, and no visible `/` hint is added.
+
+WCAG 2.1.4 (Character Key Shortcuts) accepts a single-character shortcut when it
+can be turned off, remapped, or is active only while a control has focus. This
+shortcut ships without an opt-out: the request asked for the same `/` behavior
+most documentation sites have and scoped out new search UI, and adding a
+Settings toggle is a product decision for the maintainers rather than part of
+this change. The mitigations in place are that the key is inert in every
+editable field, that the dialog it opens closes with Esc without losing the
+page, and that Cmd+K and Ctrl+K remain the announced alternatives. If a reader
+reports a conflict with speech input or a browser quick-find, the intended
+follow-up is a persisted opt-out in the Settings menu that also drops `/` from
+`aria-keyshortcuts`.
+
 ### Canonical-language indexing (docgen, `src/docgen/variants.ts`)
 
 Every symbol page embeds language-variant regions (signatures, member names,
