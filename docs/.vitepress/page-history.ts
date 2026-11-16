@@ -42,8 +42,8 @@ export function historyHead(frontmatter: Frontmatter): [string, Record<string, s
   return head;
 }
 
-/** The footer's line: `Content revised 3 Mar 2025`, with ` · v2.150.0` when the page's own change set the date. */
+/** The footer's line: `Page last updated 3 Mar 2025`, with ` · v2.150.0` when the page's own change set the date. */
 export function contentRevisedText(frontmatter: Frontmatter): string {
   const revised = contentRevised(pageHistoryOf(frontmatter));
-  return `Content revised ${formatDateOnly(revised.at)}${revised.version ? ` · v${revised.version}` : ""}`;
+  return `Page last updated ${formatDateOnly(revised.at)}${revised.version ? ` · v${revised.version}` : ""}`;
 }

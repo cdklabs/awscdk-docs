@@ -227,7 +227,7 @@ Docgen writes recorded values into each page's frontmatter (`cdkDocsIntroducedIn
 
 - The type-metadata block gains a `Type last changed` row (`v2.150.0 · 3 Mar 2025`) from the fingerprint's version
   and date, omitted when unknown. It answers *when did this type change*.
-- The page footer states `Content revised <date>`: the later of `CONTENT_REVISED_DATE` (one exported constant in
+- The page footer states `Page last updated <date>`: the later of `CONTENT_REVISED_DATE` (one exported constant in
   `src/page-history.ts`, the lever to re-date every page after a broad documentation improvement — a floor-raiser,
   not a floor) and the page's own `lastChangedAt`, with the version appended only when the page's own change set the
   date. It answers *when was this page last revised*. The constant may raise the footer but never carries a version
