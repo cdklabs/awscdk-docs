@@ -11,7 +11,12 @@
  * - `assembly.repository` gives the owning repository and the package's
  *   directory inside it (`packages/aws-cdk-lib`,
  *   `packages/@aws-cdk/aws-bedrock-alpha`), so a standalone or alpha
- *   package resolves to its own repository rather than a hardcoded one.
+ *   package resolves to its own repository rather than one assumed by
+ *   convention.
+ * - a type the assembly records under `node_modules` (a bundled dependency
+ *   such as `@aws-cdk/cloud-assembly-schema`) takes its repository and
+ *   directory from `RELOCATED_PACKAGES`, because the assembly only names
+ *   the repository of the package that bundles it.
  * - a submodule's `symbolId` names the source path it was declared in
  *   (`aws-s3/index:`), whose directory is the one holding that
  *   submodule's README. This is the assembly's own answer, so no naming
