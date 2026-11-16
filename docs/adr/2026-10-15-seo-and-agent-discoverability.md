@@ -90,8 +90,8 @@ docgen writes the twins to a sibling tree outside `docs/`,
 optional `GenerateOptions.agentOutDir`. The canonical page records its twin in
 frontmatter as `agentMarkdown: "/v2/docs/<page>.md"` — the only existence
 signal the site consults, so no page can advertise a twin that was not
-produced. A "Copy Markdown" split button beside the page title, rendered in the
-`doc-before` slot next to the favorite star, and a
+produced. A "Copy Markdown" split button at the top of the page, rendered in the
+`doc-before` slot above the breadcrumb bar, and a
 `<link rel="alternate" type="text/markdown">` in `<head>` both render from it.
 The main button fetches the twin from the same origin and copies its text; a
 menu next to it holds a "View as Markdown" link that opens the file in a new

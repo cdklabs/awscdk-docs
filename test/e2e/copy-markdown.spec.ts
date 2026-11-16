@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { SKILLS_PAGE, TOPIC_PAGE } from './fixture.js';
 
-// The Copy Markdown split button beside the page title: the main button copies the page's Markdown twin, the
+// The Copy Markdown split button at the top of the page: the main button copies the page's Markdown twin, the
 // options button opens a menu that links the file. Clipboard contents and focus movement are only observable in a
 // real browser.
 test.describe('Copy Markdown control', () => {
@@ -85,6 +85,25 @@ test.describe('Copy Markdown control', () => {
     await expect(item).toHaveAttribute('target', '_blank');
     await expect(item).toHaveAttribute('rel', 'noopener noreferrer');
     await expect(item).not.toHaveAttribute('download');
+
+    // Clicking is what proves it: the browser must show the file, not save it.
+    const downloads: unknown[] = [];
+    page.on('download', (d) => downloads.push(d));
+    const [tab] = await Promise.all([page.context().waitForEvent('page'), item.click()]);
+    await tab.waitForLoadState();
+    expect(await tab.locator('body').innerText()).toMatch(/^# /);
+    expect(downloads).toHaveLength(0);
+  });
+
+  test('activating View as Markdown with the keyboard returns focus to the options button', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    const options = page.getByRole('button', { name: 'More Markdown options' });
+    const popup = page.waitForEvent('popup');
+    await options.focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await (await popup).close();
+    await expect(options).toBeFocused();
   });
 
   test('a page without a Markdown twin shows no control', async ({ page }) => {

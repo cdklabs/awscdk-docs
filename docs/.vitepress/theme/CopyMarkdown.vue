@@ -1,5 +1,5 @@
-<!-- "Copy Markdown" split button rendered from the doc-before slot beside the favorite star. The main button copies
-     the page's Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page
+<!-- "Copy Markdown" split button rendered from the doc-before slot, at the top of the page above the breadcrumb bar
+     (the favorite star teleports into the breadcrumb bar on API pages). The main button copies the page's Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page
      without a twin (no `agentMarkdown` frontmatter) renders nothing. -->
 <script setup lang="ts">
 import { useData } from "vitepress";
@@ -30,7 +30,15 @@ async function copy(): Promise<void> {
   if (!markdownUrl.value) return;
   result.value = await copyMarkdownFrom(markdownUrl.value, {
     fetch: (url) => fetch(url),
-    clipboard: navigator.clipboard,
+    clipboard: {
+      writeText: (text) => navigator.clipboard.writeText(text),
+      write: (items) => navigator.clipboard.write(items as ClipboardItem[]),
+    },
+    item:
+      typeof ClipboardItem === "undefined"
+        ? undefined
+        : (text) =>
+            new ClipboardItem({ "text/plain": text.then((value) => new Blob([value], { type: "text/plain" })) }),
   });
   clearTimeout(resetTimer);
   resetTimer = setTimeout(() => (result.value = undefined), RESULT_MS);
@@ -110,9 +118,10 @@ onUnmounted(() => {
         :href="markdownUrl"
         target="_blank"
         rel="noopener noreferrer"
-        @click="closeMenu(false)"
+        @click="closeMenu(true)"
       >
-        View as Markdown
+        View as Markdown<span aria-hidden="true"> ↗</span
+        ><span class="copy-markdown-status">(opens in a new tab)</span>
       </a>
     </div>
     <span class="copy-markdown-status" role="status" aria-live="polite">{{ result ? label : "" }}</span>
@@ -143,6 +152,7 @@ onUnmounted(() => {
 }
 
 .copy-markdown-main {
+  min-width: 8.5em;
   border-radius: 6px 0 0 6px;
 }
 

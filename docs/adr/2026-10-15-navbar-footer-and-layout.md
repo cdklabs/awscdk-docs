@@ -92,7 +92,7 @@ The row reads: *Edit this page · Report an issue* (shortened in
 [page feedback, consent, and stamp](./2026-10-15-page-feedback-consent-and-stamp.md);
 the "Page last updated" date is owned by
 [versions and history](./2026-10-15-versions-and-history.md);
-the footer holds no Markdown link: the "Copy Markdown" button beside the page title owns the Markdown actions, as
+the footer holds no Markdown link: the "Copy Markdown" button at the top of the page owns the Markdown actions, as
 described in
 [SEO and agent discoverability](./2026-10-15-seo-and-agent-discoverability.md).
 
