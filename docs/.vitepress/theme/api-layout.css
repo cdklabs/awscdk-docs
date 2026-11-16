@@ -413,6 +413,7 @@ a.chain-item:hover {
   border: 0;
   background-color: transparent;
   font-size: inherit;
+  vertical-align: baseline;
 }
 
 .vp-doc .type-metadata-label {

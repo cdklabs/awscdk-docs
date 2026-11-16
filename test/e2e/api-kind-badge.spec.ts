@@ -155,6 +155,7 @@ test.describe('API kind badge', () => {
   });
 
   test('a metadata value uses the body typeface without a code pill', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 900 });
     // Browser-only, and it caught a real defect: VitePress styles prose code
     // as a tinted padded pill via `.vp-doc :not(pre,h1..h6) > code`, whose
     // specificity beat the block's own rule, so every linked value rendered as
@@ -169,6 +170,7 @@ test.describe('API kind badge', () => {
       const code = value.querySelector('code');
       const blockStyle = getComputedStyle(el);
       const labelStyle = getComputedStyle(el.querySelector('.type-metadata-label'));
+      const valueCellStyle = getComputedStyle(value.closest('.type-metadata-value'));
       const rowBgs = Array.from(el.querySelectorAll('tr')).map((row) => getComputedStyle(row).backgroundColor);
       const blockSize = blockStyle.fontSize;
       const blockFamily = blockStyle.fontFamily;
@@ -179,6 +181,8 @@ test.describe('API kind badge', () => {
         blockFamily,
         labelSize: labelStyle.fontSize,
         labelWeight: labelStyle.fontWeight,
+        labelVerticalAlign: labelStyle.verticalAlign,
+        valueVerticalAlign: valueCellStyle.verticalAlign,
         rowBgs,
         valueSize: as.fontSize,
         codeSize: cs.fontSize,
@@ -196,6 +200,8 @@ test.describe('API kind badge', () => {
     expect(measured.valueSize).toBe(measured.blockSize);
     expect(measured.labelSize).toBe(measured.blockSize);
     expect(measured.labelWeight).toBe('500');
+    expect(measured.labelVerticalAlign).toBe('baseline');
+    expect(measured.valueVerticalAlign).toBe('baseline');
     expect(measured.rowBgs.length).toBeGreaterThanOrEqual(2);
     for (const background of measured.rowBgs) {
       expect(background).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);

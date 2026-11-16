@@ -81,9 +81,14 @@ function stripFrontmatter(s: string): string {
  */
 function protectCode(s: string): { text: string; restore: (out: string) => string } {
   const slots: string[] = [];
+  const metadataTags: string[] = [];
   const keep = (literal: string): string => {
     slots.push(literal);
     return `\u0000${slots.length - 1}\u0000`;
+  };
+  const keepMetadataTag = (tag: string): string => {
+    metadataTags.push(tag);
+    return `\u0001${metadataTags.length - 1}\u0001`;
   };
   const text = tokenizeFences(s)
     .map((span) => {
@@ -94,6 +99,9 @@ function protectCode(s: string): { text: string; restore: (out: string) => strin
         return keep([fence, ...rest].join('\n'));
       }
       return span.text
+        // Only the exact generated metadata table enters the parser; table-shaped documentation stays literal.
+        .replace(/<table class="type-metadata" aria-label="Type metadata">[\s\S]*?<\/table>/g, (table) =>
+          table.replace(/<[^<>]+>/g, keepMetadataTag))
         // Indented code blocks: a run of lines indented four columns after a blank line (or the span start). Docgen
         // escapes docstring prose without recognizing this form, so the block is decoded back to what was written.
         .replace(/(^|\n\n)((?:(?: {4}|\t)[^\n]*(?:\n|$))+)/g, (_m, lead: string, block: string) =>
@@ -102,7 +110,8 @@ function protectCode(s: string): { text: string; restore: (out: string) => strin
         // generics inside code spans. Code spans themselves stay in the parse so escaped text in them is decoded.
         .replace(/<(\/?[^\s<>/][^<>]*)>/g, (m, inner: string) => (isKnownTag(inner) ? m : keep(m)));
     })
-    .join('\n');
+    .join('\n')
+    .replace(/\u0001(\d+)\u0001/g, (_m, i: string) => metadataTags[Number(i)]);
   const restore = (out: string): string => out.replace(/\u0000(\d+)\u0000/g, (_m, i: string) => slots[Number(i)]);
   return { text, restore };
 }
@@ -144,6 +153,9 @@ function render(node: Node): string {
   const el = node;
   const cls = classes(el);
   const tag = el.name.toLowerCase();
+  if (tag === 'table' && cls.has('type-metadata')) {
+    return renderMetadata(el);
+  }
   if (!KNOWN_TAGS.has(tag)) {
     return literalTag(el);
   }
@@ -163,9 +175,6 @@ function render(node: Node): string {
 
   if (cls.has('inheritance-chain')) {
     return renderInheritance(el);
-  }
-  if (cls.has('type-metadata')) {
-    return renderMetadata(el);
   }
   if (cls.has('member-row')) {
     return renderMemberRow(el);
@@ -231,8 +240,8 @@ function isKnownTag(inner: string): boolean {
 
 /** Tags docgen or the theme emit. Anything else was documentation text that happened to look like a tag. */
 const KNOWN_TAGS = new Set([
-  'a', 'br', 'code', 'dd', 'details', 'div', 'dl', 'dt', 'li', 'nav', 'ol', 'p', 'section', 'span', 'summary',
-  'table', 'tbody', 'td', 'th', 'tr', 'ul', 'wbr', 'languagetabs', 'badge',
+  'a', 'br', 'code', 'dd', 'details', 'div', 'dl', 'dt', 'li', 'nav', 'ol', 'p', 'section', 'span', 'summary', 'ul',
+  'wbr', 'languagetabs', 'badge',
 ]);
 
 /** Put an unrecognized tag back the way the author wrote it (`<REGION>`, `<CloudFront distribution ID>`). */

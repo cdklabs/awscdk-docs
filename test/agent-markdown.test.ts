@@ -168,6 +168,16 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     );
   });
 
+  test('table-shaped documentation text remains unchanged', () => {
+    const page = [
+      'Use `Array<Table>` here.',
+      '<table name>',
+      '<table><tr><td>a</td><td>b</td></tr></table>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe(page);
+  });
+
   test('CommonMark autolinks and bare placeholders in README prose', () => {
     const page = [
       'See <https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html> for more.',

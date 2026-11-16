@@ -528,6 +528,7 @@ describe('API kind badge palette', () => {
 
     const cells = ruleBody('.vp-doc .type-metadata-value');
     expect(cells).toContain('font-size: inherit');
+    expect(cells).toContain('vertical-align: baseline');
 
     const labels = ruleBody('.vp-doc .type-metadata-label');
     expect(labels).toContain('font-weight: 500');
