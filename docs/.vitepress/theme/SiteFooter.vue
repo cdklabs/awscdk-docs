@@ -17,7 +17,7 @@ const year = new Date().getFullYear();
 // docs defects go through the per-page links (theme/feedback.ts).
 const communityLinks = [
   { text: "GitHub", link: "https://github.com/aws/aws-cdk" },
-  { text: "Slack", link: "https://cdk.dev/" },
+  { text: "Community Slack @ cdk.dev", link: "https://cdk.dev/" },
   {
     text: "Stack Overflow",
     link: "https://stackoverflow.com/questions/tagged/aws-cdk",

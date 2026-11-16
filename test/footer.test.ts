@@ -56,7 +56,7 @@ describe('site footer', () => {
 
   test.each([
     ['GitHub', 'https://github.com/aws/aws-cdk'],
-    ['Slack', 'https://cdk.dev/'],
+    ['Community Slack @ cdk.dev', 'https://cdk.dev/'],
     ['Stack Overflow', 'https://stackoverflow.com/questions/tagged/aws-cdk'],
     [
       'AWS re:Post',
