@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml, escapeVueText, removeAll } from '../src/docgen/escape.js';
+import { escapeAttr, escapeHtml, escapeSummaryHtml, escapeVueText, removeAll } from '../src/docgen/escape.js';
 import { escapeCell } from '../src/docgen/layout.js';
 import { signatureText } from '../src/docgen/signatures.js';
 
@@ -83,5 +83,26 @@ describe('signatureText tag stripping (incomplete-multi-character-sanitization)'
 
   test('decodes attribute entities introduced by escapeAttr', () => {
     expect(signatureText('a &quot;b&quot; &#39;c&#39; &amp;d')).toBe('a "b" \'c\' &d');
+  });
+});
+
+describe('escapeSummaryHtml', () => {
+  const ATTRS = 'target="_blank" rel="noopener noreferrer"';
+
+  test('escapes around and inside a web link, and keeps non-web targets as text', () => {
+    expect(escapeSummaryHtml('See [the <b>guide</b>](https://example.com/a?b=1&c=2) & more {x}')).toBe(
+      `See <a href="https://example.com/a?b=1&amp;c=2" ${ATTRS}>the &lt;b&gt;guide&lt;/b&gt;</a>`
+      + ' &amp; more &#123;x&#125;',
+    );
+    expect(escapeSummaryHtml('Run [this](javascript:alert(1)) now')).toBe('Run [this](javascript:alert(1)) now');
+    expect(escapeSummaryHtml('A [q](https://example.com/"x) link')).toBe(
+      `A <a href="https://example.com/&quot;x" ${ATTRS}>q</a> link`,
+    );
+  });
+
+  test('a summary without a web link is byte for byte escapeVueText', () => {
+    for (const plain of ['Whether the bucket is versioned.', 'Uses <T> and {braces} & [brackets] (parens).']) {
+      expect(escapeSummaryHtml(plain)).toBe(escapeVueText(plain));
+    }
   });
 });

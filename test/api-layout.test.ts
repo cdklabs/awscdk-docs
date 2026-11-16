@@ -5,7 +5,6 @@ import { gzipSync } from 'zlib';
 import { hashedAssetPath } from './hashed-assets.js';
 import { buildPackageSidebar, decodePackageModules } from '../docs/.vitepress/theme/api-sidebar-package.js';
 import { assetHash } from '../src/docgen/asset-hash.js';
-import { escapeSummaryHtml, escapeVueText } from '../src/docgen/escape.js';
 import { generateDocs } from '../src/docgen/index.js';
 import { renderExpandableProps, renderTypeMetadata, TypeMetadataRow } from '../src/docgen/layout.js';
 
@@ -754,8 +753,6 @@ describe('API page layout', () => {
   });
 
   describe('summary lines render Markdown links', () => {
-    const ATTRS = 'target="_blank" rel="noopener noreferrer"';
-
     test('the CfnFunction runtime summary links the word runtime to the Lambda runtimes page', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_lambda.CfnFunction.md'), 'utf-8');
       const row = page.match(/<div class="member-row" id="runtime"[\s\S]*?<div class="member-summary"[^>]*>([^\n]*)<\/div>/);
@@ -763,26 +760,9 @@ describe('API page layout', () => {
       const summary = row![1];
       // Opens in a new tab like every other external link on the page.
       expect(summary).toContain(
-        `<a href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html" ${ATTRS}>runtime</a>`,
+        '<a href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html" target="_blank" rel="noopener noreferrer">runtime</a>',
       );
       expect(summary).not.toMatch(/\[runtime\]|\(https:/);
-    });
-
-    test('escapes around and inside the link, and keeps non-web targets as text', () => {
-      expect(escapeSummaryHtml('See [the <b>guide</b>](https://example.com/a?b=1&c=2) & more {x}')).toBe(
-        `See <a href="https://example.com/a?b=1&amp;c=2" ${ATTRS}>the &lt;b&gt;guide&lt;/b&gt;</a>`
-        + ' &amp; more &#123;x&#125;',
-      );
-      expect(escapeSummaryHtml('Run [this](javascript:alert(1)) now')).toBe('Run [this](javascript:alert(1)) now');
-      expect(escapeSummaryHtml('A [q](https://example.com/"x) link')).toBe(
-        `A <a href="https://example.com/&quot;x" ${ATTRS}>q</a> link`,
-      );
-    });
-
-    test('a summary without a web link is byte for byte the escaped text', () => {
-      for (const plain of ['Whether the bucket is versioned.', 'Uses <T> and {braces} & [brackets] (parens).']) {
-        expect(escapeSummaryHtml(plain)).toBe(escapeVueText(plain));
-      }
     });
   });
 

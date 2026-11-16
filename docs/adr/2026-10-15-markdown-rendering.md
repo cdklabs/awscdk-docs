@@ -86,6 +86,10 @@ ad-hoc `.replace()` escape chain.
   removes nothing, so a removal cannot re-form the pattern
   (`<scr<script>ipt>` → `<script>`). The `g`-flagged pattern must not
   match empty; terminates because each effective pass shortens the string.
+- `escapeSummaryHtml(summary)` — a one-line summary in raw HTML: a Markdown
+  link to an `http(s)` target becomes an anchor (href via `escapeAttr`, text
+  via `escapeVueText`, `target="_blank" rel="noopener noreferrer"`); every
+  other target and every other character is `escapeVueText`.
 
 When an escape inserts an escape introducer (e.g. `\|` in markdown table
 cells), escape the introducer (`\`) first. `escapeProse` (prose context,
@@ -112,6 +116,13 @@ VitePress rewrites those itself, and they double as keys for client
 features (`symbols.json`, `type-summaries.json`) whose consumers already
 apply `withBase()` and strip `.html`. A hand-run `docs:generate` must use
 the same `DOCS_BASE` as its build.
+
+The `pageHref()` rule covers cross-reference anchors to generated pages. A
+raw-HTML anchor to an external site, which only a jsii summary's Markdown
+link produces, is built by `escapeSummaryHtml`: it accepts `http(s)` targets
+only, escapes the href as an attribute and the text as Vue text, and opens in
+a new tab with `target="_blank" rel="noopener noreferrer"`, as VitePress does
+for external links in rendered prose.
 
 Rejected alternatives: emitting markdown links (cannot carry CSS classes,
 and markdown inside `v-pre` is not processed); client-side `withBase`
@@ -210,12 +221,8 @@ dropped, so the failure mode is a leftover list, never lost prose.
   deployments without relying on `ignoreDeadLinks` or Pages URL fallbacks.
   Generated markdown becomes base-dependent when `DOCS_BASE` is set; safe
   because every docs task regenerates before building. Any future raw-HTML
-  cross-reference anchor must build its href via `pageHref()`. A raw-HTML
-  anchor to an external site (a jsii summary's Markdown link, rendered by
-  `escapeSummaryHtml`) accepts only `http(s)` targets, passes the href through
-  `escapeAttr` and the text through `escapeVueText`, and opens in a new tab
-  with `target="_blank" rel="noopener noreferrer"`, like VitePress's own
-  external links in rendered prose.
+  cross-reference anchor must build its href via `pageHref()`; an external
+  anchor follows the `escapeSummaryHtml` rule in the Decision.
 - All escaping shares one reviewed implementation; new escape contexts add
   a named helper in `escape.ts` rather than a fresh `.replace()` chain.
 - The six fence-aware passes cannot disagree about fence boundaries;
