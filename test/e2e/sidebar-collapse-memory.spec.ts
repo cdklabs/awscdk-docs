@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { API_OVERVIEW, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
+import { API_OVERVIEW, CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // Persistent sidebar disclosure state. These specs pin the contract on the
 // BUILT, hydrated site: an explicit toggle survives SPA navigation, a full
@@ -58,6 +58,27 @@ test.describe('sidebar collapse memory', () => {
     await page.reload();
     await waitForSidebar(page);
     await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('an expanded section outside the active page comes back with its items after a reload', async ({ page }) => {
+    // Each section's items arrive in their own chunk, and a load fetches only
+    // the active page's. A section the reader opened elsewhere must still show
+    // its items after a reload, not an empty list under an open caret.
+    await page.goto(CFN_QUEUE_PAGE);
+    await waitForSidebar(page);
+
+    const name = 'Custom Resources';
+    const items = (p: Page) => groupNamed(p, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li');
+    await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'false');
+    await groupNamed(page, name).click();
+    await expect(items(page).first()).toBeVisible();
+
+    await page.reload();
+    await waitForSidebar(page);
+    const group = groupNamed(page, name);
+    await expect(group).toHaveAttribute('aria-expanded', 'true');
+    await expect(group.locator('.api-sidebar-caret')).toHaveClass(/\bopen\b/);
+    await expect(items(page).first()).toBeVisible();
   });
 
   test('collapsing again is remembered as closed, not merely forgotten', async ({ page }) => {
