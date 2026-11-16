@@ -61,9 +61,9 @@ async function makeHighlight() {
   return (code: string, lang: string, attrs?: string): string => {
     const language = lang && loaded.has(lang) ? lang : "txt";
     const key = `${language}\u0000${code}`;
-    // Strings and comments only need marking where a type link could land in them: a fence that offers type links
-    // and contains a quote or comment marker. Reporting grammar scopes roughly doubles a fence's highlight time, so
-    // the other fences skip it.
+    // Marks are only needed where a type link could land on text that must stay plain: a fence that offers type
+    // links and may hold a string, a comment or a Go/C# field name (`mayHoldLiterals`). Reporting grammar scopes
+    // roughly doubles a fence's highlight time, so the other fences skip it.
     const needsMarks = !!attrs && TYPE_LINKS_RE.test(attrs) && mayHoldLiterals(code);
     // Cache stores the pure Shiki output; type links are applied per call, after the cache. Two pages can share
     // the same signature text with different link targets, so folding attrs into the key would lose duplicate hits.
@@ -71,9 +71,10 @@ async function makeHighlight() {
     // stays (lang, code).
     const cached = cache.get(key);
     if (cached !== undefined && (cached.marked || !needsMarks)) return applyTypeLinks(cached.html, attrs);
-    // Grammar scope names per token, so `codeNolinkTransformer` can mark strings and comments. The marker is part
-    // of the cached HTML. Shiki's `codeToHtml` passes this tokenizer option through to `codeToTokens`, but its
-    // `CodeToHastOptions` type does not list it, so it is spread in rather than written as a literal key.
+    // Grammar scope names per token, so `codeNolinkTransformer` can mark strings, comments and field names. The
+    // marker is part of the cached HTML. Shiki's `codeToHtml` passes this tokenizer option through to
+    // `codeToTokens`, but its `CodeToHastOptions` type does not list it, so it is spread in rather than written as
+    // a literal key.
     // `tokenizeTimeLimit: 0` turns off the per-line tokenize timeout. With scopes on, Shiki tokenizes each line
     // twice (once for scopes, once for colors), each pass timed on its own; if only one pass times out under load,
     // the two token lists disagree and Shiki throws. The grammars are fixed and the input is generated, so the

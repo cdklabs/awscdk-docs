@@ -300,7 +300,8 @@ describe('type links skip Go and C# field names', () => {
     expect(mayHoldLiterals('&p.TableProps{Stream: x}')).toBe(true);
     expect(mayHoldLiterals('new TableProps { Stream = x }')).toBe(true);
     expect(mayHoldLiterals('X := y')).toBe(false);
-    expect(mayHoldLiterals('x := y == z')).toBe(false);
+    expect(mayHoldLiterals('X == y')).toBe(false);
+    expect(mayHoldLiterals('Foo => x')).toBe(false);
     expect(mayHoldLiterals('removalPolicy: RemovalPolicy.RETAIN')).toBe(false);
   });
 

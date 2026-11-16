@@ -249,21 +249,24 @@ describe('produced Go example with a field named like a type', () => {
       themes: ['github-light', 'github-dark'],
       engine: createJavaScriptRegexEngine(),
     });
-    expect(mayHoldLiterals(code)).toBe(true);
-    const html = applyTypeLinks(
-      highlighter.codeToHtml(code, {
-        lang: 'go',
-        themes: { light: 'github-light', dark: 'github-dark' },
-        defaultColor: false,
-        includeExplanation: 'scopeName',
-        tokenizeTimeLimit: 0,
-        transformers: [codeNolinkTransformer as never],
-      } as never),
-      attr,
-    );
-    const anchors = [...html.matchAll(/<a class="code-type-link" href="([^"]+)">(\w+)<\/a>/g)].map((m) => `${m[2]}->${m[1]}`);
-    expect(anchors).toEqual(['TableProps->/v2/docs/aws-cdk-lib.aws_dynamodb.TableProps.html']);
-    expect(html).not.toMatch(/>Stream<\/a>/);
-    highlighter.dispose();
+    try {
+      expect(mayHoldLiterals(code)).toBe(true);
+      const html = applyTypeLinks(
+        highlighter.codeToHtml(code, {
+          lang: 'go',
+          themes: { light: 'github-light', dark: 'github-dark' },
+          defaultColor: false,
+          includeExplanation: 'scopeName',
+          tokenizeTimeLimit: 0,
+          transformers: [codeNolinkTransformer as never],
+        } as never),
+        attr,
+      );
+      const anchors = [...html.matchAll(/<a class="code-type-link" href="([^"]+)">(\w+)<\/a>/g)].map((m) => `${m[2]}->${m[1]}`);
+      expect(anchors).toEqual(['TableProps->/v2/docs/aws-cdk-lib.aws_dynamodb.TableProps.html']);
+      expect(html).not.toMatch(/>Stream<\/a>/);
+    } finally {
+      highlighter.dispose();
+    }
   });
 });
