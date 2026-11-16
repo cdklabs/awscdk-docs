@@ -84,9 +84,30 @@ test.describe('sidebar collapse memory', () => {
     await expect(group).toHaveAttribute('aria-expanded', 'true');
     await expect(group.locator('.api-sidebar-caret')).toHaveClass(/\bopen\b/);
     await expect(items(page).first()).toBeVisible();
-    // The section sits above the active entry. The scroll restore waits for its
-    // items, so they cannot push the entry away after the position is applied.
+    // The remembered scroll position still leaves the active entry in view.
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
+  });
+
+  test('with no remembered scroll position, the reveal waits for a reopened section above the active entry', async ({ page }) => {
+    // A large section above the active entry: if the reveal ran before its
+    // items arrived, they would push the active entry out of view.
+    await page.goto(CFN_QUEUE_PAGE);
+    await waitForSidebar(page);
+    const name = 'aws-cdk-lib';
+    await groupNamed(page, name).click();
+    await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'true');
+    await expect(groupNamed(page, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeVisible();
+
+    // Forget the scroll position, so the load reveals the active entry instead.
+    await page.evaluate(() => window.sessionStorage.removeItem('cdk-docs-sidebar-scroll'));
+    await page.reload();
+    await waitForSidebar(page);
+    await expect(groupNamed(page, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeAttached();
+    const active = page.locator('.api-sidebar a.api-sidebar-link.active');
+    await expect(active).toBeInViewport();
+    // Still in view once the smooth reveal and any late layout have settled.
+    await page.waitForTimeout(1000);
+    await expect(active).toBeInViewport();
   });
 
   test('collapsing again is remembered as closed, not merely forgotten', async ({ page }) => {

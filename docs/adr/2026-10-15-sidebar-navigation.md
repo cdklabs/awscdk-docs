@@ -188,7 +188,8 @@ VitePress sidebar shell:
   its section is needed: on load/route-change the section owning the active
   page (matched against `modules` stems on a whole-stem boundary — `<stem>.`
   or `<stem>-readme`, longest stem wins, so `aws_s3` cannot claim
-  `aws_s3_deployment`); on section open; and **every** chunk when the
+  `aws_s3_deployment`); on section open; when a stored choice reopens its
+  section on load or on a style switch; and **every** chunk when the
   in-sidebar symbol filter activates (it prunes the whole corpus). Fetches
   go through one memoized retry-on-failure loader; a failed chunk leaves the
   skeleton usable. Internal links are native `<a>`, so the VitePress router
@@ -291,7 +292,9 @@ reading position. Restore happens **only on history traversal** (a
 position untouched — the component stays mounted, so it carries over, and
 restoring would surprise the reader. On load with no remembered position,
 the active entry is scrolled into view, centered, smooth (instant under
-`prefers-reduced-motion: reduce`).
+`prefers-reduced-motion: reduce`). The restore or reveal runs once the
+chunks of sections reopened from stored choices have settled, so a section
+above the active entry cannot fill in afterwards and move it.
 
 Save captures the route and position **together, at scroll-event time**:
 `createThrottledScrollSaver(save, schedule)` returns `record(path, top)` and
