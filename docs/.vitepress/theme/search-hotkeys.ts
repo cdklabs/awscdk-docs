@@ -2,6 +2,12 @@
 // on Cmd+K / Ctrl+K and keeps the open state private, so the theme adds `/` by
 // clicking the plugin's own trigger button, and announces every shortcut on
 // that button through `aria-keyshortcuts`.
+//
+// It also prevents Escape's default while search is open, so a browser that
+// honors defaultPrevented does not act on the key as well (meant for Firefox on
+// macOS, which can leave window fullscreen on Escape). The plugin tracks keys
+// with its own window listener and ignores defaultPrevented, so the dialog still
+// closes. With search closed, Escape is not touched.
 
 /** Every shortcut that opens search, in the `aria-keyshortcuts` grammar. */
 export const SEARCH_KEYSHORTCUTS = '/ Control+K Meta+K';
@@ -11,6 +17,12 @@ export const SEARCH_BUTTON_SELECTOR = '.nav-search-btn-wait';
 
 /** The plugin's query input; present only while the dialog is open. */
 export const SEARCH_INPUT_ID = 'search-input';
+
+/** The plugin's dialog; stays mounted through its 250 ms leave transition. */
+export const SEARCH_DIALOG_SELECTOR = '[command-dialog]';
+
+/** Class Vue puts on the dialog's root while it fades out. */
+export const SEARCH_DIALOG_LEAVING_CLASS = 'command-dialog-leave-active';
 
 // Browser globals typed structurally so the decision logic unit-tests under the
 // node tsconfig, which loads no DOM lib.
@@ -57,11 +69,36 @@ export function isSearchHotkey(event: HotkeyEvent, dialogOpen: boolean): boolean
     && !isEditableTarget(event.target);
 }
 
+interface DialogLike {
+  closest(selector: string): unknown;
+}
+
+/** The dialog counts as open while it is mounted and not fading out. */
+export function isDialogOpen(dialog: DialogLike | null): boolean {
+  return dialog !== null && dialog.closest(`.${SEARCH_DIALOG_LEAVING_CLASS}`) === null;
+}
+
+/**
+ * Whether a keydown is an Escape whose default must be prevented. An Escape
+ * that cancels an IME composition is left alone, like the `/` shortcut.
+ */
+export function isGuardedEscape(event: Pick<HotkeyEvent, 'key' | 'isComposing'>, dialogOpen: boolean): boolean {
+  return event.key === 'Escape' && event.isComposing !== true && dialogOpen;
+}
+
 const g = globalThis as {
   document?: {
     getElementById(id: string): { } | null;
-    querySelector(selector: string): { click(): void; setAttribute(name: string, value: string): void } | null;
-    addEventListener(type: 'keydown', listener: (event: HotkeyEvent & { preventDefault(): void }) => void): void;
+    querySelector(selector: string): {
+      click(): void;
+      setAttribute(name: string, value: string): void;
+      closest(selector: string): unknown;
+    } | null;
+    addEventListener(
+      type: 'keydown',
+      listener: (event: HotkeyEvent & { preventDefault(): void }) => void,
+      options?: { capture: boolean },
+    ): void;
   };
 };
 
@@ -74,12 +111,18 @@ export function markSearchShortcuts(): void {
   g.document?.querySelector(SEARCH_BUTTON_SELECTOR)?.setAttribute('aria-keyshortcuts', SEARCH_KEYSHORTCUTS);
 }
 
-/** Install the `/` shortcut on the document. No-op on the server. */
+/** Install the `/` shortcut and the Escape guard on the document. No-op on the server. */
 export function installSearchHotkeys(): void {
   const doc = g.document;
   if (!doc) {
     return;
   }
+  // Capture phase, so the default is prevented before any bubbling handler runs.
+  doc.addEventListener('keydown', (event) => {
+    if (isGuardedEscape(event, isDialogOpen(doc.querySelector(SEARCH_DIALOG_SELECTOR)))) {
+      event.preventDefault();
+    }
+  }, { capture: true });
   doc.addEventListener('keydown', (event) => {
     if (!isSearchHotkey(event, doc.getElementById(SEARCH_INPUT_ID) !== null)) {
       return;

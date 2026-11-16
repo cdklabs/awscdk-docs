@@ -1,6 +1,8 @@
 import {
   HotkeyEvent,
+  isDialogOpen,
   isEditableTarget,
+  isGuardedEscape,
   isSearchHotkey,
   SEARCH_KEYSHORTCUTS,
 } from '../docs/.vitepress/theme/search-hotkeys.js';
@@ -59,5 +61,18 @@ describe('search hotkeys', () => {
     expect(isSearchHotkey(keydown(), true)).toBe(false);
     expect(isSearchHotkey(keydown({ defaultPrevented: true }), false)).toBe(false);
     expect(isSearchHotkey(keydown({ isComposing: true }), false)).toBe(false);
+  });
+
+  test('Escape is guarded only while the dialog is open', () => {
+    expect(isGuardedEscape({ key: 'Escape' }, true)).toBe(true);
+    expect(isGuardedEscape({ key: 'Escape' }, false)).toBe(false);
+    expect(isGuardedEscape({ key: 'a' }, true)).toBe(false);
+    expect(isGuardedEscape({ key: 'Escape', isComposing: true }, true)).toBe(false);
+  });
+
+  test('a dialog in its leave transition counts as closed', () => {
+    expect(isDialogOpen(null)).toBe(false);
+    expect(isDialogOpen({ closest: () => null })).toBe(true);
+    expect(isDialogOpen({ closest: () => ({}) })).toBe(false);
   });
 });
