@@ -15,6 +15,7 @@ import {
   TypeMetadataRow,
 } from './layout.js';
 import { pageHref } from './links.js';
+import { isUnlinkableSource, relocatedSource } from './provenance.js';
 import { RosettaTablet } from './rosetta.js';
 import { formatDateOnly } from '../page-history.js';
 import { STABILITY_ROUTE } from '../site-routes.js';
@@ -125,12 +126,20 @@ function extendsFqn(fqn: string, baseFqn: string, index: TypeIndex): boolean {
 /**
  * GitHub URL of the type's source, pinned to the assembly's version tag.
  * Returns undefined for build-generated files (e.g. `*.generated.ts`
- * L1 sources), which do not exist in the repository.
+ * L1 sources), which do not exist in the repository, and for files under
+ * `node_modules` or declaration files. A relocated package links to the
+ * default branch of its owning repository, with no line anchor.
  */
 export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
   const repo = assembly.repository;
   const loc = type.locationInModule;
-  if (!repo?.url || !loc || /\.generated\./.test(loc.filename)) {
+  if (loc) {
+    const relocated = relocatedSource(loc.filename);
+    if (relocated) {
+      return relocated.url;
+    }
+  }
+  if (!repo?.url || !loc || /\.generated\./.test(loc.filename) || isUnlinkableSource(loc.filename)) {
     return undefined;
   }
   const base = repo.url.replace(/^git\+/, '').replace(/\.git$/, '');
@@ -226,7 +235,7 @@ export function typeMetadataRows(
     rows.push({
       label: 'Source',
       value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(url)}"`
-        + ` target="_blank" rel="noopener"><code>${escapeVueText(loc.filename)}</code></a>`,
+        + ` target="_blank" rel="noopener"><code>${escapeVueText(relocatedSource(loc.filename)?.file ?? loc.filename)}</code></a>`,
     });
   } else if (isGeneratedSource(type)) {
     rows.push({

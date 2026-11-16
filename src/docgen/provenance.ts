@@ -130,6 +130,38 @@ export function upstreamReadmeUrl(assembly: spec.Assembly, id: string): string |
   return subDir ? `${prefix}${subDir}/README.md` : `${prefix}README.md`;
 }
 
+/** Packages whose types the assembly records under `node_modules`, mapped to the repository that owns them. */
+const RELOCATED_PACKAGES: Record<string, { repoUrl: string; directory: string }> = {
+  '@aws-cdk/cloud-assembly-schema': {
+    repoUrl: 'https://github.com/aws/aws-cdk-cli',
+    directory: 'packages/@aws-cdk/cloud-assembly-schema',
+  },
+};
+
+const NODE_MODULES_FILE = /^node_modules\/((?:@[\w.-]+\/)?[\w.-]+)\/(.+)$/;
+
+/** Whether a recorded filename can never be a file in a repository: a dependency copy or a declaration file. */
+export function isUnlinkableSource(filename: string): boolean {
+  return /(?:^|\/)node_modules\//.test(filename) || /\.d\.ts$/.test(filename);
+}
+
+/**
+ * Where a type recorded under `node_modules` lives in the repository that owns its package: the URL on the default
+ * branch and the file path inside the package. `undefined` for any other file or an unmapped package.
+ */
+export function relocatedSource(filename: string): { url: string; file: string } | undefined {
+  const match = NODE_MODULES_FILE.exec(filename);
+  const target = match ? RELOCATED_PACKAGES[match[1]] : undefined;
+  if (!match || !target) {
+    return undefined;
+  }
+  const file = pathDir(match[2].replace(/\.d\.ts$/, '.ts'));
+  if (!file || !file.endsWith('.ts')) {
+    return undefined;
+  }
+  return { url: `${target.repoUrl}/blob/${DEFAULT_REF}/${target.directory}/${file}`, file };
+}
+
 /**
  * Upstream source-file URL for a type page's edit link, or `undefined` when
  * the type has no source a reader could edit — in which case the caller
@@ -143,13 +175,22 @@ export function upstreamReadmeUrl(assembly: spec.Assembly, id: string): string |
  *
  * No link for a build-generated file (`*.generated.*`, the L1 `Cfn*`
  * sources), which does not exist in the repository, nor for a type with
- * no recorded location. Unlike the type page's version-pinned `Source` row,
+ * no recorded location, nor for a file under `node_modules` or a `.d.ts`
+ * declaration. A type from a package listed in `RELOCATED_PACKAGES` links to
+ * its `.ts` file in the repository that owns the package instead. Unlike the type page's version-pinned `Source` row,
  * the URL carries no line anchor: the line is the one in the released
  * version, and on the default branch it moves.
  */
 export function upstreamSourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
   const filename = type.locationInModule?.filename;
   if (!filename || /\.generated\./.test(filename)) {
+    return undefined;
+  }
+  const relocated = relocatedSource(filename);
+  if (relocated) {
+    return relocated.url;
+  }
+  if (isUnlinkableSource(filename)) {
     return undefined;
   }
   const base = repoBase(assembly);
