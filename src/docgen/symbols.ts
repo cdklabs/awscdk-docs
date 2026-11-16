@@ -7,6 +7,7 @@ import {
   ConstructLevel,
   TypeIndex,
 } from './constructs.js';
+import { escapeVueText } from './escape.js';
 import { exampleSection } from './examples.js';
 import { PageHistory } from './history.js';
 import { DEFAULT_LANGUAGE, Language, translatePropertyName } from './languages.js';
@@ -262,7 +263,7 @@ function renderEnumMemberRow(m: spec.EnumMember): string {
     return `| ${anchor}\`${m.name}\` | ${escapeCell(m.docs?.summary ?? '')} |`;
   }
   // Raw HTML rather than a backtick span: the strikethrough class has to sit on the `<code>` itself.
-  const name = `<code class="member-name-deprecated">${m.name}</code> <span class="member-deprecated">deprecated</span>`;
+  const name = `<code class="member-name-deprecated">${escapeVueText(m.name)}</code> <span class="member-deprecated">deprecated</span>`;
   return `| ${anchor}${name} | ${escapeCell(deprecated)} |`;
 }
 
