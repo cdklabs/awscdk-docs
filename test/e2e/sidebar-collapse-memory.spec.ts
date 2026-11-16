@@ -119,16 +119,17 @@ test.describe('sidebar collapse memory', () => {
     await expect(active).toBeInViewport();
   });
 
-  test('a reveal that waits for a reopened section leaves a reader already in the sidebar alone', async ({ page }) => {
+  /**
+   * Reopen the large `aws-cdk-lib` section above the active entry, forget the
+   * scroll position, and reload with every chunk after the first (the active
+   * page's) held until `release()`.
+   */
+  async function reloadWithReopenedSectionHeld(page: Page) {
     await page.goto(CFN_QUEUE_PAGE);
     await waitForSidebar(page);
-    const name = 'aws-cdk-lib';
-    await groupNamed(page, name).click();
-    await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'true');
+    await groupNamed(page, 'aws-cdk-lib').click();
+    await expect(groupNamed(page, 'aws-cdk-lib')).toHaveAttribute('aria-expanded', 'true');
     await page.evaluate((key) => window.sessionStorage.removeItem(key), SCROLL_STORE_KEY);
-
-    // Hold every chunk after the first (the active page's) until the reader
-    // has moved focus into the sidebar.
     let chunkRequests = 0;
     let release!: () => void;
     const released = new Promise<void>((resolve) => (release = resolve));
@@ -139,15 +140,44 @@ test.describe('sidebar collapse memory', () => {
     });
     await page.reload();
     await waitForSidebar(page);
-    await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'true');
+    await expect(groupNamed(page, 'aws-cdk-lib')).toHaveAttribute('aria-expanded', 'true');
+    const sectionLoaded = () =>
+      expect(groupNamed(page, 'aws-cdk-lib').locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeAttached();
+    return { release, sectionLoaded };
+  }
 
+  const scrollTop = (page: Page) => page.locator('aside.VPSidebar').evaluate((el) => el.scrollTop);
+
+  /** Wait past the reveal's longest wait and a smooth scroll. */
+  async function settle(page: Page) {
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+  }
+
+  test('a reveal that waits for a reopened section leaves a reader already in the sidebar alone', async ({ page }) => {
+    const { release, sectionLoaded } = await reloadWithReopenedSectionHeld(page);
     const row = groupNamed(page, 'Custom Resources');
     await row.focus();
     await expect(row).toBeFocused();
     release();
-    await expect(groupNamed(page, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeAttached();
-    await page.waitForLoadState('networkidle');
+    await sectionLoaded();
+    await settle(page);
     await expect(row).toBeInViewport();
+  });
+
+  test('a reveal that waits for a reopened section is dropped after navigating to another page', async ({ page }) => {
+    const { release, sectionLoaded } = await reloadWithReopenedSectionHeld(page);
+    // Follow a link in the page body (SPA navigation, no sidebar scroll), so
+    // only the route check keeps the deferred reveal from moving the sidebar.
+    // The link may sit in a folded section, so click it from the page; the
+    // VitePress router still turns it into a client-side navigation.
+    await page.locator('.vp-doc a[href$="aws_sqs.CfnQueueProps.html"]').first().evaluate((el) => (el as HTMLElement).click());
+    await expect(page).toHaveURL(/aws_sqs\.CfnQueueProps/);
+    expect(await scrollTop(page)).toBe(0);
+    release();
+    await sectionLoaded();
+    await settle(page);
+    expect(await scrollTop(page)).toBe(0);
   });
 
   test('collapsing again is remembered as closed, not merely forgotten', async ({ page }) => {

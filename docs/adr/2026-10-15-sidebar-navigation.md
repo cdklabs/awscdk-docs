@@ -293,8 +293,12 @@ position untouched — the component stays mounted, so it carries over, and
 restoring would surprise the reader. On load with no remembered position,
 the active entry is scrolled into view, centered, smooth (instant under
 `prefers-reduced-motion: reduce`). The restore or reveal runs once the
-chunks of sections reopened from stored choices have settled, so a section
-above the active entry cannot fill in afterwards and move it.
+chunks of sections reopened from stored choices above the active entry have
+settled (at most 1.5 s), so such a section cannot fill in afterwards and move
+it; sections below it load without being waited for. The deferred restore or
+reveal, and the reveal after a style switch, are skipped when the reader has
+overtaken them: focus is inside the sidebar, the reader has scrolled it, or
+the route or style has changed since.
 
 Save captures the route and position **together, at scroll-event time**:
 `createThrottledScrollSaver(save, schedule)` returns `record(path, top)` and
