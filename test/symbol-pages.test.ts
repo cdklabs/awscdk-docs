@@ -119,7 +119,7 @@ describe('symbol page generation', () => {
     expect(row('NODEJS_12_X')).toBe(
       '| <span id="nodejs_12_x"></span><code class="member-name-deprecated">NODEJS_12_X</code> <span class="member-deprecated">deprecated</span> | Use latest version |',
     );
-    // A current member renders exactly as before.
+    // A member that is not deprecated renders as a plain backticked name with its summary.
     expect(row('NODEJS_24_X')).toBe('| <span id="nodejs_24_x"></span>`NODEJS_24_X` | Node.js 24.x. |');
   });
 
