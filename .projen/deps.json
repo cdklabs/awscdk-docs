@@ -301,6 +301,11 @@
       "type": "build"
     },
     {
+      "name": "license-checker-rseidelsohn",
+      "version": "^4",
+      "type": "build"
+    },
+    {
       "name": "lighthouse",
       "version": "^13.4.0",
       "type": "build"

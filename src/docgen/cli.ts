@@ -22,7 +22,7 @@ try {
   }
 
   if (process.argv.includes('--third-party-licenses')) {
-    const file = generateThirdPartyLicenses(root);
+    const file = await generateThirdPartyLicenses(root);
     // eslint-disable-next-line no-console
     console.log(`docgen: wrote ${file}`);
   } else if (process.argv.includes('--update-ledger')) {
