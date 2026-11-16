@@ -7,6 +7,7 @@ import { classLineage } from './interfaces.js';
 import {
   DEFAULT_LANGUAGE,
   Language,
+  translateMethodName,
   translateMethodSignature,
   translateParameterName,
   translatePropertyName,
@@ -170,11 +171,13 @@ interface RelationItem {
 
 /**
  * A static member that produces an instance of the page's type: `Bucket.fromBucketName`. The owner FQN links the
- * entry to the owner's page and the member name to its row anchor there.
+ * entry to the owner's page and the member name to its row anchor there; `kind` picks the per-language name
+ * translator, since a method and a property translate through different helpers.
  */
 export interface MemberRef {
   readonly ownerFqn: string;
   readonly memberName: string;
+  readonly kind: 'method' | 'property';
 }
 
 /** Items that fit the row's two-line budget, and the remainder. */
@@ -213,16 +216,33 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
 /**
  * A relation row whose entries are static members rather than types: `obtainable from Bucket.fromBucketName`. Each
  * entry links to the owner's page at the member's row anchor (the same `memberAnchor` the row itself carries), so
- * the reader lands on the factory. The owner is named with its short name like every other row; the member keeps
- * its jsii name, as the hierarchy block has no per-language variants.
+ * the reader lands on the factory; an entry owned by the page's own type links by fragment alone, so a version
+ * catalog with hundreds of constants does not repeat its own path hundreds of times. The owner is named with its
+ * short name like every other row; the member name is a language variant, translated per enabled language like
+ * the member rows, while the width budget and the anchor stay on the canonical jsii name. A `<wbr>` after the dot
+ * lets a long `Owner.member` token wrap at narrow widths without changing the copied text or the accessible name.
  */
-function memberRelationRow(label: string, refs: readonly MemberRef[], linkFor: LinkResolver, id?: string): string {
+function memberRelationRow(
+  label: string,
+  refs: readonly MemberRef[],
+  linkFor: LinkResolver,
+  pageFqn: string,
+  languages: readonly Language[],
+  id?: string,
+): string {
   return relationRowOf(label, refs.map((ref) => {
     const text = `${shortName(ref.ownerFqn)}.${ref.memberName}`;
-    const link = linkFor(ref.ownerFqn);
+    const translate = ref.kind === 'method' ? translateMethodName : translatePropertyName;
+    const member = languageVariantSpans(languages, (lang) => escHtml(translate(ref.memberName, lang)));
+    const content = `${escHtml(shortName(ref.ownerFqn))}.<wbr>${member}`;
+    const fragment = `#${memberAnchor(ref.memberName)}`;
+    const link = ref.ownerFqn === pageFqn ? fragment : (() => {
+      const page = linkFor(ref.ownerFqn);
+      return page ? `${pageHref(page)}${fragment}` : undefined;
+    })();
     const html = link
-      ? `<a class="chain-item" href="${escapeAttr(`${pageHref(link)}#${memberAnchor(ref.memberName)}`)}">${escHtml(text)}</a>`
-      : `<span class="chain-item">${escHtml(text)}</span>`;
+      ? `<a class="chain-item" href="${escapeAttr(link)}">${content}</a>`
+      : `<span class="chain-item">${content}</span>`;
     return { text, html };
   }), id);
 }
@@ -268,6 +288,7 @@ export function renderInheritanceChain(
   linkFor: LinkResolver,
   subclasses: readonly string[] = [],
   obtainableFrom: readonly MemberRef[] = [],
+  languages: readonly Language[] = [DEFAULT_LANGUAGE],
 ): string[] {
   // One shared walk with the reverse implementers index, so `implements` here and `implemented by` there can never
   // disagree.
@@ -290,15 +311,24 @@ export function renderInheritanceChain(
     subclasses.length > 0 ? relationRow('superclass of', subclasses, linkFor) : '',
     // The static factories and constants that hand out an instance; last, after every type-to-type relation.
     obtainableFrom.length > 0
-      ? memberRelationRow('obtainable from', obtainableFrom, linkFor, SECTION_ANCHORS.obtainableFrom)
+      ? memberRelationRow('obtainable from', obtainableFrom, linkFor, type.fqn, languages, SECTION_ANCHORS.obtainableFrom)
       : '',
   ].join('');
-  return [
+  return hierarchyBlock(
     // Breadcrumbs repeat ancestor type names on every page; keep them out of the search index.
     `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`
     + `<div class="chain-line">${items.join(sep)}</div>${rows}</nav>`,
-    '',
-  ];
+    obtainableFrom.length > 0 ? languages : [],
+  );
+}
+
+/**
+ * The block as page lines. Only the `obtainable from` row carries language variants (member names), so the block is
+ * wrapped in `<LanguageTabs>` exactly when that row is present: every other page keeps the bare `<nav>` it had.
+ */
+function hierarchyBlock(nav: string, languages: readonly Language[]): string[] {
+  const lines = wrapLanguageTabs(languages, [nav]);
+  return lines.length === 1 ? [nav, ''] : lines;
 }
 
 /**
@@ -312,6 +342,7 @@ export function renderExtendsBar(
   implementers: readonly string[] = [],
   propsUsers: readonly string[] = [],
   obtainableFrom: readonly MemberRef[] = [],
+  languages: readonly Language[] = [DEFAULT_LANGUAGE],
 ): string[] {
   const parents = type.interfaces ?? [];
   if (parents.length === 0 && implementers.length === 0 && propsUsers.length === 0 && obtainableFrom.length === 0) {
@@ -325,16 +356,16 @@ export function renderExtendsBar(
       ? relationRow('used as props by', propsUsers, linkFor, SECTION_ANCHORS.usedAsPropsBy)
       : '',
     obtainableFrom.length > 0
-      ? memberRelationRow('obtainable from', obtainableFrom, linkFor, SECTION_ANCHORS.obtainableFrom)
+      ? memberRelationRow('obtainable from', obtainableFrom, linkFor, type.fqn, languages, SECTION_ANCHORS.obtainableFrom)
       : '',
   ].join('');
-  return [
+  return hierarchyBlock(
     `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`
     + `<div class="chain-line"><span class="chain-item chain-current">${escHtml(type.name)}</span></div>`
     + rows
     + '</nav>',
-    '',
-  ];
+    obtainableFrom.length > 0 ? languages : [],
+  );
 }
 
 export interface PropsRenderOptions {

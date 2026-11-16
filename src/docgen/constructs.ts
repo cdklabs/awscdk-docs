@@ -316,7 +316,7 @@ export function renderConstructPage(options: ConstructPageOptions): string {
   // resource is a row of the metadata block below.
   lines.push(...renderDescription(type));
   lines.push(...renderInheritanceChain(
-    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], options.obtainableFrom?.get(type.fqn) ?? []));
+    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], options.obtainableFrom?.get(type.fqn) ?? [], languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
 
   if (options.emitExamples !== false) {

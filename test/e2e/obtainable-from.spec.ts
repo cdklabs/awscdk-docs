@@ -4,8 +4,10 @@ import { IQUEUE_PAGE, QUEUE_PAGE, SUBSCRIPTION_FILTER_PAGE } from './fixture.js'
 // The `obtainable from` hierarchy row: static factories and constants that
 // hand out an instance of the page's type. The unit tests pin the markup; the
 // browser checks are the ones the markup cannot answer — that an entry lands
-// the reader on the factory's own row, and that the overflow disclosure the
-// row shares with every other relation row opens and closes here too.
+// the reader on the factory's own row, that the overflow disclosure the row
+// shares with every other relation row opens and closes here too, and that
+// its long `Owner.member` entries keep the two-line promise at desktop width
+// and reflow at phone widths instead of widening the page.
 test.describe('obtainable from row', () => {
   test('an entry lands on the factory member of the owner page', async ({ page }) => {
     await page.goto(IQUEUE_PAGE);
@@ -20,10 +22,11 @@ test.describe('obtainable from row', () => {
     await row.locator('a.chain-item').first().click();
     await expect(page).toHaveURL(new RegExp(`${QUEUE_PAGE.replace(/\./g, '\\.')}#fromqueuearn$`));
     // The target is the member row itself, so the `:target` tint marks the
-    // factory the reader asked about.
+    // factory the reader asked about. A static method's header is a signature,
+    // so the identifier lives in `.sig-name`, not a property's `.member-name`.
     const target = page.locator('.member-row#fromqueuearn');
     await expect(target).toBeVisible();
-    await expect(target.locator('.member-name').first()).toHaveText('fromQueueArn');
+    await expect(target.locator('.member-signature .sig-name').first()).toHaveText('fromQueueArn');
   });
 
   test('the row is the last relation of the block', async ({ page }) => {
@@ -58,4 +61,45 @@ test.describe('obtainable from row', () => {
     await expect(more).not.toHaveAttribute('open', '');
     await expect(hidden).toBeHidden();
   });
+
+  test('the row is at most two lines at desktop width', async ({ page }) => {
+    // The 70-character budget was tuned on short type names; this row holds
+    // the fixture's longest entries, so the two-line promise is measured here
+    // too, the same way subclasses.spec.ts measures it on the Construct page.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(SUBSCRIPTION_FILTER_PAGE);
+
+    const lines = await page.locator('.inheritance-chain .chain-row#obtainable-from').evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      return (el.getBoundingClientRect().height - pad) / lh;
+    });
+    expect(lines).toBeLessThanOrEqual(2);
+  });
+
+  for (const width of [375, 320]) {
+    test(`the row reflows at ${width}px, closed and open`, async ({ page }) => {
+      // One `Owner.member` token has no natural break; the `<wbr>` after the
+      // dot and `overflow-wrap: anywhere` are what keep it inside the block
+      // instead of widening the page (WCAG 1.4.10 Reflow).
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(SUBSCRIPTION_FILTER_PAGE);
+
+      const row = page.locator('.inheritance-chain .chain-row#obtainable-from');
+      const fits = () => row.evaluate((el) => {
+        const block = el.closest('.inheritance-chain')!.getBoundingClientRect();
+        const names = [...el.querySelectorAll('.chain-item')].map((a) => a.getBoundingClientRect().right);
+        return {
+          inside: Math.max(el.getBoundingClientRect().right, ...names) <= block.right + 0.5,
+          noScroll: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        };
+      });
+      expect(await fits()).toEqual({ inside: true, noScroll: true });
+
+      await row.locator('.chain-more summary').click();
+      await expect(row.locator('.chain-more')).toHaveAttribute('open', '');
+      expect(await fits()).toEqual({ inside: true, noScroll: true });
+    });
+  }
 });

@@ -491,11 +491,11 @@ describe('construct page generation', () => {
 
   test('construct page lists the static factories that return the construct', () => {
     // Stack.of(construct) returns a Stack, so the Stack page says where to get one; the row follows the
-    // downward `superclass of` row and links the member's anchor.
+    // downward `superclass of` row and, the owner being the page itself, links the member by fragment alone.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Stack.md'), 'utf-8');
     expect(page).toContain(
       '<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from</span> '
-      + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="/v2/docs/aws-cdk-lib.Stack.html#of">Stack.of</a></li></ul></div></nav>',
+      + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="#of">Stack.<wbr>of</a></li></ul></div></nav>',
     );
     expect(page.indexOf('<span class="chain-label">superclass of</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
     // Nothing returns a Bucket itself (the factories return IBucket), so its page has no row.

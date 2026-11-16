@@ -70,13 +70,17 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
   };
 
   // A static member "produces" a type only when its declared type IS that type (or an optional of it): one
-  // instance. A collection or a union produces something else, so neither counts.
-  const recordFactory = (ownerFqn: string, memberName: string, ref: spec.OptionalValue | undefined) => {
-    if (!ref || !spec.isNamedTypeReference(ref.type) || !index.has(ref.type.fqn)) {
+  // instance. A collection or a union produces something else, so neither counts. Protected statics are skipped
+  // like the member tables skip them (`classMethods`/`classProperties`): a reader cannot call one, and the owner
+  // page has no row for its anchor.
+  const recordFactory = (
+    ownerFqn: string, member: spec.Method | spec.Property, kind: MemberRef['kind'], ref: spec.OptionalValue | undefined,
+  ) => {
+    if (!member.static || member.protected || !ref || !spec.isNamedTypeReference(ref.type) || !index.has(ref.type.fqn)) {
       return;
     }
     const list = obtainableFrom.get(ref.type.fqn) ?? [];
-    list.push({ ownerFqn, memberName });
+    list.push({ ownerFqn, memberName: member.name, kind });
     obtainableFrom.set(ref.type.fqn, list);
   };
 
@@ -94,14 +98,10 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
         }
       }
       for (const method of type.methods ?? []) {
-        if (method.static) {
-          recordFactory(type.fqn, method.name, method.returns);
-        }
+        recordFactory(type.fqn, method, 'method', method.returns);
       }
       for (const prop of type.properties ?? []) {
-        if (prop.static) {
-          recordFactory(type.fqn, prop.name, prop);
-        }
+        recordFactory(type.fqn, prop, 'property', prop);
       }
     }
     if (spec.isClassType(type) || spec.isInterfaceType(type)) {
@@ -205,7 +205,7 @@ export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): str
   lines.push(...renderDescription(type));
   // Implemented interfaces render inside the hierarchy bar.
   lines.push(...renderInheritanceChain(
-    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? []));
+    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -223,7 +223,7 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-struct" text="Struct" />`, ''];
   lines.push(...renderDescription(type));
   lines.push(...renderExtendsBar(
-    type, linkFor, [], usage.propsUsers.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? []));
+    type, linkFor, [], usage.propsUsers.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -241,7 +241,7 @@ export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceTyp
   // `implemented by` is a row of the hierarchy bar, not a section of its own: it is the inverse of the class bar's
   // `implements`, so it belongs beside `extends`.
   lines.push(...renderExtendsBar(
-    type, linkFor, options.implementors?.get(type.fqn) ?? [], [], usage.obtainableFrom.get(type.fqn) ?? []));
+    type, linkFor, options.implementors?.get(type.fqn) ?? [], [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
