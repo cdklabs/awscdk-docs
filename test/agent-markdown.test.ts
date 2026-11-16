@@ -1,4 +1,5 @@
 import { toAgentMarkdown, withFrontmatterKey } from '../src/docgen/agent-markdown.js';
+import { renderTypeMetadata } from '../src/docgen/layout.js';
 
 describe('withFrontmatterKey', () => {
   test('inserts into an existing block right after the opening fence', () => {
@@ -112,6 +113,15 @@ describe('toAgentMarkdown', () => {
   test('turns a container into a blockquote', () => {
     expect(markdown).toContain('> **Separate package**\n>\n> Install `@aws-cdk/aws-s3-alpha` separately.');
     expect(markdown).not.toContain(':::');
+  });
+
+  test('renders the metadata table as Markdown bullets', () => {
+    const [table] = renderTypeMetadata([{
+      label: 'CloudFormation',
+      value: '<a href="https://example.com/resource"><code>AWS::S3::Bucket</code></a>',
+    }]);
+    expect(toAgentMarkdown(`${table}\n`).markdown)
+      .toBe('- CloudFormation: [`AWS::S3::Bucket`](https://example.com/resource)\n');
   });
 
   test('normalizes whitespace and ends with one newline', () => {

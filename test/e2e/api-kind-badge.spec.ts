@@ -168,11 +168,18 @@ test.describe('API kind badge', () => {
       const value = el.querySelector('.type-metadata-value a[href*="TemplateReference"]');
       const code = value.querySelector('code');
       const blockStyle = getComputedStyle(el);
+      const labelStyle = getComputedStyle(el.querySelector('.type-metadata-label'));
+      const rowBgs = Array.from(el.querySelectorAll('tr')).map((row) => getComputedStyle(row).backgroundColor);
+      const blockSize = blockStyle.fontSize;
       const blockFamily = blockStyle.fontFamily;
       const cs = getComputedStyle(code);
       const as = getComputedStyle(value);
       return {
+        blockSize,
         blockFamily,
+        labelSize: labelStyle.fontSize,
+        labelWeight: labelStyle.fontWeight,
+        rowBgs,
         valueSize: as.fontSize,
         codeSize: cs.fontSize,
         codeFamily: cs.fontFamily,
@@ -185,7 +192,14 @@ test.describe('API kind badge', () => {
     });
 
     // No chip of its own: the value IS the text.
-    expect(measured.codeSize).toBe(measured.valueSize);
+    expect(measured.codeSize).toBe(measured.blockSize);
+    expect(measured.valueSize).toBe(measured.blockSize);
+    expect(measured.labelSize).toBe(measured.blockSize);
+    expect(measured.labelWeight).toBe('500');
+    expect(measured.rowBgs.length).toBeGreaterThanOrEqual(2);
+    for (const background of measured.rowBgs) {
+      expect(background).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    }
     expect(measured.codeFamily).toBe(measured.blockFamily);
     expect(measured.codeFamily.toLowerCase()).not.toContain('mono');
     expect(measured.codePad).toBe('0px');

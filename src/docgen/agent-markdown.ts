@@ -231,8 +231,8 @@ function isKnownTag(inner: string): boolean {
 
 /** Tags docgen or the theme emit. Anything else was documentation text that happened to look like a tag. */
 const KNOWN_TAGS = new Set([
-  'a', 'br', 'code', 'dd', 'details', 'div', 'dl', 'dt', 'li', 'nav', 'ol', 'p', 'section', 'span', 'summary', 'ul',
-  'wbr', 'languagetabs', 'badge',
+  'a', 'br', 'code', 'dd', 'details', 'div', 'dl', 'dt', 'li', 'nav', 'ol', 'p', 'section', 'span', 'summary',
+  'table', 'tbody', 'td', 'th', 'tr', 'ul', 'wbr', 'languagetabs', 'badge',
 ]);
 
 /** Put an unrecognized tag back the way the author wrote it (`<REGION>`, `<CloudFront distribution ID>`). */
@@ -271,15 +271,14 @@ function renderInheritance(el: Element): string {
   return `\n${lines.join('  \n')}\n`;
 }
 
-/** Type metadata `<dl>`: one bullet per label/value pair. */
+/** Type metadata `<table>`: one bullet per row header/value pair. */
 function renderMetadata(el: Element): string {
-  const lines: string[] = [];
-  let label = '';
-  for (const child of el.children) {
-    if (!isElement(child)) continue;
-    if (child.name.toLowerCase() === 'dt') label = inline(child);
-    if (child.name.toLowerCase() === 'dd') lines.push(`- ${label}: ${inline(child)}`);
-  }
+  const rows = DomUtils.findAll((n) => n.name.toLowerCase() === 'tr', el.children);
+  const lines = rows.flatMap((row) => {
+    const label = DomUtils.findOne((n) => n.name.toLowerCase() === 'th', row.children);
+    const value = DomUtils.findOne((n) => n.name.toLowerCase() === 'td', row.children);
+    return label && value ? [`- ${inline(label)}: ${inline(value)}`] : [];
+  });
   return `\n${lines.join('\n')}\n`;
 }
 

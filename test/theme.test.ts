@@ -526,6 +526,16 @@ describe('API kind badge palette', () => {
     expect(table).toContain('font-family: var(--vp-font-family-base)');
     expect(table).not.toContain('font-family: var(--vp-font-family-mono)');
 
+    const cells = ruleBody('.vp-doc .type-metadata-value');
+    expect(cells).toContain('font-size: inherit');
+
+    const labels = ruleBody('.vp-doc .type-metadata-label');
+    expect(labels).toContain('font-weight: 500');
+
+    const rows = ruleBody('.vp-doc .type-metadata tr');
+    expect(rows).toContain('background-color: transparent');
+    expect(rows).toContain('border: 0');
+
     const values = ruleBody('.vp-doc .type-metadata-value code');
     expect(values).toContain('font-family: inherit');
   });

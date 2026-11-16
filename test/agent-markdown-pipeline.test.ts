@@ -99,7 +99,9 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('```ts');
     expect(twin).not.toContain('```python');
     expect(twin).not.toContain('agentMarkdown');
-    for (const marker of ['<LanguageTabs', 'lang-variant', '<Badge', 'data-pagefind', '<nav', 'v-pre', '---\n']) {
+    for (const marker of [
+      '<LanguageTabs', 'lang-variant', '<Badge', 'data-pagefind', '<nav', '<table', '<td', 'v-pre', '---\n',
+    ]) {
       expect(twin).not.toContain(marker);
     }
     // Real content shrinks but survives: a documented member and its prose are still there.

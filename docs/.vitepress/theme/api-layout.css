@@ -387,6 +387,7 @@ a.chain-item:hover {
 
 /* ---------- Type metadata: provenance rows under the hierarchy bar ---------- */
 
+/* The `.vp-doc` prefix outranks VitePress's default table, row, cell and prose-code styles. */
 .vp-doc .type-metadata {
   display: table;
   width: auto;
@@ -400,22 +401,28 @@ a.chain-item:hover {
   font-size: 0.8125rem;
 }
 
+.vp-doc .type-metadata tr,
+.vp-doc .type-metadata tr:nth-child(2n) {
+  border: 0;
+  background-color: transparent;
+}
+
 .vp-doc .type-metadata-label,
 .vp-doc .type-metadata-value {
   padding: 0;
   border: 0;
   background-color: transparent;
+  font-size: inherit;
 }
 
-.type-metadata-label {
+.vp-doc .type-metadata-label {
   color: var(--vp-c-text-2);
   font-weight: 500;
   text-align: left;
   white-space: nowrap;
 }
 
-.type-metadata-value {
-  min-width: 0;
+.vp-doc .type-metadata-value {
   overflow-wrap: anywhere;
 }
 
