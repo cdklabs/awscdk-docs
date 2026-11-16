@@ -6,7 +6,7 @@ import { hashedAssetPath } from './hashed-assets.js';
 import { buildPackageSidebar, decodePackageModules } from '../docs/.vitepress/theme/api-sidebar-package.js';
 import { assetHash } from '../src/docgen/asset-hash.js';
 import { generateDocs } from '../src/docgen/index.js';
-import { renderExpandableProps, renderTypeMetadata, TypeMetadataRow } from '../src/docgen/layout.js';
+import { escapeSummary, renderExpandableProps, renderTypeMetadata, TypeMetadataRow } from '../src/docgen/layout.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -749,6 +749,39 @@ describe('API page layout', () => {
       expect(propsIdx).toBeGreaterThan(-1);
       expect(page.indexOf('<div class="props-table member-list" v-pre>', propsIdx))
         .toBeGreaterThan(propsIdx);
+    });
+  });
+
+  describe('summary lines render Markdown links', () => {
+    test('the CfnFunction runtime summary links the word runtime to the Lambda runtimes page', () => {
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_lambda.CfnFunction.md'), 'utf-8');
+      const row = page.match(/<div class="member-row" id="runtime"[\s\S]*?<div class="member-summary"[^>]*>([^\n]*)<\/div>/);
+      expect(row).not.toBeNull();
+      const summary = row![1];
+      expect(summary).toContain(
+        '<a href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html" rel="noopener noreferrer">runtime</a>',
+      );
+      expect(summary).not.toMatch(/\[runtime\]|\(https:/);
+      expect(summary).not.toContain('target=');
+    });
+
+    test('escapes around and inside the link, and keeps non-web targets as text', () => {
+      expect(escapeSummary('See [the <b>guide</b>](https://example.com/a?b=1&c=2) & more {x}')).toBe(
+        'See <a href="https://example.com/a?b=1&amp;c=2" rel="noopener noreferrer">the &lt;b&gt;guide&lt;/b&gt;</a>'
+        + ' &amp; more &#123;x&#125;',
+      );
+      expect(escapeSummary('Run [this](javascript:alert(1)) now')).toBe('Run [this](javascript:alert(1)) now');
+      expect(escapeSummary('A [q](https://example.com/"x) link')).toBe(
+        'A <a href="https://example.com/&quot;x" rel="noopener noreferrer">q</a> link',
+      );
+    });
+
+    test('a summary without a web link is byte for byte the escaped text', () => {
+      for (const plain of ['Whether the bucket is versioned.', 'Uses <T> and {braces} & [brackets] (parens).']) {
+        expect(escapeSummary(plain)).toBe(
+          plain.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\{/g, '&#123;').replace(/\}/g, '&#125;'),
+        );
+      }
     });
   });
 
