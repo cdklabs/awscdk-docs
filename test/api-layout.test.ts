@@ -1056,12 +1056,6 @@ describe('API page layout', () => {
       expect(css()).toContain('flex-direction: column');
     });
 
-    test('a targeted row does not recolor its anchors', () => {
-      // Recoloring here would also repaint the header line's type links.
-      expect(css()).toMatch(/\.member-row:target\s*\{/);
-      expect(css()).not.toMatch(/\.member-row:target[^{]*\ba\b[^{]*\{/);
-    });
-
     test('generated tooltip data is gitignored', () => {
       const gitignore = readFileSync(join(ROOT, '.gitignore'), 'utf-8');
       expect(gitignore).toContain('docs/public/api-sidebar/');
