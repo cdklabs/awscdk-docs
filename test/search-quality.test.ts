@@ -41,8 +41,12 @@ describe('search markup helpers', () => {
     expect(block[block.length - 2]).toBe('</div>');
   });
 
-  test('weightedTitle boosts the symbol name above default h1 weight', () => {
+  test('weightedTitle boosts the symbol name and adds word boundaries', () => {
     expect(weightedTitle('Bucket')).toBe('<span data-pagefind-weight="10">Bucket</span>');
+    expect(weightedTitle('ApplicationVersionLifecycleConfigProperty')).toBe(
+      '<span data-pagefind-weight="10">Application<wbr>Version<wbr>Lifecycle<wbr>Config<wbr>Property</span>',
+    );
+    expect(weightedTitle('HTTPServer')).toBe('<span data-pagefind-weight="10">HTTP<wbr>Server</span>');
   });
 
   test('searchKind collapses construct levels to a small vocabulary', () => {
@@ -125,7 +129,7 @@ describe('generated pages carry search relevance markup', () => {
       usage,
       linkFor: () => undefined,
     });
-    expect(page).toContain('# <span data-pagefind-weight="10">BucketProps</span>');
+    expect(page).toContain('# <span data-pagefind-weight="10">Bucket<wbr>Props</span>');
     expect(page).toMatch(/<nav class="inheritance-chain"[^>]*data-pagefind-ignore>[^\n]*id="used-as-props-by"/);
   });
 });

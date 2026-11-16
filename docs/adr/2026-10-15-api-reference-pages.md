@@ -94,7 +94,10 @@ row — no metadata table, no `## Overview` heading, no package+version badge.
 `renderDescription()` (`src/docgen/layout.ts`) folds doc summary and remarks
 into one continuous prose block, which is Pagefind-indexed (remarks read as
 the page lead, where readers look). The H1 carries only the type name and the
-kind badge.
+kind badge. The type-name span inserts `<wbr>` at CamelCase boundaries,
+including the final capital of an acronym before a capitalized word. The
+weighted span still encloses the whole name, and `<wbr>` adds no text to page
+titles, search results, copied names, sidebars, outlines, or Markdown twins.
 
 ### Breadcrumb that copies as an FQN
 

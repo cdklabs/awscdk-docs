@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
+import { LONG_TITLE_PAGE, SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 import { MAX_SEARCH_RESULTS, MODULE_HINT_CLASS } from '../../docs/.vitepress/theme/search-client.js';
 import { SEARCH_DIALOG_LEAVING_CLASS, SEARCH_DIALOG_SELECTOR, SEARCH_KEYSHORTCUTS } from '../../docs/.vitepress/theme/search-hotkeys.js';
 
@@ -193,6 +193,19 @@ test.describe('pagefind search', () => {
         expect((await first.getAttribute('data-value'))?.split('#')[0]).toBe(SQS_OVERVIEW_PAGE);
       });
     }
+  });
+
+  test('a long type title stays plain in the search index', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.blog-search button').click();
+    await page.locator('#search-input').fill('CfnQueueInlinePolicyProps');
+
+    const result = page.locator(`.search-dialog [data-value^="${LONG_TITLE_PAGE}"]`)
+      .filter({ hasText: 'CfnQueueInlinePolicyProps' }).first();
+    await expect(result).toBeVisible({ timeout: 15_000 });
+    await expect(result).toContainText('CfnQueueInlinePolicyProps');
+    await expect(result).not.toContainText('wbr');
+    expect((await result.getAttribute('data-value'))?.split('#')[0]).toBe(LONG_TITLE_PAGE);
   });
 
   test('the search dialog opens and closes', async ({ page }) => {

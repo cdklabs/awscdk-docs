@@ -184,6 +184,8 @@ function render(node: Node): string {
       return `\`${textOf(el)}\``;
     case 'br':
       return ' ';
+    case 'wbr':
+      return '';
     case 'summary':
       return '';
     case 'li':

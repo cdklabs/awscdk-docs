@@ -35,7 +35,8 @@ export function ignoreBlock(lines: string[]): string[] {
  * already carry a `<Badge>`), so the span never leaks into titles.
  */
 export function weightedTitle(name: string): string {
-  return `<span data-pagefind-weight="10">${name}</span>`;
+  const breakable = name.replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/g, '<wbr>');
+  return `<span data-pagefind-weight="10">${breakable}</span>`;
 }
 
 /**
