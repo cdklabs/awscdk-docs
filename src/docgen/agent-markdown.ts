@@ -144,7 +144,8 @@ function publishedPageHref(href: string): string {
   const [, path, suffix = ''] = /^([^?#]*)(.*)$/.exec(href)!;
   const base = siteBase();
   const sitePath = path.startsWith(base) ? `/${path.slice(base.length)}` : path;
-  const isSitePage = sitePath.startsWith(API_ROOT) || sitePath === STABILITY_ROUTE || sitePath === VERSIONS_ROUTE;
+  const route = sitePath.replace(/\.html$/, '');
+  const isSitePage = sitePath.startsWith(API_ROOT) || route === STABILITY_ROUTE || route === VERSIONS_ROUTE;
   if (!isSitePage || /[\s\\]/.test(sitePath)) {
     return href;
   }
