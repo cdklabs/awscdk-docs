@@ -1065,7 +1065,7 @@ describe('API page layout', () => {
       expect(css()).toMatch(
         /\.member-list \.member-row:target :is\(\.member-summary, \.member-extra, \.member-details\) a \{[^}]*color: var\(--vp-c-brand-2\)/,
       );
-      expect(css()).not.toMatch(/\.member-row:target a:not\(/);
+      expect(css()).not.toMatch(/\.member-row:target\s+a\b/);
     });
 
     test('generated tooltip data is gitignored', () => {
