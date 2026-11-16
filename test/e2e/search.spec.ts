@@ -257,4 +257,97 @@ test.describe('pagefind search', () => {
       await expect(button).toHaveText(/Search/);
     });
   });
+
+  // Preventing Escape's default while search is open is meant to keep Firefox
+  // for macOS in fullscreen. Fullscreen cannot be driven in CI, so these assert
+  // the page's side of it: defaultPrevented on the Escape keydown, dialog open
+  // vs closed.
+  test.describe('Escape and the browser default', () => {
+    // Bubble-phase window listener, added after the theme's capture-phase one,
+    // so it sees the final defaultPrevented of every keydown. It also records
+    // whether the dialog was in its leave transition when each Escape fired.
+    type Recorded = { __escapes: boolean[]; __leaving: boolean[] };
+    async function recordEscapes(page: import('@playwright/test').Page) {
+      await page.evaluate(() => {
+        const w = window as unknown as Recorded;
+        w.__escapes = [];
+        w.__leaving = [];
+        window.addEventListener('keydown', (e) => {
+          if (e.key !== 'Escape') return;
+          w.__escapes.push(e.defaultPrevented);
+          w.__leaving.push(document.querySelector('.command-dialog-leave-active') !== null);
+        });
+      });
+    }
+    const escapes = (page: import('@playwright/test').Page) =>
+      page.evaluate(() => (window as unknown as Recorded).__escapes);
+    const leaving = (page: import('@playwright/test').Page) =>
+      page.evaluate(() => (window as unknown as Recorded).__leaving);
+
+    test('Escape in the open dialog is prevented and still closes it', async ({ page }) => {
+      await page.goto('/');
+      await recordEscapes(page);
+
+      await page.locator('.blog-search button').click();
+      const input = page.locator('#search-input');
+      await expect(input).toBeVisible();
+
+      await page.keyboard.press('Escape');
+      await expect(input).toBeHidden();
+      expect(await escapes(page)).toEqual([true]);
+    });
+
+    test('a second Escape while the dialog fades out keeps its default', async ({ page }) => {
+      await page.goto('/');
+      await recordEscapes(page);
+
+      await page.locator('.blog-search button').click();
+      await expect(page.locator('#search-input')).toBeVisible();
+
+      // The first press closes search; the second lands while the dialog is
+      // still in its leave transition and must keep its default.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.command-dialog-leave-active')).toHaveCount(1);
+      await page.keyboard.press('Escape');
+      // The plugin starts the leave transition from its own keydown listener,
+      // before this recorder runs, so only the second entry is meaningful.
+      expect((await leaving(page))[1]).toBe(true);
+      expect(await escapes(page)).toEqual([true, false]);
+    });
+
+    test('Escape with the dialog closed keeps its default', async ({ page }) => {
+      await page.goto('/');
+      await recordEscapes(page);
+
+      // Positive control first: a prevented Escape proves the theme's listener
+      // is installed before the closed-dialog press is checked.
+      await page.locator('.blog-search button').click();
+      await expect(page.locator('#search-input')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.locator('[command-dialog]')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      expect(await escapes(page)).toEqual([true, false]);
+    });
+
+    test('typing in the open dialog keeps its default', async ({ page }) => {
+      await page.goto('/');
+      await page.locator('.blog-search button').click();
+      const input = page.locator('#search-input');
+      await expect(input).toBeVisible();
+      await input.pressSequentially('Topic');
+      await expect(input).toHaveValue('Topic');
+    });
+
+    test('Escape in the navigation filter keeps its default and clears it', async ({ page }) => {
+      await page.goto(SQS_OVERVIEW_PAGE);
+      const filter = page.locator('.nav-filter-input');
+      await expect(filter).toBeVisible();
+      await recordEscapes(page);
+
+      await filter.fill('Queue');
+      await filter.press('Escape');
+      await expect(filter).toHaveValue('');
+      expect(await escapes(page)).toEqual([false]);
+    });
+  });
 });
