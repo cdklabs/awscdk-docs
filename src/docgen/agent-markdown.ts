@@ -4,8 +4,8 @@
  * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
  * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
- * consume: the canonical (TypeScript) variant only; headings, prose, fenced code, tables and links preserved;
- * member lists rewritten as bullet lists; everything that exists for the browser dropped.
+ * consume: the canonical (TypeScript) variant only; headings, prose, fenced code and tables preserved; site links
+ * made absolute; member lists rewritten as bullet lists; everything that exists for the browser dropped.
  *
  * It is a transform over the finished page rather than a second renderer so there is one source of truth for the
  * documentation content itself. The HTML is walked with a real parser: the member markup nests spans several deep
@@ -15,7 +15,8 @@ import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { API_ROOT, STABILITY_ROUTE, VERSIONS_ROUTE } from '../site-routes.js';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE } from './languages.js';
-import { pageHref } from './links.js';
+import { pageHref, siteBase } from './links.js';
+import { docsSiteUrl } from './versions.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -31,6 +32,7 @@ const isElement = (n: Node): n is Element => n.type === ElementType.Tag;
  * line indented. Set per transform; the renderer is synchronous.
  */
 let restoreProtected: (s: string) => string = (s) => s;
+let publishedSiteUrl = '';
 
 /** Result of transforming one page. */
 export interface AgentMarkdown {
@@ -38,9 +40,10 @@ export interface AgentMarkdown {
 }
 
 /** Produce the agent-oriented twin of a generated VitePress page. */
-export function toAgentMarkdown(page: string): AgentMarkdown {
+export function toAgentMarkdown(page: string, siteUrl = docsSiteUrl()): AgentMarkdown {
   const { text, restore } = protectCode(stripFrontmatter(page));
   restoreProtected = restore;
+  publishedSiteUrl = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`;
   // `<Badge … />` is a Vue component, self-closed in the source; without the flag the parser would open it and
   // swallow the rest of the page. Tag names keep their case so an unknown one can be put back verbatim.
   const doc = parseDocument(text, {
@@ -139,11 +142,16 @@ function inline(el: Element): string {
 /** Canonicalize a generated page target while preserving its query or fragment. */
 function publishedPageHref(href: string): string {
   const [, path, suffix = ''] = /^([^?#]*)(.*)$/.exec(href)!;
-  const isSitePage = path.startsWith(API_ROOT) || path === STABILITY_ROUTE || path === VERSIONS_ROUTE;
-  if (!isSitePage || path.endsWith('.html') || /[\s\\]/.test(path)) {
+  const base = siteBase();
+  const sitePath = path.startsWith(base) ? `/${path.slice(base.length)}` : path;
+  const isSitePage = sitePath.startsWith(API_ROOT) || sitePath === STABILITY_ROUTE || sitePath === VERSIONS_ROUTE;
+  if (!isSitePage || /[\s\\]/.test(sitePath)) {
     return href;
   }
-  return `${pageHref(path)}${suffix}`;
+  const relative = sitePath.endsWith('.html')
+    ? sitePath.replace(/^\/+/, '')
+    : pageHref(sitePath).slice(base.length);
+  return `${new URL(relative, publishedSiteUrl).href}${suffix}`;
 }
 
 /** Rewrite Markdown link targets while leaving standalone code spans unchanged. */

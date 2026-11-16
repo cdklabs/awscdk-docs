@@ -84,8 +84,10 @@ components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `<div>`s; member lists become bullets, the type hierarchy becomes
 `Extends:`/`Implements:` lines, `:::` containers become titled blockquotes.
 Headings, prose, fenced code and tables pass through. Links keep their text and
-external target; site page links use `pageHref()` so the base path, `.html`
-suffix and fragment match the published anchors.
+external target. Site page links use `pageHref()` for the `.html` route, then
+`DOCS_SITE_URL` to become absolute URLs. They target the rendered page rather
+than another twin, so the same link works when the Markdown is fetched, saved or
+pasted without a site origin.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the
