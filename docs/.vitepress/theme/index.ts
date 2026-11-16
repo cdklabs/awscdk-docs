@@ -6,7 +6,7 @@
 // code-block theme).
 import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme-without-fonts";
-import { h } from "vue";
+import { h, onMounted } from "vue";
 import ApiSidebar from "./ApiSidebar.vue";
 import { initCodeTheme } from "./code-theme";
 import { applyFoldoutsAfterNavigation, initDensity } from "./density";
@@ -97,7 +97,6 @@ const theme: Theme = {
     router.onAfterRouteChange = async (to) => {
       await previousAfterRouteChange?.(to);
       applyFoldoutsAfterNavigation();
-      markSearchShortcuts();
     };
     installTypeTooltips(siteData.value.themeConfig.typeSummariesAsset ?? "");
     installFavoritesSearchBoost();
@@ -107,6 +106,10 @@ const theme: Theme = {
     // where the first search silently returns an empty result. Runs after the
     // favorites trap so the warmed handle still gets filters + boosting.
     warmSearchIndex();
+  },
+  setup() {
+    // Runs inside the root component, so the navbar search button exists once mounted.
+    onMounted(markSearchShortcuts);
   },
 };
 

@@ -21,6 +21,7 @@ export interface HotkeyEvent {
   altKey: boolean;
   defaultPrevented: boolean;
   isComposing?: boolean;
+  getModifierState?(key: string): boolean;
   target: unknown;
 }
 
@@ -42,13 +43,14 @@ export function isEditableTarget(target: unknown): boolean {
 
 /**
  * Whether a keydown is the plain `/` shortcut: no modifier, focus outside every
- * editable element, and the dialog not already open.
+ * editable element, and the dialog not already open. AltGr reports as Ctrl+Alt
+ * on Windows yet types a plain character, so it does not count as a modifier.
  */
 export function isSearchHotkey(event: HotkeyEvent, dialogOpen: boolean): boolean {
+  const altGraph = event.getModifierState?.('AltGraph') === true;
   return event.key === '/'
-    && !event.ctrlKey
+    && (altGraph || (!event.ctrlKey && !event.altKey))
     && !event.metaKey
-    && !event.altKey
     && !event.defaultPrevented
     && event.isComposing !== true
     && !dialogOpen
@@ -61,15 +63,18 @@ const g = globalThis as {
     querySelector(selector: string): { click(): void; setAttribute(name: string, value: string): void } | null;
     addEventListener(type: 'keydown', listener: (event: HotkeyEvent & { preventDefault(): void }) => void): void;
   };
-  requestAnimationFrame?: (callback: () => void) => number;
 };
 
-/** Stamp `aria-keyshortcuts` on the navbar search button when it is in the DOM. */
+/**
+ * Stamp `aria-keyshortcuts` on the navbar search button. Call it once the app is
+ * mounted: the plugin renders the button inside the persistent navbar, so one
+ * stamp after mount covers every page, in production and under the dev server.
+ */
 export function markSearchShortcuts(): void {
   g.document?.querySelector(SEARCH_BUTTON_SELECTOR)?.setAttribute('aria-keyshortcuts', SEARCH_KEYSHORTCUTS);
 }
 
-/** Install the `/` shortcut and the shortcut announcement. No-op on the server. */
+/** Install the `/` shortcut on the document. No-op on the server. */
 export function installSearchHotkeys(): void {
   const doc = g.document;
   if (!doc) {
@@ -86,6 +91,4 @@ export function installSearchHotkeys(): void {
     event.preventDefault();
     button.click();
   });
-  // The button is hydrated after enhanceApp returns, so stamp it on the next frame.
-  (g.requestAnimationFrame ?? ((callback) => callback()))(markSearchShortcuts);
 }

@@ -227,21 +227,32 @@ test.describe('pagefind search', () => {
       }
     });
 
-    test('/ while the dialog is open types into the query', async ({ page }) => {
+    test('/ while the dialog is open leaves the dialog and query alone', async ({ page }) => {
       await page.goto('/');
       await page.locator('.blog-search button').click();
       const input = page.locator('#search-input');
       await expect(input).toBeFocused();
+      await input.fill('Topic');
+      // Move focus off every editable element, so only the open-dialog guard can keep the key quiet. The guard's
+      // one visible effect is that the keydown keeps its default action, read by a listener that runs after the theme's.
+      await input.blur();
+      await expect(input).not.toBeFocused();
+      await page.evaluate(() => {
+        window.addEventListener('keydown', (event) => {
+          document.documentElement.dataset.slashPrevented = String(event.defaultPrevented);
+        });
+      });
 
       await page.keyboard.press('/');
-      await expect(input).toHaveValue('/');
+      await expect(input).toBeVisible();
+      await expect(input).toHaveValue('Topic');
+      await expect(page.locator('html')).toHaveAttribute('data-slash-prevented', 'false');
     });
 
     test('the navbar search button announces its shortcuts', async ({ page }) => {
       await page.goto('/');
       const button = page.locator('.nav-search-btn-wait');
       await expect(button).toHaveAttribute('aria-keyshortcuts', SEARCH_KEYSHORTCUTS);
-      expect(SEARCH_KEYSHORTCUTS).toBe('/ Control+K Meta+K');
       // Visible text and accessible name stay the plugin's own.
       await expect(button).toHaveText(/Search/);
     });

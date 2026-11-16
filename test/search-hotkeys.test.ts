@@ -38,6 +38,13 @@ describe('search hotkeys', () => {
     expect(isSearchHotkey(keydown({ altKey: true }), false)).toBe(false);
   });
 
+  test('AltGr, reported as Ctrl+Alt on Windows, still types the shortcut', () => {
+    const altGraph = (key: string) => key === 'AltGraph';
+    expect(isSearchHotkey(keydown({ ctrlKey: true, altKey: true, getModifierState: altGraph }), false)).toBe(true);
+    expect(isSearchHotkey(keydown({ ctrlKey: true, altKey: true, getModifierState: () => false }), false)).toBe(false);
+    expect(isSearchHotkey(keydown({ metaKey: true, getModifierState: altGraph }), false)).toBe(false);
+  });
+
   test('focus in an editable element keeps the slash a character', () => {
     for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT']) {
       expect(isEditableTarget({ tagName })).toBe(true);
