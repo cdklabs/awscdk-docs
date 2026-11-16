@@ -124,8 +124,10 @@ the type metadata, and Markdown links in jsii summaries via
 `escapeAttr` and the text with `escapeVueText`, and open in a new tab with
 the shared `EXTERNAL_LINK_ATTRS` constant in `escape.ts`:
 `target="_blank" rel="noopener noreferrer"`. One constant keeps every
-external link identical; VitePress's own rendered-prose default
-(`rel="noreferrer"`) is not reused because raw HTML bypasses that renderer.
+docgen-emitted external link identical; authored pages and theme components
+(`versions.md`, the footers) keep their own `rel` values, and VitePress's
+rendered-prose default (`rel="noreferrer"`) is not reused because raw HTML
+bypasses that renderer.
 
 Rejected alternatives: emitting markdown links (cannot carry CSS classes,
 and markdown inside `v-pre` is not processed); client-side `withBase`
@@ -225,7 +227,7 @@ dropped, so the failure mode is a leftover list, never lost prose.
   Generated markdown becomes base-dependent when `DOCS_BASE` is set; safe
   because every docs task regenerates before building. Any future raw-HTML
   cross-reference anchor must build its href via `pageHref()`; any raw-HTML
-  anchor to an external site carries `EXTERNAL_LINK_ATTRS`.
+  anchor docgen emits to an external site carries `EXTERNAL_LINK_ATTRS`.
 - All escaping shares one reviewed implementation; new escape contexts add
   a named helper in `escape.ts` rather than a fresh `.replace()` chain.
 - The six fence-aware passes cannot disagree about fence boundaries;

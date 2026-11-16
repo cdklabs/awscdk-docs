@@ -491,8 +491,9 @@ a.chain-item:hover {
 
 /* Links inside a targeted row sit on `--vp-c-bg-soft`, where brand-1 measures
    only 4.22:1 (see `.type-metadata-value a`); brand-2 keeps summary and prose
-   links at AA contrast there. The permalink keeps its own muted color. */
-.member-list .member-row:target a:not(.member-permalink) {
+   links at AA contrast there. Scoped to the prose containers so header-line
+   type links keep `--api-c-type` and the permalink keeps its muted color. */
+.member-list .member-row:target :is(.member-summary, .member-extra, .member-details) a {
   color: var(--vp-c-brand-2);
 }
 
