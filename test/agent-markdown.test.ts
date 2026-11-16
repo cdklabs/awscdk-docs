@@ -122,7 +122,8 @@ describe('toAgentMarkdown', () => {
         '<a href="/v2/docs/aws-cdk-lib.aws_s3.Bucket#objects">Bucket</a>',
         '<a href="/cdk/api/stability.html">Experimental</a>',
         'Keep [canonical](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
-        '[twin](/v2/docs/Other.md), and [data](/v2/data.json).',
+        '[twin](/v2/docs/Other.md), [Map](/v2/docs/aws-cdk-lib.aws_stepfunctions.Map),',
+        '[map twin](/v2/docs/aws-cdk-lib.aws_stepfunctions.Map.md), and [data](/v2/data.json).',
         '[external](https://docs.aws.amazon.com/), and [local](#properties).',
         'Keep [wiki](https://en.wikipedia.org/wiki/Foo_\\(bar\\)) and [pipe](https://example.com/a\\|b).',
         'Keep `[code](/v2/docs/Code)` unchanged; [escaped](/v2/docs/a\\_b) resolves too.',
@@ -137,7 +138,8 @@ describe('toAgentMarkdown', () => {
         '[Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects)',
         '[Experimental](https://docs.example.com/cdk/api/stability.html)',
         'Keep [canonical](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
-        '[twin](https://docs.example.com/cdk/api/v2/docs/Other.html), and [data](https://docs.example.com/cdk/api/v2/data.json).',
+        '[twin](https://docs.example.com/cdk/api/v2/docs/Other.html), [Map](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_stepfunctions.Map.html),',
+        '[map twin](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_stepfunctions.Map.html), and [data](https://docs.example.com/cdk/api/v2/data.json).',
         '[external](https://docs.aws.amazon.com/), and [local](#properties).',
         'Keep [wiki](https://en.wikipedia.org/wiki/Foo_\\(bar\\)) and [pipe](https://example.com/a\\|b).',
         'Keep `[code](/v2/docs/Code)` unchanged; [escaped](https://docs.example.com/cdk/api/v2/docs/a_b.html) resolves too.',
@@ -153,6 +155,11 @@ describe('toAgentMarkdown', () => {
         process.env.DOCS_BASE = previousBase;
       }
     }
+  });
+
+  test('handles many escaped label characters without backtracking', () => {
+    const page = `[${'\\_'.repeat(40)}] text\n`;
+    expect(toAgentMarkdown(page).markdown).toBe(page);
   });
 
   test('recognizes the published base when DOCS_BASE differs', () => {

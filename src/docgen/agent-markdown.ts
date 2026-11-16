@@ -153,14 +153,14 @@ function publishedPageHref(href: string): string {
     return href;
   }
 
-  const asset = /\.(?:txt|json|xml|png|svg|jpe?g|gif|webp|css|js|map|ico|pdf|zip)$/i;
+  const asset = /\.(?:txt|json|xml|png|svg|jpe?g|gif|webp|css|js|map|ico|pdf|zip)$/;
   if (sitePath.startsWith(API_ROOT) && sitePath.endsWith('.md')) {
     sitePath = sitePath.slice(0, -3);
   }
   const route = sitePath.replace(/\.html$/, '');
   const isKnownPage = sitePath.startsWith(API_ROOT) || route === STABILITY_ROUTE || route === VERSIONS_ROUTE;
   const isPage = (isKnownPage && !asset.test(sitePath))
-    || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/i.test(sitePath));
+    || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/.test(sitePath));
   const relative = isPage && !sitePath.endsWith('.html')
     ? pageHref(sitePath).slice(base.length)
     : sitePath.replace(/^\/+/, '');
@@ -174,7 +174,7 @@ function unescapeMarkdownHref(href: string): string {
 
 /** Rewrite Markdown link targets while leaving standalone code spans unchanged. */
 function rewriteMarkdownLinks(text: string): string {
-  const linkOrCode = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|(?<!!)\[((?:\\.|[^\]\n])+)\]\(([^\s)]+)\)/g;
+  const linkOrCode = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|(?<!!)\[((?:\\.|[^\\\]\n])+)\]\(([^\s)]+)\)/g;
   return text.replace(linkOrCode, (match, delimiter: string, label: string, href: string) => {
     if (delimiter) {
       return match;
