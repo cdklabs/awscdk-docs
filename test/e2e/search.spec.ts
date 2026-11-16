@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { SQS_OVERVIEW_PAGE } from './fixture.js';
+import { SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 import { MAX_SEARCH_RESULTS, MODULE_HINT_CLASS } from '../../docs/.vitepress/theme/search-client.js';
+import { SEARCH_KEYSHORTCUTS } from '../../docs/.vitepress/theme/search-hotkeys.js';
 
 // Pagefind static search (vitepress-plugin-pagefind): the navbar
 // search button opens the search dialog; querying a symbol documented in the
@@ -181,5 +182,68 @@ test.describe('pagefind search', () => {
 
     await page.keyboard.press('Escape');
     await expect(input).toBeHidden();
+  });
+
+  // The `/` shortcut lives in the theme (search-hotkeys.ts), not in the plugin,
+  // which only listens for Cmd+K / Ctrl+K and keeps its open state private.
+  test.describe('/ shortcut', () => {
+    test('/ opens search with the query input focused and empty', async ({ page }) => {
+      await page.goto('/');
+      await expect(page.locator('.nav-search-btn-wait')).toBeVisible();
+
+      await page.keyboard.press('/');
+      const input = page.locator('#search-input');
+      await expect(input).toBeVisible();
+      await expect(input).toBeFocused();
+      // The keydown's default action is prevented, so the slash is not typed.
+      await expect(input).toHaveValue('');
+    });
+
+    test('/ opens search on the 404 page too', async ({ page }) => {
+      await page.goto('/v2/docs/aws-cdk-lib.aws_s3.NoSuchThing');
+      await expect(page.locator('.nav-search-btn-wait')).toBeVisible();
+
+      await page.keyboard.press('/');
+      await expect(page.locator('#search-input')).toBeVisible();
+    });
+
+    test('/ inside the navigation filter types a slash and does not open search', async ({ page }) => {
+      await page.goto(TOPIC_PAGE);
+      const filter = page.getByRole('textbox', { name: 'Filter navigation in the sidebar' });
+      await filter.focus();
+
+      await page.keyboard.press('/');
+      await expect(filter).toHaveValue('/');
+      await expect(page.locator('#search-input')).toHaveCount(0);
+    });
+
+    test('/ with a modifier held does not open search', async ({ page }) => {
+      await page.goto('/');
+      await expect(page.locator('.nav-search-btn-wait')).toBeVisible();
+
+      for (const combo of ['Control+/', 'Meta+/', 'Alt+/']) {
+        await page.keyboard.press(combo);
+        await expect(page.locator('#search-input')).toHaveCount(0);
+      }
+    });
+
+    test('/ while the dialog is open types into the query', async ({ page }) => {
+      await page.goto('/');
+      await page.locator('.blog-search button').click();
+      const input = page.locator('#search-input');
+      await expect(input).toBeFocused();
+
+      await page.keyboard.press('/');
+      await expect(input).toHaveValue('/');
+    });
+
+    test('the navbar search button announces its shortcuts', async ({ page }) => {
+      await page.goto('/');
+      const button = page.locator('.nav-search-btn-wait');
+      await expect(button).toHaveAttribute('aria-keyshortcuts', SEARCH_KEYSHORTCUTS);
+      expect(SEARCH_KEYSHORTCUTS).toBe('/ Control+K Meta+K');
+      // Visible text and accessible name stay the plugin's own.
+      await expect(button).toHaveText(/Search/);
+    });
   });
 });

@@ -132,6 +132,19 @@ forking the UI:
   `ranking` key in `pagefind.yml`), so it must be set on the loaded module in the
   browser.
 
+### Keyboard shortcuts (theme, `search-hotkeys.ts`)
+
+The plugin opens its dialog on Cmd+K and Ctrl+K and keeps the open state
+private. The theme adds `/`, the shortcut most documentation sites use, without
+forking the plugin: a document `keydown` listener opens search by clicking the
+plugin's navbar trigger (`.nav-search-btn-wait`) and prevents the default so the
+slash is not typed. It fires only for a plain `/` (no Ctrl, Meta or Alt) while
+focus is outside every editable element (`input`, `textarea`, `select`,
+`contenteditable`) and the dialog is closed, so the navigation filter and the
+query input still receive a typed slash. The navbar button announces every
+opening shortcut through `aria-keyshortcuts` (`/ Control+K Meta+K`); its visible
+text and accessible name stay the plugin's own, and no visible `/` hint is added.
+
 ### Canonical-language indexing (docgen, `src/docgen/variants.ts`)
 
 Every symbol page embeds language-variant regions (signatures, member names,

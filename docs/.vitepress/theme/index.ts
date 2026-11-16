@@ -21,6 +21,7 @@ import NavSiteTitle from "./NavSiteTitle.vue";
 import NotFound from "./NotFound.vue";
 import PageFooterLinks from "./PageFooterLinks.vue";
 import { warmSearchIndex } from "./search-client";
+import { installSearchHotkeys, markSearchShortcuts } from "./search-hotkeys";
 import SettingsMenu from "./SettingsMenu.vue";
 import SiteFooter from "./SiteFooter.vue";
 import BackToTop from "./BackToTop.vue";
@@ -96,9 +97,12 @@ const theme: Theme = {
     router.onAfterRouteChange = async (to) => {
       await previousAfterRouteChange?.(to);
       applyFoldoutsAfterNavigation();
+      markSearchShortcuts();
     };
     installTypeTooltips(siteData.value.themeConfig.typeSummariesAsset ?? "");
     installFavoritesSearchBoost();
+    // `/` opens the Pagefind dialog beside the plugin's own Cmd+K / Ctrl+K.
+    installSearchHotkeys();
     // Eagerly initialize Pagefind: the plugin's own idle loader leaves a window
     // where the first search silently returns an empty result. Runs after the
     // favorites trap so the warmed handle still gets filters + boosting.
