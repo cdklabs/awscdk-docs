@@ -1056,6 +1056,16 @@ describe('API page layout', () => {
       expect(css()).toContain('flex-direction: column');
     });
 
+    test('links in a targeted row use brand-2 on the soft surface', () => {
+      // `:target` tints the row with `--vp-c-bg-soft`, where brand-1 measures
+      // 4.22:1 (below AA); a summary link or prose link landing there must
+      // switch to brand-2 like `.type-metadata-value a` already does. The
+      // permalink keeps its own muted color, so it is excluded.
+      expect(css()).toMatch(
+        /\.member-list \.member-row:target a:not\(\.member-permalink\) \{[^}]*color: var\(--vp-c-brand-2\)/,
+      );
+    });
+
     test('generated tooltip data is gitignored', () => {
       const gitignore = readFileSync(join(ROOT, '.gitignore'), 'utf-8');
       expect(gitignore).toContain('docs/public/api-sidebar/');

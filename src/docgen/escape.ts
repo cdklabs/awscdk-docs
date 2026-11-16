@@ -49,23 +49,33 @@ export function escapeAttr(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * The `target` and `rel` attributes every raw-HTML anchor to an external site
+ * carries, so all of docgen's external links open the same way: in a new tab,
+ * without a window handle (`noopener`) or a referrer (`noreferrer`) for the
+ * destination. One constant keeps the metadata links in `constructs.ts` and
+ * the summary links here identical; the ADR records the rule.
+ */
+export const EXTERNAL_LINK_ATTRS = 'target="_blank" rel="noopener noreferrer"';
+
 /** A Markdown link `[text](http(s)://url)`; only web targets qualify, anything else stays text. */
 const WEB_LINK = /\[([^\[\]]+)\]\((https?:\/\/[^\s()<>]+)\)/g;
 
 /**
  * Escape a one-line prose summary for raw HTML embedded in VitePress markdown,
- * rendering a Markdown link `[text](url)` to a web target as an anchor that
- * opens in a new tab, like every other external link docgen emits. Every piece
- * of text, including the link text, goes through `escapeVueText` and the href
- * through `escapeAttr`, so no raw markup from a jsii summary reaches the page;
- * a summary without a web link is exactly `escapeVueText(summary)`.
+ * rendering a Markdown link `[text](url)` to a web target as an anchor with
+ * `EXTERNAL_LINK_ATTRS`, exactly like the other external links docgen emits.
+ * Every piece of text, including the link text, goes through `escapeVueText`
+ * and the href through `escapeAttr`, so no raw markup from a jsii summary
+ * reaches the page; a summary without a web link is exactly
+ * `escapeVueText(summary)`.
  */
 export function escapeSummaryHtml(summary: string): string {
   let html = '';
   let end = 0;
   for (const match of summary.matchAll(WEB_LINK)) {
     html += escapeVueText(summary.slice(end, match.index));
-    html += `<a href="${escapeAttr(match[2])}" target="_blank" rel="noopener noreferrer">${escapeVueText(match[1])}</a>`;
+    html += `<a href="${escapeAttr(match[2])}" ${EXTERNAL_LINK_ATTRS}>${escapeVueText(match[1])}</a>`;
     end = match.index + match[0].length;
   }
   return html + escapeVueText(summary.slice(end));

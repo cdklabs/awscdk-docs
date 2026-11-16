@@ -489,6 +489,13 @@ a.chain-item:hover {
   background-color: var(--vp-c-bg-soft);
 }
 
+/* Links inside a targeted row sit on `--vp-c-bg-soft`, where brand-1 measures
+   only 4.22:1 (see `.type-metadata-value a`); brand-2 keeps summary and prose
+   links at AA contrast there. The permalink keeps its own muted color. */
+.member-list .member-row:target a:not(.member-permalink) {
+  color: var(--vp-c-brand-2);
+}
+
 /* The header line wraps rather than clamping: it holds a full method
    signature, which cannot be truncated without hiding a parameter. */
 .member-list .member-line {

@@ -1,6 +1,6 @@
 import * as spec from '@jsii/spec';
 import { anchoredHeading, PROPS_ANCHOR_PREFIX, SECTION_ANCHORS } from './anchors.js';
-import { escapeAttr, escapeVueText } from './escape.js';
+import { escapeAttr, escapeVueText, EXTERNAL_LINK_ATTRS } from './escape.js';
 import { exampleSection } from './examples.js';
 import { PageHistory } from './history.js';
 import { DEFAULT_LANGUAGE, Language } from './languages.js';
@@ -224,7 +224,7 @@ export function typeMetadataRows(
   if (cfn) {
     rows.push({
       label: 'CloudFormation',
-      value: `<a href="${escapeAttr(cfn.docsUrl)}" target="_blank" rel="noopener">`
+      value: `<a href="${escapeAttr(cfn.docsUrl)}" ${EXTERNAL_LINK_ATTRS}>`
         + `<code>${escapeVueText(cfn.resourceType)}</code></a>`,
     });
   }
@@ -241,7 +241,7 @@ export function typeMetadataRows(
     rows.push({
       label: 'Source',
       value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(source.url)}"`
-        + ` target="_blank" rel="noopener"><code>${escapeVueText(source.label)}</code></a>`,
+        + ` ${EXTERNAL_LINK_ATTRS}><code>${escapeVueText(source.label)}</code></a>`,
     });
   } else if (isGeneratedSource(type)) {
     rows.push({

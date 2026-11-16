@@ -496,7 +496,7 @@ describe('construct page generation', () => {
     expect(chain).toBeGreaterThan(-1);
     expect(metadata).toBeGreaterThan(chain);
     expect(example).toBeGreaterThan(metadata);
-    expect(page).toMatch(/<dd class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/dd>/);
+    expect(page).toMatch(/<dd class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener noreferrer"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/dd>/);
     // Breadcrumb module hierarchy above the H1
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>Bucket</strong>');
     // The link text carries no full file path, which would be noise
@@ -545,7 +545,7 @@ describe('construct page generation', () => {
     expect(page).toContain(
       '<dt class="type-metadata-label">CloudFormation</dt><dd class="type-metadata-value">'
       + '<a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html"'
-      + ' target="_blank" rel="noopener"><code>AWS::S3::Bucket</code></a></dd>',
+      + ' target="_blank" rel="noopener noreferrer"><code>AWS::S3::Bucket</code></a></dd>',
     );
     expect(page).not.toContain('Defines the [`AWS::S3::Bucket`]');
     // No in-site self-link and no L1 row on the L1 page
@@ -564,7 +564,7 @@ describe('construct page generation', () => {
     expect(page).toContain(
       '<dt class="type-metadata-label">CloudFormation</dt><dd class="type-metadata-value">'
       + '<a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html"'
-      + ' target="_blank" rel="noopener"><code>AWS::S3::Bucket</code></a></dd>',
+      + ' target="_blank" rel="noopener noreferrer"><code>AWS::S3::Bucket</code></a></dd>',
     );
     expect(page).toContain(
       '<dt class="type-metadata-label">L1 type</dt><dd class="type-metadata-value">'
