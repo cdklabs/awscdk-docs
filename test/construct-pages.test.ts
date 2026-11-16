@@ -17,6 +17,7 @@ import {
 } from '../src/docgen/constructs.js';
 import { generateDocs, loadAssembly as loadCachedAssembly } from '../src/docgen/index.js';
 import { upstreamSourceUrl } from '../src/docgen/provenance.js';
+import { TRACKED_PACKAGES } from '../src/docgen/versions.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -184,6 +185,8 @@ describe('construct detection and classification', () => {
     const rows = typeMetadataRows(featureFlag, cdk, index, (fqn) => `/v2/docs/${fqn}`);
     const source = rows.find((r) => r.label === 'Source')!;
     expect(source.value).toContain('aws/aws-cdk-cli/blob/HEAD/packages/@aws-cdk/cloud-assembly-schema/');
+    const tracked = TRACKED_PACKAGES.find((p) => p.name === '@aws-cdk/cloud-assembly-schema')!;
+    expect(sourceUrl(featureFlag, cdk)).toContain(`https://github.com/${tracked.repo}/blob/`);
     expect(source.value).toContain('<code>lib/cloud-assembly/artifact-schema.ts</code>');
     expect(source.value).not.toMatch(/node_modules|\.d\.ts/);
   });

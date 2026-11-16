@@ -124,13 +124,14 @@ function extendsFqn(fqn: string, baseFqn: string, index: TypeIndex): boolean {
 }
 
 /**
- * GitHub URL of the type's source file. A type in a repository the assembly names is pinned to the assembly's
- * version tag, with the declaration line. A type from a relocated package links to the default branch of the
- * repository that owns the package, with no line anchor.
- * Returns undefined for build-generated files (e.g. `*.generated.ts` L1 sources), which do not exist in the
- * repository, and for files under `node_modules` or declaration files in any other package.
+ * The link to a type's source file and the file path shown for it, resolved together so they cannot disagree.
+ * A type in a repository the assembly names is pinned to the assembly's version tag, with the declaration line.
+ * A type from a relocated package links to the default branch of the repository that owns the package, with no
+ * line anchor, and shows its path inside that package.
+ * Undefined for build-generated files (e.g. `*.generated.ts` L1 sources), which do not exist in the repository,
+ * and for files under `node_modules` or declaration files in any other package.
  */
-export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
+function resolveSource(type: spec.Type, assembly: spec.Assembly): { url: string; label: string } | undefined {
   const repo = assembly.repository;
   const loc = type.locationInModule;
   if (!loc || /\.generated\./.test(loc.filename)) {
@@ -138,14 +139,19 @@ export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | un
   }
   const relocated = relocatedSource(loc.filename);
   if (relocated) {
-    return relocated.url;
+    return { url: relocated.url, label: relocated.file };
   }
   if (!repo?.url || isUnlinkableSource(loc.filename)) {
     return undefined;
   }
   const base = repo.url.replace(/^git\+/, '').replace(/\.git$/, '');
   const dir = repo.directory ? `${repo.directory}/` : '';
-  return `${base}/blob/v${assembly.version}/${dir}${loc.filename}#L${loc.line}`;
+  return { url: `${base}/blob/v${assembly.version}/${dir}${loc.filename}#L${loc.line}`, label: loc.filename };
+}
+
+/** GitHub URL of the type's source file; see {@link resolveSource}. */
+export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
+  return resolveSource(type, assembly)?.url;
 }
 
 /**
@@ -230,14 +236,12 @@ export function typeMetadataRows(
         + `<code>${escapeVueText(shortName(cfn.l1Fqn))}</code></a>`,
     });
   }
-  const loc = type.locationInModule;
-  const url = sourceUrl(type, assembly);
-  if (url && loc) {
-    const sourceLabel = relocatedSource(loc.filename)?.file ?? loc.filename;
+  const source = resolveSource(type, assembly);
+  if (source) {
     rows.push({
       label: 'Source',
-      value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(url)}"`
-        + ` target="_blank" rel="noopener"><code>${escapeVueText(sourceLabel)}</code></a>`,
+      value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(source.url)}"`
+        + ` target="_blank" rel="noopener"><code>${escapeVueText(source.label)}</code></a>`,
     });
   } else if (isGeneratedSource(type)) {
     rows.push({

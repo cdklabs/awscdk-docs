@@ -135,10 +135,13 @@ export function upstreamReadmeUrl(assembly: spec.Assembly, id: string): string |
   return subDir ? `${prefix}${subDir}/README.md` : `${prefix}README.md`;
 }
 
+/** The `owner/repo` that owns `@aws-cdk/cloud-assembly-schema`, shared with the versions page. */
+export const CLOUD_ASSEMBLY_SCHEMA_REPO = 'aws/aws-cdk-cli';
+
 /** Packages whose types the assembly records under `node_modules`, mapped to the repository that owns them. */
 const RELOCATED_PACKAGES: Record<string, { repoUrl: string; directory: string }> = {
   '@aws-cdk/cloud-assembly-schema': {
-    repoUrl: 'https://github.com/aws/aws-cdk-cli',
+    repoUrl: `https://github.com/${CLOUD_ASSEMBLY_SCHEMA_REPO}`,
     directory: 'packages/@aws-cdk/cloud-assembly-schema',
   },
 };
