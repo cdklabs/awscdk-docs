@@ -94,9 +94,18 @@ export function renderThirdPartyLicenses(report: LicenseCheckerReport): string {
   return lines.join('\n');
 }
 
+// The bin file name changed between 4.x minors (bin/license-checker-rseidelsohn gained a .js suffix), so read it
+// from the package manifest.
+function defaultCheckerFile(): string {
+  const require = createRequire(import.meta.url);
+  const manifestPath = require.resolve('license-checker-rseidelsohn/package.json');
+  const { bin } = JSON.parse(readFileSync(manifestPath, 'utf8')) as { bin: Record<string, string> };
+  return join(manifestPath, '..', bin['license-checker-rseidelsohn']);
+}
+
 export function collectProductionLicenses(
   packageRoot: string,
-  checkerFile = createRequire(import.meta.url).resolve('license-checker/bin/license-checker'),
+  checkerFile = defaultCheckerFile(),
 ): LicenseCheckerReport {
   const output = execFileSync(
     process.execPath,

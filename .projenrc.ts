@@ -151,8 +151,9 @@ const project = new CdkTypeScriptProject({
     'lighthouse@^13.4.0',
     // Agent-readiness gate
     'botvisibility@^3.0.0',
-    // Generates the third-party license list (src/docgen/third-party-licenses.ts).
-    'license-checker@^25.0.1',
+    // Generates the third-party license list (src/docgen/third-party-licenses.ts). Same package and major as
+    // projen's checkLicenses uses from projen 0.105.
+    'license-checker-rseidelsohn@^4',
   ],
 });
 

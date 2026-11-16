@@ -697,6 +697,7 @@
             "jest",
             "jest-junit",
             "license-checker",
+            "license-checker-rseidelsohn",
             "lighthouse",
             "ts-jest",
             "tsx",
