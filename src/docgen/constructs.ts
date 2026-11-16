@@ -124,22 +124,23 @@ function extendsFqn(fqn: string, baseFqn: string, index: TypeIndex): boolean {
 }
 
 /**
- * GitHub URL of the type's source, pinned to the assembly's version tag.
- * Returns undefined for build-generated files (e.g. `*.generated.ts`
- * L1 sources), which do not exist in the repository, and for files under
- * `node_modules` or declaration files. A relocated package links to the
- * default branch of its owning repository, with no line anchor.
+ * GitHub URL of the type's source file. A type in a repository the assembly names is pinned to the assembly's
+ * version tag, with the declaration line. A type from a relocated package links to the default branch of the
+ * repository that owns the package, with no line anchor.
+ * Returns undefined for build-generated files (e.g. `*.generated.ts` L1 sources), which do not exist in the
+ * repository, and for files under `node_modules` or declaration files in any other package.
  */
 export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
   const repo = assembly.repository;
   const loc = type.locationInModule;
-  if (loc) {
-    const relocated = relocatedSource(loc.filename);
-    if (relocated) {
-      return relocated.url;
-    }
+  if (!loc || /\.generated\./.test(loc.filename)) {
+    return undefined;
   }
-  if (!repo?.url || !loc || /\.generated\./.test(loc.filename) || isUnlinkableSource(loc.filename)) {
+  const relocated = relocatedSource(loc.filename);
+  if (relocated) {
+    return relocated.url;
+  }
+  if (!repo?.url || isUnlinkableSource(loc.filename)) {
     return undefined;
   }
   const base = repo.url.replace(/^git\+/, '').replace(/\.git$/, '');
@@ -232,10 +233,11 @@ export function typeMetadataRows(
   const loc = type.locationInModule;
   const url = sourceUrl(type, assembly);
   if (url && loc) {
+    const sourceLabel = relocatedSource(loc.filename)?.file ?? loc.filename;
     rows.push({
       label: 'Source',
       value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(url)}"`
-        + ` target="_blank" rel="noopener"><code>${escapeVueText(relocatedSource(loc.filename)?.file ?? loc.filename)}</code></a>`,
+        + ` target="_blank" rel="noopener"><code>${escapeVueText(sourceLabel)}</code></a>`,
     });
   } else if (isGeneratedSource(type)) {
     rows.push({

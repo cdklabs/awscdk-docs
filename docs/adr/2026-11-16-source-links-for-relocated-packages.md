@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted. Extends [Edit Link on Type Pages](./2026-10-23-type-page-edit-link.md) without reversing it.
+Accepted. Amends [Edit Link on Type Pages](./2026-10-23-type-page-edit-link.md) for relocated packages only: it
+leaves that ADR's decision in force for every other type.
 
 ## Context
 
@@ -17,8 +18,8 @@ The package is maintained in the `aws-cdk-cli` repository, where the `.ts` file 
 ## Decision
 
 - **A type recorded under `node_modules` links to its `.ts` file in the repository that owns the package.**
-  `relocatedSource()` in `src/docgen/provenance.ts` holds the mapping. It currently lists only
-  `@aws-cdk/cloud-assembly-schema`, owned by `aws/aws-cdk-cli` under `packages/@aws-cdk/cloud-assembly-schema`.
+  The mapping lives in `RELOCATED_PACKAGES` in `src/docgen/provenance.ts`, which `relocatedSource()` reads. It
+  currently lists only `@aws-cdk/cloud-assembly-schema`, owned by `aws/aws-cdk-cli` under `packages/@aws-cdk/cloud-assembly-schema`.
 - **No source or edit link ever targets a `node_modules` path or a `.d.ts` file.** A type in an unmapped
   package gets no link, the same as a type with no recorded location.
 - **The `Source` row and the edit link use the same target.** Both point at the default branch (`HEAD`)
@@ -33,6 +34,10 @@ The package is maintained in the `aws-cdk-cli` repository, where the `.ts` file 
 - The FeatureFlag source link and edit link resolve to a real file.
 - A relocated type's `Source` row is not pinned to a release, unlike every other type's. A file renamed
   upstream breaks the link until a new assembly is built.
+- The linked file reflects the schema on the default branch of `aws-cdk-cli`, which can be newer than the version
+  bundled in the documented `aws-cdk-lib` release. A reader checking a type's shape against its Source row can see
+  a declaration that differs from the reference page.
+- A possible follow-up is to read the installed schema package's version and pin a matching `aws-cdk-cli` tag.
 - Supporting another relocated package means adding one entry to the mapping.
 
 ### Rejected alternatives

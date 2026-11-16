@@ -172,6 +172,17 @@ describe('upstream source URL for a type page', () => {
     expect(upstreamSourceUrl(featureFlag, cdkLib)).toBe(CLOUD_ASSEMBLY_SCHEMA_FILE);
   });
 
+  test('a generated or non-TypeScript file in a mapped package gets no link', () => {
+    const featureFlag = type(cdkLib, 'aws-cdk-lib.cloud_assembly_schema.FeatureFlag');
+    for (const filename of [
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/x.generated.d.ts',
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/schema.json',
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/../x.d.ts',
+    ]) {
+      expect(upstreamSourceUrl({ ...featureFlag, locationInModule: { filename, line: 1 } }, cdkLib)).toBeUndefined();
+    }
+  });
+
   test('no type gets a link into node_modules or to a declaration file', () => {
     const bucket = type(cdkLib, 'aws-cdk-lib.aws_s3.Bucket');
     for (const filename of ['node_modules/other-package/lib/thing.ts', 'aws-s3/lib/bucket.d.ts', 'node_modules/other-package/lib/thing.d.ts']) {

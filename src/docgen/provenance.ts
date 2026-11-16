@@ -170,16 +170,19 @@ export function relocatedSource(filename: string): { url: string; file: string }
  * A type page's prose comes from the docstrings in the file the type is
  * declared in (`locationInModule`), so that file is the edit target. It
  * follows the README rules above: the owning repository and package
- * directory come from the assembly, the ref is `HEAD`, and anything that is
- * not plain path data yields no link.
+ * directory come from the assembly, or from `RELOCATED_PACKAGES` for a
+ * package recorded under `node_modules`. The ref is `HEAD`, and anything
+ * that is not plain path data yields no link.
  *
  * No link for a build-generated file (`*.generated.*`, the L1 `Cfn*`
  * sources), which does not exist in the repository, nor for a type with
  * no recorded location, nor for a file under `node_modules` or a `.d.ts`
- * declaration. A type from a package listed in `RELOCATED_PACKAGES` links to
- * its `.ts` file in the repository that owns the package instead. Unlike the type page's version-pinned `Source` row,
- * the URL carries no line anchor: the line is the one in the released
- * version, and on the default branch it moves.
+ * declaration in an unmapped package.
+ *
+ * The URL carries no line anchor: the line is the one in the released
+ * version, and on the default branch it moves. The type page's `Source` row
+ * keeps the line and the version tag, except for a relocated type, whose row
+ * uses this same target.
  */
 export function upstreamSourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
   const filename = type.locationInModule?.filename;
