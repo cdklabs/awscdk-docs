@@ -31,9 +31,6 @@
 .glyph-clear {
   --glyph: url("./icons/clear.svg");
 }
-.glyph-enter {
-  --glyph: url("./icons/enter.svg");
-}
 .glyph-locate {
   --glyph: url("./icons/locate.svg");
 }

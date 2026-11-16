@@ -383,17 +383,75 @@ test.describe('in-sidebar symbol filter', () => {
     expect(await rowHeight()).toBe(reserved);
   });
 
-  test('the key glyph is decorative and the key name reaches assistive technology', async ({
-    page,
-  }) => {
+  test('the hint is one button whose name is its visible text', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await waitForSidebar(page);
     await filterInput(page).fill('Queue');
 
-    // A screen reader must not announce the glyph as a stray character, so the
-    // key is named in text and the drawing is hidden.
-    await expect(page.locator('.nav-filter-key .glyph')).toHaveAttribute('aria-hidden', 'true');
-    await expect(page.locator('.nav-filter-hint')).toContainText('Enter opens');
+    const hint = page.locator('.nav-filter-hint');
+    const button = hint.getByRole('button');
+    await expect(button).toHaveCount(1);
+    await expect(button.locator('kbd')).toHaveText('Enter');
+    await expect(button.locator('.glyph')).toHaveCount(0);
+
+    // WCAG 2.5.3: the accessible name is the visible text, nothing more.
+    const visible = (await button.innerText()).replace(/\s+/g, ' ').trim();
+    expect(visible).toMatch(/^Enter opens \S+/);
+    await expect(button).toHaveAccessibleName(visible);
+
+    // The live region stays polite and wraps the button.
+    await expect(hint).toHaveAttribute('aria-live', 'polite');
+  });
+
+  test('the hint button is at least 24 by 24 CSS pixels', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+    await filterInput(page).fill('Queue');
+
+    const box = await page.locator('.nav-filter-hint').getByRole('button').boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(24);
+    expect(box!.height).toBeGreaterThanOrEqual(24);
+  });
+
+  test('no hint button renders while the filter is empty', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+    await filterInput(page).fill('Queue');
+    await expect(page.locator('.nav-filter-hint').getByRole('button')).toHaveCount(1);
+    await filterInput(page).fill('');
+    await expect(page.locator('.nav-filter-hint').getByRole('button')).toHaveCount(0);
+  });
+
+  test('clicking the hint does what Enter does: opens the best match, clears and refocuses the input', async ({
+    page,
+  }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+
+    const input = filterInput(page);
+    await input.fill('Queue');
+    await page.locator('.nav-filter-hint').getByRole('button').click();
+
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue/);
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
+  });
+
+  test('Tab reaches the hint button after the input and Space activates it', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+
+    const input = filterInput(page);
+    await input.fill('Queue');
+    // The clear button sits between the input and the hint.
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Clear filter' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    const button = page.locator('.nav-filter-hint').getByRole('button');
+    await expect(button).toBeFocused();
+    await page.keyboard.press('Space');
+
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue/);
   });
 
   // Folding while filtering. Surviving groups start open, the reader can fold

@@ -126,13 +126,12 @@ function onKeydown(e: KeyboardEvent) {
     </div>
     <div class="nav-filter-status">
       <p class="nav-filter-hint" aria-live="polite">
-        <template v-if="best">
-          <kbd class="nav-filter-key"
-            ><span class="glyph glyph-enter nav-filter-enter-glyph" aria-hidden="true" /><span class="visually-hidden">Enter</span></kbd
-          >{{ ' ' }}
+        <!-- One button, so a pointer does what Enter does. Its name is its visible text. -->
+        <button v-if="best" type="button" class="nav-filter-hint-button" @click="onEnter">
+          <kbd class="nav-filter-key">Enter</kbd>{{ ' ' }}
           <span>opens</span>{{ ' ' }}
           <span class="nav-filter-best" :title="best.name">{{ best.name }}</span>
-        </template>
+        </button>
       </p>
       <!-- Withheld while filtering: the row is too narrow for both, and the
            hint describes what Enter does instead. -->
@@ -255,7 +254,7 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 18px;
+  min-height: 24px;
   margin: 2px 0 0;
 }
 
@@ -271,10 +270,44 @@ function onKeydown(e: KeyboardEvent) {
   line-height: 18px;
 }
 
-.nav-filter-key {
+.nav-filter-hint-button {
   display: flex;
-  flex: none;
   align-items: center;
+  gap: 4px;
+  min-width: 24px;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  line-height: 18px;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.nav-filter-hint-button:hover .nav-filter-best {
+  color: var(--vp-c-brand-1);
+}
+
+.nav-filter-hint-button:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 1px;
+}
+
+.nav-filter-key {
+  flex: none;
+  min-width: 24px;
+  padding: 0 4px;
+  color: var(--vp-c-text-2);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 4px;
 }
 
 .nav-filter-best {
@@ -287,26 +320,8 @@ function onKeydown(e: KeyboardEvent) {
   white-space: nowrap;
 }
 
-/* Same technique as BackToTop's label: the key glyph is decorative, so the key
-   name has to reach assistive technology as real text. */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
 .nav-filter-clear-glyph {
   width: 14px;
   height: 14px;
-}
-
-.nav-filter-enter-glyph {
-  width: 12px;
-  height: 12px;
 }
 </style>
