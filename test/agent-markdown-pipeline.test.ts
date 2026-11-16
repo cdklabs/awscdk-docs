@@ -5,7 +5,6 @@ import { join, resolve } from 'path';
 import { agentMarkdownHref } from '../docs/.vitepress/agent-markdown.js';
 import { mapProse } from '../src/docgen/fences.js';
 import { generateDocs } from '../src/docgen/index.js';
-import { siteBase } from '../src/docgen/links.js';
 import { docsSiteUrl } from '../src/docgen/versions.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -132,11 +131,7 @@ describe('agent-oriented Markdown twins', () => {
       .filter((file) => file.endsWith('.md'))
       .flatMap((file) => markdownLinks(readFileSync(join(agentOutDir, file), 'utf-8')));
     const siteLinks = links.filter((link) => link.startsWith(`${siteUrl}v2/docs/`));
-    const base = siteBase();
-    const leftovers = links.filter((link) =>
-      link.startsWith('/v2/')
-      || (base !== '/' && link.startsWith(base))
-      || /^\/(?:stability|versions)(?:\.html)?(?:[?#]|$)/.test(link));
+    const leftovers = links.filter((link) => link.startsWith('/') && !link.startsWith('//'));
 
     expect(leftovers).toEqual([]);
     expect(siteLinks.length).toBeGreaterThan(5);

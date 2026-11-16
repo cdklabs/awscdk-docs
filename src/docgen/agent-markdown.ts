@@ -145,25 +145,28 @@ function publishedPageHref(href: string): string {
   const base = siteBase();
   const sitePath = path.startsWith(base) ? `/${path.slice(base.length)}` : path;
   const route = sitePath.replace(/\.html$/, '');
-  const isSitePage = sitePath.startsWith(API_ROOT) || route === STABILITY_ROUTE || route === VERSIONS_ROUTE;
-  if (!isSitePage || /[\s\\]/.test(sitePath)) {
+  const isKnownPage = sitePath.startsWith(API_ROOT) || route === STABILITY_ROUTE || route === VERSIONS_ROUTE;
+  const isPage = isKnownPage || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/i.test(sitePath));
+  const isRootRelative = sitePath.startsWith('/') && !sitePath.startsWith('//');
+  if (!isRootRelative || /[\s\\]/.test(sitePath)) {
     return href;
   }
-  const relative = sitePath.endsWith('.html')
-    ? sitePath.replace(/^\/+/, '')
-    : pageHref(sitePath).slice(base.length);
+  const relative = isPage && !sitePath.endsWith('.html')
+    ? pageHref(sitePath).slice(base.length)
+    : sitePath.replace(/^\/+/, '');
   return `${new URL(relative, publishedSiteUrl).href}${suffix}`;
+}
+
+/** Undo CommonMark punctuation escapes in a Markdown link destination. */
+function unescapeMarkdownHref(href: string): string {
+  return href.replace(/\\([!-/:-@[-`{-~])/g, '$1');
 }
 
 /** Rewrite Markdown link targets while leaving standalone code spans unchanged. */
 function rewriteMarkdownLinks(text: string): string {
   const linkOrCode = /(`[^`\n]*`)|(?<!!)\[((?:`[^`\n]*`|[^\]\n`])+)\]\(([^\s)]+)\)/g;
-  return tokenizeFences(text)
-    .map((span) => span.kind === 'code'
-      ? span.text
-      : span.text.replace(linkOrCode, (match, code: string, label: string, href: string) =>
-        code ? match : `[${label}](${publishedPageHref(href)})`))
-    .join('\n');
+  return text.replace(linkOrCode, (match, code: string, label: string, href: string) =>
+    code ? match : `[${label}](${publishedPageHref(unescapeMarkdownHref(href))})`);
 }
 
 function render(node: Node): string {

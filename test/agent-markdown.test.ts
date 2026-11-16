@@ -118,22 +118,22 @@ describe('toAgentMarkdown', () => {
     try {
       const page = [
         'See [`HttpLambdaIntegration`](/v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations.HttpLambdaIntegration#usage).',
-        'Visit [stability](/stability) and [versions](/versions?all=true#current).',
+        'Visit [stability](/stability), [versions](/versions?all=true#current), and [skills](/skills).',
         '<a href="/v2/docs/aws-cdk-lib.aws_s3.Bucket#objects">Bucket</a>',
         '<a href="/cdk/api/stability.html">Experimental</a>',
         'Keep [canonical](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
         '[external](https://docs.aws.amazon.com/), and [local](#properties).',
-        'Keep `[code](/v2/docs/Code)` and [escaped](/v2/docs/a\\_b) unchanged.',
+        'Keep `[code](/v2/docs/Code)` unchanged; [escaped](/v2/docs/a\\_b) resolves too.',
         '',
       ].join('\n');
       expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api').markdown).toBe([
         'See [`HttpLambdaIntegration`](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations.HttpLambdaIntegration.html#usage).',
-        'Visit [stability](https://docs.example.com/cdk/api/stability.html) and [versions](https://docs.example.com/cdk/api/versions.html?all=true#current).',
+        'Visit [stability](https://docs.example.com/cdk/api/stability.html), [versions](https://docs.example.com/cdk/api/versions.html?all=true#current), and [skills](https://docs.example.com/cdk/api/skills.html).',
         '[Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects)',
         '[Experimental](https://docs.example.com/cdk/api/stability.html)',
         'Keep [canonical](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
         '[external](https://docs.aws.amazon.com/), and [local](#properties).',
-        'Keep `[code](/v2/docs/Code)` and [escaped](/v2/docs/a\\_b) unchanged.',
+        'Keep `[code](/v2/docs/Code)` unchanged; [escaped](https://docs.example.com/cdk/api/v2/docs/a_b.html) resolves too.',
         '',
       ].join('\n'));
     } finally {
