@@ -491,12 +491,12 @@ describe('construct page generation', () => {
     // The block sits between the hierarchy bar and the example, which is the
     // specified header order.
     const chain = page.indexOf('<nav class="inheritance-chain"');
-    const metadata = page.indexOf('<dl class="type-metadata"');
+    const metadata = page.indexOf('<table class="type-metadata"');
     const example = page.indexOf('## Example');
     expect(chain).toBeGreaterThan(-1);
     expect(metadata).toBeGreaterThan(chain);
     expect(example).toBeGreaterThan(metadata);
-    expect(page).toMatch(/<dd class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener noreferrer"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/dd>/);
+    expect(page).toMatch(/<td class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener noreferrer"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/td>/);
     // Breadcrumb module hierarchy above the H1
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>Bucket</strong>');
     // The link text carries no full file path, which would be noise
@@ -543,7 +543,7 @@ describe('construct page generation', () => {
     expect(bucket).not.toContain('obtainable from');
   });
 
-  test('metadata table is gone from type pages; no empty shell remains', () => {
+  test('legacy module and FQN metadata rows remain absent', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(page).not.toContain('| | |');
     expect(page).not.toContain('| **Module** |');
@@ -557,14 +557,14 @@ describe('construct page generation', () => {
     // The fact is a metadata row, not a description sentence, normalized to
     // HTTPS + TemplateReference.
     expect(page).toContain(
-      '<dt class="type-metadata-label">CloudFormation</dt><dd class="type-metadata-value">'
+      '<th class="type-metadata-label" scope="row">CloudFormation</th><td class="type-metadata-value">'
       + '<a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html"'
-      + ' target="_blank" rel="noopener noreferrer"><code>AWS::S3::Bucket</code></a></dd>',
+      + ' target="_blank" rel="noopener noreferrer"><code>AWS::S3::Bucket</code></a></td>',
     );
     expect(page).not.toContain('Defines the [`AWS::S3::Bucket`]');
     // No in-site self-link and no L1 row on the L1 page
     expect(page).not.toContain('via [`CfnBucket`]');
-    expect(page).not.toContain('<dt class="type-metadata-label">L1 type</dt>');
+    expect(page).not.toContain('<th class="type-metadata-label" scope="row">L1 type</th>');
     // Generated L1 sources have no repository file: a marker, not a dead link
     // and not a silently missing fact
     expect(page).toContain('<span class="type-metadata-generated" data-pagefind-ignore>Generated at build time</span>');
@@ -576,13 +576,13 @@ describe('construct page generation', () => {
     // the in-site jump, routed through the canonical link resolver. Both are
     // rows of the metadata block rather than one prose sentence.
     expect(page).toContain(
-      '<dt class="type-metadata-label">CloudFormation</dt><dd class="type-metadata-value">'
+      '<th class="type-metadata-label" scope="row">CloudFormation</th><td class="type-metadata-value">'
       + '<a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html"'
-      + ' target="_blank" rel="noopener noreferrer"><code>AWS::S3::Bucket</code></a></dd>',
+      + ' target="_blank" rel="noopener noreferrer"><code>AWS::S3::Bucket</code></a></td>',
     );
     expect(page).toContain(
-      '<dt class="type-metadata-label">L1 type</dt><dd class="type-metadata-value">'
-      + '<a href="/v2/docs/aws-cdk-lib.aws_s3.CfnBucket.html"><code>CfnBucket</code></a></dd>',
+      '<th class="type-metadata-label" scope="row">L1 type</th><td class="type-metadata-value">'
+      + '<a href="/v2/docs/aws-cdk-lib.aws_s3.CfnBucket.html"><code>CfnBucket</code></a></td>',
     );
     expect(page).not.toContain('Backed by the');
   });

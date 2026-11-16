@@ -521,15 +521,13 @@ describe('API kind badge palette', () => {
     expect(generated).not.toContain('text-decoration: underline');
   });
 
-  test('the metadata block layout is not keyed to the row count', () => {
-    // A fourth metadata row must need no CSS change, so no rule under the
-    // block may use a position proxy such as nth-child or a fixed row count.
-    const start = css.indexOf('.type-metadata {');
-    const end = css.indexOf('/* ---------- Member rows', start);
-    const section = css.slice(start, end);
-    expect(section).toContain('display: grid');
-    expect(section).toContain('grid-template-columns: max-content 1fr');
-    expect(section).not.toMatch(/nth-child|:first-child|:last-child/);
+  test('the metadata table uses the body typeface', () => {
+    const table = ruleBody('.type-metadata');
+    expect(table).toContain('font-family: var(--vp-font-family-base)');
+    expect(table).not.toContain('font-family: var(--vp-font-family-mono)');
+
+    const values = ruleBody('.vp-doc .type-metadata-value code');
+    expect(values).toContain('font-family: inherit');
   });
 
 });

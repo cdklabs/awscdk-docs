@@ -91,7 +91,7 @@ describe('generated pages carry search relevance markup', () => {
     expect(page).toMatch(/<span class="member-default" data-pagefind-ignore>/);
     expect(page).toMatch(/<div class="member-summary" data-pagefind-ignore>/);
     expect(page).toMatch(/<a class="type-metadata-source" data-pagefind-ignore [^>]*><code>aws-s3\/lib\/bucket\.ts<\/code><\/a>/);
-    expect(page).toMatch(/<dd class="type-metadata-value"><a href="[^"]*aws-resource-s3-bucket\.html"[^>]*><code>AWS::S3::Bucket<\/code><\/a><\/dd>/);
+    expect(page).toMatch(/<td class="type-metadata-value"><a href="[^"]*aws-resource-s3-bucket\.html"[^>]*><code>AWS::S3::Bucket<\/code><\/a><\/td>/);
     // Signatures are excluded, but only the header line that carries them:
     // a method's summary and prose are indexable, and property descriptions
     // already sit inside the props table's wholesale exclusion, so excluding

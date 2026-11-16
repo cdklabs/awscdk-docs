@@ -126,24 +126,20 @@ export interface TypeMetadataRow {
 }
 
 /**
- * Provenance block under the type-hierarchy bar: the CloudFormation resource, the L1 counterpart and the source
- * location, each rendered only when the type has it.
- *
- * A definition list, not a table: `<dt>`/`<dd>` pairs are the structure the CSS grid needs, so row count is never
- * encoded in a selector.
- *
- * Emitted independently of the hierarchy emitters, which return nothing when a type has no relations — the block
- * must still render there.
+ * Metadata table under the type-hierarchy bar. Each label is a row header, and rows render only when the type has
+ * the corresponding fact.
  */
 export function renderTypeMetadata(rows: readonly TypeMetadataRow[]): string[] {
   if (rows.length === 0) {
     return [];
   }
-  const pairs = rows
-    .map((row) => `<dt class="type-metadata-label">${escHtml(row.label)}</dt>`
-      + `<dd class="type-metadata-value">${row.value}</dd>`)
+  const body = rows
+    .map((row) => '<tr>'
+      + `<th class="type-metadata-label" scope="row">${escHtml(row.label)}</th>`
+      + `<td class="type-metadata-value">${row.value}</td>`
+      + '</tr>')
     .join('');
-  return [`<dl class="type-metadata" aria-label="Type metadata">${pairs}</dl>`, ''];
+  return [`<table class="type-metadata" aria-label="Type metadata"><tbody>${body}</tbody></table>`, ''];
 }
 
 /** One linked type name of the hierarchy block. */

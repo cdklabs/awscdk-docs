@@ -123,15 +123,14 @@ test.describe('API kind badge', () => {
     expect(noteStyle.color).not.toBe(linkStyle.color);
   });
 
-  test('the metadata block is a two-column grid whose rows align', async ({ page }) => {
-    // The layout requirement a stylesheet assertion cannot reach: every label
-    // shares one column edge and each value sits beside its own label, so a
-    // fourth row would need no new CSS. Measured, because `display: grid` in
-    // the file does not prove the element is a grid on the page.
+  test('the metadata table has aligned row headers and values', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     const block = page.locator('.type-metadata');
     await expect(block).toBeVisible();
-    expect(await block.evaluate((el) => getComputedStyle(el).display)).toBe('grid');
+    expect(await block.evaluate((el) => getComputedStyle(el).display)).toBe('table');
+
+    const headers = block.locator('th.type-metadata-label[scope="row"]');
+    expect(await headers.count()).toBeGreaterThanOrEqual(2);
 
     const geometry = await block.evaluate((el) => {
       const read = (sel: string) => Array.from(el.querySelectorAll(sel))
@@ -142,9 +141,8 @@ test.describe('API kind badge', () => {
 
     expect(geometry.labels.length).toBeGreaterThanOrEqual(2);
     expect(geometry.values).toHaveLength(geometry.labels.length);
-    // One shared left edge for every label: that is the `max-content` column.
+    // Table layout keeps all row headers and values on shared column edges.
     expect(new Set(geometry.labels.map((b) => b.left)).size).toBe(1);
-    // ...and one for every value, to the right of the labels'.
     expect(new Set(geometry.values.map((b) => b.left)).size).toBe(1);
     expect(geometry.values[0].left).toBeGreaterThan(geometry.labels[0].left);
     // Each value is on its own label's row, and the rows descend in order.
@@ -156,7 +154,7 @@ test.describe('API kind badge', () => {
     }
   });
 
-  test('a metadata value renders as plain text at the block size, not a code pill', async ({ page }) => {
+  test('a metadata value uses the body typeface without a code pill', async ({ page }) => {
     // Browser-only, and it caught a real defect: VitePress styles prose code
     // as a tinted padded pill via `.vp-doc :not(pre,h1..h6) > code`, whose
     // specificity beat the block's own rule, so every linked value rendered as
@@ -169,12 +167,15 @@ test.describe('API kind badge', () => {
     const measured = await block.evaluate((el) => {
       const value = el.querySelector('.type-metadata-value a[href*="TemplateReference"]');
       const code = value.querySelector('code');
-      const blockSize = getComputedStyle(el).fontSize;
+      const blockStyle = getComputedStyle(el);
+      const blockFamily = blockStyle.fontFamily;
       const cs = getComputedStyle(code);
       const as = getComputedStyle(value);
       return {
-        blockSize,
+        blockFamily,
+        valueSize: as.fontSize,
         codeSize: cs.fontSize,
+        codeFamily: cs.fontFamily,
         codeBg: cs.backgroundColor,
         codePad: cs.padding,
         codeColor: cs.color,
@@ -184,7 +185,9 @@ test.describe('API kind badge', () => {
     });
 
     // No chip of its own: the value IS the text.
-    expect(measured.codeSize).toBe(measured.blockSize);
+    expect(measured.codeSize).toBe(measured.valueSize);
+    expect(measured.codeFamily).toBe(measured.blockFamily);
+    expect(measured.codeFamily.toLowerCase()).not.toContain('mono');
     expect(measured.codePad).toBe('0px');
     // Fully transparent, whatever notation the browser reports.
     expect(measured.codeBg).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
