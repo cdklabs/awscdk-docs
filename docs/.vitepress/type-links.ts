@@ -86,8 +86,9 @@ type ScopedToken = {
 
 /**
  * Shiki transformer: marks every token that sits in a string or a comment, or
- * that names a Go struct field or C# initializer property, with `NOLINK_CLASS`,
- * from the token's grammar scopes. Needs the highlight call to pass
+ * that names a Go struct field or a C# assignment target (an initializer
+ * property in generated examples), with `NOLINK_CLASS`, from the token's
+ * grammar scopes. Needs the highlight call to pass
  * `includeExplanation: "scopeName"`.
  *
  * Shiki merges neighboring parts that share a color into one token, so a
@@ -150,10 +151,10 @@ const NOLINK_TAG = new RegExp(`^<span\\b[^>]*\\bclass="[^"]*\\b${NOLINK_CLASS}\\
 
 /**
  * Whether a fence can hold text that must not link: a string or a comment (a
- * quote, `#` or `//` / `/*` marker), or a Go struct-literal key or C# initializer
- * property (a capitalized identifier at a line start or after `{`, `,` or `(`,
- * followed by `:` but not `:=`, or by a lone `=`). Any other fence needs no
- * grammar scopes.
+ * quote, `#` or `//` / `/*` marker), or a Go struct-literal key or C# assignment
+ * target (an initializer property in generated examples: a capitalized
+ * identifier at a line start or after `{`, `,` or `(`, followed by `:` but not
+ * `:=`, or by a lone `=`). Any other fence needs no grammar scopes.
  */
 export function mayHoldLiterals(code: string): boolean {
   return /['"`#]|\/[/*]/.test(code) || /(?:^|[{,(])\s*[A-Z]\w*\s*(?::(?!=)|=(?![=>]))/m.test(code);
