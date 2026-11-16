@@ -139,14 +139,23 @@ overview pages) the Teleport is disabled and the star keeps its standalone
 
 ### One type-hierarchy block: every relation as a row
 
-All five relationships — `implements`, `extends`, `implemented by`,
-`superclass of`, and a struct's `used as props by` — render as rows of one
-hierarchy block under the breadcrumb, emitted by a single `relationRow`
-renderer. There is no separate `## Subclasses`, `## Implemented by` or
+All six relationships — `implements`, `extends`, `implemented by`,
+`superclass of`, a struct's `used as props by`, and `obtainable from` — render
+as rows of one hierarchy block under the breadcrumb, emitted by a single
+`relationRow` renderer. There is no separate `## Subclasses`, `## Implemented by` or
 `## Used as props by` section and no inline-vs-section split by direction.
 `used as props by` lists the classes whose initializer takes the struct (from
 the reverse usage index); its row keeps the `used-as-props-by` id, so deep
-links to the former section still land on it. `implements` lists the **full transitive closure** of
+links to the former section still land on it. `obtainable from` is the last
+row on class, interface, struct and construct pages: the static methods and
+static properties (including constants) in the documented assemblies whose
+declared type is the page's type or an optional of it — arrays, maps and
+unions do not produce one instance, so they do not count. Each entry reads
+`Owner.member` (`Bucket.fromBucketName`) and links the owner's page at the
+member's row anchor; entries are sorted by owner then member, each once; the
+row carries the `obtainable-from` id and shares the budget and disclosure
+below. Member names are the jsii names, as the block has no per-language
+variants. `implements` lists the **full transitive closure** of
 interfaces reachable through class ancestors *and* interface `extends`
 (the Javadoc "All Implemented Interfaces" rule), via a memoized cycle-guarded
 resolver in `src/docgen/interfaces.ts` cached per `TypeIndex`. `superclass of`

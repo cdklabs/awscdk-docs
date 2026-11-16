@@ -19,6 +19,11 @@ export const CFN_QUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue.html';
 export const NESTED_TYPE_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.CfnTopic.SubscriptionProperty.html';
 /** A Facade class: the fixture surfaces `QueueGrants`. */
 export const QUEUE_GRANTS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueGrants.html';
+/**
+ * A class with four static factories of its own type (`existsFilter`, `notExistsFilter`, `numericFilter`,
+ * `stringFilter`): the only fixture type whose `obtainable from` row overflows its two-line budget.
+ */
+export const SUBSCRIPTION_FILTER_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.SubscriptionFilter.html';
 export const API_OVERVIEW = '/v2/';
 // The hand-written agent-skills page. It is the OTHER page with no resolved
 // sidebar besides the home page — themeConfig.sidebar is keyed only on

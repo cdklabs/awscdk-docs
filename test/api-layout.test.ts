@@ -233,8 +233,9 @@ describe('API page layout', () => {
     });
 
     test('types with neither base class nor interfaces get no chain', () => {
-      // Duration is a plain root class implementing nothing.
-      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
+      // Arn is a plain root class implementing nothing, extended by nothing, and no static member hands one out.
+      // (Duration, the earlier example, is now `obtainable from` its own factories, so it carries the block.)
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Arn.md'), 'utf-8');
       expect(page).not.toContain('inheritance-chain');
     });
   });
