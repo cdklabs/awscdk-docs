@@ -48,7 +48,7 @@ describe('usage index', () => {
     ]);
     // A static constant counts; an instance member or a struct does not.
     expect(usage.obtainableFrom.get('aws-cdk-lib.JsonNull')).toEqual([
-      { ownerFqn: 'aws-cdk-lib.JsonNull', memberName: 'INSTANCE', kind: 'property' },
+      { ownerFqn: 'aws-cdk-lib.JsonNull', memberName: 'INSTANCE', kind: 'property', constant: true },
     ]);
     expect(usage.obtainableFrom.has('aws-cdk-lib.aws_s3.BucketProps')).toBe(false);
     // A protected static is not callable and has no row on its owner page, so it is not a factory:
@@ -327,29 +327,43 @@ describe('symbol page generation', () => {
       assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
     };
     const refs = [
-      { ownerFqn: 'x.Thing', memberName: 'DEFAULT_THING', kind: 'property' as const },
+      { ownerFqn: 'x.Thing', memberName: 'DEFAULT_THING', kind: 'property' as const, constant: true },
+      { ownerFqn: 'x.Thing', memberName: 'defaultThing', kind: 'property' as const },
       { ownerFqn: 'y.Other', memberName: 'ofThing', kind: 'method' as const },
     ];
     // Only `x.Thing` has a page: `y.Other` comes from an assembly the site does not document.
     const linkFor = (fqn: string) => (fqn === 'x.Thing' ? '/v2/docs/x.Thing' : undefined);
     const [nav] = renderExtendsBar(iface, linkFor, [], [], refs, ['ts', 'python', 'go']).filter((l) => l.includes('<nav'));
     const row = nav.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
-    const [first, second] = [...row.matchAll(/<li role="listitem">(.*?)<\/li>/g)].map((m) => m[1]);
-    // The property goes through translatePropertyName, the same translator the member rows use.
+    const [first, second, third] = [...row.matchAll(/<li role="listitem">(.*?)<\/li>/g)].map((m) => m[1]);
+    // A `const` static keeps its UPPER_SNAKE name in Python, as jsii's bindings do.
     expect(first).toBe(
       '<a class="chain-item" href="/v2/docs/x.Thing.html#default-thing">'
       + '<span class="lang-variant" data-lang="ts">Thing.<wbr>DEFAULT_THING</span>'
-      + '<span class="lang-variant" data-lang="python" v-pre>Thing.<wbr>default_thing</span>'
+      + '<span class="lang-variant" data-lang="python" v-pre>Thing.<wbr>DEFAULT_THING</span>'
       + '<span class="lang-variant" data-lang="go" v-pre>Thing_<wbr>DEFAULT_THING</span></a>, ',
     );
-    // No page to link: the entry is a span with the same content and no anchor.
+    // A non-const static property goes through translatePropertyName, the same translator the member rows use.
     expect(second).toBe(
+      '<a class="chain-item" href="/v2/docs/x.Thing.html#defaultthing">'
+      + '<span class="lang-variant" data-lang="ts">Thing.<wbr>defaultThing</span>'
+      + '<span class="lang-variant" data-lang="python" v-pre>Thing.<wbr>default_thing</span>'
+      + '<span class="lang-variant" data-lang="go" v-pre>Thing_<wbr>DefaultThing</span></a>, ',
+    );
+    // No page to link: the entry is a span with the same content and no anchor.
+    expect(third).toBe(
       '<span class="chain-item">'
       + '<span class="lang-variant" data-lang="ts">Other.<wbr>ofThing</span>'
       + '<span class="lang-variant" data-lang="python" v-pre>Other.<wbr>of_thing</span>'
       + '<span class="lang-variant" data-lang="go" v-pre>Other_<wbr>OfThing</span></span>',
     );
-    expect(second).not.toContain('<a ');
+    expect(third).not.toContain('<a ');
+  });
+
+  test('a struct page lists the static factory that returns it', () => {
+    // Arn.split returns ArnComponents, so the struct's bar carries the row below its other relations.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ArnComponents.md'), 'utf-8');
+    expect(page).toMatch(/<div class="chain-row" id="obtainable-from">.*href="\/v2\/docs\/aws-cdk-lib\.Arn\.html#split">Arn\.<wbr>split<\/a>/);
   });
 
   test('the agent Markdown twin drops the <wbr> and lists the row as plain text', () => {

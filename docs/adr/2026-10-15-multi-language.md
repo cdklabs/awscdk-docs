@@ -196,7 +196,9 @@ stay hydrated so the copy button lives on every tab. All variant content
 ships eagerly in the page HTML (no runtime fetch, works offline). Only
 canonical (TypeScript) identifiers are Pagefind-indexed, so the index
 and search ranking are flat in the language count; non-canonical
-variants carry `data-pagefind-ignore`. See
+variants carry `data-pagefind-ignore`, unless the renderer states the
+enclosing region is already ignored (`indexed: false`, as the type-hierarchy
+block's `<nav>` is). See
 [search and filter](./2026-10-15-search-and-filter.md) and
 [SEO and agent discoverability](./2026-10-15-seo-and-agent-discoverability.md).
 

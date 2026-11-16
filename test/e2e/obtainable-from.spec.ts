@@ -20,6 +20,7 @@ test.describe('obtainable from row', () => {
     // type. The accessible name is what a screen reader or voice user gets;
     // `textContent` would also include the hidden language variants.
     const links = row.locator('a.chain-item');
+    await expect(links).toHaveCount(2);
     await expect(links.nth(0)).toHaveAccessibleName('Queue.fromQueueArn');
     await expect(links.nth(1)).toHaveAccessibleName('Queue.fromQueueAttributes');
 

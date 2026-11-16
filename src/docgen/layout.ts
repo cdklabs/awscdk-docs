@@ -178,6 +178,8 @@ export interface MemberRef {
   readonly ownerFqn: string;
   readonly memberName: string;
   readonly kind: 'method' | 'property';
+  /** A `const` static property: jsii's Python bindings keep its UPPER_SNAKE name, so it is not re-cased. */
+  readonly constant?: boolean;
 }
 
 /** Items that fit the row's two-line budget, and the remainder. */
@@ -234,7 +236,9 @@ function memberRelationRow(
 ): string {
   return relationRowOf(label, refs.map((ref) => {
     const owner = shortName(ref.ownerFqn);
-    const translate = ref.kind === 'method' ? translateMethodName : translatePropertyName;
+    const translate = ref.kind === 'method' ? translateMethodName
+      : ref.constant ? (name: string, lang: Language) => (lang === 'python' ? name : translatePropertyName(name, lang))
+        : translatePropertyName;
     const entry = (lang: Language) => ({ sep: lang === 'go' ? '_' : '.', member: translate(ref.memberName, lang) });
     const text = (languages.length > 0 ? languages : [DEFAULT_LANGUAGE])
       .map((lang) => `${owner}${entry(lang).sep}${entry(lang).member}`)

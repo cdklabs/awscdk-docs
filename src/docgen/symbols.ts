@@ -80,7 +80,12 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       return;
     }
     const list = obtainableFrom.get(ref.type.fqn) ?? [];
-    list.push({ ownerFqn, memberName: member.name, kind });
+    list.push({
+      ownerFqn,
+      memberName: member.name,
+      kind,
+      ...(kind === 'property' && (member as spec.Property).const ? { constant: true } : {}),
+    });
     obtainableFrom.set(ref.type.fqn, list);
   };
 
@@ -130,13 +135,15 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
 
   const sortedPropsUsers = new Map([...propsUsers].map(([k, v]) => [k, [...v].sort()]));
 
-  // Each owner+member once, FQN-sorted like the other reverse indexes (owner FQN, then member name), so the row
-  // reads `Bucket.fromBucketArn, Bucket.fromBucketAttributes, ...` whatever order the assembly listed them in.
+  // Each owner+member once, FQN-sorted in code-unit order like `propsUsers` (owner FQN, then member name), so the
+  // row reads `Bucket.fromBucketArn, Bucket.fromBucketAttributes, ...` whatever order the assembly listed them in
+  // and whatever locale the build host has.
+  const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
   const sortedFactories = new Map<string, MemberRef[]>();
   for (const [fqn, refs] of obtainableFrom) {
     const unique = new Map(refs.map((ref) => [`${ref.ownerFqn}.${ref.memberName}`, ref]));
     sortedFactories.set(fqn, [...unique.values()].sort((a, b) =>
-      a.ownerFqn.localeCompare(b.ownerFqn) || a.memberName.localeCompare(b.memberName)));
+      byCodeUnit(a.ownerFqn, b.ownerFqn) || byCodeUnit(a.memberName, b.memberName)));
   }
   return { propsUsers: sortedPropsUsers, enumRefs: dedupedEnumRefs, obtainableFrom: sortedFactories };
 }
