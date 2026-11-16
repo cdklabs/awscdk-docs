@@ -51,7 +51,7 @@ function linked(html: string): string[] {
   return [...html.matchAll(/<a class="code-type-link" href="[^"]+">(\w+)<\/a>/g)].map((m) => m[1]);
 }
 
-/** Text of every token marked as a string or comment, joined. */
+/** Text of every token marked as literal text (a string or comment) or a field name, joined. */
 function literalText(html: string): string {
   return [...html.matchAll(new RegExp(`<span[^>]*\\bclass="${NOLINK_CLASS}"[^>]*>([^<]*)</span>`, 'g'))]
     .map((m) => m[1])
@@ -293,9 +293,17 @@ describe('type links skip Go and C# field names', () => {
     expect(isFieldNameScope(['source.ts', 'meta.object-literal.key.ts'], ': x')).toBe(false);
   });
 
-  test('a fence with only a capitalized key or property asks for scopes; other code does not', () => {
+  test('a fence with a capitalized key or property asks for scopes; other code does not', () => {
     expect(mayHoldLiterals('Policy = RemovalPolicy.RETAIN')).toBe(true);
+    expect(mayHoldLiterals('&p.TableProps{Stream: x}')).toBe(true);
+    expect(mayHoldLiterals('new TableProps { Stream = x }')).toBe(true);
+    expect(mayHoldLiterals('X := y')).toBe(false);
     expect(mayHoldLiterals('x := y == z')).toBe(false);
     expect(mayHoldLiterals('removalPolicy: RemovalPolicy.RETAIN')).toBe(false);
+  });
+
+  test('go: a selector keeps its own scope and still links when its name is offered', () => {
+    const html = applyTypeLinks(highlight('arn := table.Stream\nq := Stream{}', 'go'), STREAM_ATTRS);
+    expect(linked(html)).toEqual(['Stream', 'Stream']);
   });
 });

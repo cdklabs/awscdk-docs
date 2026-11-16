@@ -1,9 +1,9 @@
 // Inline type links inside generated signature and example fences. The fence
 // info line carries a `type-links=Name:href,…` attribute; after Shiki
 // highlighting we wrap each mapped identifier in an anchor, in text segments
-// only, never inside tags, and never in a token the highlighter marked as a
-// string or a comment (`codeNolinkTransformer`, below). The anchor inherits the
-// surrounding Shiki token color (see signatures.css).
+// only, never inside tags, and never in a token the highlighter marked as
+// literal text (a string or comment) or a field name (`codeNolinkTransformer`,
+// below). The anchor inherits the surrounding Shiki token color (see signatures.css).
 //
 // SECURITY: this hook runs on every fence, including third-party jsii README
 // fences. Each `Name:href` pair is validated: names must be plain identifiers and
@@ -24,8 +24,8 @@ function escapeAttr(value: string): string {
 
 /**
  * Class on a highlighted token that must never carry a type link: the token is
- * inside a string literal or a comment. Set at highlight time by
- * `codeNolinkTransformer`, so it lands in the cached Shiki HTML.
+ * literal text (a string or comment) or a Go or C# field name. Set at highlight
+ * time by `codeNolinkTransformer`, so it lands in the cached Shiki HTML.
  */
 export const NOLINK_CLASS = "code-nolink";
 
@@ -37,7 +37,7 @@ const CODE_SCOPE = /^(?:meta\.embedded|meta\.template\.expression|meta\.interpol
  *  comment-marker punctuation. */
 const TEXT_SCOPE = /^(?:string|comment|punctuation\.definition\.(?:string|comment))\b/;
 
-/** Go scopes a struct-literal key (and a selector field) as a property; a type is `entity.name.type.go`. */
+/** Go scopes a struct-literal key (an identifier before `:`) as a property; a type is `entity.name.type.go`. */
 const GO_FIELD_SCOPE = "variable.other.property.go";
 
 /** C# has no property-name scope: an initializer name shares the plain variable scope. */
@@ -150,11 +150,12 @@ const NOLINK_TAG = new RegExp(`^<span\\b[^>]*\\bclass="[^"]*\\b${NOLINK_CLASS}\\
 /**
  * Whether a fence can hold text that must not link: a string or a comment (a
  * quote, `#` or `//` / `/*` marker), or a Go struct-literal key or C# initializer
- * property (a line that starts with a capitalized identifier then `:` or `=`).
- * Any other fence needs no grammar scopes.
+ * property (a capitalized identifier at a line start or after `{`, `,` or `(`,
+ * followed by `:` but not `:=`, or by a lone `=`). Any other fence needs no
+ * grammar scopes.
  */
 export function mayHoldLiterals(code: string): boolean {
-  return /['"`#]|\/[/*]/.test(code) || /^\s*[A-Z]\w*\s*(?::|=(?![=>]))/m.test(code);
+  return /['"`#]|\/[/*]/.test(code) || /(?:^|[{,(])\s*[A-Z]\w*\s*(?::(?!=)|=(?![=>]))/m.test(code);
 }
 
 export function applyTypeLinks(html: string, attrs: string | undefined): string {

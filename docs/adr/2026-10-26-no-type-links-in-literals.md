@@ -46,7 +46,9 @@ work started.
   highlighted HTML, so a cached fence already carries it.
 - **Only where a link could land.** Reporting scope names roughly doubles the
   time to highlight a fence, so the hook asks for it only on a fence that
-  offers type links and holds a quote, `#`, `//` or `/*`. A cached entry made
+  offers type links and holds a quote, `#`, `//` or `/*`, or a capitalized key
+  or property (see [no type links on field
+  names](./2026-11-16-no-type-links-on-field-names.md)). A cached entry made
   without marks is redone once if the same code later arrives with type
   links, so the cache key stays `(lang, code)`.
 - **Every fence goes through it**, including third-party README fences and

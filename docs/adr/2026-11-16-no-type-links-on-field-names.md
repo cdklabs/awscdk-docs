@@ -7,9 +7,10 @@ Accepted
 Extends [no type links in literals](./2026-10-26-no-type-links-in-literals.md),
 which stays Accepted: the linker there skips tokens inside strings and
 comments; this entry adds struct field and object property names in Go and C#
-to the text it skips. Everything else about that decision stands, including
-the grammar-scope marker, the token split, the cache key and the gate on which
-fences request scopes.
+to the text it skips, and widens the gate that decides which fences request
+grammar scopes so such a key is seen even in a fence without a quote.
+Everything else about that decision stands, including the grammar-scope
+marker, the token split and the cache key.
 
 ## Context
 
@@ -26,8 +27,9 @@ not collide and are untouched.
 ## Decision
 
 - **Decide per token, from the grammar first.** Shiki scopes a Go
-  composite-literal key (and a selector field) as `variable.other.property.go`,
-  while a type is `entity.name.type.go` and a function or constructor is
+  composite-literal key, an identifier before `:`, as
+  `variable.other.property.go`, while a type is `entity.name.type.go`, a bare
+  selector is `variable.other.go` and a function or constructor is
   `entity.name.function.*`. A token whose innermost scope is the Go property
   scope is marked text.
 - **C# falls back to the following character.** The C# grammar has no
@@ -43,18 +45,19 @@ not collide and are untouched.
   The transformer now sees each line's text so the C# rule can look past the
   token.
 - **Fences without quotes still get scopes when they need them.** The gate that
-  asks Shiki for scope names also fires for a line that starts with a
-  capitalized identifier followed by `:` or a lone `=`, the shape of a Go key
-  or C# property. Lower-case keys in the other languages do not trigger it, so
-  the cost stays with the fences that can hold a collision.
+  asks Shiki for scope names also fires for a capitalized identifier at a line
+  start or after `{`, `,` or `(`, followed by `:` (not `:=`) or a lone `=`, the
+  shape of a Go key or C# property, inline or on its own line. Lower-case keys in
+  the other languages do not trigger it; an upper-case constant assignment
+  (`BUCKET = ...`) does, which costs one scoped highlight and changes no output.
 
 ## Consequences
 
 - On a `Table` page the Go example's `Stream:` key is plain while `TableProps`
   still links, and the C# `Stream =` property is plain while `new Stream(...)`,
   `Stream` in a signature, and `StreamViewType.NEW_IMAGE` still link.
-- A Go selector such as `table.TableArn` is marked text too; it never named a
-  type, so no link is lost.
+- A Go selector such as `table.TableArn` keeps its plain variable scope and is
+  unaffected: it links only when its name is offered, exactly as before.
 - A C# variable read that spells a type name (`return Stream;`) is unchanged by
   this rule: it still links, as it did before.
 - `test/example-nolink.test.ts` runs the real highlighter on Go and C# examples
