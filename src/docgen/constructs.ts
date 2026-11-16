@@ -141,7 +141,7 @@ export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | un
 /**
  * Whether a type's source is build-generated rather than a file in the repository — the L1 `Cfn*` types emitted
  * into `*.generated.*`, plus any type carrying `cloudformationResource`. Distinguishes "no link because the file
- * does not exist" from "no location information at all", so the metadata block can say `Generated code` in the
+ * does not exist" from "no location information at all", so the metadata block can say `Generated at build time` in the
  * first case and omit the row entirely in the second.
  */
 export function isGeneratedSource(type: spec.Type): boolean {
@@ -186,7 +186,7 @@ export function typeStability(type: spec.Type, assembly: spec.Assembly): spec.St
  * Stability renders only for experimental types, matching the module page, which warns on experimental modules and
  * says nothing on stable ones; the value links to the guide that explains what the level means.
  *
- * The `Source` value carries `data-pagefind-ignore` so file paths and `Generated code` markers do not compete
+ * The `Source` value carries `data-pagefind-ignore` so file paths and `Generated at build time` markers do not compete
  * with real prose in the index; the CloudFormation and L1 values are indexed so the resource name stays searchable.
  */
 export function typeMetadataRows(
@@ -231,7 +231,7 @@ export function typeMetadataRows(
   } else if (isGeneratedSource(type)) {
     rows.push({
       label: 'Source',
-      value: `<span class="type-metadata-generated" ${PAGEFIND_IGNORE}>Generated code</span>`,
+      value: `<span class="type-metadata-generated" ${PAGEFIND_IGNORE}>Generated at build time</span>`,
     });
   }
   // The release the type's shape last changed in, dated by that release — never raised by the site-wide revision

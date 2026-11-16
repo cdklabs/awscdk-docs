@@ -35,7 +35,7 @@ test.describe('page titles', () => {
     await expect(page).toHaveTitle(/^CfnQueue \| /);
     await expect(page.locator('h1 .VPBadge')).toHaveText('L1 construct');
     await expect(page.locator('.type-metadata span.type-metadata-generated'))
-      .toHaveText('Generated code');
+      .toHaveText('Generated at build time');
   });
 
   test('a starred page is listed under its clean title', async ({ page }) => {
