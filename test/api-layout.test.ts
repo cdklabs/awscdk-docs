@@ -1056,16 +1056,13 @@ describe('API page layout', () => {
       expect(css()).toContain('flex-direction: column');
     });
 
-    test('prose links in a targeted row use brand-2 on the soft surface', () => {
-      // `:target` tints the row with `--vp-c-bg-soft`, where brand-1 measures
-      // 4.22:1 (below AA); a summary link or prose link landing there must
-      // switch to brand-2 like `.type-metadata-value a` already does. Scoped
-      // to the prose containers: header-line type links keep `--api-c-type`
-      // and the permalink keeps its own muted color.
-      expect(css()).toMatch(
-        /\.member-list \.member-row:target :is\(\.member-summary, \.member-extra, \.member-details\) a \{[^}]*color: var\(--vp-c-brand-2\)/,
-      );
-      expect(css()).not.toMatch(/\.member-row:target\s+a\b/);
+    test('summary links in a targeted row keep the default link color', () => {
+      // The `:target` tint is `--vp-c-bg-soft`; `theme.test.ts` already pins
+      // brand-1 at AA on that surface (4.57:1 light, #b45309 on #f5f4f1), so
+      // the default link color needs no override there. No rule may recolor
+      // the row's anchors: a broad one would also repaint header-line type
+      // links, which `.member-signature .sig-type` keeps in one color.
+      expect(css()).not.toMatch(/\.member-row:target[^{]*\ba\b[^{]*\{/);
     });
 
     test('generated tooltip data is gitignored', () => {

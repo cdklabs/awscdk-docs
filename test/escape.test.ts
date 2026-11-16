@@ -105,4 +105,12 @@ describe('escapeSummaryHtml', () => {
       expect(escapeSummaryHtml(plain)).toBe(escapeVueText(plain));
     }
   });
+
+  test('two links keep the text between them exactly once', () => {
+    // The loop carries `end` from one match to the next; a slip that sliced
+    // from 0 would repeat the leading text and pass every one-link case.
+    expect(escapeSummaryHtml('[a](https://x.test/1) and [b](https://x.test/2).')).toBe(
+      `<a href="https://x.test/1" ${ATTRS}>a</a> and <a href="https://x.test/2" ${ATTRS}>b</a>.`,
+    );
+  });
 });
