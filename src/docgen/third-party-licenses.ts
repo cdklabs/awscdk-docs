@@ -9,7 +9,6 @@ export interface LicenseCheckerRecord {
   readonly licenses?: unknown;
   readonly repository?: unknown;
   readonly path?: unknown;
-  readonly [key: string]: unknown;
 }
 
 export type LicenseCheckerReport = Readonly<Record<string, LicenseCheckerRecord>>;
