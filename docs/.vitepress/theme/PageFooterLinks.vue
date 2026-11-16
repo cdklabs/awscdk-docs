@@ -6,11 +6,10 @@
 import { useData } from "vitepress";
 import { computed, onMounted, ref, watch } from "vue";
 import { editLinkFor, ISSUES_REPO_URL, reportIssueUrl } from "./feedback";
-import { agentMarkdownHref } from "../agent-markdown";
 import { contentRevisedText } from "../page-history";
 import { stampVersion } from "../../../src/site-stamp";
 
-const { page, site, theme } = useData();
+const { page, theme } = useData();
 
 // The edit target depends only on the page's file path and the upstream file
 // docgen recorded in frontmatter, so it is safe to compute during SSR. A
@@ -20,13 +19,6 @@ const { page, site, theme } = useData();
 const editUrl = computed(() =>
   editLinkFor(page.value.filePath, page.value.frontmatter?.upstreamEditUrl),
 );
-
-// The agent-oriented Markdown twin, when docgen wrote one for this page: the same path with `.md` in place of
-// `.html`. Frontmatter carries the path, so a page without a twin renders no link.
-const markdownUrl = computed(() => {
-  const twin = page.value.frontmatter?.agentMarkdown;
-  return typeof twin === "string" ? agentMarkdownHref(twin, site.value.base) : undefined;
-});
 
 // When the page was last revised: the later of the site-wide revision date and the page's own recorded change,
 // both compiled in (a constant and frontmatter), so it is the same during SSR and after hydration. Every page has
@@ -63,12 +55,6 @@ watch(() => page.value.relativePath, refresh);
     <a class="footer-link" :href="issueUrl" target="_blank" rel="noreferrer">
       Report an issue
     </a>
-    <template v-if="markdownUrl">
-      <span class="footer-link-separator" aria-hidden="true">·</span>
-      <a class="footer-link" :href="markdownUrl" download type="text/markdown">
-        Download as Markdown
-      </a>
-    </template>
     <span class="footer-revised">{{ revised }}</span>
   </nav>
 </template>

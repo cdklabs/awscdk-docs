@@ -90,8 +90,13 @@ docgen writes the twins to a sibling tree outside `docs/`,
 optional `GenerateOptions.agentOutDir`. The canonical page records its twin in
 frontmatter as `agentMarkdown: "/v2/docs/<page>.md"` — the only existence
 signal the site consults, so no page can advertise a twin that was not
-produced. The footer's "Download as Markdown" link and a
+produced. A "Copy Markdown" split button beside the page title, rendered in the
+`doc-before` slot next to the favorite star, and a
 `<link rel="alternate" type="text/markdown">` in `<head>` both render from it.
+The main button fetches the twin from the same origin and copies its text; a
+menu next to it holds a "View as Markdown" link that opens the file in a new
+tab. The footer no longer carries a Markdown link, and a page without a twin
+shows no button.
 `merge-shards.cjs` overlays the tree once, after the shards and before the page
 count, behind an explicit `--agent-markdown <dir>` flag; a missing tree fails
 the merge. The hand-written homepage is the one exception: it declares
@@ -158,7 +163,7 @@ run, including failures.
 ## Consequences
 
 - Every build emits `sitemap.xml`, per-page canonical and JSON-LD, per-page
-  Markdown twins advertised from `<head>` and footer, and a root `llms.txt`;
+  Markdown twins advertised from `<head>` and the title button, and a root `llms.txt`;
   the merged site unions the sitemaps and overlays the twins and index once.
 - Changing the published prefix (`DOCS_SITE_URL`) moves the canonical, sitemap,
   and JSON-LD `url` together, since all three resolve routes through `pageUrl`;

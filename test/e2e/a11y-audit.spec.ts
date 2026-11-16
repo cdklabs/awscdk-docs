@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { FAILING_IMPACTS, REPRESENTATIVE_PAGES } from './fixture.js';
+import { FAILING_IMPACTS, REPRESENTATIVE_PAGES, TOPIC_PAGE } from './fixture.js';
 
 // Automated accessibility gate.
 //
@@ -92,4 +92,21 @@ test.describe('accessibility audit (axe-core) @a11y', () => {
       expect(detail, `axe-core found gating violations on ${pagePath}:\n${detail}`).toBe('');
     });
   }
+});
+
+test.describe('Copy Markdown control accessibility @a11y', () => {
+  test('the control passes axe with its menu open', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await page.getByRole('button', { name: 'More Markdown options' }).click();
+    await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeVisible();
+
+    const results = await new AxeBuilder({ page })
+      .include('.copy-markdown')
+      .options({ rules: { 'label-content-name-mismatch': { enabled: true } } })
+      .analyze();
+
+    const failing = results.violations.filter((v) => isFailing(v.impact));
+    const detail = failing.map((v) => `${v.id} (${v.impact}) — ${v.help}`).join('\n');
+    expect(detail, `axe-core found gating violations on the Copy Markdown control:\n${detail}`).toBe('');
+  });
 });

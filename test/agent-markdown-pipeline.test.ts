@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { agentMarkdownHref } from '../docs/.vitepress/agent-markdown.js';
+import { copyMarkdownFrom } from '../docs/.vitepress/copy-markdown.js';
 import { generateDocs } from '../src/docgen/index.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -205,10 +206,18 @@ describe('the page advertises its twin only when one exists', () => {
   const footer = readFileSync(join(ROOT, 'docs', '.vitepress', 'theme', 'PageFooterLinks.vue'), 'utf-8');
   const config = readFileSync(join(ROOT, 'docs', '.vitepress', 'config.mts'), 'utf-8');
 
-  test('the footer link is gated on the frontmatter key and downloads the .md twin', () => {
-    expect(footer).toContain('frontmatter?.agentMarkdown');
-    expect(footer).toMatch(/<template v-if="markdownUrl">[\s\S]*Download as Markdown/);
-    expect(footer).toContain(':href="markdownUrl" download type="text/markdown"');
+  test('the footer keeps no Markdown link', () => {
+    expect(footer).not.toContain('Markdown');
+    expect(footer).not.toContain('agentMarkdown');
+  });
+
+  test('the Copy Markdown control is gated on the frontmatter key and sits beside the favorite star', () => {
+    const control = readFileSync(join(ROOT, 'docs', '.vitepress', 'theme', 'CopyMarkdown.vue'), 'utf-8');
+    expect(control).toContain('frontmatter?.agentMarkdown');
+    expect(control).toContain('v-if="markdownUrl"');
+    expect(control).toContain('data-pagefind-ignore');
+    const themeIndex = readFileSync(join(ROOT, 'docs', '.vitepress', 'theme', 'index.ts'), 'utf-8');
+    expect(themeIndex).toContain('"doc-before": () => [h(FavoriteStar), h(CopyMarkdown)]');
   });
 
   test('the head carries the llms.txt-style alternate link, from the same key', () => {
@@ -223,5 +232,44 @@ describe('the page advertises its twin only when one exists', () => {
     expect(config).toMatch(/head\.push\(\["link", \{ rel: "alternate", type: "text\/plain", href: agentMarkdownHref\("llms\.txt"/);
     const guarded = config.indexOf('if (typeof twin === "string")');
     expect(config.indexOf('type: "text/plain"')).toBeLessThan(guarded);
+  });
+});
+
+describe('copyMarkdownFrom', () => {
+  const clipboard = () => {
+    const written: string[] = [];
+    return { written, writeText: async (text: string) => void written.push(text) };
+  };
+
+  test('writes the fetched Markdown to the clipboard and reports success', async () => {
+    const board = clipboard();
+    const fetched: string[] = [];
+    const result = await copyMarkdownFrom('/v2/docs/x.md', {
+      fetch: async (url) => {
+        fetched.push(url);
+        return { ok: true, text: async () => '# X\n' };
+      },
+      clipboard: board,
+    });
+    expect(result).toBe('copied');
+    expect(fetched).toEqual(['/v2/docs/x.md']);
+    expect(board.written).toEqual(['# X\n']);
+  });
+
+  test('reports failure and writes nothing when the file cannot be fetched', async () => {
+    const board = clipboard();
+    expect(await copyMarkdownFrom('/x.md', { fetch: async () => ({ ok: false, text: async () => 'no' }), clipboard: board })).toBe(
+      'failed',
+    );
+    expect(await copyMarkdownFrom('/x.md', { fetch: async () => { throw new Error('offline'); }, clipboard: board })).toBe('failed');
+    expect(board.written).toEqual([]);
+  });
+
+  test('reports failure when the clipboard refuses the text', async () => {
+    const result = await copyMarkdownFrom('/x.md', {
+      fetch: async () => ({ ok: true, text: async () => '# X' }),
+      clipboard: { writeText: async () => { throw new Error('denied'); } },
+    });
+    expect(result).toBe('failed');
   });
 });

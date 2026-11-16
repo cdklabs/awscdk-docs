@@ -9,6 +9,7 @@ import DefaultTheme from "vitepress/theme-without-fonts";
 import { h, onMounted } from "vue";
 import ApiSidebar from "./ApiSidebar.vue";
 import { initCodeTheme } from "./code-theme";
+import CopyMarkdown from "./CopyMarkdown.vue";
 import { applyFoldoutsAfterNavigation, initDensity } from "./density";
 import { installFavoritesSearchBoost } from "./favorites-client";
 import FavoriteStar from "./FavoriteStar.vue";
@@ -57,7 +58,7 @@ const theme: Theme = {
           h(NavFilter, null, { "status-actions": () => h(JumpToCurrent) }),
           h(FavoritesList),
         ]),
-      "doc-before": () => h(FavoriteStar),
+      "doc-before": () => [h(FavoriteStar), h(CopyMarkdown)],
       "doc-after": () => h(PageFooterLinks),
       // The generated Service -> Resource -> Kind tree, fetched once. Inert
       // outside the /api/ section.
