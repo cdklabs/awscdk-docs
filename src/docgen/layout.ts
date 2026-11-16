@@ -1,7 +1,7 @@
 import * as spec from '@jsii/spec';
 import { anchoredHeading, SECTION_ANCHORS } from './anchors.js';
 import type { TypeIndex } from './constructs.js';
-import { escapeAttr, escapeVueText } from './escape.js';
+import { escapeAttr, escapeSummaryHtml, escapeVueText } from './escape.js';
 import { codeFence, mapProse } from './fences.js';
 import { classLineage } from './interfaces.js';
 import {
@@ -93,25 +93,6 @@ export function escapeProse(text: string): string {
 
 /** Escape text for embedding in raw HTML emitted into markdown. */
 const escHtml = escapeVueText;
-
-/** A Markdown link `[text](http(s)://url)`; only web targets qualify, anything else stays text. */
-const SUMMARY_LINK = /\[([^\[\]]+)\]\((https?:\/\/[^\s()<>]+)\)/g;
-
-/**
- * Escape a member's one-line summary for raw HTML, rendering a Markdown link `[text](url)` as an anchor. Every
- * other piece of the summary, including the link text, is escaped first, so no raw markup from a jsii summary
- * reaches the page; a summary without a web link renders exactly as `escHtml` would.
- */
-export function escapeSummary(summary: string): string {
-  let html = '';
-  let end = 0;
-  for (const match of summary.matchAll(SUMMARY_LINK)) {
-    html += escHtml(summary.slice(end, match.index));
-    html += `<a href="${escapeAttr(match[2])}" rel="noopener noreferrer">${escHtml(match[1])}</a>`;
-    end = match.index + match[0].length;
-  }
-  return html + escHtml(summary.slice(end));
-}
 
 /**
  * Merged description block for the top of a type page: the doc summary (tagline) followed by the remarks — one
@@ -434,7 +415,7 @@ function memberRow(
   );
   const bodyIndexing = indexBody ? '' : ` ${PAGEFIND_IGNORE}`;
   if (summary) {
-    lines.push(`<div class="member-summary"${bodyIndexing}>${escapeSummary(summary.replace(/\s+/g, ' ').trim())}</div>`);
+    lines.push(`<div class="member-summary"${bodyIndexing}>${escapeSummaryHtml(summary.replace(/\s+/g, ' ').trim())}</div>`);
   }
   if (prose.length > 0) {
     lines.push(`<div class="member-extra"${bodyIndexing}>`, '', ...prose, '</div>');

@@ -210,7 +210,12 @@ dropped, so the failure mode is a leftover list, never lost prose.
   deployments without relying on `ignoreDeadLinks` or Pages URL fallbacks.
   Generated markdown becomes base-dependent when `DOCS_BASE` is set; safe
   because every docs task regenerates before building. Any future raw-HTML
-  anchor must build its href via `pageHref()`.
+  cross-reference anchor must build its href via `pageHref()`. A raw-HTML
+  anchor to an external site (a jsii summary's Markdown link, rendered by
+  `escapeSummaryHtml`) accepts only `http(s)` targets, passes the href through
+  `escapeAttr` and the text through `escapeVueText`, and opens in a new tab
+  with `target="_blank" rel="noopener noreferrer"`, like VitePress's own
+  external links in rendered prose.
 - All escaping shares one reviewed implementation; new escape contexts add
   a named helper in `escape.ts` rather than a fresh `.replace()` chain.
 - The six fence-aware passes cannot disagree about fence boundaries;

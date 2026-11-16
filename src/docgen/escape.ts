@@ -11,6 +11,9 @@
  *   not treat the output as template interpolation.
  * - `escapeAttr`: HTML *attribute* context — everything `escapeHtml` does,
  *   plus `"` and `'` so a value can never break out of its quoting.
+ * - `escapeSummaryHtml`: a one-line summary in raw HTML, where a Markdown
+ *   link to a web target becomes an anchor and everything else is
+ *   `escapeVueText`.
  * - `removeAll`: fixpoint removal for multi-character patterns (HTML tags,
  *   comments) where a single `.replace()` pass can re-form the pattern
  *   from the surrounding text (e.g. `<!<!-- -->--x-->`).
@@ -44,6 +47,28 @@ export function escapeAttr(value: string): string {
   return escapeHtml(value)
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+/** A Markdown link `[text](http(s)://url)`; only web targets qualify, anything else stays text. */
+const WEB_LINK = /\[([^\[\]]+)\]\((https?:\/\/[^\s()<>]+)\)/g;
+
+/**
+ * Escape a one-line prose summary for raw HTML embedded in VitePress markdown,
+ * rendering a Markdown link `[text](url)` to a web target as an anchor that
+ * opens in a new tab, like every other external link docgen emits. Every piece
+ * of text, including the link text, goes through `escapeVueText` and the href
+ * through `escapeAttr`, so no raw markup from a jsii summary reaches the page;
+ * a summary without a web link is exactly `escapeVueText(summary)`.
+ */
+export function escapeSummaryHtml(summary: string): string {
+  let html = '';
+  let end = 0;
+  for (const match of summary.matchAll(WEB_LINK)) {
+    html += escapeVueText(summary.slice(end, match.index));
+    html += `<a href="${escapeAttr(match[2])}" target="_blank" rel="noopener noreferrer">${escapeVueText(match[1])}</a>`;
+    end = match.index + match[0].length;
+  }
+  return html + escapeVueText(summary.slice(end));
 }
 
 /**
