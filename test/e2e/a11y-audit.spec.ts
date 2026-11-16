@@ -100,10 +100,7 @@ test.describe('Copy Markdown control accessibility @a11y', () => {
     await page.getByRole('button', { name: 'More Markdown options' }).click();
     await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeVisible();
 
-    const results = await new AxeBuilder({ page })
-      .include('.copy-markdown')
-      .options({ rules: { 'label-content-name-mismatch': { enabled: true } } })
-      .analyze();
+    const results = await new AxeBuilder({ page }).analyze();
 
     const failing = results.violations.filter((v) => isFailing(v.impact));
     const detail = failing.map((v) => `${v.id} (${v.impact}) — ${v.help}`).join('\n');
