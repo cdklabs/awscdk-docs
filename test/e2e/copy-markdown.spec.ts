@@ -73,7 +73,8 @@ test.describe('Copy Markdown control', () => {
     const item = page.getByRole('menuitem', { name: 'View as Markdown' });
     await expect(item).toBeVisible();
 
-    await page.locator('.VPNav').click({ position: { x: 4, y: 4 } });
+    // A raw mouse click at the page corner: Playwright's element click refuses the nav, which the content overlaps.
+    await page.mouse.click(2, 2);
     await expect(item).toBeHidden();
   });
 
