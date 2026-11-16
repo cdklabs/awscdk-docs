@@ -1056,12 +1056,9 @@ describe('API page layout', () => {
       expect(css()).toContain('flex-direction: column');
     });
 
-    test('summary links in a targeted row keep the default link color', () => {
-      // The `:target` tint is `--vp-c-bg-soft`; `theme.test.ts` already pins
-      // brand-1 at AA on that surface (4.57:1 light, #b45309 on #f5f4f1), so
-      // the default link color needs no override there. No rule may recolor
-      // the row's anchors: a broad one would also repaint header-line type
-      // links, which `.member-signature .sig-type` keeps in one color.
+    test('a targeted row does not recolor its anchors', () => {
+      // Recoloring here would also repaint the header line's type links.
+      expect(css()).toMatch(/\.member-row:target\s*\{/);
       expect(css()).not.toMatch(/\.member-row:target[^{]*\ba\b[^{]*\{/);
     });
 
