@@ -1,9 +1,10 @@
-<!-- "Copy Markdown" split button rendered from the doc-before slot, at the top of the page above the breadcrumb bar
-     (the favorite star teleports into the breadcrumb bar on API pages). The main button copies the page's Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page
-     without a twin (no `agentMarkdown` frontmatter) renders nothing. -->
+<!-- "Copy Markdown" split button rendered from the doc-before slot, at the top of the page above the breadcrumb
+     bar (the favorite star teleports into the breadcrumb bar on API pages). The main button copies the page's
+     Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page without a
+     twin (no `agentMarkdown` frontmatter) renders nothing. -->
 <script setup lang="ts">
 import { useData } from "vitepress";
-import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { agentMarkdownHref } from "../agent-markdown";
 import { copyMarkdownFrom, type CopyResult } from "../copy-markdown";
 
@@ -79,6 +80,16 @@ function onDocumentPointerDown(event: Event): void {
   }
 }
 
+// The component stays mounted across client-side navigation: drop any open menu or result from the last page.
+watch(
+  () => page.value.relativePath,
+  () => {
+    menuOpen.value = false;
+    result.value = undefined;
+    clearTimeout(resetTimer);
+  }
+);
+
 onMounted(() => document.addEventListener("pointerdown", onDocumentPointerDown));
 onUnmounted(() => {
   document.removeEventListener("pointerdown", onDocumentPointerDown);
@@ -121,7 +132,7 @@ onUnmounted(() => {
         @click="closeMenu(true)"
       >
         View as Markdown<span aria-hidden="true"> ↗</span
-        ><span class="copy-markdown-status">(opens in a new tab)</span>
+        ><span class="copy-markdown-sr-only"> (opens in a new tab)</span>
       </a>
     </div>
     <span class="copy-markdown-status" role="status" aria-live="polite">{{ result ? label : "" }}</span>
@@ -196,7 +207,8 @@ onUnmounted(() => {
 }
 
 /* Visually hidden live region: announces the result without a second visible copy of it. */
-.copy-markdown-status {
+.copy-markdown-status,
+.copy-markdown-sr-only {
   position: absolute;
   width: 1px;
   height: 1px;

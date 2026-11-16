@@ -19,11 +19,11 @@ test.describe('Copy Markdown control', () => {
     await copy.click();
 
     await expect(copy).toHaveText('Copied');
-    await expect(page.locator('.copy-markdown-status')).toHaveText('Copied');
+    await expect(page.locator('.copy-markdown [role="status"]')).toHaveText('Copied');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(expected);
 
     await expect(copy).toHaveText('Copy Markdown', { timeout: 5_000 });
-    await expect(page.locator('.copy-markdown-status')).toHaveText('');
+    await expect(page.locator('.copy-markdown [role="status"]')).toHaveText('');
   });
 
   test('shows Copy failed when the file cannot be fetched and the menu stays usable', async ({ page }) => {
@@ -33,7 +33,7 @@ test.describe('Copy Markdown control', () => {
     const copy = page.locator('.copy-markdown-main');
     await copy.click();
     await expect(copy).toHaveText('Copy failed');
-    await expect(page.locator('.copy-markdown-status')).toHaveText('Copy failed');
+    await expect(page.locator('.copy-markdown [role="status"]')).toHaveText('Copy failed');
 
     await page.getByRole('button', { name: 'More Markdown options' }).click();
     await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeVisible();

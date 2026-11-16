@@ -21,7 +21,7 @@ test.describe('agent-oriented Markdown twin', () => {
     await expect(alternate).toHaveAttribute('href', twinOf(TOPIC_PAGE));
   });
 
-  test('the footer no longer offers a Markdown download', async ({ page }) => {
+  test('the footer offers no Markdown link', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.page-footer-links')).toBeVisible();
     await expect(page.locator('.page-footer-links')).not.toContainText('Markdown');
