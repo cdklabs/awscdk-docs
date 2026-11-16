@@ -112,6 +112,17 @@ describe('symbol page generation', () => {
     expect(page).toContain('- [`BucketProps`](/v2/docs/aws-cdk-lib.aws_s3.BucketProps).encryption');
   });
 
+  test('deprecated enum members carry the deprecated name style, badge and reason', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.CustomResourceProviderRuntime.md'), 'utf-8');
+    const row = (name: string) => page.split('\n').find((l) => l.startsWith(`| <span id="${name.toLowerCase()}"></span>`)) ?? '';
+    // NODEJS_12_X is deprecated in jsii: struck-through name, text badge, reason as the description.
+    expect(row('NODEJS_12_X')).toBe(
+      '| <span id="nodejs_12_x"></span><code class="member-name-deprecated">NODEJS_12_X</code> <span class="member-deprecated">deprecated</span> | Use latest version |',
+    );
+    // A current member renders exactly as before.
+    expect(row('NODEJS_24_X')).toBe('| <span id="nodejs_24_x"></span>`NODEJS_24_X` | Node.js 24.x. |');
+  });
+
   test('constructs and mixins keep their dedicated templates', () => {
     const construct = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(construct).toContain('construct" />');

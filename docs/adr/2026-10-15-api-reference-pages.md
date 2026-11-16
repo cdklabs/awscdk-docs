@@ -35,7 +35,9 @@ and search filters per page, then routes by kind:
   class initializer parameters.
 - **Behavioral interfaces** that are not mixins show methods and properties.
 - **Enums** show a members table and a "Referenced by" list of properties
-  typed by the enum.
+  typed by the enum. A deprecated member is marked like a deprecated
+  property row: struck-through name, a `deprecated` badge, and the
+  deprecation reason in place of the summary.
 
 Type references in property tables render as markdown links when the target
 has a documented page (`linkFor` over a global FQN → link map), falling back
