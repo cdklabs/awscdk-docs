@@ -72,6 +72,11 @@ test.describe('sidebar collapse memory', () => {
     await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'false');
     await groupNamed(page, name).click();
     await expect(items(page).first()).toBeVisible();
+    // Clicking scrolled the sidebar up to the section; bring the active entry
+    // back into view so the remembered scroll position is the one under test.
+    const active = page.locator('.api-sidebar a.api-sidebar-link.active');
+    await active.scrollIntoViewIfNeeded();
+    await expect(active).toBeInViewport();
 
     await page.reload();
     await waitForSidebar(page);
@@ -79,6 +84,9 @@ test.describe('sidebar collapse memory', () => {
     await expect(group).toHaveAttribute('aria-expanded', 'true');
     await expect(group.locator('.api-sidebar-caret')).toHaveClass(/\bopen\b/);
     await expect(items(page).first()).toBeVisible();
+    // The section sits above the active entry. The scroll restore waits for its
+    // items, so they cannot push the entry away after the position is applied.
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
   });
 
   test('collapsing again is remembered as closed, not merely forgotten', async ({ page }) => {

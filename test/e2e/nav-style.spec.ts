@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
+import { CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // Selectable navigation style (docs/adr/2026-10-23-sidebar-navigation-styles.md):
 // the Settings menu offers By service (the default) and By package; the choice
@@ -183,5 +183,22 @@ test.describe('navigation style', () => {
     await expect(page.locator('.api-sidebar-nav > .api-sidebar-list > li > p.api-sidebar-section-title')).toHaveText(['Framework', 'Services']);
     const group = await openSettings(page);
     await expect(group.getByRole('button', { name: 'By service' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('a service section stored open shows its items after switching back from By package', async ({ page }) => {
+    // Only the active page's chunk is fetched on load. A service section the
+    // reader left open must fetch its own chunk when the service style is
+    // first shown, not render an open caret over an empty list.
+    await page.goto(CFN_QUEUE_PAGE);
+    await waitForSidebar(page);
+    await page.getByRole('button', { name: 'Custom Resources', exact: true }).click();
+    await page.evaluate((key) => window.localStorage.setItem(key, 'package'), NAV_KEY);
+    await page.reload();
+    await waitForSidebar(page);
+
+    await (await openSettings(page)).getByRole('button', { name: 'By service' }).click();
+    const group = page.getByRole('button', { name: 'Custom Resources', exact: true });
+    await expect(group).toHaveAttribute('aria-expanded', 'true');
+    await expect(group.locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeVisible();
   });
 });

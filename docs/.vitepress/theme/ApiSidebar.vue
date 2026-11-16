@@ -320,27 +320,33 @@ function unloadedPackageChunks(key: string): string[] {
 // Load what the open entries of the package style need: the packages the
 // reader has open, which after a fresh switch is the one holding the active
 // page (already fetched for the service style) and nothing else.
-function loadOpenPackageChunks() {
+function loadOpenPackageChunks(): Promise<void> {
+  const pending: Promise<void>[] = [];
   for (const key of expandedByStyle.value.package) {
-    for (const name of unloadedPackageChunks(key)) loadChunk(name).catch(() => undefined);
+    for (const name of unloadedPackageChunks(key)) pending.push(loadChunk(name).catch(() => undefined));
   }
+  return Promise.all(pending).then(() => undefined);
 }
 
 // Load what the open groups of the service style need. A group the reader
 // opened before a reload comes back open from the stored choices, but only the
 // active page's chunk is fetched on load, so without this its child list
 // would render empty under an open caret.
-function loadOpenServiceChunks() {
+function loadOpenServiceChunks(): Promise<void> {
+  const pending: Promise<void>[] = [];
   for (const key of expandedByStyle.value.service) {
     const chunk = unloadedChunkForKey(serviceTree.value, key);
-    if (chunk) loadChunk(chunk).catch(() => undefined);
+    if (chunk) pending.push(loadChunk(chunk).catch(() => undefined));
   }
+  return Promise.all(pending).then(() => undefined);
 }
 
-// The open groups of the active style fetch any chunk they still miss.
-function loadOpenChunks() {
-  if (navStyle.value === "package") loadOpenPackageChunks();
-  else loadOpenServiceChunks();
+// The open groups of the active style fetch any chunk they still miss. Never
+// rejects: a failed chunk is retried when next needed. Callers reveal the
+// active entry once it settles, so a section above it that fills in later
+// cannot push the entry out of place.
+function loadOpenChunks(): Promise<void> {
+  return navStyle.value === "package" ? loadOpenPackageChunks() : loadOpenServiceChunks();
 }
 
 // The groups a style opens before any reader choice: the generated tree's
@@ -393,8 +399,7 @@ function ensureLoaded() {
       // A query typed while the skeleton was in flight is already filtering.
       if (filtering.value) loadAllChunks();
       syncActive();
-      loadOpenChunks();
-      revealOnLoad();
+      return loadOpenChunks().then(revealOnLoad);
     })
     .catch(() => {
       status.value = "error";
@@ -429,7 +434,7 @@ function toggle(key: string) {
 
 // A style switch regroups the data already here: no new skeleton, no new
 // status. The new style gets its defaults and stored choices on first use,
-// the active page is revealed in it, and the packages it has open fetch any
+// the active page is revealed in it, and the groups it has open fetch any
 // chunk they still miss.
 watch(navStyle, () => {
   // Folds made while filtering belong to the tree they were made in.
@@ -438,11 +443,12 @@ watch(navStyle, () => {
   if (navStyle.value === "package") ensurePackageTree();
   initStyle(navStyle.value);
   syncActive();
-  loadOpenChunks();
-  nextTick(() => {
-    const container = findScrollContainer();
-    if (container) scrollActiveIntoView(container);
-  });
+  loadOpenChunks().then(() =>
+    nextTick(() => {
+      const container = findScrollContainer();
+      if (container) scrollActiveIntoView(container);
+    }),
+  );
 });
 
 // The display language is the shared client-side language selection
