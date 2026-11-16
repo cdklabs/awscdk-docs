@@ -79,11 +79,24 @@ of truth for what a page says. It parses the page with `htmlparser2` (a regex
 cannot pair the nested per-language signature markup), after swapping anything
 that merely looks like markup — fenced/indented code, autolinks,
 `<placeholder>` tokens — for placeholders restored byte for byte. It drops
-frontmatter, the breadcrumb `<nav>`, every non-canonical language variant, Vue
+frontmatter, the breadcrumb `<nav>`, Vue
 components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `<div>`s; member lists become bullets, the type hierarchy becomes
 `Extends:`/`Implements:` lines, `:::` containers become titled blockquotes.
 Headings, prose, fenced code, tables and links pass through.
+
+The twin keeps every enabled language (superseding the earlier rule that it
+dropped every non-canonical variant), so a reader or assistant working in
+Python, Java, C# or Go gets their own code. Only content that differs by
+language is repeated; prose, tables and links appear once. An example group
+becomes one fenced block per language, in the site's language order, each
+after a plain label line naming the language (`Python:`). A per-language name
+inline (a property in a table, a parameter in a list) keeps the canonical
+spelling and adds the others in parentheses where they differ
+(`bucketArn (Python: bucket_arn)`). A member bullet keeps the canonical name
+and type, with one labeled sub-bullet per language whose name or type reads
+differently. The languages are the ones the page was built with, so a
+one-language build emits one copy and no labels.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the

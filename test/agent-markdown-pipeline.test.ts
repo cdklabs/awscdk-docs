@@ -92,12 +92,12 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('> **Separate package**');
   });
 
-  test('the twin body is plain Markdown: content kept, chrome and non-canonical variants gone', () => {
+  test('the twin body is plain Markdown: content and every language kept, chrome gone', () => {
     const twin = readFileSync(join(agentOutDir, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
     const canonical = readFileSync(join(outDir, 'docs', 'constructs.Node.md'), 'utf-8');
     expect(twin.startsWith('# Node\n')).toBe(true);
-    expect(twin).toContain('```ts');
-    expect(twin).not.toContain('```python');
+    expect(twin).toContain('TypeScript:\n\n```ts');
+    expect(twin).toContain('Python:\n\n```python');
     expect(twin).not.toContain('agentMarkdown');
     for (const marker of ['<LanguageTabs', 'lang-variant', '<Badge', 'data-pagefind', '<nav', 'v-pre', '---\n']) {
       expect(twin).not.toContain(marker);
@@ -106,6 +106,21 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('addDependency');
     expect(twin.length).toBeLessThan(canonical.length);
     expect(twin.length).toBeGreaterThan(canonical.length / 10);
+  });
+
+  test('a build with one language emits one copy and no language labels', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agent-md-ts-'));
+    try {
+      const out = join(dir, 'docs');
+      const agent = join(dir, 'agent');
+      generateDocs({ modules: ['constructs'] }, { outDir: out, agentOutDir: agent, packageRoot: ROOT, languages: ['ts'] });
+      const twin = readFileSync(join(agent, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
+      expect(twin).toContain('```ts');
+      expect(twin).not.toContain('TypeScript:');
+      expect(twin).not.toContain('```python');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test('without agentOutDir nothing changes: no key, no twins', () => {
@@ -224,4 +239,31 @@ describe('the page advertises its twin only when one exists', () => {
     const guarded = config.indexOf('if (typeof twin === "string")');
     expect(config.indexOf('type: "text/plain"')).toBeLessThan(guarded);
   });
+});
+
+describe('agent-oriented Markdown twins with every site language', () => {
+  test('the Bucket twin carries the first example in Python, Java, C# and Go', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agent-md-all-'));
+    try {
+      const out = join(dir, 'docs');
+      const agent = join(dir, 'agent');
+      generateDocs(
+        { modules: ['aws-cdk-lib'] },
+        { outDir: out, agentOutDir: agent, packageRoot: ROOT, languages: ['ts', 'python', 'java', 'dotnet', 'go'] },
+      );
+      const twin = readFileSync(join(agent, 'v2', 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+      // The first example group: one labeled fence per language, in the site's order.
+      const start = twin.indexOf('TypeScript:\n\n```ts');
+      expect(start).toBeGreaterThan(-1);
+      const labels = ['Python:\n\n```python', 'Java:\n\n```java', 'C# / .NET:\n\n```csharp', 'Golang:\n\n```go'];
+      let at = start;
+      for (const label of labels) {
+        const next = twin.indexOf(label, at);
+        expect(next).toBeGreaterThan(at);
+        at = next;
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 600_000);
 });

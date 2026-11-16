@@ -94,11 +94,16 @@ describe('toAgentMarkdown', () => {
     expect(markdown).not.toContain('<span');
   });
 
-  test('keeps only the canonical TypeScript variant', () => {
-    expect(markdown).toContain('```ts\nnew Bucket(scope: Construct, id: string, props?: BucketProps)\n```');
-    expect(markdown).not.toContain('```python');
-    expect(markdown).toContain('| bucketArn | `string` |');
-    expect(markdown).not.toContain('bucket_arn');
+  test('keeps every language variant, each block after a label line naming its language', () => {
+    expect(markdown).toContain('TypeScript:\n\n```ts\nnew Bucket(scope: Construct, id: string, props?: BucketProps)\n```');
+    expect(markdown).toContain('Python:\n\n```python\nBucket(scope, id, *, versioned=None)\n```');
+    expect(markdown.indexOf('TypeScript:')).toBeLessThan(markdown.indexOf('Python:'));
+  });
+
+  test('an inline name adds the other spellings once, and prose and tables appear once', () => {
+    expect(markdown).toContain('| bucketArn (Python: bucket_arn) | `string` |');
+    expect(markdown.match(/An S3 bucket with helpers\./g)).toHaveLength(1);
+    expect(markdown.match(/\| Name \| Type \|/g)).toHaveLength(1);
   });
 
   test('preserves the documentation content', () => {

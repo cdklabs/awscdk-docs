@@ -4,8 +4,9 @@
  * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
  * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
- * consume: the canonical (TypeScript) variant only; headings, prose, fenced code, tables and links preserved;
- * member lists rewritten as bullet lists; everything that exists for the browser dropped.
+ * consume: every enabled language's variant, each labeled with its language, while prose, tables and links appear
+ * once; headings, prose, fenced code, tables and links preserved; member lists rewritten as bullet lists;
+ * everything that exists for the browser dropped.
  *
  * It is a transform over the finished page rather than a second renderer so there is one source of truth for the
  * documentation content itself. The HTML is walked with a real parser: the member markup nests spans several deep
@@ -13,7 +14,7 @@
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
-import { DEFAULT_LANGUAGE } from './languages.js';
+import { DEFAULT_LANGUAGE, LANGUAGES } from './languages.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -125,6 +126,48 @@ function unwrapContainers(s: string): string {
 
 const classes = (el: Element): Set<string> => new Set((el.attribs.class ?? '').split(/\s+/).filter(Boolean));
 
+const LANGUAGE_LABEL = new Map<string, string>(LANGUAGES.map((l) => [l.id, l.label]));
+const isVariant = (n: Node): n is Element => isElement(n) && classes(n).has('lang-variant');
+const languageLabel = (variant: Element): string =>
+  LANGUAGE_LABEL.get(variant.attribs['data-lang']) ?? variant.attribs['data-lang'] ?? '';
+
+/**
+ * The run of sibling `.lang-variant` elements that starts at the canonical variant `el`: docgen emits one per
+ * enabled language, in the site's language order, side by side. Whitespace between them is skipped.
+ */
+function variantGroup(el: Element): Element[] {
+  const siblings = el.parent?.children ?? [el];
+  const group: Element[] = [];
+  for (let i = siblings.indexOf(el); i < siblings.length; i++) {
+    const n = siblings[i];
+    if (isVariant(n)) {
+      if (group.length > 0 && n.attribs['data-lang'] === DEFAULT_LANGUAGE) break;
+      group.push(n);
+    } else if (!(isText(n) && n.data.trim() === '')) {
+      break;
+    }
+  }
+  return group;
+}
+
+/**
+ * One group of language variants. A block variant (an example) is repeated once per language, each copy after a
+ * plain label line naming its language. An inline variant (a name in prose or a parameter list) keeps the
+ * canonical text and adds, in parentheses, the other languages' spellings where they differ.
+ */
+function renderVariantGroup(group: Element[]): string {
+  if (group.length === 1) return children(group[0]);
+  if (group[0].name.toLowerCase() === 'div') {
+    return group.map((v) => `\n${languageLabel(v)}:\n\n${children(v).trim()}\n`).join('\n');
+  }
+  const canonical = children(group[0]).trim();
+  const others = group
+    .slice(1)
+    .map((v) => [languageLabel(v), children(v).trim()] as const)
+    .filter(([, text]) => text !== canonical);
+  return others.length ? `${canonical} (${others.map(([label, text]) => `${label}: ${text}`).join('; ')})` : canonical;
+}
+
 function children(el: Element): string {
   return el.children.map((n) => render(n)).join('');
 }
@@ -148,9 +191,9 @@ function render(node: Node): string {
     return literalTag(el);
   }
 
-  // Language variants: keep the canonical one's content, drop the rest and the tab wrapper.
+  // Language variants: the canonical one renders its whole group; the others are rendered with it.
   if (cls.has('lang-variant')) {
-    return el.attribs['data-lang'] === DEFAULT_LANGUAGE ? children(el) : '';
+    return el.attribs['data-lang'] === DEFAULT_LANGUAGE ? renderVariantGroup(variantGroup(el)) : '';
   }
   if (tag === 'languagetabs') {
     return `\n${children(el)}\n`;
@@ -276,33 +319,47 @@ function renderMetadata(el: Element): string {
  * the same line, and any longer description or disclosure content indented beneath it.
  */
 function renderMemberRow(el: Element): string {
-  // Only the canonical variant's name and type take part in the bullet.
-  for (const variant of DomUtils.findAll((n) => classes(n).has('lang-variant'), el.children)) {
-    if (variant.attribs['data-lang'] !== DEFAULT_LANGUAGE) DomUtils.removeElement(variant);
-  }
   const line = DomUtils.findOne((n) => classes(n).has('member-line'), el.children);
   const summary = DomUtils.findOne((n) => classes(n).has('member-summary'), el.children);
   const rest = el.children.filter((n) => n !== line && n !== summary);
 
-  const head = line ? renderMemberLine(line) : '';
+  // The bullet carries the canonical name and type; each other language whose name or type reads differently
+  // gets one labeled sub-bullet under it.
+  const variants = line ? DomUtils.findAll(isVariant, line.children) : [];
+  const canonical = variants.find((v) => v.attribs['data-lang'] === DEFAULT_LANGUAGE);
+  const head = line ? renderMemberLine(line, canonical) : '';
+  const spellings = variants
+    .filter((v) => v !== canonical)
+    .map((v) => [languageLabel(v), renderMemberLine(line!, v)] as const)
+    .filter(([, text]) => text !== head)
+    .map(([label, text]) => `- ${label}: ${text}`);
   const summaryText = summary ? inline(summary) : '';
   // Restore fences before indenting so every line of a block — content and closer, not just the opener — sits
   // under the bullet; an opener indented alone would leave the closer starting a fence of its own.
-  const body = restoreProtected(rest.map((n) => render(n)).join('')).trim();
+  const body = [spellings.join('\n'), restoreProtected(rest.map((n) => render(n)).join('')).trim()]
+    .filter(Boolean)
+    .join('\n\n');
   const indented = body ? `\n${body.split('\n').map((l) => (l ? `  ${l}` : '')).join('\n')}\n` : '';
   return `- ${head}${summaryText ? ` — ${summaryText}` : ''}\n${indented}`;
 }
 
-function renderMemberLine(line: Element): string {
+/**
+ * The bullet head of a member line: name and type (or signature) from `variant` when the line has per-language
+ * variants, flags and default from the line itself.
+ */
+function renderMemberLine(line: Element, variant?: Element): string {
   const parts: string[] = [];
-  const name = DomUtils.findOne((n) => classes(n).has('member-name'), line.children);
-  const signature = DomUtils.findOne((n) => classes(n).has('member-signature'), line.children);
-  const type = DomUtils.findOne((n) => classes(n).has('member-type'), line.children);
-  const def = DomUtils.findOne((n) => classes(n).has('member-default'), line.children);
-  const flags = DomUtils.findAll(
-    (n) => classes(n).has('member-required') || classes(n).has('member-static'),
-    line.children,
-  );
+  const scope = variant ? variant.children : line.children;
+  // Flags and defaults sit outside the variants; a lookup must not pick them up from another language's copy.
+  const shared = line.children.filter((n) => !isVariant(n));
+  const find = (cls: string) =>
+    DomUtils.findOne((n) => classes(n).has(cls), scope) ?? DomUtils.findOne((n) => classes(n).has(cls), shared);
+  const name = find('member-name');
+  const signature = find('member-signature');
+  const type = find('member-type');
+  const def = find('member-default');
+  const flagOf = (n: Element) => classes(n).has('member-required') || classes(n).has('member-static');
+  const flags = [...DomUtils.findAll(flagOf, scope), ...(variant ? DomUtils.findAll(flagOf, shared) : [])];
   if (signature) {
     parts.push(`\`${textOf(signature)}\``);
   } else if (name) {
