@@ -15,9 +15,13 @@ test.describe('obtainable from row', () => {
     const row = page.locator('.inheritance-chain .chain-row#obtainable-from');
     await expect(row).toBeVisible();
     await expect(row.locator('.chain-label')).toHaveText('obtainable from');
-    // Both Queue factories, in member order, and nothing else: the row is
-    // limited to statics whose declared type IS the page type.
-    await expect(row.locator('a.chain-item')).toHaveText(['Queue.fromQueueArn', 'Queue.fromQueueAttributes']);
+    // Both Queue factories, sorted by owner then member name, and nothing
+    // else: the row is limited to statics whose declared type IS the page
+    // type. The accessible name is what a screen reader or voice user gets;
+    // `textContent` would also include the hidden language variants.
+    const links = row.locator('a.chain-item');
+    await expect(links.nth(0)).toHaveAccessibleName('Queue.fromQueueArn');
+    await expect(links.nth(1)).toHaveAccessibleName('Queue.fromQueueAttributes');
 
     await row.locator('a.chain-item').first().click();
     await expect(page).toHaveURL(new RegExp(`${QUEUE_PAGE.replace(/\./g, '\\.')}#fromqueuearn$`));
@@ -27,6 +31,19 @@ test.describe('obtainable from row', () => {
     const target = page.locator('.member-row#fromqueuearn');
     await expect(target).toBeVisible();
     await expect(target.locator('.member-signature .sig-name').first()).toHaveText('fromQueueArn');
+  });
+
+  test('the Python view shows the Python spelling of each entry', async ({ page }) => {
+    // `?lang=python` is applied during hydration, so wait for the active tab
+    // before reading, or the canonical TypeScript variant is what gets read.
+    await page.goto(`${IQUEUE_PAGE}?lang=python`);
+    await expect(page.locator('.lang-tabs').first()).toHaveAttribute('data-active', 'python');
+
+    const links = page.locator('.inheritance-chain .chain-row#obtainable-from a.chain-item');
+    await expect(links.nth(0)).toHaveAccessibleName('Queue.from_queue_arn');
+    await expect(links.nth(1)).toHaveAccessibleName('Queue.from_queue_attributes');
+    // The anchor stays canonical, so the link resolves in every language.
+    await expect(links.nth(0)).toHaveAttribute('href', /#fromqueuearn$/);
   });
 
   test('the row is the last relation of the block', async ({ page }) => {
@@ -50,12 +67,13 @@ test.describe('obtainable from row', () => {
     await expect(more).toHaveAttribute('open', '');
     await expect(hidden).toBeVisible();
     // Every one of the four factories is reachable once the row is open.
+    // `innerText` reads only the active language's variant.
     await expect(row.locator('a.chain-item')).toHaveText([
       'SubscriptionFilter.existsFilter',
       'SubscriptionFilter.notExistsFilter',
       'SubscriptionFilter.numericFilter',
       'SubscriptionFilter.stringFilter',
-    ]);
+    ], { useInnerText: true });
 
     await more.locator('summary').click();
     await expect(more).not.toHaveAttribute('open', '');

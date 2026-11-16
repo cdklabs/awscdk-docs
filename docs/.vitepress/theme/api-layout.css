@@ -279,9 +279,9 @@
   display: block;
   padding-left: 10px;
   border-left: 2px solid var(--vp-c-divider);
-  /* An `obtainable from` entry is one `Owner.member` token that can outgrow a
-     375px column even after the `<wbr>` at its dot; this lets the token break
-     inside a member name rather than widen the page (WCAG 1.4.10 Reflow). */
+  /* Lets a single long entry in any relation row (an `Owner.member` token, a
+     long type name) break inside the name rather than widen the page at
+     320-375px (WCAG 1.4.10 Reflow). */
   overflow-wrap: anywhere;
 }
 

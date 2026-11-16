@@ -47,7 +47,7 @@ export function canonicalLanguage(languages: readonly Language[]): Language {
  * Attributes for one `.lang-variant` element. Non-canonical variants carry `data-pagefind-ignore` so Pagefind
  * indexes each region once — in the canonical language — instead of once per enabled language.
  */
-function variantAttrs(lang: Language, canonical: Language, hydrated = false): string {
+function variantAttrs(lang: Language, canonical: Language, hydrated = false, indexed = true): string {
   // A non-canonical INERT variant is static transliterated markup shown or hidden purely by the `<LanguageTabs>`
   // scoped CSS, never read as vnodes. Mark it `v-pre` so the Vue SSR compiler skips it instead of re-encoding it
   // into the page's hydration chunk; those chunks are the dominant artifact cost at scale, and `v-pre` keeps the
@@ -59,7 +59,9 @@ function variantAttrs(lang: Language, canonical: Language, hydrated = false): st
   // fenced code blocks, which compile into Shiki `language-<lang>` divs with the copy-code button — must stay
   // hydrated (`hydrated: true`), or the button ships dead on every non-canonical tab. The Pagefind ignore attribute
   // applies to every non-canonical variant either way.
-  const ignore = lang === canonical ? '' : ` ${PAGEFIND_IGNORE}`;
+  // Inside a region that already carries `data-pagefind-ignore` (`indexed: false`), the per-span attribute would
+  // only repeat the enclosing one, so it is left off.
+  const ignore = lang === canonical || !indexed ? '' : ` ${PAGEFIND_IGNORE}`;
   const pre = lang === canonical || hydrated ? '' : ' v-pre';
   return `class="lang-variant" data-lang="${lang}"${pre}${ignore}`;
 }
@@ -116,6 +118,7 @@ export function languageVariantBlocks(
 export function languageVariantSpans(
   languages: readonly Language[],
   render: (lang: Language) => string,
+  options: { readonly indexed?: boolean } = {},
 ): string {
   const langs = orderedLanguages(languages);
   if (langs.length <= 1) {
@@ -123,7 +126,7 @@ export function languageVariantSpans(
   }
   const canonical = canonicalLanguage(langs);
   return langs
-    .map((lang) => `<span ${variantAttrs(lang, canonical)}>${render(lang)}</span>`)
+    .map((lang) => `<span ${variantAttrs(lang, canonical, false, options.indexed ?? true)}>${render(lang)}</span>`)
     .join('');
 }
 

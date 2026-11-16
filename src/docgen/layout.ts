@@ -217,10 +217,12 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
  * A relation row whose entries are static members rather than types: `obtainable from Bucket.fromBucketName`. Each
  * entry links to the owner's page at the member's row anchor (the same `memberAnchor` the row itself carries), so
  * the reader lands on the factory; an entry owned by the page's own type links by fragment alone, so a version
- * catalog with hundreds of constants does not repeat its own path hundreds of times. The owner is named with its
- * short name like every other row; the member name is a language variant, translated per enabled language like
- * the member rows, while the width budget and the anchor stay on the canonical jsii name. A `<wbr>` after the dot
- * lets a long `Owner.member` token wrap at narrow widths without changing the copied text or the accessible name.
+ * catalog with hundreds of constants does not repeat its own path hundreds of times. The whole `Owner<sep>member`
+ * is a language variant, translated per enabled language like the member rows: the member name through the same
+ * translators, and the separator `_` for Go, where jsii exposes a static as the package-level
+ * `Owner_Member`. The anchor stays on the canonical jsii name; the width budget uses the widest translation, so the
+ * two-line clamp holds in every language. A `<wbr>` after the separator lets a long token wrap at narrow widths
+ * without changing the accessible name; the agent Markdown twin drops the tag.
  */
 function memberRelationRow(
   label: string,
@@ -231,10 +233,17 @@ function memberRelationRow(
   id?: string,
 ): string {
   return relationRowOf(label, refs.map((ref) => {
-    const text = `${shortName(ref.ownerFqn)}.${ref.memberName}`;
+    const owner = shortName(ref.ownerFqn);
     const translate = ref.kind === 'method' ? translateMethodName : translatePropertyName;
-    const member = languageVariantSpans(languages, (lang) => escHtml(translate(ref.memberName, lang)));
-    const content = `${escHtml(shortName(ref.ownerFqn))}.<wbr>${member}`;
+    const entry = (lang: Language) => ({ sep: lang === 'go' ? '_' : '.', member: translate(ref.memberName, lang) });
+    const text = (languages.length > 0 ? languages : [DEFAULT_LANGUAGE])
+      .map((lang) => `${owner}${entry(lang).sep}${entry(lang).member}`)
+      .reduce((widest, candidate) => (candidate.length > widest.length ? candidate : widest));
+    // The enclosing <nav> already carries `data-pagefind-ignore`, so the spans do not repeat it.
+    const content = languageVariantSpans(languages, (lang) => {
+      const { sep, member } = entry(lang);
+      return `${escHtml(owner)}${sep}<wbr>${escHtml(member)}`;
+    }, { indexed: false });
     const fragment = `#${memberAnchor(ref.memberName)}`;
     const link = ref.ownerFqn === pageFqn ? fragment : (() => {
       const page = linkFor(ref.ownerFqn);

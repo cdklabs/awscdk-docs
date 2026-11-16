@@ -2,8 +2,10 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import * as spec from '@jsii/spec';
+import { toAgentMarkdown } from '../src/docgen/agent-markdown.js';
 import { buildTypeIndex, TypeIndex } from '../src/docgen/constructs.js';
 import { generateDocs, loadAssembly as loadCachedAssembly } from '../src/docgen/index.js';
+import { renderExtendsBar } from '../src/docgen/layout.js';
 import { buildUsageIndex, classMethods, classProperties, renderInterfacePage, renderStructPage, UsageIndex } from '../src/docgen/symbols.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -264,8 +266,8 @@ describe('symbol page generation', () => {
   });
 
   test('interface pages list the static factories that return the type, linked to the member', () => {
-    // IBucket is produced by four Bucket statics; the row lists them in member order, each linking the owner
-    // page at the member's row anchor. Four entries overflow the two-line budget, so the last two fold.
+    // IBucket is produced by four Bucket statics; the row lists them sorted by owner, then member name, each
+    // linking the owner page at the member's row anchor. Four entries overflow the two-line budget, so the last two fold.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
     const row = page.match(/<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from<\/span> (.*?)<\/div>/);
     expect(row).not.toBeNull();
@@ -292,19 +294,23 @@ describe('symbol page generation', () => {
     );
   });
 
-  test('member names in the row are language variants; the block is wrapped in language tabs only then', () => {
+  test('entries in the row are language variants; the block is wrapped in language tabs only then', () => {
     const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
-    const languages = ['ts', 'python', 'dotnet'] as const;
+    const languages = ['ts', 'python', 'dotnet', 'go'] as const;
     const assembly = loadAssembly('aws-cdk-lib');
     const index = buildTypeIndex([assembly, loadAssembly('constructs')]);
     const usage = buildUsageIndex(index);
     const ibucket = index.get('aws-cdk-lib.aws_s3.IBucket')!.type as spec.InterfaceType;
     const page = renderInterfacePage({ type: ibucket, assembly, index, usage, linkFor, languages: [...languages], emitExamples: false });
     const row = page.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
-    // Owner name once, canonical; the member name once per language, the way the member rows render names.
-    expect(row).toContain('Bucket.<wbr><span class="lang-variant" data-lang="ts">fromBucketArn</span>');
-    expect(row).toMatch(/data-lang="python"[^>]*>from_bucket_arn<\/span>/);
-    expect(row).toMatch(/data-lang="dotnet"[^>]*>FromBucketArn<\/span>/);
+    // The whole entry is the variant: the member name through the member-name translators, and Go's `_`
+    // separator, since jsii exposes a static there as the package-level `Owner_Member`.
+    expect(row).toContain('<span class="lang-variant" data-lang="ts">Bucket.<wbr>fromBucketArn</span>');
+    expect(row).toMatch(/data-lang="python"[^>]*>Bucket\.<wbr>from_bucket_arn<\/span>/);
+    expect(row).toMatch(/data-lang="dotnet"[^>]*>Bucket\.<wbr>FromBucketArn<\/span>/);
+    expect(row).toMatch(/data-lang="go"[^>]*>Bucket_<wbr>FromBucketArn<\/span>/);
+    // The enclosing <nav> is already ignored by Pagefind, so the spans do not repeat the attribute.
+    expect(row).not.toContain('data-pagefind-ignore');
     // The anchor stays on the canonical slug, so the link resolves in every language.
     expect(row).toContain('href="/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn"');
     // The block sits inside a <LanguageTabs> group so the variants follow the page's language switch...
@@ -314,6 +320,42 @@ describe('symbol page generation', () => {
     const propsPage = renderStructPage({ type: props, assembly, index, usage, linkFor, languages: [...languages], emitExamples: false });
     expect(propsPage).not.toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
     expect(propsPage).toContain('<nav class="inheritance-chain"');
+  });
+
+  test('a static property translates as a property, and an owner without a page renders as text', () => {
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const refs = [
+      { ownerFqn: 'x.Thing', memberName: 'DEFAULT_THING', kind: 'property' as const },
+      { ownerFqn: 'y.Other', memberName: 'ofThing', kind: 'method' as const },
+    ];
+    // Only `x.Thing` has a page: `y.Other` comes from an assembly the site does not document.
+    const linkFor = (fqn: string) => (fqn === 'x.Thing' ? '/v2/docs/x.Thing' : undefined);
+    const [nav] = renderExtendsBar(iface, linkFor, [], [], refs, ['ts', 'python', 'go']).filter((l) => l.includes('<nav'));
+    const row = nav.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
+    const [first, second] = [...row.matchAll(/<li role="listitem">(.*?)<\/li>/g)].map((m) => m[1]);
+    // The property goes through translatePropertyName, the same translator the member rows use.
+    expect(first).toBe(
+      '<a class="chain-item" href="/v2/docs/x.Thing.html#default-thing">'
+      + '<span class="lang-variant" data-lang="ts">Thing.<wbr>DEFAULT_THING</span>'
+      + '<span class="lang-variant" data-lang="python" v-pre>Thing.<wbr>default_thing</span>'
+      + '<span class="lang-variant" data-lang="go" v-pre>Thing_<wbr>DEFAULT_THING</span></a>, ',
+    );
+    // No page to link: the entry is a span with the same content and no anchor.
+    expect(second).toBe(
+      '<span class="chain-item">'
+      + '<span class="lang-variant" data-lang="ts">Other.<wbr>ofThing</span>'
+      + '<span class="lang-variant" data-lang="python" v-pre>Other.<wbr>of_thing</span>'
+      + '<span class="lang-variant" data-lang="go" v-pre>Other_<wbr>OfThing</span></span>',
+    );
+    expect(second).not.toContain('<a ');
+  });
+
+  test('the agent Markdown twin drops the <wbr> and lists the row as plain text', () => {
+    const twin = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.JsonNull.md'), 'utf-8')).markdown;
+    expect(twin).toContain('Obtainable from: JsonNull.INSTANCE');
+    expect(twin).not.toContain('<wbr>');
   });
 
   test('a type nothing produces has no obtainable-from row', () => {

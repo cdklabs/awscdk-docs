@@ -155,13 +155,16 @@ unions do not produce one instance, so they do not count. Protected statics are
 skipped, as the member tables skip them. Each entry reads `Owner.member`
 (`Bucket.fromBucketName`) and links the owner's page at the member's row
 anchor, or the fragment alone when the owner is the page's own type; entries
-are sorted by owner then member, each once; the row carries the
-`obtainable-from` id and shares the budget and disclosure below. The member
-name is rendered as inline language variants, translated per enabled language
+are sorted by owner FQN then member, each once; the row carries the
+`obtainable-from` id and shares the budget and disclosure below. The whole
+entry is rendered as inline language variants, translated per enabled language
 like the member rows (the multi-language ADR's canonical identity, translated
-display), while the anchor and the width budget stay on the canonical jsii
-name; the block is wrapped in `<LanguageTabs>` only when this row is present.
-A `<wbr>` after the dot lets a long entry wrap at narrow widths. `implements`
+display): the member name through the member-name translators and the
+separator `_` for Go, where a static is the package-level `Owner_Member`. The
+anchor stays on the canonical jsii name and the width budget uses the widest
+translation; the block is wrapped in `<LanguageTabs>` only when this row is
+present. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
+the agent Markdown twin drops it. `implements`
 lists the **full transitive closure** of
 interfaces reachable through class ancestors *and* interface `extends`
 (the Javadoc "All Implemented Interfaces" rule), via a memoized cycle-guarded

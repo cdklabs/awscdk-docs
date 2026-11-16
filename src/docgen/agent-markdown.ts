@@ -232,7 +232,7 @@ function isKnownTag(inner: string): boolean {
 /** Tags docgen or the theme emit. Anything else was documentation text that happened to look like a tag. */
 const KNOWN_TAGS = new Set([
   'a', 'br', 'code', 'dd', 'details', 'div', 'dl', 'dt', 'li', 'nav', 'ol', 'p', 'section', 'span', 'summary', 'ul',
-  'languagetabs', 'badge',
+  'wbr', 'languagetabs', 'badge',
 ]);
 
 /** Put an unrecognized tag back the way the author wrote it (`<REGION>`, `<CloudFront distribution ID>`). */

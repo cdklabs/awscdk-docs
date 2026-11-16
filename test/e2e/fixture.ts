@@ -80,6 +80,9 @@ export const REPRESENTATIVE_PAGES = [
   // relation rows only appear on a type with descendants or implementors,
   // which none of the pages above has.
   CONSTRUCT_PAGE,
+  // The `obtainable from` row and its overflow disclosure: no page above has a
+  // static member returning its own type, so the audits would never see it.
+  SUBSCRIPTION_FILTER_PAGE,
 ] as const;
 
 // Severities that FAIL the accessibility gate. Moderate and minor
