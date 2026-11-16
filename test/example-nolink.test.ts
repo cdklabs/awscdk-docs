@@ -4,7 +4,9 @@ import {
   NOLINK_CLASS,
   applyTypeLinks,
   codeNolinkTransformer,
+  isFieldNameScope,
   isLiteralScope,
+  mayHoldLiterals,
 } from '../docs/.vitepress/type-links.js';
 
 // Type links skip strings and comments (ADR 2026-10-26-no-type-links-in-literals).
@@ -49,7 +51,7 @@ function linked(html: string): string[] {
   return [...html.matchAll(/<a class="code-type-link" href="[^"]+">(\w+)<\/a>/g)].map((m) => m[1]);
 }
 
-/** Text of every token marked as a string or comment, joined. */
+/** Text of every token marked as literal text (a string or comment) or a field name, joined. */
 function literalText(html: string): string {
   return [...html.matchAll(new RegExp(`<span[^>]*\\bclass="${NOLINK_CLASS}"[^>]*>([^<]*)</span>`, 'g'))]
     .map((m) => m[1])
@@ -116,8 +118,9 @@ describe('type links skip strings and comments', () => {
         '}) // a Bucket',
         '/* Bucket */',
       ].join('\n'),
-      // Go spells the struct field `RemovalPolicy:`, a real identifier.
-      expected: ['BucketProps', 'RemovalPolicy'],
+      // Go spells the struct field `RemovalPolicy:` as a real identifier, but a field name is not a type, and
+      // `RemovalPolicy_RETAIN` is a different identifier.
+      expected: ['BucketProps'],
     },
   ];
 
@@ -233,5 +236,77 @@ describe('type links skip strings and comments', () => {
     }]]);
     expect([a.content, a.offset, a.nolink]).toEqual(['x  ', 4, false]);
     expect([b.content, b.offset, b.nolink]).toEqual(["'Bucket'", 7, true]);
+  });
+});
+
+// Go capitalizes struct fields and C# capitalizes properties, so a field name can equal a type name offered
+// for the same example. A field key is text, not a type reference; every other use of the name still links.
+describe('type links skip Go and C# field names', () => {
+  const STREAM_ATTRS = 'type-links=Stream:/v2/docs/s.html,StreamViewType:/v2/docs/svt.html,TableProps:/v2/docs/tp.html';
+
+  test('go: a struct-literal key is plain; the type, constructor and signature uses still link', () => {
+    const code = [
+      'table := awsdynamodb.NewTable(stack, jsii.String("Table"), &awsdynamodb.TableProps{',
+      '\tStream: awsdynamodb.StreamViewType_NEW_IMAGE,',
+      '\tKinesisStream: awskinesis.NewStream(stack, jsii.String("Stream"), &awskinesis.StreamProps{',
+      '\t\tStreamName: jsii.String("Stream"),',
+      '\t}),',
+      '})',
+      'var existing awskinesis.Stream = Stream{}',
+    ].join('\n');
+    const html = applyTypeLinks(highlight(code, 'go'), STREAM_ATTRS);
+    expect(linked(html)).toEqual(['TableProps', 'Stream', 'Stream']);
+    expect(literalText(html)).toContain('StreamKinesisStream');
+    expect(html).not.toMatch(/>Stream<\/a>(<\/span>)?(<span[^>]*>)?:/);
+  });
+
+  test('go: a key with no quote in the fence is still plain', () => {
+    const code = ['&awsdynamodb.TableProps{', '\tStream: awsdynamodb.StreamViewType_NEW_IMAGE,', '}'].join('\n');
+    expect(mayHoldLiterals(code)).toBe(true);
+    expect(linked(applyTypeLinks(highlight(code, 'go'), STREAM_ATTRS))).toEqual(['TableProps']);
+  });
+
+  test('csharp: an initializer property is plain; new, comparisons and lambdas still link or stay variables', () => {
+    const code = [
+      'var table = new Table(this, "Table", new TableProps {',
+      '    Stream = StreamViewType.NEW_IMAGE,',
+      '    KinesisStream = new Stream(this, "Stream", new StreamProps { StreamName = "Stream" })',
+      '});',
+      'Stream Make(Stream input) => input;',
+      'var same = Stream == other; Func<Stream, Stream> f = s => s;',
+    ].join('\n');
+    const html = applyTypeLinks(highlight(code, 'csharp'), STREAM_ATTRS);
+    expect(linked(html)).toEqual(['TableProps', 'StreamViewType', 'Stream', 'Stream', 'Stream', 'Stream', 'Stream', 'Stream']);
+    expect(literalText(html)).toContain('StreamKinesisStream');
+    expect(html).not.toMatch(/>Stream<\/a>(<\/span>)?(<span[^>]*>)? = /);
+  });
+
+  test('field-name scopes decide only for Go properties and C# names followed by a lone =', () => {
+    expect(isFieldNameScope(['source.go', 'variable.other.property.go'], ': x,')).toBe(true);
+    expect(isFieldNameScope(['source.go', 'entity.name.type.go'], '{')).toBe(false);
+    expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ' = x,')).toBe(true);
+    // Any assignment target is marked, not only an initializer property: an assigned variable is never a type.
+    expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ' = other;')).toBe(true);
+    expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ' == x')).toBe(false);
+    expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ' => x')).toBe(false);
+    expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ';')).toBe(false);
+    expect(isFieldNameScope(['source.cs', 'entity.name.type.cs'], ' = null')).toBe(false);
+    // TypeScript, Python and Java keys keep their own scopes and are untouched by this rule.
+    expect(isFieldNameScope(['source.ts', 'meta.object-literal.key.ts'], ': x')).toBe(false);
+  });
+
+  test('a fence with a capitalized key or property asks for scopes; other code does not', () => {
+    expect(mayHoldLiterals('Policy = RemovalPolicy.RETAIN')).toBe(true);
+    expect(mayHoldLiterals('&p.TableProps{Stream: x}')).toBe(true);
+    expect(mayHoldLiterals('new TableProps { Stream = x }')).toBe(true);
+    expect(mayHoldLiterals('X := y')).toBe(false);
+    expect(mayHoldLiterals('X == y')).toBe(false);
+    expect(mayHoldLiterals('Foo => x')).toBe(false);
+    expect(mayHoldLiterals('removalPolicy: RemovalPolicy.RETAIN')).toBe(false);
+  });
+
+  test('go: a selector keeps its own scope and still links when its name is offered', () => {
+    const html = applyTypeLinks(highlight('arn := table.Stream\nq := Stream{}', 'go'), STREAM_ATTRS);
+    expect(linked(html)).toEqual(['Stream', 'Stream']);
   });
 });
