@@ -162,12 +162,27 @@ function chainLink(fqn: string, linkFor: LinkResolver): string {
  */
 const RELATION_ROW_BUDGET = 70;
 
-/** Names that fit the row's two-line budget, and the remainder. */
-function splitToBudget(fqns: readonly string[]): { shown: string[]; hidden: string[] } {
-  const shown: string[] = [];
+/** One entry of a relation row: its visible text (for the width budget) and the rendered link. */
+interface RelationItem {
+  readonly text: string;
+  readonly html: string;
+}
+
+/**
+ * A static member that produces an instance of the page's type: `Bucket.fromBucketName`. The owner FQN links the
+ * entry to the owner's page and the member name to its row anchor there.
+ */
+export interface MemberRef {
+  readonly ownerFqn: string;
+  readonly memberName: string;
+}
+
+/** Items that fit the row's two-line budget, and the remainder. */
+function splitToBudget(items: readonly RelationItem[]): { shown: RelationItem[]; hidden: RelationItem[] } {
+  const shown: RelationItem[] = [];
   let used = 0;
-  for (const fqn of fqns) {
-    const width = shortName(fqn).length + 2; // + comma and space
+  for (const item of items) {
+    const width = item.text.length + 2; // + comma and space
     // Always show at least one name: a single name wider than the whole
     // budget must still render, or the row would be nothing but a
     // disclosure.
@@ -175,9 +190,9 @@ function splitToBudget(fqns: readonly string[]): { shown: string[]; hidden: stri
       break;
     }
     used += width;
-    shown.push(fqn);
+    shown.push(item);
   }
-  return { shown, hidden: fqns.slice(shown.length) };
+  return { shown, hidden: items.slice(shown.length) };
 }
 
 /**
@@ -192,7 +207,28 @@ function splitToBudget(fqns: readonly string[]): { shown: string[]; hidden: stri
  * semantics, so the markup alone would announce nothing in Safari.
  */
 function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolver, id?: string): string {
-  const { shown, hidden } = splitToBudget(fqns);
+  return relationRowOf(label, fqns.map((fqn) => ({ text: shortName(fqn), html: chainLink(fqn, linkFor) })), id);
+}
+
+/**
+ * A relation row whose entries are static members rather than types: `obtainable from Bucket.fromBucketName`. Each
+ * entry links to the owner's page at the member's row anchor (the same `memberAnchor` the row itself carries), so
+ * the reader lands on the factory. The owner is named with its short name like every other row; the member keeps
+ * its jsii name, as the hierarchy block has no per-language variants.
+ */
+function memberRelationRow(label: string, refs: readonly MemberRef[], linkFor: LinkResolver, id?: string): string {
+  return relationRowOf(label, refs.map((ref) => {
+    const text = `${shortName(ref.ownerFqn)}.${ref.memberName}`;
+    const link = linkFor(ref.ownerFqn);
+    const html = link
+      ? `<a class="chain-item" href="${escapeAttr(`${pageHref(link)}#${memberAnchor(ref.memberName)}`)}">${escHtml(text)}</a>`
+      : `<span class="chain-item">${escHtml(text)}</span>`;
+    return { text, html };
+  }), id);
+}
+
+function relationRowOf(label: string, items: readonly RelationItem[], id?: string): string {
+  const { shown, hidden } = splitToBudget(items);
   // One formatted value for the visible text AND the accessible name:
   // WCAG 2.5.3 Label in Name requires the visible label to appear in the
   // accessible name, so `2,507 more` beside `aria-label="Show 2507 more"`
@@ -203,15 +239,15 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
   // a `<ul>`, and the sequence must still read as continuing past the disclosure control. Three states: `', '`
   // between names, a BARE `','` before the disclosure (its gap is `.chain-more`'s margin, so an emitted space would
   // widen it by a mono advance), and nothing at the end.
-  const item = (fqn: string, sep: ', ' | ',' | ''): string =>
-    `<li role="listitem">${chainLink(fqn, linkFor)}${sep}</li>`;
+  const item = (entry: RelationItem, sep: ', ' | ',' | ''): string =>
+    `<li role="listitem">${entry.html}${sep}</li>`;
   const visible = shown
-    .map((fqn, i) => item(fqn, i < shown.length - 1 ? ', ' : hidden.length > 0 ? ',' : ''))
+    .map((entry, i) => item(entry, i < shown.length - 1 ? ', ' : hidden.length > 0 ? ',' : ''))
     .join('');
   const more = hidden.length > 0
     ? `<li role="listitem"><details class="chain-more"><summary aria-label="Show ${count} more">`
       + `${count} more</summary>`
-      + `<ul class="chain-list" role="list">${hidden.map((fqn, i) => item(fqn, i < hidden.length - 1 ? ', ' : '')).join('')}</ul>`
+      + `<ul class="chain-list" role="list">${hidden.map((entry, i) => item(entry, i < hidden.length - 1 ? ', ' : '')).join('')}</ul>`
       + '</details></li>'
     : '';
   const idAttr = id ? ` id="${escapeAttr(id)}"` : '';
@@ -231,11 +267,12 @@ export function renderInheritanceChain(
   index: TypeIndex,
   linkFor: LinkResolver,
   subclasses: readonly string[] = [],
+  obtainableFrom: readonly MemberRef[] = [],
 ): string[] {
   // One shared walk with the reverse implementers index, so `implements` here and `implemented by` there can never
   // disagree.
   const { ancestors, interfaces } = classLineage(type, index);
-  if (ancestors.length === 0 && interfaces.length === 0 && subclasses.length === 0) {
+  if (ancestors.length === 0 && interfaces.length === 0 && subclasses.length === 0 && obtainableFrom.length === 0) {
     return [];
   }
   const items = ancestors.map((fqn) => {
@@ -251,6 +288,10 @@ export function renderInheritanceChain(
     interfaces.length > 0 ? relationRow('implements', interfaces, linkFor) : '',
     // A class's downward relation.
     subclasses.length > 0 ? relationRow('superclass of', subclasses, linkFor) : '',
+    // The static factories and constants that hand out an instance; last, after every type-to-type relation.
+    obtainableFrom.length > 0
+      ? memberRelationRow('obtainable from', obtainableFrom, linkFor, SECTION_ANCHORS.obtainableFrom)
+      : '',
   ].join('');
   return [
     // Breadcrumbs repeat ancestor type names on every page; keep them out of the search index.
@@ -270,9 +311,10 @@ export function renderExtendsBar(
   linkFor: LinkResolver,
   implementers: readonly string[] = [],
   propsUsers: readonly string[] = [],
+  obtainableFrom: readonly MemberRef[] = [],
 ): string[] {
   const parents = type.interfaces ?? [];
-  if (parents.length === 0 && implementers.length === 0 && propsUsers.length === 0) {
+  if (parents.length === 0 && implementers.length === 0 && propsUsers.length === 0 && obtainableFrom.length === 0) {
     return [];
   }
   const rows = [
@@ -281,6 +323,9 @@ export function renderExtendsBar(
     implementers.length > 0 ? relationRow('implemented by', implementers, linkFor) : '',
     propsUsers.length > 0
       ? relationRow('used as props by', propsUsers, linkFor, SECTION_ANCHORS.usedAsPropsBy)
+      : '',
+    obtainableFrom.length > 0
+      ? memberRelationRow('obtainable from', obtainableFrom, linkFor, SECTION_ANCHORS.obtainableFrom)
       : '',
   ].join('');
   return [

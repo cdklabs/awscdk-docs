@@ -7,6 +7,7 @@ import { DEFAULT_LANGUAGE, Language } from './languages.js';
 import {
   classMethods,
   classProperties,
+  MemberRef,
   renderDescription,
   renderExpandableProps,
   renderInheritanceChain,
@@ -278,6 +279,11 @@ export interface ConstructPageOptions {
    * ordinary class pages do, since `Construct` and `Resource` are themselves constructs.
    */
   readonly subclasses?: ReadonlyMap<string, readonly string[]>;
+  /**
+   * Type FQN -> static members that produce it, for the `obtainable from` hierarchy row. Optional like `subclasses`,
+   * for callers that render a single page without the usage index.
+   */
+  readonly obtainableFrom?: ReadonlyMap<string, readonly MemberRef[]>;
   /** Rosetta tablet supplying the authored example's per-language translations. */
   readonly tablet?: RosettaTablet;
   /** Whether to emit the type-level example section. Defaults to true. */
@@ -309,7 +315,8 @@ export function renderConstructPage(options: ConstructPageOptions): string {
   // Merged description: tagline + remarks as one continuous block, no `## Overview` row. The CloudFormation backing
   // resource is a row of the metadata block below.
   lines.push(...renderDescription(type));
-  lines.push(...renderInheritanceChain(type, index, linkFor, options.subclasses?.get(type.fqn) ?? []));
+  lines.push(...renderInheritanceChain(
+    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], options.obtainableFrom?.get(type.fqn) ?? []));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
 
   if (options.emitExamples !== false) {

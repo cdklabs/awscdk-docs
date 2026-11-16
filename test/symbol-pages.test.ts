@@ -36,6 +36,31 @@ describe('usage index', () => {
     });
   });
 
+  test('types know which static members produce them', () => {
+    // Static methods returning the type, sorted by owner then member, each once.
+    expect(usage.obtainableFrom.get('aws-cdk-lib.aws_s3.IBucket')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketArn' },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketAttributes' },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketName' },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromCfnBucket' },
+    ]);
+    // A static constant counts; an instance member or a struct does not.
+    expect(usage.obtainableFrom.get('aws-cdk-lib.JsonNull')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.JsonNull', memberName: 'INSTANCE' },
+    ]);
+    expect(usage.obtainableFrom.has('aws-cdk-lib.aws_s3.BucketProps')).toBe(false);
+    // Collections and unions produce something other than one instance, so they are not recorded: every
+    // recorded member's declared type is exactly the key.
+    for (const [fqn, refs] of usage.obtainableFrom) {
+      for (const ref of refs) {
+        const owner = index.get(ref.ownerFqn)!.type as spec.ClassType;
+        const member = owner.methods?.find((m) => m.name === ref.memberName)?.returns
+          ?? owner.properties?.find((p) => p.name === ref.memberName);
+        expect(member && spec.isNamedTypeReference(member.type) && member.type.fqn).toBe(fqn);
+      }
+    }
+  });
+
   test('class member collection walks the base-class chain', () => {
     const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType;
     const methods = classMethods(bucket, index).map((m) => m.name);
@@ -229,5 +254,37 @@ describe('symbol page generation', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(page).toMatch(/<span class="chain-label">implements<\/span> .*<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.aws_s3\.IBucket\.html">IBucket<\/a>/);
     expect(page).not.toContain('**Implements:**');
+  });
+
+  test('interface pages list the static factories that return the type, linked to the member', () => {
+    // IBucket is produced by four Bucket statics; the row lists them in member order, each linking the owner
+    // page at the member's row anchor. Four entries overflow the two-line budget, so the last two fold.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
+    const row = page.match(/<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from<\/span> (.*?)<\/div>/);
+    expect(row).not.toBeNull();
+    const entries = [...row![1].matchAll(/<a class="chain-item" href="([^"]+)">([^<]+)<\/a>/g)].map((m) => [m[2], m[1]]);
+    expect(entries).toEqual([
+      ['Bucket.fromBucketArn', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn'],
+      ['Bucket.fromBucketAttributes', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketattributes'],
+      ['Bucket.fromBucketName', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketname'],
+      ['Bucket.fromCfnBucket', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket'],
+    ]);
+    expect(row![1]).toContain('<summary aria-label="Show 2 more">2 more</summary>');
+    // The row is the last one in the block, after `extends`.
+    expect(page.indexOf('<span class="chain-label">extends</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
+  });
+
+  test('class pages list a static constant of their own type', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.JsonNull.md'), 'utf-8');
+    expect(page).toContain(
+      '<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from</span> '
+      + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="/v2/docs/aws-cdk-lib.JsonNull.html#instance">JsonNull.INSTANCE</a></li></ul></div>',
+    );
+  });
+
+  test('a type nothing produces has no obtainable-from row', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+    expect(page).toContain('<span class="chain-label">used as props by</span>');
+    expect(page).not.toContain('obtainable from');
   });
 });

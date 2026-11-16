@@ -489,6 +489,20 @@ describe('construct page generation', () => {
     expect(page).toContain('<nav class="inheritance-chain"');
   });
 
+  test('construct page lists the static factories that return the construct', () => {
+    // Stack.of(construct) returns a Stack, so the Stack page says where to get one; the row follows the
+    // downward `superclass of` row and links the member's anchor.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Stack.md'), 'utf-8');
+    expect(page).toContain(
+      '<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from</span> '
+      + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="/v2/docs/aws-cdk-lib.Stack.html#of">Stack.of</a></li></ul></div></nav>',
+    );
+    expect(page.indexOf('<span class="chain-label">superclass of</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
+    // Nothing returns a Bucket itself (the factories return IBucket), so its page has no row.
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    expect(bucket).not.toContain('obtainable from');
+  });
+
   test('metadata table is gone from type pages; no empty shell remains', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(page).not.toContain('| | |');

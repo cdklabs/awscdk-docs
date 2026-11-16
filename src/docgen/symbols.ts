@@ -14,6 +14,7 @@ import { DEFAULT_LANGUAGE, Language, translatePropertyName } from './languages.j
 import {
   classMethods,
   classProperties,
+  MemberRef,
   renderDescription,
   renderExpandableProps,
   renderExtendsBar,
@@ -44,15 +45,18 @@ export interface EnumRef {
  * Reverse-reference index for symbol pages:
  * - `propsUsers`: struct FQN -> class FQNs whose initializer takes it as props
  * - `enumRefs`: enum FQN -> property references (with owner FQN for linking)
+ * - `obtainableFrom`: type FQN -> static methods and static properties whose declared type is that type
  */
 export interface UsageIndex {
   readonly propsUsers: Map<string, string[]>;
   readonly enumRefs: Map<string, EnumRef[]>;
+  readonly obtainableFrom: Map<string, MemberRef[]>;
 }
 
 export function buildUsageIndex(index: TypeIndex): UsageIndex {
   const propsUsers = new Map<string, Set<string>>();
   const enumRefs = new Map<string, EnumRef[]>();
+  const obtainableFrom = new Map<string, MemberRef[]>();
 
   const recordEnumRefs = (ownerFqn: string, prop: spec.Property) => {
     for (const fqn of namedFqns(prop.type)) {
@@ -63,6 +67,17 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
         enumRefs.set(fqn, list);
       }
     }
+  };
+
+  // A static member "produces" a type only when its declared type IS that type (or an optional of it): one
+  // instance. A collection or a union produces something else, so neither counts.
+  const recordFactory = (ownerFqn: string, memberName: string, ref: spec.OptionalValue | undefined) => {
+    if (!ref || !spec.isNamedTypeReference(ref.type) || !index.has(ref.type.fqn)) {
+      return;
+    }
+    const list = obtainableFrom.get(ref.type.fqn) ?? [];
+    list.push({ ownerFqn, memberName });
+    obtainableFrom.set(ref.type.fqn, list);
   };
 
   for (const { type } of index.values()) {
@@ -76,6 +91,16 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
           const set = propsUsers.get(param.type.fqn) ?? new Set();
           set.add(type.fqn);
           propsUsers.set(param.type.fqn, set);
+        }
+      }
+      for (const method of type.methods ?? []) {
+        if (method.static) {
+          recordFactory(type.fqn, method.name, method.returns);
+        }
+      }
+      for (const prop of type.properties ?? []) {
+        if (prop.static) {
+          recordFactory(type.fqn, prop.name, prop);
         }
       }
     }
@@ -104,7 +129,16 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
   }
 
   const sortedPropsUsers = new Map([...propsUsers].map(([k, v]) => [k, [...v].sort()]));
-  return { propsUsers: sortedPropsUsers, enumRefs: dedupedEnumRefs };
+
+  // Each owner+member once, ordered by owner name then member name, so the row reads `Bucket.fromBucketArn,
+  // Bucket.fromBucketAttributes, ...` whatever order the assembly listed them in.
+  const sortedFactories = new Map<string, MemberRef[]>();
+  for (const [fqn, refs] of obtainableFrom) {
+    const unique = new Map(refs.map((ref) => [`${ref.ownerFqn}.${ref.memberName}`, ref]));
+    sortedFactories.set(fqn, [...unique.values()].sort((a, b) =>
+      shortName(a.ownerFqn).localeCompare(shortName(b.ownerFqn)) || a.memberName.localeCompare(b.memberName)));
+  }
+  return { propsUsers: sortedPropsUsers, enumRefs: dedupedEnumRefs, obtainableFrom: sortedFactories };
 }
 
 /** All named-type FQNs appearing anywhere in a type reference. */
@@ -163,14 +197,15 @@ interface SymbolPageOptions<T extends spec.Type> {
 
 /** Render a dedicated page for a non-construct class. */
 export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): string {
-  const { type, assembly, index, linkFor } = options;
+  const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const badge = options.badge ?? { text: 'Class', type: 'info' };
   const kindClass = badge.kindClass ? ` ${badge.kindClass}` : '';
   const lines = [`# ${weightedTitle(type.name)} <Badge type="${badge.type}" class="api-badge${kindClass}" text="${badge.text}" />`, ''];
   lines.push(...renderDescription(type));
   // Implemented interfaces render inside the hierarchy bar.
-  lines.push(...renderInheritanceChain(type, index, linkFor, options.subclasses?.get(type.fqn) ?? []));
+  lines.push(...renderInheritanceChain(
+    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? []));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -187,7 +222,8 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-struct" text="Struct" />`, ''];
   lines.push(...renderDescription(type));
-  lines.push(...renderExtendsBar(type, linkFor, [], usage.propsUsers.get(type.fqn) ?? []));
+  lines.push(...renderExtendsBar(
+    type, linkFor, [], usage.propsUsers.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? []));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -198,13 +234,14 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
 
 /** Render a dedicated page for a behavioral interface that is not a mixin. */
 export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceType>): string {
-  const { type, assembly, index, linkFor } = options;
+  const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-interface" text="Interface" />`, ''];
   lines.push(...renderDescription(type));
   // `implemented by` is a row of the hierarchy bar, not a section of its own: it is the inverse of the class bar's
   // `implements`, so it belongs beside `extends`.
-  lines.push(...renderExtendsBar(type, linkFor, options.implementors?.get(type.fqn) ?? []));
+  lines.push(...renderExtendsBar(
+    type, linkFor, options.implementors?.get(type.fqn) ?? [], [], usage.obtainableFrom.get(type.fqn) ?? []));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
