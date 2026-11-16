@@ -122,8 +122,13 @@ describe('toAgentMarkdown', () => {
         '<a href="/v2/docs/aws-cdk-lib.aws_s3.Bucket#objects">Bucket</a>',
         '<a href="/cdk/api/stability.html">Experimental</a>',
         'Keep [canonical](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
+        '[twin](/v2/docs/Other.md), and [data](/v2/data.json).',
         '[external](https://docs.aws.amazon.com/), and [local](#properties).',
+        'Keep [wiki](https://en.wikipedia.org/wiki/Foo_\\(bar\\)) and [pipe](https://example.com/a\\|b).',
         'Keep `[code](/v2/docs/Code)` unchanged; [escaped](/v2/docs/a\\_b) resolves too.',
+        'Keep ``[double](/v2/docs/Double)`` unchanged.',
+        'Use `new',
+        'Bucket()` and see [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket).',
         '',
       ].join('\n');
       expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api').markdown).toBe([
@@ -132,10 +137,32 @@ describe('toAgentMarkdown', () => {
         '[Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects)',
         '[Experimental](https://docs.example.com/cdk/api/stability.html)',
         'Keep [canonical](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
+        '[twin](https://docs.example.com/cdk/api/v2/docs/Other.html), and [data](https://docs.example.com/cdk/api/v2/data.json).',
         '[external](https://docs.aws.amazon.com/), and [local](#properties).',
+        'Keep [wiki](https://en.wikipedia.org/wiki/Foo_\\(bar\\)) and [pipe](https://example.com/a\\|b).',
         'Keep `[code](/v2/docs/Code)` unchanged; [escaped](https://docs.example.com/cdk/api/v2/docs/a_b.html) resolves too.',
+        'Keep ``[double](/v2/docs/Double)`` unchanged.',
+        'Use `new',
+        'Bucket()` and see [Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html).',
         '',
       ].join('\n'));
+    } finally {
+      if (previousBase === undefined) {
+        delete process.env.DOCS_BASE;
+      } else {
+        process.env.DOCS_BASE = previousBase;
+      }
+    }
+  });
+
+  test('recognizes the published base when DOCS_BASE differs', () => {
+    const previousBase = process.env.DOCS_BASE;
+    delete process.env.DOCS_BASE;
+    try {
+      const page = '[Bucket](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket)\n';
+      expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
+        '[Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html)\n',
+      );
     } finally {
       if (previousBase === undefined) {
         delete process.env.DOCS_BASE;

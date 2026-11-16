@@ -143,14 +143,24 @@ function inline(el: Element): string {
 function publishedPageHref(href: string): string {
   const [, path, suffix = ''] = /^([^?#]*)(.*)$/.exec(href)!;
   const base = siteBase();
-  const sitePath = path.startsWith(base) ? `/${path.slice(base.length)}` : path;
-  const route = sitePath.replace(/\.html$/, '');
-  const isKnownPage = sitePath.startsWith(API_ROOT) || route === STABILITY_ROUTE || route === VERSIONS_ROUTE;
-  const isPage = isKnownPage || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/i.test(sitePath));
+  const publicBase = new URL(publishedSiteUrl).pathname;
+  const prefix = [base, publicBase]
+    .filter((candidate) => path.startsWith(candidate))
+    .sort((a, b) => b.length - a.length)[0];
+  let sitePath = prefix ? `/${path.slice(prefix.length)}` : path;
   const isRootRelative = sitePath.startsWith('/') && !sitePath.startsWith('//');
   if (!isRootRelative || /[\s\\]/.test(sitePath)) {
     return href;
   }
+
+  const asset = /\.(?:txt|json|xml|png|svg|jpe?g|gif|webp|css|js|map|ico|pdf|zip)$/i;
+  if (sitePath.startsWith(API_ROOT) && sitePath.endsWith('.md')) {
+    sitePath = sitePath.slice(0, -3);
+  }
+  const route = sitePath.replace(/\.html$/, '');
+  const isKnownPage = sitePath.startsWith(API_ROOT) || route === STABILITY_ROUTE || route === VERSIONS_ROUTE;
+  const isPage = (isKnownPage && !asset.test(sitePath))
+    || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/i.test(sitePath));
   const relative = isPage && !sitePath.endsWith('.html')
     ? pageHref(sitePath).slice(base.length)
     : sitePath.replace(/^\/+/, '');
@@ -164,9 +174,15 @@ function unescapeMarkdownHref(href: string): string {
 
 /** Rewrite Markdown link targets while leaving standalone code spans unchanged. */
 function rewriteMarkdownLinks(text: string): string {
-  const linkOrCode = /(`[^`\n]*`)|(?<!!)\[((?:`[^`\n]*`|[^\]\n`])+)\]\(([^\s)]+)\)/g;
-  return text.replace(linkOrCode, (match, code: string, label: string, href: string) =>
-    code ? match : `[${label}](${publishedPageHref(unescapeMarkdownHref(href))})`);
+  const linkOrCode = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|(?<!!)\[((?:\\.|[^\]\n])+)\]\(([^\s)]+)\)/g;
+  return text.replace(linkOrCode, (match, delimiter: string, label: string, href: string) => {
+    if (delimiter) {
+      return match;
+    }
+    const unescaped = unescapeMarkdownHref(href);
+    const published = publishedPageHref(unescaped);
+    return published === unescaped ? match : `[${label}](${published})`;
+  });
 }
 
 function render(node: Node): string {
