@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 import { MAX_SEARCH_RESULTS, MODULE_HINT_CLASS } from '../../docs/.vitepress/theme/search-client.js';
-import { SEARCH_KEYSHORTCUTS } from '../../docs/.vitepress/theme/search-hotkeys.js';
+import { SEARCH_DIALOG_LEAVING_CLASS, SEARCH_DIALOG_SELECTOR, SEARCH_KEYSHORTCUTS } from '../../docs/.vitepress/theme/search-hotkeys.js';
 
 // Pagefind static search (vitepress-plugin-pagefind): the navbar
 // search button opens the search dialog; querying a symbol documented in the
@@ -268,16 +268,16 @@ test.describe('pagefind search', () => {
     // whether the dialog was in its leave transition when each Escape fired.
     type Recorded = { __escapes: boolean[]; __leaving: boolean[] };
     async function recordEscapes(page: import('@playwright/test').Page) {
-      await page.evaluate(() => {
+      await page.evaluate((leavingClass) => {
         const w = window as unknown as Recorded;
         w.__escapes = [];
         w.__leaving = [];
         window.addEventListener('keydown', (e) => {
           if (e.key !== 'Escape') return;
           w.__escapes.push(e.defaultPrevented);
-          w.__leaving.push(document.querySelector('.command-dialog-leave-active') !== null);
+          w.__leaving.push(document.querySelector(`.${leavingClass}`) !== null);
         });
-      });
+      }, SEARCH_DIALOG_LEAVING_CLASS);
     }
     const escapes = (page: import('@playwright/test').Page) =>
       page.evaluate(() => (window as unknown as Recorded).__escapes);
@@ -307,7 +307,7 @@ test.describe('pagefind search', () => {
       // The first press closes search; the second lands while the dialog is
       // still in its leave transition and must keep its default.
       await page.keyboard.press('Escape');
-      await expect(page.locator('.command-dialog-leave-active')).toHaveCount(1);
+      await expect(page.locator(`.${SEARCH_DIALOG_LEAVING_CLASS}`)).toHaveCount(1);
       await page.keyboard.press('Escape');
       // The plugin starts the leave transition from its own keydown listener,
       // before this recorder runs, so only the second entry is meaningful.
@@ -324,7 +324,7 @@ test.describe('pagefind search', () => {
       await page.locator('.blog-search button').click();
       await expect(page.locator('#search-input')).toBeVisible();
       await page.keyboard.press('Escape');
-      await expect(page.locator('[command-dialog]')).toHaveCount(0);
+      await expect(page.locator(SEARCH_DIALOG_SELECTOR)).toHaveCount(0);
       await page.keyboard.press('Escape');
       expect(await escapes(page)).toEqual([true, false]);
     });

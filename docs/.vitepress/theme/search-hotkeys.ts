@@ -3,11 +3,11 @@
 // clicking the plugin's own trigger button, and announces every shortcut on
 // that button through `aria-keyshortcuts`.
 //
-// It also prevents Escape's default while search is open, so the browser does
-// not act on the key as well (for example, leaving window fullscreen on Firefox
-// for macOS). The plugin tracks keys with its own window listener and ignores
-// defaultPrevented, so the dialog still closes. With search closed, Escape is
-// not touched.
+// It also prevents Escape's default while search is open, so a browser that
+// honors defaultPrevented does not act on the key as well (meant for Firefox on
+// macOS, which can leave window fullscreen on Escape). The plugin tracks keys
+// with its own window listener and ignores defaultPrevented, so the dialog still
+// closes. With search closed, Escape is not touched.
 
 /** Every shortcut that opens search, in the `aria-keyshortcuts` grammar. */
 export const SEARCH_KEYSHORTCUTS = '/ Control+K Meta+K';
