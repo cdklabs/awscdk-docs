@@ -285,6 +285,8 @@ describe('type links skip Go and C# field names', () => {
     expect(isFieldNameScope(['source.go', 'variable.other.property.go'], ': x,')).toBe(true);
     expect(isFieldNameScope(['source.go', 'entity.name.type.go'], '{')).toBe(false);
     expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ' = x,')).toBe(true);
+    // Any assignment target is marked, not only an initializer property: an assigned variable is never a type.
+    expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ' = other;')).toBe(true);
     expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ' == x')).toBe(false);
     expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ' => x')).toBe(false);
     expect(isFieldNameScope(['source.cs', 'variable.other.readwrite.cs'], ';')).toBe(false);

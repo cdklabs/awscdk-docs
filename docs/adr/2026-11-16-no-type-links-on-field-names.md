@@ -34,11 +34,13 @@ not collide and are untouched.
   scope is marked text.
 - **C# falls back to the following character.** The C# grammar has no
   property-name scope: an initializer name shares `variable.other.readwrite.cs`
-  with every plain variable read. So a token in that scope is text only when
-  the rest of its line starts with a lone `=`, which is the initializer
-  assignment; `==` and `=>` do not count, so comparisons and lambdas keep their
-  identifiers as code. A variable read that spells a type name stays as it
-  was.
+  with every plain variable read. So a token in that scope is text when the
+  rest of its line starts with a lone `=`, which makes it an assignment target;
+  in generated examples that is the object-initializer property, and a plain
+  statement such as `Stream = other;` is marked the same way on purpose, since
+  an assignment target is never a type reference either. `==` and `=>` do not
+  count, so comparisons and lambdas keep their identifiers as code. A variable
+  read that spells a type name stays as it was.
 - **Same marker, same linker.** The field-name rule sits beside the literal
   rule in `isNolinkScope` and feeds the existing `code-nolink` class, so the
   linker needs no change: a run whose span carries the class is left alone.

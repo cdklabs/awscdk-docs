@@ -43,7 +43,7 @@ const GO_FIELD_SCOPE = "variable.other.property.go";
 /** C# has no property-name scope: an initializer name shares the plain variable scope. */
 const CS_VARIABLE_SCOPE = "variable.other.readwrite.cs";
 
-/** A lone `=` next: an object-initializer assignment, not `==` or `=>`. */
+/** A lone `=` next: an assignment target (an initializer property in examples), not `==` or `=>`. */
 const CS_INITIALIZER_NEXT = /^\s*=(?![=>])/;
 
 /**
@@ -61,9 +61,10 @@ export function isLiteralScope(scopes: readonly string[]): boolean {
 
 /**
  * Whether a token part names a struct field or object property rather than a
- * type: a Go composite-literal key, or a C# object-initializer property, told
- * apart from a plain variable by the `=` that follows it (`following` is the
- * rest of the line after the part).
+ * type: a Go composite-literal key, or a C# variable-scoped identifier that is
+ * an assignment target, told apart from a plain variable read by the lone `=`
+ * that follows it (`following` is the rest of the line after the part). In
+ * generated examples that target is an object-initializer property.
  */
 export function isFieldNameScope(scopes: readonly string[], following: string): boolean {
   const innermost = scopes[scopes.length - 1];
