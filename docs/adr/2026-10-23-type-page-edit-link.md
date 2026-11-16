@@ -27,8 +27,11 @@ links that file in its `Source` metadata row, pinned to the released version.
 - **The README provenance rules apply unchanged.** The owning repository and
   package directory come from the assembly, the URL pins to `HEAD`, and a
   repository URL or path that is not plain https path data yields no link.
+  Types from a package the assembly records under `node_modules` are the exception; see
+  [Source Links for Relocated Packages](./2026-11-16-source-links-for-relocated-packages.md).
 - **No line anchor.** The recorded line belongs to the released version; on the
-  default branch it moves. The version-pinned `Source` row keeps the line.
+  default branch it moves. The version-pinned `Source` row keeps the line. A relocated
+  package's `Source` row is the exception; see the same ADR.
 - **No link without an editable file.** A type from build-generated code
   (`*.generated.*`, the L1 `Cfn*` types) or with no recorded location gets no
   edit link, only the report link — a misleading link is still worse than none.

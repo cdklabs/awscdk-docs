@@ -16,6 +16,8 @@ import {
   TypeIndex,
 } from '../src/docgen/constructs.js';
 import { generateDocs, loadAssembly as loadCachedAssembly } from '../src/docgen/index.js';
+import { upstreamSourceUrl } from '../src/docgen/provenance.js';
+import { TRACKED_PACKAGES } from '../src/docgen/versions.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -173,6 +175,44 @@ describe('construct detection and classification', () => {
     const cfnBucket = index.get('aws-cdk-lib.aws_s3.CfnBucket')!.type;
     expect(cfnBucket.locationInModule!.filename).toMatch(/\.generated\./);
     expect(sourceUrl(cfnBucket, cdk)).toBeUndefined();
+  });
+
+  test('links a cloud-assembly-schema type to its file in aws-cdk-cli on the default branch', () => {
+    const featureFlag = index.get('aws-cdk-lib.cloud_assembly_schema.FeatureFlag')!.type;
+    expect(sourceUrl(featureFlag, cdk)).toBe(
+      'https://github.com/aws/aws-cdk-cli/blob/HEAD/packages/@aws-cdk/cloud-assembly-schema/lib/cloud-assembly/artifact-schema.ts',
+    );
+    const rows = typeMetadataRows(featureFlag, cdk, index, (fqn) => `/v2/docs/${fqn}`);
+    const source = rows.find((r) => r.label === 'Source')!;
+    expect(source.value).toContain('aws/aws-cdk-cli/blob/HEAD/packages/@aws-cdk/cloud-assembly-schema/');
+    const tracked = TRACKED_PACKAGES.find((p) => p.name === '@aws-cdk/cloud-assembly-schema')!;
+    expect(sourceUrl(featureFlag, cdk)).toContain(`https://github.com/${tracked.repo}/blob/`);
+    expect(source.value).toContain('<code>lib/cloud-assembly/artifact-schema.ts</code>');
+    expect(source.value).not.toMatch(/node_modules|\.d\.ts/);
+  });
+
+  test('gives a generated or non-TypeScript file in a mapped package no source link and no edit link', () => {
+    const featureFlag = index.get('aws-cdk-lib.cloud_assembly_schema.FeatureFlag')!.type;
+    for (const filename of [
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/x.generated.d.ts',
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/schema.json',
+    ]) {
+      const moved = { ...featureFlag, locationInModule: { filename, line: 7 } };
+      expect(sourceUrl(moved, cdk)).toBeUndefined();
+      expect(upstreamSourceUrl(moved, cdk)).toBeUndefined();
+    }
+  });
+
+  test('never links a source file under node_modules or a declaration file', () => {
+    const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type;
+    for (const filename of ['node_modules/other-package/lib/thing.ts', 'aws-s3/lib/bucket.d.ts']) {
+      const moved = { ...bucket, locationInModule: { filename, line: 7 } };
+      expect(sourceUrl(moved, cdk)).toBeUndefined();
+      expect(typeMetadataRows(moved, cdk, index, (fqn) => `/v2/docs/${fqn}`).map((r) => r.label)).not.toContain('Source');
+    }
+    for (const entry of index.values()) {
+      expect(sourceUrl(entry.type, cdk) ?? '').not.toMatch(/node_modules|\.d\.ts/);
+    }
   });
 
   test('typeMetadataRows resolves CloudFormation, L1 and Source for an L2', () => {

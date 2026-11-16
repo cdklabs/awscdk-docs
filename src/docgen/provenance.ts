@@ -11,7 +11,12 @@
  * - `assembly.repository` gives the owning repository and the package's
  *   directory inside it (`packages/aws-cdk-lib`,
  *   `packages/@aws-cdk/aws-bedrock-alpha`), so a standalone or alpha
- *   package resolves to its own repository rather than a hardcoded one.
+ *   package resolves to its own repository rather than one assumed by
+ *   convention.
+ * - a type the assembly records under `node_modules` (a bundled dependency
+ *   such as `@aws-cdk/cloud-assembly-schema`) takes its repository and
+ *   directory from `RELOCATED_PACKAGES`, because the assembly only names
+ *   the repository of the package that bundles it.
  * - a submodule's `symbolId` names the source path it was declared in
  *   (`aws-s3/index:`), whose directory is the one holding that
  *   submodule's README. This is the assembly's own answer, so no naming
@@ -130,6 +135,41 @@ export function upstreamReadmeUrl(assembly: spec.Assembly, id: string): string |
   return subDir ? `${prefix}${subDir}/README.md` : `${prefix}README.md`;
 }
 
+/** The `owner/repo` that owns `@aws-cdk/cloud-assembly-schema`, shared with the versions page. */
+export const CLOUD_ASSEMBLY_SCHEMA_REPO = 'aws/aws-cdk-cli';
+
+/** Packages whose types the assembly records under `node_modules`, mapped to the repository that owns them. */
+const RELOCATED_PACKAGES: Record<string, { repoUrl: string; directory: string }> = {
+  '@aws-cdk/cloud-assembly-schema': {
+    repoUrl: `https://github.com/${CLOUD_ASSEMBLY_SCHEMA_REPO}`,
+    directory: 'packages/@aws-cdk/cloud-assembly-schema',
+  },
+};
+
+const NODE_MODULES_FILE = /^node_modules\/((?:@[\w.-]+\/)?[\w.-]+)\/(.+)$/;
+
+/** Whether a recorded filename can never be a file in a repository: a dependency copy or a declaration file. */
+export function isUnlinkableSource(filename: string): boolean {
+  return /(?:^|\/)node_modules\//.test(filename) || /\.d\.ts$/.test(filename);
+}
+
+/**
+ * Where a type recorded under `node_modules` lives in the repository that owns its package: the URL on the default
+ * branch and the file path inside the package. `undefined` for any other file or an unmapped package.
+ */
+export function relocatedSource(filename: string): { url: string; file: string } | undefined {
+  const match = NODE_MODULES_FILE.exec(filename);
+  const target = match ? RELOCATED_PACKAGES[match[1]] : undefined;
+  if (!match || !target) {
+    return undefined;
+  }
+  const file = pathDir(match[2].replace(/\.d\.ts$/, '.ts'));
+  if (!file || !file.endsWith('.ts')) {
+    return undefined;
+  }
+  return { url: `${target.repoUrl}/blob/${DEFAULT_REF}/${target.directory}/${file}`, file };
+}
+
 /**
  * Upstream source-file URL for a type page's edit link, or `undefined` when
  * the type has no source a reader could edit — in which case the caller
@@ -138,18 +178,30 @@ export function upstreamReadmeUrl(assembly: spec.Assembly, id: string): string |
  * A type page's prose comes from the docstrings in the file the type is
  * declared in (`locationInModule`), so that file is the edit target. It
  * follows the README rules above: the owning repository and package
- * directory come from the assembly, the ref is `HEAD`, and anything that is
- * not plain path data yields no link.
+ * directory come from the assembly, or from `RELOCATED_PACKAGES` for a
+ * package recorded under `node_modules`. The ref is `HEAD`, and anything
+ * that is not plain path data yields no link.
  *
  * No link for a build-generated file (`*.generated.*`, the L1 `Cfn*`
  * sources), which does not exist in the repository, nor for a type with
- * no recorded location. Unlike the type page's version-pinned `Source` row,
- * the URL carries no line anchor: the line is the one in the released
- * version, and on the default branch it moves.
+ * no recorded location, nor for a file under `node_modules` or a `.d.ts`
+ * declaration in an unmapped package.
+ *
+ * The URL carries no line anchor: the line is the one in the released
+ * version, and on the default branch it moves. The type page's `Source` row
+ * keeps the line and the version tag, except for a relocated type, whose row
+ * uses this same target.
  */
 export function upstreamSourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
   const filename = type.locationInModule?.filename;
   if (!filename || /\.generated\./.test(filename)) {
+    return undefined;
+  }
+  const relocated = relocatedSource(filename);
+  if (relocated) {
+    return relocated.url;
+  }
+  if (isUnlinkableSource(filename)) {
     return undefined;
   }
   const base = repoBase(assembly);
