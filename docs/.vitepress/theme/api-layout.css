@@ -449,7 +449,7 @@ a.chain-item:hover {
   text-underline-offset: 2px;
 }
 
-/* `Generated code` is a `<span>`, not a link, and keeps the plain gray
+/* `Generated at build time` is a `<span>`, not a link, and keeps the plain gray
    treatment — that difference is the whole point, exactly as it was for the
    two chips this block replaces. */
 .type-metadata-generated {

@@ -193,7 +193,7 @@ hierarchy block on every type page, carrying at most three rows:
 |---|---|---|
 | CloudFormation | the L1's own resource type, or the L1 an L2 is backed by | AWS resource reference, `target="_blank"` |
 | L1 type | the backing L1, on non-L1 pages only | that L1's page, via `pageHref` |
-| Source | upstream file and line | repository, or the text *Generated code* |
+| Source | upstream file and line | repository, or the text *Generated at build time* |
 
 Provenance is neither prose nor title material, so it lives here rather than in
 the H1 or the description. The block emits nothing when there are no rows (no

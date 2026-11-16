@@ -514,7 +514,7 @@ describe('API kind badge palette', () => {
     expect(linkRule).toContain('text-decoration: underline');
     expect(linkRule).toContain('var(--vp-c-brand-2)');
     expect(linkRule).not.toContain('var(--vp-c-brand-1)');
-    // `Generated code` is not a link and stays gray and undecorated -- that
+    // `Generated at build time` is not a link and stays gray and undecorated -- that
     // difference is the point of rendering it as a span.
     const generated = ruleBody('.type-metadata-generated');
     expect(generated).toContain('var(--vp-c-text-2)');

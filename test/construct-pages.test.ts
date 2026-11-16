@@ -201,7 +201,7 @@ describe('construct detection and classification', () => {
     expect(rows[0].value).toContain('<code>AWS::S3::Bucket</code>');
     // A generated source has no repository file: a plain marker, not a dead link.
     expect(rows[1].value).toBe(
-      '<span class="type-metadata-generated" data-pagefind-ignore>Generated code</span>',
+      '<span class="type-metadata-generated" data-pagefind-ignore>Generated at build time</span>',
     );
   });
 
@@ -513,7 +513,7 @@ describe('construct page generation', () => {
     expect(page).not.toContain('<dt class="type-metadata-label">L1 type</dt>');
     // Generated L1 sources have no repository file: a marker, not a dead link
     // and not a silently missing fact
-    expect(page).toContain('<span class="type-metadata-generated" data-pagefind-ignore>Generated code</span>');
+    expect(page).toContain('<span class="type-metadata-generated" data-pagefind-ignore>Generated at build time</span>');
   });
 
   test('L2 construct page links its backing CloudFormation resource and L1 page', () => {
