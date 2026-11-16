@@ -12,8 +12,9 @@
  * and a regex cannot pair those tags reliably.
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
-import { tokenizeFences } from './fences.js';
+import { mapProse, tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE } from './languages.js';
+import { API_ROOT, pageHref } from './links.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -134,9 +135,26 @@ function inline(el: Element): string {
   return children(el).replace(/\s+/g, ' ').trim();
 }
 
+/** Canonicalize a generated page target while preserving its query or fragment. */
+function publishedPageHref(href: string): string {
+  const [, path, suffix = ''] = /^([^?#]*)(.*)$/.exec(href)!;
+  if (!path.startsWith(API_ROOT) || path.endsWith('.html')) {
+    return href;
+  }
+  return `${pageHref(path)}${suffix}`;
+}
+
+/** Rewrite Markdown link targets outside inline code spans. */
+function rewriteMarkdownLinks(text: string): string {
+  return mapProse(text, (prose) => prose.replace(
+    /(?<!!)\[([^\]\n]+)\]\(([^\s)]+)\)/g,
+    (_match, label: string, href: string) => `[${label}](${publishedPageHref(href)})`,
+  ));
+}
+
 function render(node: Node): string {
   if (isText(node)) {
-    return node.data;
+    return rewriteMarkdownLinks(node.data);
   }
   if (!isElement(node)) {
     return '';
@@ -178,7 +196,7 @@ function render(node: Node): string {
     case 'a': {
       const text = inline(el);
       const href = el.attribs.href;
-      return href && !href.startsWith('#') ? `[${text}](${href})` : text;
+      return href && !href.startsWith('#') ? `[${text}](${publishedPageHref(href)})` : text;
     }
     case 'code':
       return `\`${textOf(el)}\``;

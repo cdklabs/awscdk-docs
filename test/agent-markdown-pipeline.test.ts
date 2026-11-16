@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { agentMarkdownHref } from '../docs/.vitepress/agent-markdown.js';
 import { generateDocs } from '../src/docgen/index.js';
+import { mapProse } from '../src/docgen/fences.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -19,6 +20,15 @@ function walk(dir: string, rel = ''): string[] {
     }
   }
   return out.sort();
+}
+
+function markdownLinks(markdown: string): string[] {
+  const links: string[] = [];
+  mapProse(markdown, (prose) => {
+    links.push(...[...prose.matchAll(/(?<!!)\[[^\]\n]+\]\(([^\s)]+)\)/g)].map((match) => match[1]));
+    return prose;
+  });
+  return links;
 }
 
 describe('agent-oriented Markdown twins', () => {
@@ -106,6 +116,27 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('addDependency');
     expect(twin.length).toBeLessThan(canonical.length);
     expect(twin.length).toBeGreaterThan(canonical.length / 10);
+  });
+
+  test('site links in twins name emitted pages and external links stay external', () => {
+    const emittedPages = new Set(
+      walk(outDir)
+        .filter((file) => file.endsWith('.md'))
+        .map((file) => `/v2/${file.replace(/\.md$/, '.html')}`),
+    );
+    const links = walk(agentOutDir)
+      .filter((file) => file.endsWith('.md'))
+      .flatMap((file) => markdownLinks(readFileSync(join(agentOutDir, file), 'utf-8')));
+    const siteLinks = links.filter((link) => link.startsWith('/v2/docs/'));
+
+    expect(siteLinks.length).toBeGreaterThan(5);
+    for (const link of siteLinks) {
+      const path = link.split(/[?#]/, 1)[0];
+      expect(path).toMatch(/\.html$/);
+      expect(path).not.toContain('.html.html');
+      expect(emittedPages.has(path)).toBe(true);
+    }
+    expect(links.some((link) => link.startsWith('https://'))).toBe(true);
   });
 
   test('without agentOutDir nothing changes: no key, no twins', () => {

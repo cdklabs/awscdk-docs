@@ -83,7 +83,9 @@ frontmatter, the breadcrumb `<nav>`, every non-canonical language variant, Vue
 components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `<div>`s; member lists become bullets, the type hierarchy becomes
 `Extends:`/`Implements:` lines, `:::` containers become titled blockquotes.
-Headings, prose, fenced code, tables and links pass through.
+Headings, prose, fenced code and tables pass through. Links keep their text and
+external target; site page links use `pageHref()` so the base path, `.html`
+suffix and fragment match the published anchors.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the

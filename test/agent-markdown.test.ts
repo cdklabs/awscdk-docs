@@ -106,7 +106,34 @@ describe('toAgentMarkdown', () => {
     expect(markdown).toContain('An S3 bucket with helpers.');
     expect(markdown).toContain('## Initializer');
     expect(markdown).toContain('| Name | Type |');
-    expect(markdown).toContain('See [BucketProps](/v2/docs/aws-cdk-lib.aws_s3.BucketProps).');
+    expect(markdown).toContain('See [BucketProps](/v2/docs/aws-cdk-lib.aws_s3.BucketProps.html).');
+  });
+
+  test('rewrites site page links to published hrefs', () => {
+    const previousBase = process.env.DOCS_BASE;
+    process.env.DOCS_BASE = '/cdk/api/';
+    try {
+      const page = [
+        'See [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket#objects).',
+        'Keep [canonical](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
+        '[external](https://docs.aws.amazon.com/), and [local](#properties).',
+        'Keep `[code](/v2/docs/Code)` unchanged.',
+        '',
+      ].join('\n');
+      expect(toAgentMarkdown(page).markdown).toBe([
+        'See [Bucket](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects).',
+        'Keep [canonical](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
+        '[external](https://docs.aws.amazon.com/), and [local](#properties).',
+        'Keep `[code](/v2/docs/Code)` unchanged.',
+        '',
+      ].join('\n'));
+    } finally {
+      if (previousBase === undefined) {
+        delete process.env.DOCS_BASE;
+      } else {
+        process.env.DOCS_BASE = previousBase;
+      }
+    }
   });
 
   test('turns a container into a blockquote', () => {
