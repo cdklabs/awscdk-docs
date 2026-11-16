@@ -114,17 +114,21 @@ describe('toAgentMarkdown', () => {
     process.env.DOCS_BASE = '/cdk/api/';
     try {
       const page = [
-        'See [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket#objects).',
+        'See [`HttpLambdaIntegration`](/v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations.HttpLambdaIntegration#usage).',
+        'Visit [stability](/stability) and [versions](/versions?all=true#current).',
+        '<a href="/v2/docs/aws-cdk-lib.aws_s3.Bucket#objects">Bucket</a>',
         'Keep [canonical](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
         '[external](https://docs.aws.amazon.com/), and [local](#properties).',
-        'Keep `[code](/v2/docs/Code)` unchanged.',
+        'Keep `[code](/v2/docs/Code)` and [escaped](/v2/docs/a\\_b) unchanged.',
         '',
       ].join('\n');
       expect(toAgentMarkdown(page).markdown).toBe([
-        'See [Bucket](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects).',
+        'See [`HttpLambdaIntegration`](/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations.HttpLambdaIntegration.html#usage).',
+        'Visit [stability](/cdk/api/stability.html) and [versions](/cdk/api/versions.html?all=true#current).',
+        '[Bucket](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects)',
         'Keep [canonical](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
         '[external](https://docs.aws.amazon.com/), and [local](#properties).',
-        'Keep `[code](/v2/docs/Code)` unchanged.',
+        'Keep `[code](/v2/docs/Code)` and [escaped](/v2/docs/a\\_b) unchanged.',
         '',
       ].join('\n'));
     } finally {

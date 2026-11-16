@@ -12,9 +12,10 @@
  * and a regex cannot pair those tags reliably.
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
-import { mapProse, tokenizeFences } from './fences.js';
+import { API_ROOT, STABILITY_ROUTE, VERSIONS_ROUTE } from '../site-routes.js';
+import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE } from './languages.js';
-import { API_ROOT, pageHref } from './links.js';
+import { pageHref } from './links.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -138,18 +139,22 @@ function inline(el: Element): string {
 /** Canonicalize a generated page target while preserving its query or fragment. */
 function publishedPageHref(href: string): string {
   const [, path, suffix = ''] = /^([^?#]*)(.*)$/.exec(href)!;
-  if (!path.startsWith(API_ROOT) || path.endsWith('.html')) {
+  const isSitePage = path.startsWith(API_ROOT) || path === STABILITY_ROUTE || path === VERSIONS_ROUTE;
+  if (!isSitePage || path.endsWith('.html') || /[\s\\]/.test(path)) {
     return href;
   }
   return `${pageHref(path)}${suffix}`;
 }
 
-/** Rewrite Markdown link targets outside inline code spans. */
+/** Rewrite Markdown link targets while leaving standalone code spans unchanged. */
 function rewriteMarkdownLinks(text: string): string {
-  return mapProse(text, (prose) => prose.replace(
-    /(?<!!)\[([^\]\n]+)\]\(([^\s)]+)\)/g,
-    (_match, label: string, href: string) => `[${label}](${publishedPageHref(href)})`,
-  ));
+  const linkOrCode = /(`[^`\n]*`)|(?<!!)\[((?:`[^`\n]*`|[^\]\n`])+)\]\(([^\s)]+)\)/g;
+  return tokenizeFences(text)
+    .map((span) => span.kind === 'code'
+      ? span.text
+      : span.text.replace(linkOrCode, (match, code: string, label: string, href: string) =>
+        code ? match : `[${label}](${publishedPageHref(href)})`))
+    .join('\n');
 }
 
 function render(node: Node): string {

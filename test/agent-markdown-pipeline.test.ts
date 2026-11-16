@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { agentMarkdownHref } from '../docs/.vitepress/agent-markdown.js';
-import { generateDocs } from '../src/docgen/index.js';
 import { mapProse } from '../src/docgen/fences.js';
+import { generateDocs } from '../src/docgen/index.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -25,7 +25,7 @@ function walk(dir: string, rel = ''): string[] {
 function markdownLinks(markdown: string): string[] {
   const links: string[] = [];
   mapProse(markdown, (prose) => {
-    links.push(...[...prose.matchAll(/(?<!!)\[[^\]\n]+\]\(([^\s)]+)\)/g)].map((match) => match[1]));
+    links.push(...[...prose.matchAll(/\]\(([^\s)]+)\)/g)].map((match) => match[1]));
     return prose;
   });
   return links;
