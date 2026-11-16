@@ -78,9 +78,12 @@ export function isDialogOpen(dialog: DialogLike | null): boolean {
   return dialog !== null && dialog.closest(`.${SEARCH_DIALOG_LEAVING_CLASS}`) === null;
 }
 
-/** Whether a keydown is an Escape whose default must be prevented. */
-export function isGuardedEscape(event: Pick<HotkeyEvent, 'key'>, dialogOpen: boolean): boolean {
-  return event.key === 'Escape' && dialogOpen;
+/**
+ * Whether a keydown is an Escape whose default must be prevented. An Escape
+ * that cancels an IME composition is left alone, like the `/` shortcut.
+ */
+export function isGuardedEscape(event: Pick<HotkeyEvent, 'key' | 'isComposing'>, dialogOpen: boolean): boolean {
+  return event.key === 'Escape' && event.isComposing !== true && dialogOpen;
 }
 
 const g = globalThis as {

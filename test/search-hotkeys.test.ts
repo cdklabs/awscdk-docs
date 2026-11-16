@@ -67,6 +67,7 @@ describe('search hotkeys', () => {
     expect(isGuardedEscape({ key: 'Escape' }, true)).toBe(true);
     expect(isGuardedEscape({ key: 'Escape' }, false)).toBe(false);
     expect(isGuardedEscape({ key: 'a' }, true)).toBe(false);
+    expect(isGuardedEscape({ key: 'Escape', isComposing: true }, true)).toBe(false);
   });
 
   test('a dialog in its leave transition counts as closed', () => {
