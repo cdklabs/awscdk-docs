@@ -63,7 +63,7 @@ consulted.
 `docs/.vitepress/structured-data.ts` emits one `application/ld+json` node per
 page: the home page is a `WebSite`, every other page a `TechArticle`
 referencing the site node by `@id`. `dateModified` is `contentRevised()` — the
-same version-history value the footer's "Content revised" stamp shows (see
+same version-history value the footer's "Page last updated" stamp shows (see
 [versions-and-history](./2026-10-15-versions-and-history.md)), not a build
 timestamp, so a rebuild with no content change does not re-date any page.
 Resolution is day-level. JSON for the script element escapes `<`, `>`, `&`,

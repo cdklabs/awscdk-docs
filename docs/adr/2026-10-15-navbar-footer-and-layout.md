@@ -89,7 +89,7 @@ wanted it needs a real analytics endpoint, not a client-only widget.
 The row reads: *Edit this page · Report an issue* (shortened in
 [edit link on type pages](./2026-10-23-type-page-edit-link.md)), with the
 "Edit this page" link omitted on generated pages that have no editable source. The edit-URL and report-URL logic, the generated-page rule, and
-the "content revised" stamp are owned by
+the "Page last updated" stamp are owned by
 [page feedback, consent, and stamp](./2026-10-15-page-feedback-consent-and-stamp.md);
 the optional "Download as Markdown" twin link is owned by
 [SEO and agent discoverability](./2026-10-15-seo-and-agent-discoverability.md).

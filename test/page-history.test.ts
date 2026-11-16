@@ -77,10 +77,10 @@ describe('frontmatter → head metas and footer text', () => {
   });
 
   test('footer text names the version only when the page\'s own change set the date', () => {
-    expect(contentRevisedText(full)).toBe('Content revised 2 Jan 2099 · v2.300.0');
-    expect(contentRevisedText({})).toBe(`Content revised ${formatDateOnly(CONTENT_REVISED_DATE)}`);
+    expect(contentRevisedText(full)).toBe('Page last updated 2 Jan 2099 · v2.300.0');
+    expect(contentRevisedText({})).toBe(`Page last updated ${formatDateOnly(CONTENT_REVISED_DATE)}`);
     expect(contentRevisedText({ cdkDocsLastChangedIn: '2.150.0', cdkDocsLastChangedAt: '2025-03-03T00:00:00.000Z' }))
-      .toBe(`Content revised ${formatDateOnly(CONTENT_REVISED_DATE)}`);
+      .toBe(`Page last updated ${formatDateOnly(CONTENT_REVISED_DATE)}`);
   });
 });
 
