@@ -90,12 +90,15 @@ dropped every non-canonical variant), so a reader or assistant working in
 Python, Java, C# or Go gets their own code. Only content that differs by
 language is repeated; prose, tables and links appear once. An example group
 becomes one fenced block per language, in the site's language order, each
-after a plain label line naming the language (`Python:`). A copy whose fence is
-tagged for another language, or one identical to the TypeScript copy, is the
-TypeScript source docgen fills in for a snippet that was not translated. It is
-not repeated: the TypeScript label names the languages that fall back on it
-(`TypeScript (also shown for Python):`), so TypeScript code never sits under
-another language's label. A language docgen leaves out of a group, such as a
+after a plain label line naming the language (`Python:`). Docgen fences each
+copy in its own language, so a copy whose fence is tagged for another language
+is the TypeScript source docgen fills in for a snippet that was not translated,
+and it is never labeled as that language. With TypeScript enabled, the
+TypeScript copy's label names the languages that fall back on it
+(`TypeScript (also shown for Python):`) and the fallbacks are not repeated.
+Without TypeScript, one fallback copy stands in at the position of the first
+language using it, labeled `TypeScript (shown for Python):`. A language docgen
+leaves out of a group, such as a
 type example with no translation, is not listed; the page shows it the
 TypeScript example. A per-language name
 inline (a property in a table, a parameter in a list) keeps the canonical
@@ -124,9 +127,13 @@ the merge. The hand-written homepage is the one exception: it declares
 transforms its finished Markdown into the root twin during the same overlay
 step, keeping the advertised file and its producer together. The compressed
 corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
-`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 29 MB, up
-from about 12 MB when the twin kept TypeScript only. It is overlaid once, with
-no per-shard cost.
+`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 29 MB at
+`da3ebdf`, up from about 12 MB at `f18f6ea` when the twin kept TypeScript
+only. The earlier "~27 MB" figure gave no method, and that command does not
+reproduce it. The deployed `docs-site` zip, which `package-site.sh` checks
+against its 900 MiB `MAX_ZIP_MB` gate, grows from 661 MiB at `f36e864` to 684
+MiB at `e4b2eab`, the first all-language revision. The tree is overlaid once,
+with no per-shard cost.
 
 ### llms.txt index
 
