@@ -145,7 +145,7 @@ describe('createFlashOnce', () => {
   });
 
   test('a new element for the same hash is a new landing', () => {
-    // Back/forward reloads the route, which re-renders the rows.
+    // A return from another page renders new rows.
     const first = element(true);
     const ids: Record<string, FlashElement> = { a: first };
     const { once, flashed } = harness(ids);

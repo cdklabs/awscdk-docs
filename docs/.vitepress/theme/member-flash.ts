@@ -15,7 +15,7 @@ export const FLASH_CLASS = 'member-row-flash';
 export const READY_CLASS = 'member-flash-ready';
 /** Length of the fade, matched by the keyframes in api-layout.css. */
 export const FLASH_DURATION_MS = 1500;
-/** A repeat click on the current hash within this window is the same click arriving by another event, not a new jump. */
+/** A repeat click within this window is the same click arriving by another event, not a new jump. */
 export const SAME_JUMP_MS = 250;
 
 /** The subset of the DOM the helper touches, so a unit test can pass a plain object. */
@@ -89,8 +89,9 @@ export function flashRow(
  * deliberate click on the hash the page is already at and restarts the fade
  * once `SAME_JUMP_MS` has passed; any other arrival for the row last flashed is
  * the same jump again and is dropped, however late (hydration can take longer
- * than any window). A route reload re-renders the rows, so a new element for
- * the same hash is a new landing. `now` is injectable for tests.
+ * than any window). A route reload may render new rows (a return from another
+ * page does), so a new element for the same hash is a new landing. `now` is
+ * injectable for tests.
  */
 export function createFlashOnce(
   doc: FlashDocument,
@@ -126,12 +127,13 @@ export function createFlashOnce(
  *
  * The paths overlap: one click raises `hashchange` and then reaches the click
  * listener, a load with a hash reaches the hook and then the mount, and
- * back/forward raises `hashchange` and then, once VitePress's `popstate`
- * handler has reloaded the route, the hook. That reload re-renders the page
- * in the same task, so the row the `hashchange` marked is detached before a
- * frame can start its animation and the hook marks its replacement.
- * `createFlashOnce` drops every other second arrival for the row last flashed,
- * so each jump starts exactly one fade.
+ * back/forward raises `hashchange` and, once VitePress's `popstate` handler
+ * has reloaded the route, the hook, in no fixed order. `createFlashOnce` drops
+ * whichever arrival for the row last flashed comes second. When a reload
+ * renders new rows (a return from another page, and in practice a same-page
+ * back/forward too), a row marked before the render is detached before a
+ * frame can start its fade and its replacement counts as the landing, so each
+ * jump still starts exactly one fade.
  */
 export function installMemberFlash(): (hash: string) => void {
   const g = globalThis as { document?: Document; addEventListener?: Window['addEventListener']; location?: Location };

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { QUEUE_PAGE, QUEUE_PROPS_PAGE } from './fixture.js';
+import { IQUEUE_PAGE, QUEUE_PAGE, QUEUE_PROPS_PAGE } from './fixture.js';
 
 // A jump to a member row marks it with a flash that fades out, so a reader
 // does not have to look for the row the page scrolled to. `:target` alone
@@ -14,10 +14,14 @@ const OUTLINE_LINK = (hash: string) => `.VPDocAsideOutline a.outline-link[href="
 /** Count every start of the flash animation, from before hydration so a load with a hash is counted too. */
 async function countFlashStarts(page: import('@playwright/test').Page): Promise<void> {
   await page.addInitScript(() => {
-    (window as unknown as { flashStarts: number }).flashStarts = 0;
+    const w = window as unknown as { flashStarts: number; flashPages: string[] };
+    w.flashStarts = 0;
+    w.flashPages = [];
     addEventListener('animationstart', (e) => {
       if ((e as AnimationEvent).animationName === 'member-row-flash') {
-        (window as unknown as { flashStarts: number }).flashStarts += 1;
+        w.flashStarts += 1;
+        // Which page's row faded: a row on an outgoing page would record that page's path.
+        w.flashPages.push(location.pathname);
       }
     }, true);
   });
@@ -128,7 +132,7 @@ test.describe('a jump to a member row flashes it', () => {
     await page.locator(OUTLINE_LINK(RETENTION)).click();
     await expect(page.locator(`.member-row${RETENTION}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await expect.poll(() => flashStarts(page)).toBe(2);
-    // Back/forward arrive as a native hashchange and then, after the route reload re-renders the rows, the hook.
+    // Back/forward arrive as a native hashchange and the route hook, in no fixed order.
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
     await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
@@ -163,25 +167,32 @@ test.describe('a jump to a member row flashes it', () => {
     expect(await flashStarts(page)).toBe(1);
   });
 
-  test('back to a member on another page flashes it once', async ({ page }) => {
+  test('back to a member on another page flashes it once, not the outgoing page', async ({ page }) => {
+    // Queue and IQueue both have a row with this id, so the outgoing page could
+    // be marked by the native hashchange before the returning page renders.
+    const SHARED = '#encryptionmasterkey';
     await countFlashStarts(page);
-    await page.goto(`${QUEUE_PAGE}${FIFO}`);
+    await page.goto(`${QUEUE_PAGE}${SHARED}`);
     await expect.poll(() => flashStarts(page)).toBe(1);
     await page.evaluate((href) => {
       const a = document.createElement('a');
       a.href = href;
       a.textContent = 'away';
       document.querySelector('.vp-doc')!.prepend(a);
-    }, QUEUE_PROPS_PAGE);
+    }, IQUEUE_PAGE);
     await page.locator('.vp-doc a', { hasText: 'away' }).click();
-    await expect(page).toHaveURL(new RegExp('QueueProps\\.html$'));
-    // The outgoing page is still mounted when the native hashchange fires; the
-    // route hook marks the row on the page that comes back.
+    await expect(page).toHaveURL(new RegExp('IQueue\\.html$'));
+    await expect(page.locator(`.member-row${SHARED}`)).toHaveCount(1);
     await page.goBack();
-    await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
-    await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    await expect(page).toHaveURL(new RegExp(`Queue\\.html${SHARED}$`));
+    await expect(page.locator(`.member-row${SHARED}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await page.waitForTimeout(400);
+    // One fade, and it ran on the returning page's row.
     expect(await flashStarts(page)).toBe(2);
+    expect(await page.evaluate(() => (window as unknown as { flashPages: string[] }).flashPages)).toEqual([
+      '/v2/docs/aws-cdk-lib.aws_sqs.Queue.html',
+      '/v2/docs/aws-cdk-lib.aws_sqs.Queue.html',
+    ]);
   });
 
   test('a modified click or a link that opens elsewhere does not flash', async ({ page }) => {
