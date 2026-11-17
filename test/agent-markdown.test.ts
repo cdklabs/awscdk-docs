@@ -398,7 +398,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
   describe('the language legend under the title', () => {
     const legend = (lang: string) => `> Names, types and signatures are shown in ${lang}; another language's `
       + 'spelling follows, labeled, only where it differs. Code examples are labeled by language; an unlabeled '
-      + 'example is TypeScript and has no translation.';
+      + '`ts` example has no translation.';
     const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
 
     test('names the canonical language on a page with two or more', () => {
@@ -428,6 +428,11 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
         'TypeScript:', '', '```ts', 'const a = 1;', '```', '',
         'Python:', '', '```python', 'a = 1', '```', '',
       ].join('\n'));
+    });
+
+    test('goes under the title even when an experimental banner sits above it', () => {
+      const page = `::: warning Experimental\nAlpha.\n:::\n\n# Bucket\n\nSee ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}.\n`;
+      expect(toAgentMarkdown(page).markdown).toContain(`# Bucket\n\n${legend('TypeScript')}`);
     });
 
     test('goes under the title only, never after a `# ` comment in code', () => {

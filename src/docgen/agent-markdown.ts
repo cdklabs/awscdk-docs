@@ -70,9 +70,10 @@ function withLanguageLegend(out: string, nodes: Node[]): string {
   if (new Set(variants.map((v) => v.attribs['data-lang'])).size < 2) return out;
   const legend = `> Names, types and signatures are shown in ${languageLabel(variants[0])}; another language's `
     + 'spelling follows, labeled, only where it differs. Code examples are labeled by language; an unlabeled '
-    + 'example is TypeScript and has no translation.';
-  // Anchored to the page start: a page without a leading title gets no legend.
-  return out.replace(/^(\s*# [^\n]*)/, (title) => `${title}\n\n${legend}`);
+    + '`ts` example has no translation.';
+  // The first H1 anywhere: an experimental banner can sit above it. Code is still a placeholder at this point, so
+  // a `# ` comment in a fence cannot match.
+  return out.replace(/^# [^\n]*$/m, (title) => `${title}\n\n${legend}`);
 }
 
 /**
@@ -439,8 +440,7 @@ function renderMemberRow(el: Element): string {
 
 /**
  * One language's name and type (or signature) of a member, from that language's variant alone. The type is plain
- * code: the head bullet already links it, and a code span keeps a generic such as `List<String>` from reading as a
- * tag.
+ * code, so a generic such as `List<String>` does not read as a tag; only a TypeScript head line links its type.
  */
 function renderMemberIdentity(variant: Element): string {
   const find = (cls: string) => DomUtils.findOne((n) => classes(n).has(cls), variant.children);

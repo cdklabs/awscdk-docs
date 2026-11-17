@@ -108,13 +108,15 @@ languages that share a spelling together
 (`` `bucketArn` (Python: `bucket_arn`; C# / .NET, Golang: `BucketArn`) ``). A member
 bullet keeps the canonical name, type, flags and default, with one labeled
 sub-bullet per spelling of the name and type that differs from it; languages
-that share a spelling share the sub-bullet. A sub-bullet
-carries that name and type only, the type as plain code (the head already
-links it): the default is the jsii `@default` text,
+that share a spelling share the sub-bullet. A sub-bullet carries that name and
+type only, the type as plain code so a generic such as `List<String>` does not
+read as a tag (a head line links its type only when TypeScript is the canonical
+language). Flags and the default stay on the head: the default is the jsii
+`@default` text,
 written in TypeScript. A page with variants in two or more languages gets one
 blockquote line under its title naming the language of the unlabeled spellings,
 so an agent can tell a shared spelling from a missing one, and saying that an
-unlabeled code example is TypeScript with no translation. The languages are
+unlabeled `ts` example has no translation. The languages are
 the ones the page was built with, so a one-language build emits one copy, no
 labels and no legend.
 
