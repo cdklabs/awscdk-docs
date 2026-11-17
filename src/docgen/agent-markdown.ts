@@ -175,14 +175,15 @@ function publishedPageHref(href: string): string {
   }
 
   const asset = /\.(?:txt|json|xml|png|svg|jpe?g|gif|webp|css|js|map|ico|pdf|zip)$/;
-  if (sitePath.startsWith(API_ROOT) && sitePath.endsWith('.md')) {
+  // A `.md` target names a page by its source file; link the rendered page, since authored routes have no twin.
+  if (sitePath.endsWith('.md')) {
     sitePath = sitePath.slice(0, -3);
   }
-  // Generated API pages may end in a lowercase dotted segment (`aws-cdk-lib.pipelines`) that looks like a file
-  // extension; anywhere else a lowercase extension marks a file rather than a page.
+  // Generated API pages may end in a dotted segment (`aws-cdk-lib.pipelines`, `…stepfunctions.Map`) that looks like
+  // a file extension; anywhere else any extension, in either case, marks a file rather than a page.
   const isApiPage = sitePath.startsWith(API_ROOT) && !asset.test(sitePath);
   const isPage = isApiPage
-    || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/.test(sitePath));
+    || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/i.test(sitePath));
   const relative = isPage && !sitePath.endsWith('.html')
     ? pageHref(sitePath).slice(base.length)
     : sitePath.replace(/^\/+/, '');
@@ -205,7 +206,8 @@ function rewriteMarkdownLinks(text: string): string {
     }
     const unescaped = unescapeMarkdownHref(href);
     const published = publishedPageHref(unescaped);
-    return published === unescaped ? match : `[${label}](${published})`;
+    // Parentheses would end the destination early and a pipe splits a table cell, so both are escaped again.
+    return published === unescaped ? match : `[${label}](${published.replace(/[()|]/g, '\\$&')})`;
   });
 }
 
