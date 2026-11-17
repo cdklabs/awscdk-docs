@@ -118,7 +118,8 @@ blockquote line under its title naming the language of the unlabeled member
 names, types and signatures, so an agent can tell a shared spelling from a
 missing one. The same line says that names in descriptions, README text and
 default values are TypeScript and not translated, and that an unlabeled `ts`
-example has no translation. The languages are
+example has no translation. A page whose only variants are example blocks, such
+as a module overview, gets the example sentence alone. The languages are
 the ones the page was built with, so a one-language build emits one copy, no
 labels and no legend.
 

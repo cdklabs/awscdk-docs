@@ -74,10 +74,14 @@ function withLanguageLegend(out: string, nodes: Node[]): string {
   const canonical = LANGUAGES.find((l) => l.id === DEFAULT_LANGUAGE && present.has(l.id))
     ?? LANGUAGES.find((l) => present.has(l.id));
   const name = canonical?.label ?? languageLabel(variants[0]);
-  const legend = `> Member names, types and signatures are shown in ${name}; another language's `
-    + 'spelling follows, labeled, only where it differs. Names in descriptions and README text, and default values, '
-    + 'are TypeScript and are not translated. Code examples are labeled by language; an unlabeled `ts` example has no '
-    + 'translation.';
+  const examples = 'Code examples are labeled by language; an unlabeled `ts` example has no translation.';
+  // A page whose only variants are example blocks (a module overview) has no member names to describe.
+  const names = variants.some((v) => v.name.toLowerCase() !== 'div')
+    ? `Member names, types and signatures are shown in ${name}; another language's spelling follows, labeled, only `
+      + 'where it differs. Names in descriptions and README text, and default values, are TypeScript and are not '
+      + 'translated. '
+    : '';
+  const legend = `> ${names}${examples}`;
   // The first H1 anywhere: an experimental banner can sit above it. Code is still a placeholder at this point, so
   // a `# ` comment in a fence cannot match.
   return out.replace(/^# [^\n]*$/m, (title) => `${title}\n\n${legend}`);

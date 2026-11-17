@@ -430,7 +430,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
         + '<div class="lang-variant" data-lang="python" data-pagefind-ignore>\n\n```python\na = 1\n```\n\n</div>';
       const page = `# Bucket\n\n\`\`\`ts\nnew Bucket(this, "B");\n\`\`\`\n\n${group}\n`;
       expect(toAgentMarkdown(page).markdown).toBe([
-        '# Bucket', '', legend('TypeScript'), '',
+        '# Bucket', '', '> Code examples are labeled by language; an unlabeled `ts` example has no translation.', '',
         '```ts', 'new Bucket(this, "B");', '```', '',
         'TypeScript:', '', '```ts', 'const a = 1;', '```', '',
         'Python:', '', '```python', 'a = 1', '```', '',
@@ -454,6 +454,17 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     test('names the canonical language even when a later language comes first on the page', () => {
       const page = `# Bucket\n\nSee ${v('java', 'x')}.\n\nThen ${v('python', 'bucket_arn')}${v('java', 'bucketArn')}.\n`;
       expect(toAgentMarkdown(page).markdown).toContain(`# Bucket\n\n${legend('Python')}`);
+    });
+
+    test('on a page with only example groups, covers the examples alone', () => {
+      const group = '<div class="lang-variant" data-lang="ts">\n\n```ts\nconst a = 1;\n```\n\n</div>'
+        + '<div class="lang-variant" data-lang="python" data-pagefind-ignore>\n\n```python\na = 1\n```\n\n</div>';
+      expect(toAgentMarkdown(`# aws-s3\n\n${group}\n`).markdown).toBe([
+        '# aws-s3', '',
+        '> Code examples are labeled by language; an unlabeled `ts` example has no translation.', '',
+        'TypeScript:', '', '```ts', 'const a = 1;', '```', '',
+        'Python:', '', '```python', 'a = 1', '```', '',
+      ].join('\n'));
     });
   });
 
