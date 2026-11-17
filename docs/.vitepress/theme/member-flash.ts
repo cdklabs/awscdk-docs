@@ -119,8 +119,9 @@ export function createFlashOnce(
  * Whether a `hashchange` belongs to a traversal VitePress will reload the route
  * for, so the route hook marks the row instead. Such a traversal is native
  * (VitePress's own synthetic event for an in-page link is not trusted) and
- * lands on an entry carrying the state its `pushState` set; a plain hash
- * assignment has no state, and VitePress's `popstate` handler ignores it too.
+ * lands on an entry carrying the state VitePress's router writes (`replaceState`
+ * at boot, `pushState` per link); a plain hash assignment has no state, and
+ * VitePress's `popstate` handler ignores it too.
  */
 export function leaveToRouteHook(trusted: boolean, state: unknown): boolean {
   return trusted && state !== null && state !== undefined;
@@ -128,22 +129,25 @@ export function leaveToRouteHook(trusted: boolean, state: unknown): boolean {
 
 /**
  * Wire the flash to the hash events: VitePress's synthetic `hashchange` for
- * in-page links (outline, permalinks, prose links) and the browser's own for
- * back/forward between hashes. A click on a link to the hash the page is
- * already at fires no `hashchange` (VitePress only scrolls), so a bubbling
- * click listener, which runs after VitePress's capture-phase handler, covers
- * that repeat jump. Returns the handler so the theme can call it once the
- * first page has mounted and after each route change, which is how a page load
- * with a hash and a cross-page link that lands on a member are covered.
+ * in-page links (outline, permalinks, prose links), and the browser's own for a
+ * hash change on an entry VitePress did not create (typed or set by script).
+ * Back/forward between hashes is marked by the route hook, below. A click on a
+ * link to the hash the page is already at fires no `hashchange` (VitePress only
+ * scrolls), so a bubbling click listener, which runs after VitePress's
+ * capture-phase handler, covers that repeat jump. Returns the handler so the
+ * theme can call it once the first page has mounted and after each route
+ * change, which is how a page load with a hash and a cross-page link that lands
+ * on a member are covered.
  *
  * The paths overlap. One click raises `hashchange` and then reaches the click
  * listener, and a load with a hash reaches the hook and then the mount;
  * `createFlashOnce` drops whichever arrival for the row last flashed comes
- * second. A history traversal lands on an entry whose state VitePress's
- * `pushState` set, and its `popstate` handler then reloads the route and ends
- * in the hook; the native `hashchange` of such a traversal fires before that
- * reload, so it is left to the hook (`leaveToRouteHook`), which marks the row
- * once the page has rendered. So each jump starts exactly one fade.
+ * second. A history traversal lands on an entry carrying the state VitePress's
+ * router writes (`replaceState` at boot, `pushState` per link), and its
+ * `popstate` handler then reloads the route and ends in the hook; the native
+ * `hashchange` of such a traversal fires before that reload, so it is left to
+ * the hook (`leaveToRouteHook`), which marks the row once the page has
+ * rendered. So each jump starts exactly one fade.
  */
 export function installMemberFlash(): (hash: string) => void {
   const g = globalThis as {
