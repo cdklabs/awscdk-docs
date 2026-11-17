@@ -121,7 +121,10 @@ export function renderDescription(type: spec.Type): string[] {
 export interface TypeMetadataRow {
   /** Reader-facing field name, e.g. `CloudFormation`. */
   readonly label: string;
-  /** Pre-escaped inline HTML: a link, or plain text. */
+  /**
+   * Pre-escaped inline HTML (a link, code or span, never table markup): the Markdown twin ends the block at the
+   * first `</table>`.
+   */
   readonly value: string;
 }
 
