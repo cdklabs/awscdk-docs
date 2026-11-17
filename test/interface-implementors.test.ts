@@ -41,7 +41,7 @@ describe('interface implementors', () => {
       type: target,
       assembly,
       index,
-      usage: { propsUsers: new Map(), enumRefs: new Map() },
+      usage: { propsUsers: new Map(), enumRefs: new Map(), obtainableFrom: new Map() },
       linkFor,
       implementors,
     });
