@@ -162,6 +162,20 @@ describe('toAgentMarkdown', () => {
     expect(toAgentMarkdown(page).markdown).toBe(page);
   });
 
+  test('a stray backtick does not hide links in a later paragraph', () => {
+    const page = 'Press the ` key.\n\nSee [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket) and `Foo`.\n';
+    expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
+      'Press the ` key.\n\nSee [Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html) and `Foo`.\n',
+    );
+  });
+
+  test('an API page ending in a lowercase segment is still a page', () => {
+    const page = '[pipelines](/v2/docs/aws-cdk-lib.pipelines)\n';
+    expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
+      '[pipelines](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.pipelines.html)\n',
+    );
+  });
+
   test('recognizes the published base when DOCS_BASE differs', () => {
     const previousBase = process.env.DOCS_BASE;
     delete process.env.DOCS_BASE;

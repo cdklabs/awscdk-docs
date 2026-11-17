@@ -12,7 +12,7 @@
  * and a regex cannot pair those tags reliably.
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
-import { API_ROOT, STABILITY_ROUTE, VERSIONS_ROUTE } from '../site-routes.js';
+import { API_ROOT } from '../site-routes.js';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE } from './languages.js';
 import { pageHref, siteBase } from './links.js';
@@ -157,9 +157,10 @@ function publishedPageHref(href: string): string {
   if (sitePath.startsWith(API_ROOT) && sitePath.endsWith('.md')) {
     sitePath = sitePath.slice(0, -3);
   }
-  const route = sitePath.replace(/\.html$/, '');
-  const isKnownPage = sitePath.startsWith(API_ROOT) || route === STABILITY_ROUTE || route === VERSIONS_ROUTE;
-  const isPage = (isKnownPage && !asset.test(sitePath))
+  // Generated API pages may end in a lowercase dotted segment (`aws-cdk-lib.pipelines`) that looks like a file
+  // extension; anywhere else a lowercase extension marks a file rather than a page.
+  const isApiPage = sitePath.startsWith(API_ROOT) && !asset.test(sitePath);
+  const isPage = isApiPage
     || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/.test(sitePath));
   const relative = isPage && !sitePath.endsWith('.html')
     ? pageHref(sitePath).slice(base.length)
@@ -174,7 +175,9 @@ function unescapeMarkdownHref(href: string): string {
 
 /** Rewrite Markdown link targets while leaving standalone code spans unchanged. */
 function rewriteMarkdownLinks(text: string): string {
-  const linkOrCode = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|(?<!!)\[((?:\\.|[^\\\]\n])+)\]\(([^\s)]+)\)/g;
+  // A code span may wrap lines but never crosses a blank line, so a stray backtick cannot pair with a code span
+  // paragraphs later and hide the links in between.
+  const linkOrCode = /(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)|(?<!!)\[((?:\\.|[^\\\]\n])+)\]\(([^\s)]+)\)/g;
   return text.replace(linkOrCode, (match, delimiter: string, label: string, href: string) => {
     if (delimiter) {
       return match;
