@@ -1,11 +1,11 @@
 /**
  * Marks the member row a reader just jumped to. The `:target` tint in
  * api-layout.css only applies when the browser sets `:target`, which it does on
- * a page load with a hash; VitePress handles in-page links, the outline and
- * back/forward with `pushState` and its own scroll, which leaves `:target`
- * where it was. This module puts one class on the landed row for every jump,
- * and the stylesheet draws the flash. Framework-free so the class toggling is
- * unit-testable in plain Node.
+ * a page load with a hash; VitePress handles in-page links and the outline with
+ * `pushState` and its own scroll, and back/forward through `popstate`, neither
+ * of which moves `:target`. This module puts one class on the landed row for
+ * every jump, and the stylesheet draws the flash. Framework-free so the class
+ * toggling is unit-testable in plain Node.
  */
 import { prefersReducedMotion } from './smooth-scroll.js';
 
@@ -91,6 +91,11 @@ export function flashRow(
  * that repeat jump. Returns the handler so the theme can call it once the
  * first page has mounted and after each route change, which is how a page load
  * with a hash and a cross-page link that lands on a member are covered.
+ *
+ * The paths overlap: one click raises `hashchange` and then reaches the click
+ * listener, back/forward raises `hashchange` and then the route hook, a load
+ * with a hash reaches the hook and then the mount. The same hash is therefore
+ * flashed once per task, so each jump starts exactly one fade.
  */
 export function installMemberFlash(): (hash: string) => void {
   const g = globalThis as { document?: Document; addEventListener?: Window['addEventListener']; location?: Location };
@@ -108,14 +113,31 @@ export function installMemberFlash(): (hash: string) => void {
       row.addEventListener('animationend', () => row.classList.remove(FLASH_CLASS), { once: true });
     }
   };
-  g.addEventListener('hashchange', () => flash(g.location?.hash ?? ''));
+  let pending: string | null = null;
+  const flashOnce = (hash: string) => {
+    if (hash === pending) {
+      return;
+    }
+    pending = hash;
+    setTimeout(() => (pending = null));
+    flash(hash);
+  };
+  g.addEventListener('hashchange', () => flashOnce(g.location?.hash ?? ''));
   g.addEventListener('click', (e) => {
+    // The same guards as VitePress's own link handler: a modified or secondary
+    // click, or a link that opens elsewhere, is not a jump on this page.
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+      return;
+    }
     const link = (e.target as Element | null)?.closest?.('a[href*="#"]') as HTMLAnchorElement | null;
     const loc = g.location;
-    if (link && loc && link.hash && link.pathname === loc.pathname && link.hash === loc.hash) {
-      flash(link.hash);
+    if (!link || !loc || link.hasAttribute('target') || link.hasAttribute('download')) {
+      return;
+    }
+    if (link.hash && link.pathname === loc.pathname && link.hash === loc.hash) {
+      flashOnce(link.hash);
     }
   });
   g.document.documentElement.classList.add(READY_CLASS);
-  return flash;
+  return flashOnce;
 }

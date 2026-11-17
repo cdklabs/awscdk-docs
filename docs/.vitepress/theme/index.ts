@@ -124,7 +124,7 @@ const theme: Theme = {
   setup() {
     // Runs inside the root component, so the navbar search button exists once mounted.
     onMounted(markSearchShortcuts);
-    // The first page's rows exist only once mounted; a load with a member hash flashes then.
+    // A load with a member hash: the route hook may run before the rows exist, the mount is after.
     onMounted(() => flashMember(location.hash));
   },
 };

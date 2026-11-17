@@ -21,6 +21,15 @@ async function animations(page: import('@playwright/test').Page, hash: string): 
 test.describe('a jump to a member row flashes it', () => {
   test('an outline click marks the row and the mark is gone after the fade', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
+    // Count fades: the jump reaches the module through more than one event, and must start one.
+    await page.evaluate(() => {
+      (window as unknown as { starts: number }).starts = 0;
+      document.addEventListener('animationstart', (e) => {
+        if ((e as AnimationEvent).animationName === 'member-row-flash') {
+          (window as unknown as { starts: number }).starts += 1;
+        }
+      });
+    });
     await page.locator(OUTLINE_LINK(FIFO)).click();
     await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
 
@@ -30,6 +39,7 @@ test.describe('a jump to a member row flashes it', () => {
     // The class goes with the animation's end, 1.5s after the click.
     await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`), { timeout: 3000 });
     expect(await animations(page, FIFO)).toEqual([]);
+    expect(await page.evaluate(() => (window as unknown as { starts: number }).starts)).toBe(1);
   });
 
   test('the flash starts at the flash color and ends at the row background', async ({ page }) => {

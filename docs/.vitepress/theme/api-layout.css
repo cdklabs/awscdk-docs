@@ -11,7 +11,7 @@
   --api-c-deprecated: #9a2c2c;
   /* Start of the member-row flash. Brand-soft over the page falls to 4.3:1
      under brand-1 text (a link in a summary, a hovered type); this stays at
-     AA for brand-1, brand-2, the type color and body text. */
+     AA for text-1, text-2, brand-1, brand-2 and the type color. */
   --api-c-flash: #fdf3e3;
 }
 
@@ -20,7 +20,7 @@
   --api-c-badge-bg: #3b2c1a;
   --api-c-badge-text: #ffb84d;
   --api-c-deprecated: #ff9d9d;
-  --api-c-flash: #3b3226;
+  --api-c-flash: #352d22;
 }
 
 /* ---------- Type page header bar: breadcrumb + favorite ---------- */
