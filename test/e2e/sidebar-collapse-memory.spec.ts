@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
 import { API_OVERVIEW, CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
-import { SCROLL_STORE_KEY } from '../../docs/.vitepress/theme/sidebar-scroll.js';
 
 // Persistent sidebar disclosure state. These specs pin the contract on the
 // BUILT, hydrated site: an explicit toggle survives SPA navigation, a full
@@ -59,125 +58,6 @@ test.describe('sidebar collapse memory', () => {
     await page.reload();
     await waitForSidebar(page);
     await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'true');
-  });
-
-  test('an expanded section outside the active page comes back with its items after a reload', async ({ page }) => {
-    // A section the reader left open is reopened from stored choices on load
-    // and shows its items, not an empty list under an open caret.
-    await page.goto(CFN_QUEUE_PAGE);
-    await waitForSidebar(page);
-
-    const name = 'Custom Resources';
-    const items = (p: Page) => groupNamed(p, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li');
-    await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'false');
-    await groupNamed(page, name).click();
-    await expect(items(page).first()).toBeVisible();
-    // Clicking scrolled the sidebar up to the section; bring the active entry
-    // back into view so the remembered scroll position is the one under test.
-    const active = page.locator('.api-sidebar a.api-sidebar-link.active');
-    await active.scrollIntoViewIfNeeded();
-    await expect(active).toBeInViewport();
-
-    await page.reload();
-    await waitForSidebar(page);
-    const group = groupNamed(page, name);
-    await expect(group).toHaveAttribute('aria-expanded', 'true');
-    await expect(group.locator('.api-sidebar-caret')).toHaveClass(/\bopen\b/);
-    await expect(items(page).first()).toBeVisible();
-    // The remembered scroll position still leaves the active entry in view.
-    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
-  });
-
-  test('with no remembered scroll position, the reveal waits for a reopened section above the active entry', async ({ page }) => {
-    // A large section above the active entry: if the reveal ran before its
-    // items arrived, they would push the active entry out of view.
-    await page.goto(CFN_QUEUE_PAGE);
-    await waitForSidebar(page);
-    const name = 'aws-cdk-lib';
-    await groupNamed(page, name).click();
-    await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'true');
-    await expect(groupNamed(page, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeVisible();
-
-    // Forget the scroll position, so the load reveals the active entry instead.
-    await page.evaluate((key) => window.sessionStorage.removeItem(key), SCROLL_STORE_KEY);
-    await page.reload();
-    await waitForSidebar(page);
-    await expect(groupNamed(page, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeAttached();
-    const active = page.locator('.api-sidebar a.api-sidebar-link.active');
-    await expect(active).toBeInViewport();
-    // Still in view once the smooth reveal has settled (scrollTop stops moving).
-    const scroller = page.locator('aside.VPSidebar');
-    let last = -1;
-    await expect
-      .poll(async () => {
-        const top = await scroller.evaluate((el) => el.scrollTop);
-        const settled = top === last;
-        last = top;
-        return settled;
-      }, { intervals: [200] })
-      .toBe(true);
-    await expect(active).toBeInViewport();
-  });
-
-  /**
-   * Reopen the large `aws-cdk-lib` section above the active entry, forget the
-   * scroll position, and reload with every chunk after the first (the active
-   * page's) held until `release()`.
-   */
-  async function reloadWithReopenedSectionHeld(page: Page) {
-    await page.goto(CFN_QUEUE_PAGE);
-    await waitForSidebar(page);
-    await groupNamed(page, 'aws-cdk-lib').click();
-    await expect(groupNamed(page, 'aws-cdk-lib')).toHaveAttribute('aria-expanded', 'true');
-    await page.evaluate((key) => window.sessionStorage.removeItem(key), SCROLL_STORE_KEY);
-    let chunkRequests = 0;
-    let release!: () => void;
-    const released = new Promise<void>((resolve) => (release = resolve));
-    await page.route(/\/api-sidebar\/chunks\//, async (route) => {
-      chunkRequests += 1;
-      if (chunkRequests > 1) await released;
-      await route.continue();
-    });
-    await page.reload();
-    await waitForSidebar(page);
-    await expect(groupNamed(page, 'aws-cdk-lib')).toHaveAttribute('aria-expanded', 'true');
-    const sectionLoaded = () =>
-      expect(groupNamed(page, 'aws-cdk-lib').locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeAttached();
-    return { release, sectionLoaded };
-  }
-
-  const scrollTop = (page: Page) => page.locator('aside.VPSidebar').evaluate((el) => el.scrollTop);
-
-  /** Wait past the reveal's longest wait and a smooth scroll. */
-  async function settle(page: Page) {
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
-  }
-
-  test('a reveal that waits for a reopened section leaves a reader already in the sidebar alone', async ({ page }) => {
-    const { release, sectionLoaded } = await reloadWithReopenedSectionHeld(page);
-    const row = groupNamed(page, 'Custom Resources');
-    await row.focus();
-    await expect(row).toBeFocused();
-    release();
-    await sectionLoaded();
-    await settle(page);
-    await expect(row).toBeInViewport();
-  });
-
-  test('a reveal that waits for a reopened section is dropped after navigating to another page', async ({ page }) => {
-    const { release, sectionLoaded } = await reloadWithReopenedSectionHeld(page);
-    // Follow a link in the page body (SPA navigation, no sidebar scroll), so
-    // only the route check keeps the deferred reveal from moving the sidebar.
-    // The link may sit in a folded section, so click it from the page; the
-    // VitePress router still turns it into a client-side navigation.
-    await page.locator('.vp-doc a[href$="aws_sqs.CfnQueueProps.html"]').first().evaluate((el) => (el as HTMLElement).click());
-    await expect(page).toHaveURL(/aws_sqs\.CfnQueueProps/);
-    expect(await scrollTop(page)).toBe(0);
-    release();
-    await sectionLoaded();
-    await settle(page);
-    expect(await scrollTop(page)).toBe(0);
   });
 
   test('collapsing again is remembered as closed, not merely forgotten', async ({ page }) => {
@@ -269,5 +149,32 @@ test.describe('sidebar collapse memory', () => {
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeVisible();
+  });
+
+  test('an expanded section outside the active page comes back with its items after a reload', async ({ page }) => {
+    // A section the reader left open is reopened from stored choices on load
+    // and shows its items, not an empty list under an open caret.
+    await page.goto(CFN_QUEUE_PAGE);
+    await waitForSidebar(page);
+
+    const name = 'Custom Resources';
+    const items = (p: Page) => groupNamed(p, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li');
+    await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'false');
+    await groupNamed(page, name).click();
+    await expect(items(page).first()).toBeVisible();
+    // Clicking scrolled the sidebar up to the section; bring the active entry
+    // back into view so the remembered scroll position is the one under test.
+    const active = page.locator('.api-sidebar a.api-sidebar-link.active');
+    await active.scrollIntoViewIfNeeded();
+    await expect(active).toBeInViewport();
+
+    await page.reload();
+    await waitForSidebar(page);
+    const group = groupNamed(page, name);
+    await expect(group).toHaveAttribute('aria-expanded', 'true');
+    await expect(group.locator('.api-sidebar-caret')).toHaveClass(/\bopen\b/);
+    await expect(items(page).first()).toBeVisible();
+    // The remembered scroll position still leaves the active entry in view.
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
   });
 });

@@ -161,16 +161,20 @@ function onPopState() {
 // After the tree renders on a (re)loaded page: a remembered position wins
 // (reload, hard back into the tab); otherwise bring the active entry into
 // view so a deep link doesn't land with its sidebar entry off-screen.
-function revealOnLoad(container: HTMLElement) {
-  const saved = scrollMemory.value.get(activePath.value);
-  if (saved !== undefined) {
-    // A remembered position wins over revealing the active entry: a
-    // reload restores the exact scrollTop, even though that can leave
-    // the active entry off-screen on a revisited route.
-    container.scrollTop = saved;
-    return;
-  }
-  scrollActiveIntoView(container);
+function revealOnLoad() {
+  nextTick(() => {
+    const container = findScrollContainer();
+    if (!container) return;
+    const saved = scrollMemory.value.get(activePath.value);
+    if (saved !== undefined) {
+      // A remembered position wins over revealing the active entry: a
+      // reload restores the exact scrollTop, even though that can leave
+      // the active entry off-screen on a revisited route.
+      container.scrollTop = saved;
+      return;
+    }
+    scrollActiveIntoView(container);
+  });
 }
 
 function scrollActiveIntoView(container: HTMLElement): boolean {
@@ -313,63 +317,30 @@ function unloadedPackageChunks(key: string): string[] {
   return (entry?.chunks ?? []).filter((name) => !chunkItems.has(name));
 }
 
-// The still-unloaded chunks an open group needs in the given style: the
-// chunks a package entry names, or the one chunk of a service section.
-function unloadedChunksForKey(style: NavStyle, key: string): string[] {
-  if (style === "package") return unloadedPackageChunks(key);
-  const chunk = unloadedChunkForKey(serviceTree.value, key);
-  return chunk ? [chunk] : [];
-}
-
-// Longest a reveal waits for reopened sections before it runs anyway, so a
-// stalled request cannot keep the active entry off-screen.
-const REVEAL_WAIT_MS = 1500;
-
-// Fetches every chunk the open groups of the active style still miss, so a
-// group reopened from stored choices renders its items. Resolves (never
-// rejects; a failed chunk is retried when next needed) once the chunks that
-// can move the active entry have settled: in the service style the sections
-// before the active page's chunk in tree order, in the package style every
-// open package. The rest load without being waited for.
-function loadOpenChunks(): Promise<void> {
-  const style = navStyle.value;
-  const order = chunkNames(serviceTree.value);
-  const activeIndex = order.indexOf(chunkForPath(serviceTree.value, activePath.value, DOCS_PREFIX) ?? "");
-  const awaited: Promise<void>[] = [];
-  for (const key of expandedByStyle.value[style]) {
-    for (const name of unloadedChunksForKey(style, key)) {
-      const loading = loadChunk(name).catch(() => undefined);
-      const index = order.indexOf(name);
-      if (style === "package" || activeIndex < 0 || index < activeIndex) awaited.push(loading);
-    }
+// Load what the open entries of the package style need: the packages the
+// reader has open, which after a fresh switch is the one holding the active
+// page (already fetched for the service style) and nothing else.
+function loadOpenPackageChunks() {
+  for (const key of expandedByStyle.value.package) {
+    for (const name of unloadedPackageChunks(key)) loadChunk(name).catch(() => undefined);
   }
-  return Promise.all(awaited).then(() => undefined);
 }
 
-// Runs `reveal` once the open groups' chunks that can move the active entry
-// have loaded (at most REVEAL_WAIT_MS), unless the reader has overtaken it in
-// the meantime: another route or style, focus inside the sidebar, or the
-// reader scrolling the sidebar themselves.
-function revealAfterOpenChunks(reveal: (container: HTMLElement) => void) {
-  const path = activePath.value;
-  const style = navStyle.value;
-  const start = findScrollContainer();
-  let readerMoved = false;
-  const mark = () => {
-    readerMoved = true;
-  };
-  const events = ["wheel", "touchstart", "keydown"] as const;
-  for (const name of events) start?.addEventListener(name, mark, { once: true, passive: true });
-  const timeout = new Promise<void>((resolve) => setTimeout(resolve, REVEAL_WAIT_MS));
-  Promise.race([loadOpenChunks(), timeout]).then(() =>
-    nextTick(() => {
-      for (const name of events) start?.removeEventListener(name, mark);
-      if (readerMoved || activePath.value !== path || navStyle.value !== style) return;
-      const container = findScrollContainer();
-      if (!container || container.contains(document.activeElement)) return;
-      reveal(container);
-    }),
-  );
+// Load what the open groups of the service style need. A group the reader
+// opened before a reload comes back open from the stored choices, but only the
+// active page's chunk is fetched on load, so without this its child list
+// would render empty under an open caret.
+function loadOpenServiceChunks() {
+  for (const key of expandedByStyle.value.service) {
+    const chunk = unloadedChunkForKey(serviceTree.value, key);
+    if (chunk) loadChunk(chunk).catch(() => undefined);
+  }
+}
+
+// The open groups of the active style fetch any chunk they still miss.
+function loadOpenChunks() {
+  if (navStyle.value === "package") loadOpenPackageChunks();
+  else loadOpenServiceChunks();
 }
 
 // The groups a style opens before any reader choice: the generated tree's
@@ -422,7 +393,8 @@ function ensureLoaded() {
       // A query typed while the skeleton was in flight is already filtering.
       if (filtering.value) loadAllChunks();
       syncActive();
-      revealAfterOpenChunks(revealOnLoad);
+      loadOpenChunks();
+      revealOnLoad();
     })
     .catch(() => {
       status.value = "error";
@@ -447,12 +419,17 @@ function toggle(key: string) {
   // ancestor chain open for good.
   collapseMemory.value.set(key, open);
   if (!open) return;
-  for (const name of unloadedChunksForKey(navStyle.value, key)) loadChunk(name).catch(() => undefined);
+  if (navStyle.value === "package") {
+    for (const name of unloadedPackageChunks(key)) loadChunk(name).catch(() => undefined);
+  } else {
+    const chunk = unloadedChunkForKey(serviceTree.value, key);
+    if (chunk) loadChunk(chunk).catch(() => undefined);
+  }
 }
 
 // A style switch regroups the data already here: no new skeleton, no new
 // status. The new style gets its defaults and stored choices on first use,
-// the active page is revealed in it, and the groups it has open fetch any
+// the active page is revealed in it, and the packages it has open fetch any
 // chunk they still miss.
 watch(navStyle, () => {
   // Folds made while filtering belong to the tree they were made in.
@@ -461,8 +438,10 @@ watch(navStyle, () => {
   if (navStyle.value === "package") ensurePackageTree();
   initStyle(navStyle.value);
   syncActive();
-  revealAfterOpenChunks((container) => {
-    scrollActiveIntoView(container);
+  loadOpenChunks();
+  nextTick(() => {
+    const container = findScrollContainer();
+    if (container) scrollActiveIntoView(container);
   });
 });
 
