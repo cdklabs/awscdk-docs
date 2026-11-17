@@ -252,16 +252,21 @@ describe('agent-oriented Markdown twins with every site language', () => {
         { outDir: out, agentOutDir: agent, packageRoot: ROOT, languages: ['ts', 'python', 'java', 'dotnet', 'go'] },
       );
       const twin = readFileSync(join(agent, 'v2', 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
-      // The first example group: one labeled fence per language, in the site's order.
-      const start = twin.indexOf('TypeScript:\n\n```ts');
+      // The first example group, inside the Example section: one labeled fence per language, in the site's order.
+      const section = twin.indexOf('\n## Example\n');
+      expect(section).toBeGreaterThan(-1);
+      const example = twin.slice(section, twin.indexOf('\n## ', section + 1));
+      const start = example.indexOf('TypeScript:\n\n```ts');
       expect(start).toBeGreaterThan(-1);
       const labels = ['Python:\n\n```python', 'Java:\n\n```java', 'C# / .NET:\n\n```csharp', 'Golang:\n\n```go'];
       let at = start;
       for (const label of labels) {
-        const next = twin.indexOf(label, at);
+        const next = example.indexOf(label, at);
         expect(next).toBeGreaterThan(at);
         at = next;
       }
+      // A member whose name reads differently in Python gets its sub-bullet from docgen's real markup.
+      expect(twin).toMatch(/^- `bucketArn`: string.*\n\n {2}- Python: `bucket_arn`: str$/m);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -112,8 +112,9 @@ the merge. The hand-written homepage is the one exception: it declares
 transforms its finished Markdown into the root twin during the same overlay
 step, keeping the advertised file and its producer together. The compressed
 corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
-`docs:generate`, five languages) is about 31 MB, up from about 12 MB when the
-twin kept TypeScript only. It is overlaid once, with no per-shard cost.
+`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 31 MB, up
+from about 12 MB when the twin kept TypeScript only. It is overlaid once, with
+no per-shard cost.
 
 ### llms.txt index
 
