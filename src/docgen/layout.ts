@@ -11,7 +11,6 @@ import {
   translateMethodSignature,
   translateParameterName,
   translatePropertyName,
-  translateTypeRef,
 } from './languages.js';
 import { pageHref } from './links.js';
 import { encodeOutlineParams } from './outline-members.js';
@@ -22,7 +21,6 @@ import {
   shortName,
   translatedTypeRefHtml,
   typeRefHtml,
-  typeRefText,
 } from './signatures.js';
 import {
   languageVariantSpans,
@@ -564,10 +562,8 @@ export function renderExpandableProps(
 }
 
 /**
- * Blank the `title` over type links. The type span carries the full spelling in a `title`, and a native
- * tooltip is inherited by descendants — so a linked type would show the browser bubble on top of the richer hover
- * card `type-tooltips.ts` renders for it. An empty `title` on the anchor suppresses the bubble there and leaves it
- * on the bare text around it.
+ * Blank the `title` over type links, so a linked type shows only the hover card `type-tooltips.ts` renders for it
+ * and never a native browser bubble on top of it.
  */
 function withoutAnchorTooltips(html: string): string {
   return html.replace(/<a class="sig-type" /g, '<a class="sig-type" title="" ');
@@ -575,8 +571,8 @@ function withoutAnchorTooltips(html: string): string {
 
 /**
  * Longest qualified name the narrowest content column holds whole: about 36 monospace characters at 375px and the
- * largest density. A shorter name never has to break, and a dot in it is a worse break than the space or bracket
- * beside it.
+ * largest density. A shorter name never has to break, so it gets no break point and the line breaks at a space
+ * instead of inside the name.
  */
 const TYPE_NAME_BREAK_BUDGET = 32;
 
@@ -632,16 +628,14 @@ function propRowHtml(
     const type = lang === 'ts'
       ? typeRefHtml(prop.type, linkFor)
       : translatedTypeRefHtml(prop.type, lang, linkFor);
-    // The full spelling stays in `title` as plain text; the visible copy carries the `<wbr>` break points.
-    const full = lang === 'ts' ? typeRefText(prop.type) : translateTypeRef(prop.type, lang);
     // Strikethrough marks the IDENTIFIER only — running it over the type or the anchor reads as a scribble.
     const nameClass = deprecated ? 'member-name member-name-deprecated' : 'member-name';
     // The `?` sits right after the name, in every language: optionality is a fact about the member, not about how
     // one language spells it.
     const mark = prop.optional ? optionalMarkHtml(optionalKind) : '';
+    // No `title`: the type is shown in full, so a tooltip would only repeat it.
     return `<code class="${nameClass}">${name}</code>${mark}`
-      + `<span class="member-type" data-pagefind-ignore title="${escapeAttr(full)}">`
-      + `${withDotBreaks(withoutAnchorTooltips(type))}</span>`;
+      + `<span class="member-type" data-pagefind-ignore>${withDotBreaks(type)}</span>`;
   });
   const parts = [nameAndType];
   const fullDefault = defaultText(prop.docs?.default);

@@ -245,7 +245,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       '<div class="member-row" id="bucketname" data-optional="input"><div class="member-line">'
       + '<code class="member-name">bucketName</code><span class="member-optional" data-pagefind-ignore>'
       + '<span aria-hidden="true">?</span><span class="member-optional-label">optional</span></span>'
-      + '<span class="member-type" data-pagefind-ignore title="string">string</span></div>',
+      + '<span class="member-type" data-pagefind-ignore>string</span></div>',
       '<div class="member-summary">Physical name of this bucket.</div></div>',
       '',
     ].join('\n');

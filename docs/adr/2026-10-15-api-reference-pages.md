@@ -317,16 +317,20 @@ for the type's own text. Breaks happen at the spaces a type already has
 the narrowest column holds whole (32 characters), after every dot, which the
 renderer follows with a `<wbr>` in the visible copy only — a nested-type name
 (`CfnRegistry.CustomMetadataSchemaConfigurationProperty`) breaks after
-`CfnRegistry.` rather than mid-word, while a short `typing.List` stays together
-because its dot would be taken before the bracket or space beside it. That
+`CfnRegistry.` rather than mid-word, while a short `typing.List` gets no break
+point, so the line breaks at a space instead of inside the name. That
 qualification exists in the TypeScript spelling; the other languages name a
 nested type by its last segment, which takes the `overflow-wrap` fallback when
 it does not fit. A single token wider than the whole column falls back to the
 page's `overflow-wrap: break-word`; the type span carries the wrapper's
 `min-width: 0` and `max-width: 100%` itself for the single-language shape,
-where it is the row's flex item. The full spelling stays in the span's `title`
-as plain text. The wrapper's `nowrap` is shared by method rows, where the
-variant holds the whole signature;
+where it is the row's flex item. The span carries no `title`: nothing is
+hidden, so one would only repeat the text. A wrapped type's continuation lines
+hang `2ch` in from the name column (`padding-left: 2ch; text-indent: -2ch` on
+the variant wrapper holding a type, or on the type itself with one language),
+so a reader scanning for names does not meet type text at the same edge; an
+unwrapped row is unchanged. The wrapper's `nowrap` is shared by
+method rows, where the variant holds the whole signature;
 `.member-signature` releases it (`white-space: normal`, `overflow-wrap:
 anywhere`) so a long signature wraps inside the content column instead of
 running over the outline — a signature has no single line to clamp to and is
@@ -501,6 +505,6 @@ outline, only overview pages suppress it.
 - **A `copy`-event handler rewriting clipboard data** for the FQN breadcrumb —
   makes the clipboard disagree with the DOM and fails for readers who do not
   fire the event; CSS padding achieves it for free.
-- **A CSS `max-width` cap on the property type** — a second number that binds
-  where nothing is wrong; the shrink weighting orders type-over-description in
-  one declaration.
+- **An ellipsis clamp on the property type** — the type appears nowhere else
+  in the row, so clipping hides exactly the part a reader came for; it wraps
+  instead.

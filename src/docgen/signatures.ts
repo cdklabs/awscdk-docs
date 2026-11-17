@@ -94,15 +94,6 @@ export function typeRefHtml(ref: spec.TypeReference, linkFor: LinkResolver): str
 }
 
 /**
- * Plain-text twin of {@link typeRefHtml}, for the `title` on a property row's type span.
- * The link resolver is stubbed out because text carries no
- * links.
- */
-export function typeRefText(ref: spec.TypeReference): string {
-  return renderTypeRef(ref, () => undefined).text;
-}
-
-/**
  * HTML rendering of a type reference in a NON-TypeScript language, with the
  * same cross-links.
  *

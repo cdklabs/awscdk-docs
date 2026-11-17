@@ -87,7 +87,7 @@ describe('generated pages carry search relevance markup', () => {
     // property summaries, repeated types, defaults, and metadata sources stay out.
     expect(page).toContain('<div class="props-table member-list" v-pre>');
     expect(page).not.toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
-    expect(page).toMatch(/<code class="member-name">\w+<\/code><span class="member-type" data-pagefind-ignore /);
+    expect(page).toMatch(/<code class="member-name">\w+<\/code><span class="member-type" data-pagefind-ignore>/);
     expect(page).toMatch(/<span class="member-default" data-pagefind-ignore>/);
     expect(page).toMatch(/<div class="member-summary" data-pagefind-ignore>/);
     expect(page).toMatch(/<a class="type-metadata-source" data-pagefind-ignore [^>]*><code>aws-s3\/lib\/bucket\.ts<\/code><\/a>/);

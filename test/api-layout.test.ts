@@ -391,7 +391,7 @@ describe('API page layout', () => {
       expect(page).not.toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
       expect(page).toContain('<code class="member-name">versioned</code>');
       // Property names are indexable, while the type and body stay excluded.
-      expect(page).toContain('<span class="member-type" data-pagefind-ignore title=');
+      expect(page).toContain('<span class="member-type" data-pagefind-ignore>');
       expect(page).toContain('<div class="member-summary" data-pagefind-ignore>');
     });
 
@@ -1098,21 +1098,22 @@ describe('API page layout', () => {
       expect(type).toContain('max-width: 100%');
     });
 
-    test('a dot in a long qualified name is a break point, and only in the visible copy', () => {
+    test('a dot in a long qualified name is a break point, and only in the text', () => {
       // The renderer follows every dot in a qualified name longer than the
       // narrowest column holds with a `<wbr>`, so a nested-type name wraps
       // after the dot rather than running past the row. A short name gets
-      // none: its dot would be taken before the space or bracket beside it.
-      // The `title` is plain text and keeps the spelling intact, and an
-      // `href` keeps its dots so the link still resolves.
+      // none, so the line breaks at a space instead of inside the name. An
+      // `href` keeps its dots so the link still resolves, and the span's
+      // attributes carry no break point in any spelling.
       // Two L1s' props carry nested-type names on both sides of the budget:
       // `CfnTopic.LoggingConfigProperty` and `CfnBucket.AccelerateConfigurationProperty`.
       const pages = ['aws-cdk-lib.aws_sns.CfnTopicProps.md', 'aws-cdk-lib.aws_s3.CfnBucketProps.md']
         .map((name) => readFileSync(join(outDir, 'docs', name), 'utf-8'));
       // The type span nests `sig-punct` spans, so its end is the matching close tag, not the first `</span>`.
+      // The opening tag is matched attribute by attribute, so a `>` inside an attribute value cannot end it early.
       const typeSpans = (page: string): { attrs: string; inner: string }[] => {
         const out = [];
-        for (const open of page.matchAll(/<span class="member-type"([^>]*)>/g)) {
+        for (const open of page.matchAll(/<span class="member-type"((?:\s+[\w-]+(?:="[^"]*")?)*)>/g)) {
           let depth = 1;
           const tags = page.slice(open.index + open[0].length).matchAll(/<\/?span\b/g);
           for (const tag of tags) {
@@ -1125,10 +1126,12 @@ describe('API page layout', () => {
         }
         return out;
       };
-      const names = pages.flatMap(typeSpans).flatMap(({ attrs, inner }) => {
-        expect(attrs).not.toContain('<wbr>');
+      const spans = pages.flatMap(typeSpans);
+      expect(spans.length).toBeGreaterThan(0);
+      const names = spans.flatMap(({ attrs, inner }) => {
+        expect(attrs).not.toMatch(/wbr/);
         for (const [, href] of inner.matchAll(/href="([^"]*)"/g)) {
-          expect(href).not.toContain('<wbr>');
+          expect(href).not.toMatch(/wbr/);
         }
         // Qualified names in the text, with any `<wbr>` the renderer put inside them.
         return [...inner.replace(/<(?!wbr>)[^>]*>/g, ' ').matchAll(/[\w.]+(?:<wbr>[\w.]*)*/g)]
@@ -1147,6 +1150,22 @@ describe('API page layout', () => {
       }
     });
 
+    test('the type carries no title', () => {
+      // The type is shown in full, so a `title` would only repeat it: a native
+      // tooltip over the bare text, and a second reading for assistive tech
+      // that exposes a span's title.
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+      const typed = [...page.matchAll(/<span class="member-type"((?:\s+[\w-]+(?:="[^"]*")?)*)>/g)];
+      expect(typed.length).toBeGreaterThan(0);
+      for (const span of typed) {
+        expect(span[1]).not.toMatch(/\btitle=/);
+      }
+      // Nor do the links inside it, which keep the hover card as their only tooltip.
+      const inType = page.slice(page.indexOf('<span class="member-type'));
+      expect(inType).toContain('<a class="sig-type" href="');
+      expect(inType).not.toContain('<a class="sig-type" title="" href="');
+    });
+
     test('the name keeps a gap from the type that follows it', () => {
       expect(declarations(css(), '.member-list .member-name')).toContain('margin-right: 8px');
     });
@@ -1158,7 +1177,7 @@ describe('API page layout', () => {
       // together; the type's own text releases it so a long type wraps inside
       // the row rather than breaking away from its name. `min-width: 0` lets
       // the span shrink past its content so the type has a width to wrap to.
-      const wrapper = declarations(css(), '.member-list .member-line > .lang-variant');
+      const wrapper = declarations(css(), '.member-list .member-line > .lang-variant {');
       expect(wrapper).toContain('white-space: nowrap');
       expect(wrapper).toContain('min-width: 0');
       // Where the row stacks, the wrapper is sized to its content: without a
@@ -1170,6 +1189,18 @@ describe('API page layout', () => {
       // font, growing every row by 4px and pushing the disclosure control off
       // center against the tolerance the member-row e2e spec asserts.
       expect(wrapper).not.toMatch(/display: (inline-)?flex/);
+    });
+
+    test('a wrapped type hangs its continuation lines, on whichever box the row lays out', () => {
+      // The indent sits on the variant wrapper with 2+ languages and on the
+      // type itself with one; a negative `text-indent` restores the first
+      // line, so an unwrapped row is unchanged. Signatures are left alone.
+      const rule = declarations(css(), '.member-list .member-line > .lang-variant:has(> .member-type)');
+      expect(rule).toContain('padding-left: 2ch');
+      expect(rule).toContain('text-indent: -2ch');
+      const rules = css();
+      const at = rules.indexOf('.member-list .member-line > .lang-variant:has(> .member-type)');
+      expect(rules.slice(at, rules.indexOf('{', at))).toContain('.member-list .member-line > .member-type');
     });
 
     test('the signature releases the wrapper nowrap so a long one wraps', () => {
@@ -1231,46 +1262,6 @@ describe('API page layout', () => {
 
       expect(blockFor('.member-list .member-line > .lang-variant'))
         .toContain('white-space: normal');
-    });
-
-    test('the type keeps its full value in a title', () => {
-      // The row is the only place the type appears, and the title is its
-      // plain-text spelling without the `<wbr>` break points.
-      // This fixture generates TypeScript alone; the translated spellings are
-      // asserted in the e2e spec, against the five-language build that ships.
-      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      const typed = [...page.matchAll(/<span class="member-type"([^>]*)>/g)];
-      expect(typed.length).toBeGreaterThan(0);
-      for (const span of typed) {
-        expect(span[1]).toMatch(/ title="[^"]+"/);
-      }
-    });
-
-    test('a wrapped type keeps every link it had', () => {
-      // The anchors are children of the type span, so the break points must
-      // not change an href — the type stays a way to navigate.
-      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      const inType = page.slice(page.indexOf('<span class="member-type'));
-      expect(inType).toContain('<a class="sig-type" title="" href="');
-    });
-
-    test('a linked type does not show two tooltips at once', () => {
-      // A native `title` is inherited by descendants, and `type-tooltips.ts`
-      // already renders a hover card for any link into the API docs — so the
-      // span's title has to be blanked over the anchors or every linked type
-      // in every props table shows the browser bubble on top of the card.
-      // Scoped to the type spans: signature anchors have no titled ancestor
-      // and are deliberately left alone.
-      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-      const spans = [...page.matchAll(/<span class="member-type"[^>]*>(.*?)<\/span>/g)]
-        .map((m) => m[1])
-        .filter((inner) => inner.includes('<a class="sig-type"'));
-      expect(spans.length).toBeGreaterThan(0);
-      for (const inner of spans) {
-        for (const anchor of inner.matchAll(/<a class="sig-type"([^>]*)>/g)) {
-          expect(anchor[1]).toContain('title=""');
-        }
-      }
     });
   });
 });

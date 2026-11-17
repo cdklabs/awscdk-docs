@@ -609,6 +609,18 @@ a.chain-item:hover {
   white-space: normal;
 }
 
+/* A wrapped type's continuation lines hang 2ch in from the name column, so a
+   reader scanning for property names does not meet type text at the same
+   edge. The indent sits on the box the row lays out — the variant wrapper, or
+   the type itself with a single language — and the negative `text-indent`
+   restores the first line, so an unwrapped row is unchanged. Scoped to rows
+   with a type: a signature wraps on its own terms. */
+.member-list .member-line > .lang-variant:has(> .member-type),
+.member-list .member-line > .member-type {
+  padding-left: 2ch;
+  text-indent: -2ch;
+}
+
 /* The name and its type are adjacent inline boxes inside one variant, so the
    row's `column-gap` never separates them; 8px reads as one unit next to the
    12px between row items. */
