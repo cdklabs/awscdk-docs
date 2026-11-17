@@ -114,8 +114,8 @@ async function makeHighlight() {
 // derivation all read the token's `children`; the raw `content` string's only remaining consumer is the aria-label.
 const LANG_VARIANT_SPAN = /^<span class="lang-variant"[^>]*>(.*?)<\/span>/;
 // A type page's H1 source is the weighted name span (with `<wbr>` break points), the kind `<Badge>` and the
-// `{#…}` pin; its label is the plain type name.
-const WEIGHTED_TITLE_SPAN = /^<span data-pagefind-weight="10">(.*?)<\/span>/;
+// `{#…}` pin; its label is the plain type name. Any weight matches, so retuning it in weightedTitle() keeps working.
+const WEIGHTED_TITLE_SPAN = /^<span data-pagefind-weight="[\d.]+">(.*?)<\/span>/;
 function cleanHeadingLabel(source: string): string | undefined {
   const title = WEIGHTED_TITLE_SPAN.exec(source)?.[1];
   const canonical = title?.replace(/<wbr>/g, "") ?? LANG_VARIANT_SPAN.exec(source)?.[1];
