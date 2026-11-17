@@ -504,7 +504,7 @@ describe('construct page generation', () => {
         name: cloudformationResource ? 'CfnWidget' : 'Widget',
         assembly: 'aws-cdk-lib',
         namespace,
-        base: 'aws-cdk-lib.Resource',
+        base: cloudformationResource ? 'aws-cdk-lib.CfnResource' : 'aws-cdk-lib.Resource',
         ...(cloudformationResource ? { docs: { custom: { cloudformationResource } } } : {}),
       };
       const index: TypeIndex = new Map(fixtureIndex);
