@@ -9,7 +9,7 @@
 
 import { ConstructLevel } from './constructs.js';
 import { FRAMEWORK_NAV, FrameworkNav } from './framework-nav.js';
-import { Language, translateTypeName } from './languages.js';
+import { DEFAULT_LANGUAGE, Language, translateTypeName } from './languages.js';
 import { assemblyDocId, moduleReadmeLink } from './links.js';
 import { byLevelThenName } from './ordering.js';
 
@@ -613,11 +613,12 @@ export function buildServiceSidebar(
     sections: Map<string, SidebarEntry[]>,
     compare: (a: string, b: string) => number,
     flat: ReadonlySet<string>,
+    service: boolean,
   ): SidebarItem[] => {
     const names = [...sections.keys()].sort(compare);
     return names.map((name) => {
       const list = sections.get(name)!;
-      const overviews = overviewItems(list, languages);
+      const overviews = overviewItems(list, languages, service);
       // The package root overview, for a package whose types all sit in omitted submodules. A package that also
       // has root types already lists that page through its own entries, so it is added at most once.
       const root = packageRoots.get(name);
@@ -651,7 +652,7 @@ export function buildServiceSidebar(
       text: FRAMEWORK_SECTION,
       section: true,
       collapsed: false,
-      items: curateFramework(sectionItems(framework, frameworkSectionCompare, flatSections), framework),
+      items: curateFramework(sectionItems(framework, frameworkSectionCompare, flatSections, false), framework),
     });
   }
   if (services.size > 0) {
@@ -659,7 +660,7 @@ export function buildServiceSidebar(
       text: SERVICES_SECTION,
       section: true,
       collapsed: false,
-      items: sectionItems(services, servicesCompare, noFlatSections),
+      items: sectionItems(services, servicesCompare, noFlatSections, true),
     });
   }
   return top;
@@ -796,6 +797,45 @@ function indexesPackageRoot(entry: SidebarEntry): boolean {
 }
 
 /**
+ * The primary `aws-cdk-lib` service module of a section, such as `aws_s3`. Requiring a service token keeps bare
+ * `aws` or `alexa` module names out of this tier.
+ */
+function primary(e: SidebarEntry): boolean {
+  const [prefix, service, ...suffix] = e.submodule.split('_');
+  return e.assemblyName === 'aws-cdk-lib'
+    && (prefix === 'aws' || prefix === 'alexa')
+    && service !== undefined
+    && suffix.length === 0;
+}
+
+/** Package readmes whose sidebar label is their page title rather than their module name. */
+const FIXED_README_LABELS: ReadonlyMap<string, string> = new Map([
+  ['@aws-cdk/aws-iot-actions-alpha', 'Actions for AWS IoT Rule'],
+]);
+
+/** A service's own alpha package: `@aws-cdk/aws-<service>-alpha`, with no further suffix after the service. */
+const SERVICE_ALPHA_PACKAGE = /^@aws-cdk\/aws-[a-z0-9]+-alpha$/;
+
+/**
+ * The Go package name in an import path: its last segment, skipping a major version suffix, so
+ * `github.com/aws/aws-cdk-go/awscdk/v2/awss3deployment` is `awss3deployment` and
+ * `github.com/aws/aws-cdk-go/awscdkamplifyalpha/v2` is `awscdkamplifyalpha`.
+ */
+function goPackageName(importPath: string): string {
+  const segments = importPath.split('/');
+  return segments.filter((s) => !/^v\d+$/.test(s)).pop() ?? importPath;
+}
+
+/** The fixed label of a non-primary readme in a Services section, or undefined when it is named by its module. */
+function fixedReadmeLabel(e: SidebarEntry): string | undefined {
+  if (e.submodule !== '') {
+    return undefined;
+  }
+  return FIXED_README_LABELS.get(e.assemblyName)
+    ?? (SERVICE_ALPHA_PACKAGE.test(e.assemblyName) ? 'Developer Preview' : undefined);
+}
+
+/**
  * Overview links for a section: one leaf per distinct (sub)module page among the section's entries, rendered before
  * the resource/kind groups so a submodule's Overview page (e.g. `aws_s3` -> `/v2/docs/aws-cdk-lib.aws_s3-readme`)
  * is one click from the sidebar. The link is each entry's existing `indexLink` — the canonical module page path
@@ -803,8 +843,14 @@ function indexesPackageRoot(entry: SidebarEntry): boolean {
  * (sub)module gets a plain `Overview` entry; a section folding several (e.g. S3 with `aws_s3` + `aws_s3_deployment`)
  * disambiguates each, mirroring the `Type index (...)` convention. Structural submodules (`interfaces.*`, `*.mixins`)
  * never surface an overview of their own — they are internal assembly layout, not navigation.
+ *
+ * In a Services section folding several readmes, only the primary `aws-cdk-lib` service module is `Overview`. The
+ * service's own `@aws-cdk/aws-<service>-alpha` readme is `Developer Preview`, a few readmes carry a fixed label
+ * ({@link FIXED_README_LABELS}), and every other readme is labeled by its module name in the reader's language: the
+ * short submodule or package name in TypeScript, and the last import path segment in Go. Framework sections keep
+ * `Overview (<module>)`.
  */
-function overviewItems(entries: SidebarEntry[], languages: readonly Language[]): SidebarItem[] {
+function overviewItems(entries: SidebarEntry[], languages: readonly Language[], service: boolean): SidebarItem[] {
   const byLink = new Map<string, SidebarEntry>();
   for (const e of entries) {
     if (serviceSubmodule(e.submodule) !== e.submodule) {
@@ -820,20 +866,10 @@ function overviewItems(entries: SidebarEntry[], languages: readonly Language[]):
     }
   }
   // The primary aws-cdk-lib service module leads, then the existing stable
-  // canonical-package and link order handles every related overview. Requiring
-  // a service token keeps bare `aws` or `alexa` module names out of this tier.
+  // canonical-package and link order handles every related overview.
   const chosen = [...byLink.entries()].sort(([aLink, a], [bLink, b]) => {
-    const primary = (e: SidebarEntry) => {
-      const [prefix, service, ...suffix] = e.submodule.split('_');
-      return e.assemblyName === 'aws-cdk-lib'
-        && (prefix === 'aws' || prefix === 'alexa')
-        && service !== undefined
-        && suffix.length === 0
-        ? 0
-        : 1;
-    };
     const canonical = (e: SidebarEntry) => (e.assemblyName === 'aws-cdk-lib' ? 0 : 1);
-    return primary(a) - primary(b) || canonical(a) - canonical(b) || aLink.localeCompare(bLink);
+    return Number(!primary(a)) - Number(!primary(b)) || canonical(a) - canonical(b) || aLink.localeCompare(bLink);
   });
   const multiple = chosen.length > 1;
   const shortLabel = (e: SidebarEntry) => e.submodule || e.assemblyName;
@@ -845,6 +881,25 @@ function overviewItems(entries: SidebarEntry[], languages: readonly Language[]):
   for (const [, e] of chosen) {
     const label = shortLabel(e);
     counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  if (service) {
+    return chosen.map(([link, e]) => {
+      const short = shortLabel(e);
+      const collides = counts.get(short)! > 1;
+      const fixed = !multiple || primary(e) ? 'Overview' : fixedReadmeLabel(e);
+      if (fixed !== undefined) {
+        return { text: fixed, link };
+      }
+      const text = collides ? `${e.assemblyName}/${short}` : short;
+      const labels = labelVariants(text, languages, (lang) => {
+        const moduleLabel = lang === DEFAULT_LANGUAGE ? undefined : e.moduleLabels?.[lang];
+        if (moduleLabel === undefined) {
+          return undefined;
+        }
+        return lang === 'go' ? goPackageName(moduleLabel) : moduleLabel;
+      });
+      return { text, ...(labels ? { labels } : {}), link };
+    });
   }
   return chosen.map(([link, e]) => {
     const short = shortLabel(e);
