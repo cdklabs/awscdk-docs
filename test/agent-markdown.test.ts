@@ -354,6 +354,29 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect(toAgentMarkdown(page).markdown).toBe('- `bucket`: IBucket\n\n  - C# / .NET, Golang: `Bucket`: `IBucket`\n');
   });
 
+  test('a TypeScript copy that leads with a shell fence is kept, and so is a copy whose shell fence is its own', () => {
+    const page = exampleGroup([
+      ['ts', 'sh', 'npm install aws-cdk-lib'],
+      ['python', 'sh', 'pip install aws-cdk-lib'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript:\n\n```sh\nnpm install aws-cdk-lib');
+    expect(markdown).toContain('Python:\n\n```sh\npip install aws-cdk-lib');
+  });
+
+  test('without TypeScript, the head type is a code span, so a generic does not read as a tag', () => {
+    const page = [
+      '<div class="member-row" id="tags"><div class="member-line">'
+      + '<span class="lang-variant" data-lang="java"><code class="member-name">tags</code>'
+      + '<span class="member-type" data-pagefind-ignore title="List&lt;String&gt;">List&lt;String&gt;</span></span>'
+      + '<span class="lang-variant" data-lang="go" data-pagefind-ignore><code class="member-name">Tags</code>'
+      + '<span class="member-type" data-pagefind-ignore title="*[]*string">*[]*string</span></span>'
+      + '</div></div>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `tags`: `List<String>`\n\n  - Golang: `Tags`: `*[]*string`\n');
+  });
+
   test('a sub-bullet type is a code span, so a generic does not read as a tag', () => {
     const page = [
       '<div class="member-row" id="tags"><div class="member-line">'

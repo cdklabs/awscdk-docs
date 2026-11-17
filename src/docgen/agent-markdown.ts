@@ -4,7 +4,8 @@
  * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
  * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
- * consume: every enabled language's variant — block copies after a language label (identical copies dropped), inline
+ * consume: every enabled language's variant — block copies after a language label (a copy docgen filled with the
+ * TypeScript source is named on the TypeScript label, not repeated), inline
  * spellings in parentheses where they differ; headings, prose, fenced code, tables and links once; member lists
  * rewritten as bullet lists; everything that exists for the browser dropped.
  *
@@ -15,7 +16,6 @@
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
-import type { Language } from './languages.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -209,19 +209,19 @@ function children(el: Element): string {
 }
 
 /**
- * A block group (examples), one copy per language in the site's language order. Docgen fences each copy in its own
- * language, so a copy whose first fence is tagged for another language is the TypeScript source docgen fills in for
- * a snippet that was not translated. That fallback is never labeled as its own language. With TypeScript enabled,
+ * A block group (examples), one copy per language in the site's language order. A copy in another language whose
+ * first fence is tagged `ts` is the TypeScript source docgen fills in for a snippet that was not translated; the
+ * TypeScript copy itself is never one, whatever its fences. That fallback is never labeled as its own language. With
+ * TypeScript enabled,
  * the TypeScript copy's label names the languages that fall back on it (`TypeScript (also shown for Python):`) and
  * the fallbacks are not repeated. Without TypeScript, one fallback copy stands in, at the position of the first
  * language that uses it, labeled `TypeScript (shown for Python):`.
  */
 function renderBlockGroup(group: Element[], copies: Map<Element, { raw: string; text: string }>): string {
   const fenceLang = (v: Element) => /^ {0,3}(?:`{3,}|~{3,})([^\s`]*)/m.exec(copies.get(v)!.text)?.[1];
-  const isFallback = (v: Element) => {
-    const lang = fenceLang(v);
-    return lang !== undefined && lang !== FENCE_LANG[v.attribs['data-lang'] as Language];
-  };
+  // Only a `ts` fence in another language's copy is the fill; a copy that leads with a shell or JSON fence is its own.
+  const isFallback = (v: Element) => v.attribs['data-lang'] !== DEFAULT_LANGUAGE
+    && fenceLang(v) === FENCE_LANG[DEFAULT_LANGUAGE];
   const fallbacks = group.filter(isFallback);
   const fallbackSet = new Set(fallbacks);
   const block = (label: string, v: Element) => `\n${label}:\n\n${copies.get(v)!.raw}\n`;
@@ -455,7 +455,10 @@ function renderMemberLine(line: Element, variant?: Element): string {
     parts.push(`\`${textOf(signature)}\``);
   } else if (name) {
     parts.push(`\`${textOf(name)}\``);
-    if (type) parts.push(`: ${inline(type)}`);
+    // A TypeScript head keeps its type links. Another language's type is a code span, so a generic such as
+    // `List<String>` does not read as a tag.
+    const tsHead = !variant || variant.attribs['data-lang'] === DEFAULT_LANGUAGE;
+    if (type) parts.push(tsHead ? `: ${inline(type)}` : `: \`${textOf(type)}\``);
   }
   for (const flag of flags) parts.push(` (${textOf(flag)})`);
   // The visible default is elided for long values; `title` carries the whole thing.
