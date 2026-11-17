@@ -15,7 +15,7 @@ export const FLASH_CLASS = 'member-row-flash';
 export const READY_CLASS = 'member-flash-ready';
 /** Length of the fade, matched by the keyframes in api-layout.css. */
 export const FLASH_DURATION_MS = 1500;
-/** A second call for the same hash within this window is the same jump arriving by another event. */
+/** A repeat click on the current hash within this window is the same click arriving by another event, not a new jump. */
 export const SAME_JUMP_MS = 250;
 
 /** The subset of the DOM the helper touches, so a unit test can pass a plain object. */
@@ -85,6 +85,36 @@ export function flashRow(
 }
 
 /**
+ * Collapse the overlapping arrivals of one jump into one flash. A `repeat` is a
+ * deliberate click on the hash the page is already at and restarts the fade
+ * once `SAME_JUMP_MS` has passed; any other arrival for the row last flashed is
+ * the same jump again and is dropped, however late (hydration can take longer
+ * than any window). A route reload replaces the row, so a new element for the
+ * same hash is a new landing. `now` is injectable for tests.
+ */
+export function createFlashOnce(
+  doc: FlashDocument,
+  flash: (hash: string) => void,
+  now: () => number = () => performance.now(),
+): (hash: string, options?: { repeat?: boolean }) => void {
+  let lastHash: string | null = null;
+  let lastRow: FlashElement | null = null;
+  let lastAt = 0;
+  return (hash, { repeat = false } = {}) => {
+    const row = rowForHash(doc, hash);
+    const at = now();
+    const sameRow = row !== null && row === lastRow && hash === lastHash;
+    if (sameRow && (!repeat || at - lastAt < SAME_JUMP_MS)) {
+      return;
+    }
+    lastHash = hash;
+    lastRow = row;
+    lastAt = at;
+    flash(hash);
+  };
+}
+
+/**
  * Wire the flash to the hash events: VitePress's synthetic `hashchange` for
  * in-page links (outline, permalinks, prose links) and the browser's own for
  * back/forward between hashes. A click on a link to the hash the page is
@@ -97,9 +127,9 @@ export function flashRow(
  * The paths overlap: one click raises `hashchange` and then reaches the click
  * listener, a load with a hash reaches the hook and then the mount, and
  * back/forward raises `popstate` and `hashchange` and then, once the route has
- * reloaded, the hook. A second arrival for the same hash within `SAME_JUMP_MS`
- * is skipped while the row still carries the mark, and the hashchange of a
- * back/forward is left to the hook, so each jump starts exactly one fade.
+ * reloaded, the hook. `createFlashOnce` drops a second arrival for the row
+ * last flashed, and the hashchange of a back/forward is left to the hook, so
+ * each jump starts exactly one fade.
  */
 export function installMemberFlash(): (hash: string) => void {
   const g = globalThis as { document?: Document; addEventListener?: Window['addEventListener']; location?: Location };
@@ -125,20 +155,7 @@ export function installMemberFlash(): (hash: string) => void {
       row.addEventListener('animationend', done);
     }
   };
-  let lastHash: string | null = null;
-  let lastAt = 0;
-  const flashOnce = (hash: string) => {
-    const now = performance.now();
-    // The same jump arriving again: skip it only while the mark is still on the
-    // row, because a route reload replaces the row and takes the mark with it.
-    const marked = rowForHash(doc, hash)?.classList.contains(FLASH_CLASS) ?? false;
-    if (marked && hash === lastHash && now - lastAt < SAME_JUMP_MS) {
-      return;
-    }
-    lastHash = hash;
-    lastAt = now;
-    flash(hash);
-  };
+  const flashOnce = createFlashOnce(doc, flash);
   // Back/forward: VitePress's popstate handler reloads the route, which replaces
   // the rows, so a flash on the native hashchange that follows would land on a
   // row about to be thrown away. The route hook marks the new row instead.
@@ -166,7 +183,7 @@ export function installMemberFlash(): (hash: string) => void {
       return;
     }
     if (link.hash && link.pathname === loc.pathname && link.hash === loc.hash) {
-      flashOnce(link.hash);
+      flashOnce(link.hash, { repeat: true });
     }
   });
   g.document.documentElement.classList.add(READY_CLASS);

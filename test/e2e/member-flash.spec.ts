@@ -183,6 +183,21 @@ test.describe('a jump to a member row flashes it', () => {
   });
 });
 
+test.describe('under forced colors', () => {
+  test('the mark is an outline for as long as the fade', async ({ page }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await page.goto(QUEUE_PAGE);
+    await page.locator(OUTLINE_LINK(FIFO)).click();
+    const row = page.locator(`.member-row${FIFO}`);
+    await expect(row).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    // Author backgrounds are dropped; the outline carries the mark.
+    await expect(row).toHaveCSS('outline-style', 'solid');
+    await expect(row).toHaveCSS('outline-width', '2px');
+    await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`), { timeout: 3000 });
+    await expect(row).toHaveCSS('outline-style', 'none');
+  });
+});
+
 test.describe('under reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
 
@@ -211,6 +226,7 @@ test.describe('under reduced motion', () => {
     await expect(row).toHaveCSS('outline-style', 'solid');
     await expect(row).toHaveCSS('outline-width', '2px');
     await expect(row).toHaveCSS('outline-color', brand);
+    await expect(row).toHaveCSS('outline-offset', '2px');
     // Still marked well after the fade would have ended.
     await page.waitForTimeout(1800);
     await expect(row).toHaveClass(new RegExp(`\\b${FLASH}\\b`));

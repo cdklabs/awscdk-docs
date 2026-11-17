@@ -10,7 +10,9 @@ import {
   FlashDocument,
   FlashElement,
   READY_CLASS,
+  SAME_JUMP_MS,
   clearFlash,
+  createFlashOnce,
   flashRow,
   rowForHash,
 } from '../docs/.vitepress/theme/member-flash.js';
@@ -112,6 +114,56 @@ describe('flashRow', () => {
   });
 });
 
+describe('createFlashOnce', () => {
+  /** A fake clock and a recorder for the flashes that get through. */
+  function harness(ids: Record<string, FlashElement>) {
+    let t = 0;
+    const flashed: string[] = [];
+    const once = createFlashOnce(document(ids), (hash) => flashed.push(hash), () => t);
+    return { once, flashed, advance: (ms: number) => (t += ms) };
+  }
+
+  test('the same jump arriving by a second event is dropped, however late', () => {
+    // A load with a hash reaches the route hook and then the mount; hydration
+    // can take longer than any window, so the drop is keyed on the row.
+    const { once, flashed, advance } = harness({ a: element(true) });
+    once('#a');
+    advance(5000);
+    once('#a');
+    expect(flashed).toEqual(['#a']);
+  });
+
+  test('a repeat click restarts the fade once the click window has passed', () => {
+    const { once, flashed, advance } = harness({ a: element(true) });
+    once('#a');
+    // The click that raised the hashchange reaches the click listener in the same instant.
+    once('#a', { repeat: true });
+    expect(flashed).toEqual(['#a']);
+    advance(SAME_JUMP_MS);
+    once('#a', { repeat: true });
+    expect(flashed).toEqual(['#a', '#a']);
+  });
+
+  test('a new element for the same hash is a new landing', () => {
+    // Back/forward reloads the route and replaces the rows.
+    const first = element(true);
+    const ids: Record<string, FlashElement> = { a: first };
+    const { once, flashed } = harness(ids);
+    once('#a');
+    ids.a = element(true);
+    once('#a');
+    expect(flashed).toEqual(['#a', '#a']);
+  });
+
+  test('a different hash always flashes', () => {
+    const { once, flashed } = harness({ a: element(true), b: element(true) });
+    once('#a');
+    once('#b');
+    once('#a');
+    expect(flashed).toEqual(['#a', '#b', '#a']);
+  });
+});
+
 describe('stylesheet', () => {
   const css = () => readFileSync(resolve(import.meta.dirname, '../docs/.vitepress/theme/api-layout.css'), 'utf-8');
 
@@ -147,6 +199,16 @@ describe('stylesheet', () => {
     expect(body).toContain('animation: none');
     expect(body).toContain('background-color: var(--api-c-flash)');
     expect(body).toContain('outline: 2px solid var(--vp-c-brand-1)');
-    expect(body).toContain('outline-offset: -2px');
+    // Outside the row: text starts at the row's edge, and an inset line would cover it.
+    expect(body).toContain('outline-offset: 2px');
+  });
+
+  test('forced colors draw the mark as a system-highlight outline, with motion allowed too', () => {
+    const sheet = css();
+    const forced = sheet.slice(sheet.indexOf('@media (forced-colors: active)'));
+    const rule = forced.slice(forced.indexOf(`.member-row.${FLASH_CLASS}`));
+    const body = rule.slice(rule.indexOf('{'), rule.indexOf('}'));
+    expect(body).toContain('outline: 2px solid Highlight');
+    expect(body).toContain('outline-offset: 2px');
   });
 });
