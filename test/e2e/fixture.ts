@@ -10,6 +10,7 @@ export const QUEUE_PROPS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueProps.html';
 export const IQUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.IQueue.html';
 export const QUEUE_ENCRYPTION_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueEncryption.html';
 export const SQS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs-readme.html';
+export const SNS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sns-readme.html';
 // An L1. Its header chip is the "Generated at build time" label rather than a Source
 // link, which is the other shape the page title has to stay clean of.
 export const CFN_QUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue.html';

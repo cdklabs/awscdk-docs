@@ -149,7 +149,7 @@ describe('renderOverviewPage', () => {
       const page = renderOverviewPage({ title: 'fake.sub', types, readme });
       expect(page.startsWith(OUTLINE_OFF + '# fake.sub')).toBe(true);
       expect(page).not.toContain('## Types');
-      expect(page).toContain('## Classes {#types-classes}');
+      expect(page).toContain('## Classes {#module-types-classes}');
     }
   });
 

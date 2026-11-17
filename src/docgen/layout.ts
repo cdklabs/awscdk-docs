@@ -15,7 +15,7 @@ import {
 } from './languages.js';
 import { pageHref } from './links.js';
 import { encodeOutlineParams } from './outline-members.js';
-import { PAGEFIND_IGNORE } from './search.js';
+import { camelBreaks, PAGEFIND_IGNORE } from './search.js';
 import {
   LinkResolver,
   inlineMethodSignature,
@@ -579,6 +579,18 @@ function withoutAnchorTooltips(html: string): string {
  * beside it.
  */
 const TYPE_NAME_BREAK_BUDGET = 32;
+
+/**
+ * A type name with `<wbr>` after each dot when it is over the budget, so a long nested name wraps at any width. A
+ * dot-separated part that is itself over the budget also breaks at camelCase word boundaries. A shorter name is
+ * returned unchanged. `<wbr>` is empty, so the copied text and the search index see exactly the name.
+ */
+export function breakableTypeName(name: string): string {
+  if (name.length <= TYPE_NAME_BREAK_BUDGET) {
+    return name;
+  }
+  return name.split('.').map((part) => (part.length > TYPE_NAME_BREAK_BUDGET ? camelBreaks(part) : part)).join('.<wbr>');
+}
 
 /**
  * Follow every dot in an over-budget qualified name with a `<wbr>`, so a name wider than its row

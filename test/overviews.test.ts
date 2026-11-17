@@ -131,7 +131,7 @@ describe('renderOverviewPage', () => {
     const page = renderOverviewPage({ title: 'aws-cdk-lib', types });
     expect(page.startsWith('---\noutline: false\n---\n\n')).toBe(true);
     expect(page).toContain('# aws-cdk-lib');
-    expect(page).toContain('## Classes {#types-classes}');
+    expect(page).toContain('## Classes {#module-types-classes}');
   });
 
   test('extra sections still render on the table-only variant', () => {

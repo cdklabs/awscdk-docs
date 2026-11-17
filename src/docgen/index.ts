@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as spec from '@jsii/spec';
 import { toAgentMarkdown, withFrontmatterKey } from './agent-markdown.js';
-import { anchoredHeading, pinTitleAnchor, SECTION_ANCHORS, titleAnchor } from './anchors.js';
+import { anchoredHeading, pinTitleAnchor, SECTION_ANCHORS, titleAnchor, typeKindAnchor } from './anchors.js';
 import { hashedAssetName } from './asset-hash.js';
 import { buildFacadeIndex, buildTraitIndex } from './classification.js';
 import {
@@ -36,6 +36,7 @@ import {
   writeLedger,
 } from './history.js';
 import { LANGUAGES, Language, LanguageMeta, sidebarModuleLabels } from './languages.js';
+import { breakableTypeName } from './layout.js';
 import { API_ROOT, moduleReadmeLink, typePageLink } from './links.js';
 import { LlmsTxtEntry, renderLlmsTxt, titleOf } from './llms-txt.js';
 import { HISTORY_FRONTMATTER } from '../page-history.js';
@@ -1607,19 +1608,9 @@ function kindPlural(kind: string): string {
 }
 
 /**
- * A type name with `<wbr>` break points after every dot and between camelCase words, so a long nested name
- * (`CfnCapability.EdiConfigurationProperty`) wraps instead of overflowing. `<wbr>` is empty, so the copied text is
- * exactly the name.
- */
-function breakableName(name: string): string {
-  return name.replace(/\./g, '.<wbr>').replace(/([a-z0-9])(?=[A-Z])/g, '$1<wbr>');
-}
-
-/**
- * The module's types as a list grouped by kind, one `###` heading per kind in the order each kind first appears.
- * Each entry is the name as a link with the kind as a small tag, and the summary on the next line. A list wraps at
- * any width where the three-column table it replaces overflowed on a long nested name. `headingLevel` is 3 under a
- * `## Types` heading and 2 on the table-only layout, which has none.
+ * The module's types as a list grouped by kind, one heading per kind in the order each kind first appears. Each entry
+ * is the name as a link with the kind as a small tag, and the summary on the next line. Names wrap at any width.
+ * `headingLevel` is 3 under a `## Types` heading and 2 on the table-only layout, which has none.
  */
 function renderTypeList(types: TypeEntry[], headingLevel = 3): string[] {
   const groups = new Map<string, TypeEntry[]>();
@@ -1634,15 +1625,16 @@ function renderTypeList(types: TypeEntry[], headingLevel = 3): string[] {
   const lines: string[] = [];
   for (const [kind, entries] of groups) {
     const heading = kindPlural(kind);
-    const anchor = `types-${heading.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
-    lines.push(anchoredHeading(headingLevel, heading, anchor), '', '<div class="type-list">', '');
+    lines.push(anchoredHeading(headingLevel, heading, typeKindAnchor(heading)), '', '<div class="type-list">', '');
     for (const t of entries) {
-      const name = `<code>${breakableName(t.name)}</code>`;
+      const name = `<code>${breakableTypeName(t.name)}</code>`;
       const linked = t.link ? `[${name}](${t.link})` : name;
       const summary = escapeCell(t.summary);
       lines.push(`- ${linked} <span class="type-kind">${t.kind}</span>${summary ? `<br>${summary}` : ''}`);
     }
-    lines.push('', '</div>', '');
+    // markdown-it-attrs puts the attribute on the list above it. An explicit role keeps the list semantics in
+    // browsers that drop them from a list whose markers are hidden.
+    lines.push('{role=list}', '', '</div>', '');
   }
   return lines;
 }

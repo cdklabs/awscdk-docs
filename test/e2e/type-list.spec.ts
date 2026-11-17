@@ -1,11 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { SQS_OVERVIEW_PAGE } from './fixture.js';
+import { SNS_OVERVIEW_PAGE, SQS_OVERVIEW_PAGE } from './fixture.js';
 
-// The module Types section is a list grouped by kind (ADR 2026-10-15-api-reference-pages, "Module type list"),
-// not a three-column table: a long nested name wraps instead of running past the page body. Geometry is the only
-// honest gate for that, so every measurement is taken in a browser, at each layout tier and density level.
-
-const SNS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sns-readme.html';
+// The module Types section is a list grouped by kind (ADR 2026-10-15-api-reference-pages, "Module type list").
+// Entries wrap at any width and never run past the page body. Geometry is the only honest gate for that, so every
+// measurement is taken in a browser, at each layout tier and density level.
 
 /** The widths the layout tiers change at: phone, tablet, the tightest desktop column and a large screen. */
 const WIDTHS = [375, 768, 1280, 1920];
@@ -51,9 +49,10 @@ test.describe('type list structure', () => {
     await open(page, SQS_OVERVIEW_PAGE, 'balanced', 1280);
     const lists = page.locator('.vp-doc .type-list ul');
     expect(await lists.count()).toBeGreaterThan(1);
+    await expect(lists.first()).toHaveAttribute('role', 'list');
     // The Types section keeps its anchor; each kind group has a heading of its own right before its list.
     await expect(page.locator('#types, h2:has-text("Types")').first()).toBeVisible();
-    const firstGroup = page.locator('.vp-doc h3[id^="types-"]').first();
+    const firstGroup = page.locator('.vp-doc h3[id^="module-types-"]').first();
     await expect(firstGroup).toBeVisible();
     const entry = page.locator('.type-list li').first();
     await expect(entry.locator('a')).toHaveCount(1);
@@ -75,13 +74,13 @@ test.describe('type list with a very long nested name', () => {
   for (const width of WIDTHS) {
     test(`wraps instead of overflowing at ${width}px`, async ({ page }) => {
       await open(page, SQS_OVERVIEW_PAGE, 'spacious', width);
-      // Add an entry the way the generator emits one, then measure it.
+      // Add an entry shaped like a generated one, with no break points in the name: if the stylesheet alone wraps the
+      // worst case, a name with break points wraps too.
       await page.evaluate((name) => {
         const list = document.querySelector('.type-list ul')!;
         const li = document.createElement('li');
         li.id = 'long-name-entry';
-        const breakable = name.replace(/\./g, '.<wbr>').replace(/([a-z0-9])(?=[A-Z])/g, '$1<wbr>');
-        li.innerHTML = `<a href="#"><code>${breakable}</code></a> <span class="type-kind">Struct</span><br>Summary.`;
+        li.innerHTML = `<a href="#"><code>${name}</code></a> <span class="type-kind">Struct</span><br>Summary.`;
         list.appendChild(li);
       }, LONG_NAME);
       expect(await overflow(page)).toEqual({ wide: [], scrolls: false });

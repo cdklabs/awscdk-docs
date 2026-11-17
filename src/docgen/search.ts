@@ -43,8 +43,15 @@ export function ignoreBlock(lines: string[]): string[] {
  * plain identifier.
  */
 export function weightedTitle(name: string): string {
-  const breakable = name.replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z]{2})(?=[A-Z][a-z])/g, '<wbr>');
-  return `<span data-pagefind-weight="10">${breakable}</span>`;
+  return `<span data-pagefind-weight="10">${camelBreaks(name)}</span>`;
+}
+
+/**
+ * `<wbr>` between camelCase words and inside acronym runs (`Cfn<wbr>VPC<wbr>Peering<wbr>Connection`), the one rule
+ * every place that lets a type name wrap shares. `<wbr>` adds no text.
+ */
+export function camelBreaks(name: string): string {
+  return name.replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z]{2})(?=[A-Z][a-z])/g, '<wbr>');
 }
 
 /**
