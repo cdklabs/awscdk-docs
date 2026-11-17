@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
+import { LONG_TITLE_PAGE, SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 import { MAX_SEARCH_RESULTS, MODULE_HINT_CLASS } from '../../docs/.vitepress/theme/search-client.js';
 import { SEARCH_DIALOG_LEAVING_CLASS, SEARCH_DIALOG_SELECTOR, SEARCH_KEYSHORTCUTS } from '../../docs/.vitepress/theme/search-hotkeys.js';
 
@@ -193,6 +193,34 @@ test.describe('pagefind search', () => {
         expect((await first.getAttribute('data-value'))?.split('#')[0]).toBe(SQS_OVERVIEW_PAGE);
       });
     }
+  });
+
+  test('a long type title stays plain in the search index', async ({ page }) => {
+    await page.goto('/');
+    const title = await page.evaluate(async (url) => {
+      const preload = document.querySelector<HTMLLinkElement>(
+        'link[rel="modulepreload"][href$="pagefind/pagefind.js"]',
+      );
+      if (!preload) return undefined;
+      const pagefind = await import(/* @vite-ignore */ preload.href);
+      await pagefind.init?.();
+      const search = await pagefind.search('CfnQueueInlinePolicyProps');
+      const data = await Promise.all(search.results.map(
+        (result: { data(): Promise<{ url: string; meta: { title: string } }> }) => result.data(),
+      ));
+      return data.find((entry) => entry.url === url)?.meta.title;
+    }, LONG_TITLE_PAGE);
+    // Pagefind's own title for a weighted type page also carries an internal
+    // weight marker and the kind badge after the name, so check the name
+    // token: no space, `<wbr>` or soft hyphen inside it.
+    expect(title?.split(' ')[0]).toBe('CfnQueueInlinePolicyProps');
+
+    // The dialog row shows the same plain name.
+    await page.locator('.blog-search button').click();
+    await page.locator('#search-input').fill('CfnQueueInlinePolicyProps');
+
+    const result = page.locator(`.search-dialog [data-value^="${LONG_TITLE_PAGE}"]`).first();
+    await expect(result.locator('.title .heading')).toHaveText(/^CfnQueueInlinePolicyProps\b/, { timeout: 15_000 });
   });
 
   test('the search dialog opens and closes', async ({ page }) => {

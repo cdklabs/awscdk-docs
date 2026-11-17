@@ -33,9 +33,18 @@ export function ignoreBlock(lines: string[]): string[] {
  * 10 keeps the title decisively ahead once boilerplate is ignored.
  * VitePress strips inline HTML when inferring the page title (the H1s
  * already carry a `<Badge>`), so the span never leaks into titles.
+ *
+ * Inserts `<wbr>` at CamelCase and acronym-to-word boundaries so a long
+ * name wraps between words on a narrow screen (`HTTP<wbr>Server`,
+ * `Cfn<wbr>VPC<wbr>Peering`). An acronym split needs two capitals before
+ * it, so a single leading capital stays attached: `IBucket`, `OAuthScope`
+ * (`OAuth<wbr>Scope`) and `IPv6` never leave a lone `I` or `O` at a line
+ * end. `<wbr>` adds no text, so the indexed and inferred titles stay the
+ * plain identifier.
  */
 export function weightedTitle(name: string): string {
-  return `<span data-pagefind-weight="10">${name}</span>`;
+  const breakable = name.replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z]{2})(?=[A-Z][a-z])/g, '<wbr>');
+  return `<span data-pagefind-weight="10">${breakable}</span>`;
 }
 
 /**
