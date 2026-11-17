@@ -11,6 +11,7 @@ interface ApiSidebarContext {
   activePath: Ref<string>;
   base: Ref<string>;
   toggle: (key: string) => void;
+  preload: (key: string) => void;
   /** True while the in-sidebar symbol filter is active. */
   filtering: Ref<boolean>;
   /** Groups folded during the current filter session; empty outside it. */
@@ -110,6 +111,23 @@ function onToggle() {
   });
 }
 
+// Hover or focus starts the group's chunk fetch only after resting on the heading for the delay. A pointer
+// sweep or fast Tab fetches nothing; each heading focus rests on for the delay loads.
+// Short enough to fire before a typical hover-then-click.
+const PRELOAD_DELAY_MS = 100;
+let preloadTimer: ReturnType<typeof setTimeout> | undefined;
+function cancelPreload() {
+  if (preloadTimer !== undefined) clearTimeout(preloadTimer);
+  preloadTimer = undefined;
+}
+function schedulePreload() {
+  cancelPreload();
+  preloadTimer = setTimeout(() => {
+    preloadTimer = undefined;
+    ctx.preload(key.value);
+  }, PRELOAD_DELAY_MS);
+}
+
 // Eligible to pin under the header: a collapsible group that is not a kind
 // group. Only those `<li>`s are handed to the sticky tracker.
 const itemEl = ref<HTMLElement | null>(null);
@@ -125,6 +143,7 @@ watch(
   { flush: "post" },
 );
 onBeforeUnmount(() => {
+  cancelPreload();
   if (itemEl.value) ctx.sticky.unregister(itemEl.value);
 });
 </script>
@@ -154,6 +173,10 @@ onBeforeUnmount(() => {
       type="button"
       class="api-sidebar-group"
       :aria-expanded="open"
+      @mouseenter="schedulePreload"
+      @mouseleave="cancelPreload"
+      @focus="schedulePreload"
+      @blur="cancelPreload"
       @click="onToggle"
     >
       <span class="api-sidebar-caret" :class="{ open }" aria-hidden="true">›</span>

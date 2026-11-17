@@ -310,11 +310,19 @@ function loadAllChunks() {
 }
 
 // The chunk files an open package entry needs but does not have yet. A
-// package is a top-level entry, so its key is its text.
-function unloadedPackageChunks(key: string): string[] {
-  ensurePackageTree();
+// package is a top-level entry, so its key is its text. `rebuild` refreshes a
+// stale package tree first; a preload skips it, since that would bypass the throttle.
+function unloadedPackageChunks(key: string, rebuild = true): string[] {
+  if (rebuild) ensurePackageTree();
   const entry = packageTree.value.find((node) => node.text === key);
   return (entry?.chunks ?? []).filter((name) => !chunkItems.has(name));
+}
+
+// The chunk files a group in the showing style needs but does not have yet.
+function unloadedChunks(key: string, rebuild: boolean): string[] {
+  if (navStyle.value === "package") return unloadedPackageChunks(key, rebuild);
+  const chunk = unloadedChunkForKey(serviceTree.value, key);
+  return chunk ? [chunk] : [];
 }
 
 // Load what the open entries of the package style need: the packages the
@@ -401,6 +409,13 @@ function ensureLoaded() {
     });
 }
 
+// Fetch a closed group's chunk when the reader shows intent to open it, so the
+// click renders at once.
+function preload(key: string) {
+  if (filtering.value || status.value !== "ready") return;
+  for (const name of unloadedChunks(key, false)) loadChunk(name).catch(() => undefined);
+}
+
 function toggle(key: string) {
   // While filtering, a toggle folds or unfolds the group for this filter
   // session only. Every chunk is already loaded for the filter, so nothing
@@ -419,12 +434,7 @@ function toggle(key: string) {
   // ancestor chain open for good.
   collapseMemory.value.set(key, open);
   if (!open) return;
-  if (navStyle.value === "package") {
-    for (const name of unloadedPackageChunks(key)) loadChunk(name).catch(() => undefined);
-  } else {
-    const chunk = unloadedChunkForKey(serviceTree.value, key);
-    if (chunk) loadChunk(chunk).catch(() => undefined);
-  }
+  for (const name of unloadedChunks(key, true)) loadChunk(name).catch(() => undefined);
 }
 
 // A style switch regroups the data already here: no new skeleton, no new
@@ -453,6 +463,7 @@ provide("apiSidebar", {
   activePath,
   base,
   toggle,
+  preload,
   filtering,
   filterCollapsed,
   displayLang: activeLanguage,

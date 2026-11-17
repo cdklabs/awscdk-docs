@@ -4,7 +4,8 @@ import { apiSidebarAssetPath, chunkBase, QUEUE_PAGE, TOPIC_PAGE } from './fixtur
 // Per-section sidebar chunks: the
 // sidebar fetches a small skeleton plus the chunk of the section holding the
 // current page, and fetches every other section's chunk only when the reader
-// opens it, navigates into it, or filters the whole corpus.
+// opens it, rests focus or the pointer on its heading, navigates into it,
+// or filters the whole corpus.
 test.describe('per-section sidebar chunks', () => {
   function recordSidebarRequests(page: Page): string[] {
     const urls: string[] = [];
@@ -33,6 +34,95 @@ test.describe('per-section sidebar chunks', () => {
     // Other sections still render as closed groups the reader can open.
     await expect(page.getByRole('button', { name: 'SQS', exact: true })).toBeVisible();
   });
+
+  // Holds every request for one chunk until the returned release is called.
+  async function holdChunk(page: Page, name: string): Promise<() => void> {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/api-sidebar/chunks/**', async (route) => {
+      if (chunkBase(new URL(route.request().url()).pathname) === name) await held;
+      await route.continue();
+    });
+    return release;
+  }
+
+  // Fails any further request for the chunk, so a click that still needs it cannot render its items.
+  async function refuseChunk(page: Page, name: string) {
+    await page.unroute('**/api-sidebar/chunks/**');
+    await page.route('**/api-sidebar/chunks/**', (route) =>
+      chunkBase(new URL(route.request().url()).pathname) === name ? route.abort() : route.continue());
+  }
+
+  const named = (urls: string[], name: string) => chunks(urls).map(chunkBase).filter((n) => n === name);
+
+  for (const trigger of ['hover', 'focus'] as const) {
+    test(`${trigger} on a closed section fetches its chunk once, before the click`, async ({ page }) => {
+      const urls = recordSidebarRequests(page);
+      const releaseSqs = await holdChunk(page, 'sqs');
+      await page.goto(TOPIC_PAGE);
+      await expect(page.locator('.api-sidebar-nav')).toBeVisible();
+      const sqs = page.getByRole('button', { name: 'SQS', exact: true });
+      await expect(sqs).toHaveAttribute('aria-expanded', 'false');
+
+      await sqs[trigger]();
+      await expect.poll(() => named(urls, 'sqs')).toHaveLength(1);
+      // The other intent signal, outlasting the preload delay while the first fetch is still held.
+      await (trigger === 'hover' ? sqs.focus() : sqs.hover());
+      await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 150)));
+      expect(named(urls, 'sqs')).toHaveLength(1);
+      const loaded = page.waitForResponse((response) => chunkBase(new URL(response.url()).pathname) === 'sqs');
+      releaseSqs();
+      await loaded;
+
+      await refuseChunk(page, 'sqs');
+      await sqs.click();
+      await expect(sqs).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.locator('.api-sidebar li.api-sidebar-item').filter({
+        has: page.getByRole('button', { name: 'Queue', exact: true }),
+      }).first()).toBeVisible();
+      expect(named(urls, 'sqs')).toHaveLength(1);
+    });
+  }
+
+  for (const pass of ['pointer', 'focus'] as const) {
+    test(`a ${pass} passing over a closed section without resting fetches nothing`, async ({ page }) => {
+    // Record fetches in the page itself, at the moment they start.
+      await page.addInitScript(() => {
+        const started: string[] = [];
+        (window as unknown as { sidebarFetches: string[] }).sidebarFetches = started;
+        const original = window.fetch.bind(window);
+        window.fetch = (input, init) => {
+          started.push(String(input instanceof Request ? input.url : input));
+          return original(input, init);
+        };
+      });
+      await page.goto(TOPIC_PAGE);
+      await expect(page.locator('.api-sidebar-nav')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'SQS', exact: true })).toHaveAttribute('aria-expanded', 'false');
+
+      const { swept, rested } = await page.evaluate(async (kind) => {
+        const labels = Array.from(document.querySelectorAll<HTMLElement>('.api-sidebar-group .api-sidebar-text'));
+        const button = labels.find((label) => label.textContent === 'SQS')!.closest('button')!;
+        const fetches = () => [...(window as unknown as { sidebarFetches: string[] }).sidebarFetches];
+        const enter = () => (kind === 'pointer' ? button.dispatchEvent(new MouseEvent('mouseenter')) : button.focus());
+        enter();
+        // Leaves halfway through the preload delay; timer order makes this deterministic.
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        if (kind === 'pointer') button.dispatchEvent(new MouseEvent('mouseleave'));
+        else button.blur();
+        // Scheduled after the preload delay, so this runs after any preload that was not cancelled.
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const before = fetches();
+        // Control: the same event, left to rest, does start the preload.
+        enter();
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return { swept: before, rested: fetches() };
+      }, pass);
+      const chunkNamesOf = (urls: string[]) => urls.filter((url) => url.includes('/api-sidebar/chunks/')).map(chunkBase);
+      expect(chunkNamesOf(swept)).toEqual(['sns']);
+      expect(chunkNamesOf(rested)).toContain('sqs');
+    });
+  }
 
   test('opening another section fetches its chunk and renders its items', async ({ page }) => {
     const urls = recordSidebarRequests(page);

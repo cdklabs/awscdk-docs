@@ -123,6 +123,32 @@ test.describe('navigation style', () => {
     expect(chunks[1]).toMatch(/^chunks\/sns\./);
   });
 
+  test('in the package style, resting on a closed package fetches its chunk before the click', async ({ page }) => {
+    await page.addInitScript((key) => {
+      window.localStorage.setItem(key, 'package');
+    }, NAV_KEY);
+    const requests = trackSidebarRequests(page);
+    await page.goto(QUEUE_PAGE);
+    await waitForSidebar(page);
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
+    const button = page.getByRole('button', { name: 'aws-cdk-lib.aws_sns', exact: true });
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    const loaded = page.waitForResponse((response) => /\/api-sidebar\/chunks\/sns\./.test(response.url()));
+    await button.hover();
+    const snsChunks = () => requests.filter((name) => /^chunks\/sns\./.test(name));
+    await expect.poll(snsChunks).toHaveLength(1);
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await loaded;
+
+    // A click that still needed the chunk would get no items.
+    await page.route('**/api-sidebar/chunks/sns.*', (route) => route.abort());
+    await button.click();
+    await expect(topGroup(page, 'aws-cdk-lib.aws_sns').locator('a.api-sidebar-link', { hasText: 'Topic' }).first())
+      .toBeVisible();
+    expect(snsChunks()).toHaveLength(1);
+  });
+
   test('collapse memory is kept per style: a package toggle lands in the suffixed store and the service store stays empty', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
