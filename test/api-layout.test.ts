@@ -1091,11 +1091,9 @@ describe('API page layout', () => {
       for (const decl of ['min-width: 0', 'overflow: hidden', 'white-space: nowrap', 'text-overflow: ellipsis']) {
         expect(type).toContain(decl);
       }
-      // Without a definite display the clamp is inert: `overflow` and
-      // `text-overflow` do nothing on a non-replaced inline box, which is
-      // what `.prop-type` is inside the shipped multi-language row.
-      expect(type).toContain('display: inline-block');
-      // And inline-block alone still needs a ceiling to ellipsize against.
+      // The type is a flex item of its row or of its language-variant span, so it
+      // shrinks beside the name; the ceiling keeps a type alone from exceeding the line.
+      expect(type).not.toContain('display: inline-block');
       expect(type).toContain('max-width: 100%');
     });
 
@@ -1111,21 +1109,39 @@ describe('API page layout', () => {
       const wrapper = declarations(css(), '.member-list .member-line > .lang-variant');
       expect(wrapper).toContain('white-space: nowrap');
       expect(wrapper).toContain('min-width: 0');
-      // The span is a flex container so the type can shrink beside its name:
-      // as an inline-block its `max-width: 100%` is the whole span, so after
-      // the name it ran past the column. Blockifying the name and the
-      // signature exposes the stock inline-code padding as height, which the
-      // reset below removes; end alignment keeps the type's bottom on the
-      // name's, as `vertical-align: bottom` did. Row heights are measured by
-      // the member-row and member-type-clamp e2e specs.
+      // The span is a flex container so the type shrinks beside its name and clamps at the
+      // column edge; end alignment keeps the type's bottom on the name's. The name and
+      // signature drop the stock inline-code vertical padding so they add no row height.
       expect(wrapper).toContain('display: inline-flex');
       expect(wrapper).toContain('align-items: flex-end');
       for (const selector of [
         '.member-list .member-line > .lang-variant > .member-name',
         '.member-list .member-line > .lang-variant > .member-signature',
       ]) {
-        expect(declarations(css(), selector)).toContain('padding: 0');
+        const decls = declarations(css(), selector);
+        expect(decls).toContain('padding-top: 0');
+        expect(decls).toContain('padding-bottom: 0');
       }
+    });
+
+    test('where rows stack, the pair may break onto two lines and a long token wraps', () => {
+      // Below 640px the variant span wraps so a long type moves under its name, and
+      // an unbreakable name or type token breaks inside the column.
+      const rules = css();
+      const start = rules.indexOf('@media (max-width: 640px)');
+      expect(start).toBeGreaterThan(-1);
+      const open = rules.indexOf('{', start);
+      let depth = 0;
+      let end = open;
+      for (; end < rules.length; end++) {
+        if (rules[end] === '{') depth++;
+        if (rules[end] === '}' && --depth === 0) break;
+      }
+      const stacked = rules.slice(open + 1, end);
+      const wrapper = declarations(stacked, '.member-list .member-line > .lang-variant');
+      expect(wrapper).toContain('white-space: normal');
+      expect(wrapper).toContain('flex-wrap: wrap');
+      expect(stacked).toMatch(/\.member-list \.member-name,\s*\.member-list \.member-type\s*\{[^}]*overflow-wrap: anywhere/);
     });
 
     test('the signature releases the wrapper nowrap so a long one wraps', () => {

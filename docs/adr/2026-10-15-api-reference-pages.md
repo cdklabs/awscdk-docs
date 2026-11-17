@@ -287,8 +287,10 @@ type and the description, the **description yields first**:
 so the type stays complete (it is part of the member contract and appears
 nowhere else in the collapsed row) while the description clips. No `max-width`
 cap on the type — the shrink weighting alone orders it in one declaration. The
-clamp is an inline-block on the type (making it a flex item blockifies the
-adjacent name `code` and shifts row height); the span gets `white-space: nowrap`,
+type is a flex item that shrinks beside its name: in the multi-language row the
+language-variant span is an `inline-flex` container (`align-items: flex-end`),
+and the name and signature drop the stock inline-code vertical padding so being
+flex items adds no row height; the type gets `white-space: nowrap`,
 `min-width: 0`, `overflow: hidden`, and a full-type `title`. Both clamps release
 at the `max-width: 640px` breakpoint where rows stack. The language-variant
 wrapper's `nowrap` is shared by method rows, where the variant holds the whole

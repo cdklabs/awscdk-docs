@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, Page, test } from '@playwright/test';
 import { CFN_QUEUE_PAGE } from './fixture.js';
 
@@ -35,6 +36,15 @@ async function overflowing(page: Page) {
   });
 }
 
+/** Open a page and, for a `?lang=` URL, wait until hydration has applied that language. */
+async function open(page: Page, path: string) {
+  await page.goto(path);
+  const lang = new URL(path, 'http://x').searchParams.get('lang');
+  if (lang) {
+    await expect(page.locator('.lang-tabs').first()).toHaveAttribute('data-active', lang);
+  }
+}
+
 const CASES = [
   { path: CFN_TOPIC_PAGE, width: 1280 },
   { path: CFN_TOPIC_PAGE, width: 1920 },
@@ -49,7 +59,7 @@ test.describe('member type overflow', () => {
   for (const { path, width } of CASES) {
     test(`${path} stays inside the column at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(path);
+      await open(page, path);
       await expect(page.locator('.member-list .member-row').first()).toBeVisible();
       expect(await overflowing(page)).toEqual([]);
       const scroll = await page.evaluate(() => ({
@@ -81,16 +91,31 @@ test.describe('member type overflow', () => {
     expect(await type.evaluate((el) => getComputedStyle(el).textOverflow)).toBe('ellipsis');
     // The full type is still in the DOM for the tooltip and for copy.
     await expect(type).toHaveAttribute('title', /LoggingConfigProperty/);
+    // A keyboard user reaching the link cut by the clamp sees it: the type opens
+    // in full while it holds focus, inside the column, and closes again on blur.
+    const last = type.locator('a').last();
+    await last.focus();
+    const linkBox = (await last.boundingBox())!;
+    const focused = (await type.boundingBox())!;
+    expect(linkBox.x).toBeGreaterThanOrEqual(focused.x - 1);
+    expect(linkBox.x + linkBox.width).toBeLessThanOrEqual(focused.x + focused.width + 1);
+    expect(focused.x + focused.width).toBeLessThanOrEqual(column.x + column.width + 1);
+    await last.blur();
+    expect((await type.boundingBox())!.width).toBe(typeBox.width);
   });
 
   test('on a phone the long type wraps inside the column instead of clipping', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 900 });
-    await page.goto(`${CFN_TOPIC_PAGE}?lang=python`);
-    const type = page.locator('.member-row#deliverystatuslogging .lang-variant[data-lang="python"] .member-type');
+    await open(page, `${CFN_TOPIC_PAGE}?lang=python`);
+    const variant = page.locator('.member-row#deliverystatuslogging .lang-variant[data-lang="python"]');
+    const type = variant.locator('.member-type');
     await expect(type).toBeVisible();
     const column = (await page.locator('.vp-doc').boundingBox())!;
     const box = (await type.boundingBox())!;
     expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width + 1);
+    // The pair breaks: the type starts under its name instead of squeezing beside it.
+    const nameBox = (await variant.locator('.member-name').boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height - 1);
     // Wrapped onto more than one line: taller than a single line of its font.
     const lineHeight = await type.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
     expect(box.height).toBeGreaterThan(lineHeight * 1.5);
@@ -107,9 +132,12 @@ test.describe('member rows with content the fixture lacks', () => {
     await page.setViewportSize({ width: 375, height: 900 });
     await page.goto(CFN_TOPIC_PAGE);
     const row = page.locator('.member-row#deliverystatuslogging');
-    await row.locator('.lang-variant[data-lang="ts"] .member-name').evaluate((el, name) => {
+    await expect(row).toBeVisible();
+    const nameLocator = row.locator('.lang-variant[data-lang="ts"] .member-name');
+    await nameLocator.evaluate((el, name) => {
       el.textContent = name;
     }, LONG_NAME);
+    await expect(nameLocator).toHaveText(LONG_NAME);
     expect(await overflowing(page)).toEqual([]);
     const column = (await page.locator('.vp-doc').boundingBox())!;
     const name = (await row.locator('.lang-variant[data-lang="ts"] .member-name').boundingBox())!;
@@ -118,10 +146,11 @@ test.describe('member rows with content the fixture lacks', () => {
   });
 
   for (const width of [375, 1280]) {
-    test(`an indented remark code block scrolls inside its own box at ${width}px`, async ({ page }) => {
+    test(`an indented remark code block wraps inside the column at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(CFN_TOPIC_PAGE);
       const row = page.locator('.member-row#deliverystatuslogging');
+      await expect(row).toBeVisible();
       await row.evaluate((el) => {
         const extra = document.createElement('div');
         extra.className = 'member-extra';
@@ -133,10 +162,17 @@ test.describe('member rows with content the fixture lacks', () => {
         el.appendChild(extra);
       });
       const pre = row.locator('pre:not([class])');
-      expect(await pre.evaluate((el) => getComputedStyle(el).overflowX)).toBe('auto');
-      expect(await pre.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+      await expect(pre).toHaveText(/grantPublicAccess/);
+      const column = (await page.locator('.vp-doc').boundingBox())!;
+      const box = (await pre.boundingBox())!;
+      expect(box.x + box.width).toBeLessThanOrEqual(column.x + column.width + 1);
+      // Wrapped, not a scroll box: no horizontal overflow to reach, so nothing a keyboard user cannot scroll.
+      expect(await pre.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      expect(await pre.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe('pre-wrap');
       expect(await overflowing(page)).toEqual([]);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      const axe = await new AxeBuilder({ page }).include('.member-row#deliverystatuslogging').withRules(['scrollable-region-focusable']).analyze();
+      expect(axe.violations).toEqual([]);
     });
   }
 });

@@ -598,17 +598,21 @@ a.chain-item:hover {
 
 /* A long translated spelling (Python's `int | float` for jsii `number`, a
    nested Java generic) would otherwise take the header line's whole width.
-   `inline-block` rather than a flex item on purpose: making the
-   variant wrapper a flex container blockifies the name `code` beside it,
-   whose height then comes from line-height instead of the font. */
+   The type is a flex item of its row (or of its language-variant span) that
+   shrinks beside the name and clamps at the column edge. */
 .member-list .member-type {
-  display: inline-block;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  vertical-align: bottom;
+}
+
+/* A link cut by the clamp shows in full while it holds keyboard focus. */
+.member-list .member-type:focus-within {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* The name and its type are adjacent inline boxes inside one variant, so the
@@ -655,10 +659,9 @@ a.chain-item:hover {
 }
 
 /* With 2+ languages the row's flex child is the variant span, not the name or
-   type inside it: `nowrap` keeps the pair from breaking apart. The span is a
-   flex container of its own so the type can shrink beside its name: an
-   inline-block type's `max-width: 100%` is the whole span, so after the name
-   it would run past the column. */
+   type inside it. The span is an inline-flex container: `nowrap` keeps the
+   pair on one line and the type shrinks beside its name; end alignment keeps
+   the type's bottom on the name's. */
 .member-list .member-line > .lang-variant {
   display: inline-flex;
   align-items: flex-end;
@@ -666,11 +669,12 @@ a.chain-item:hover {
   white-space: nowrap;
 }
 
-/* As flex items the name and the signature are blocks, so the stock inline-code
-   padding would add to the row's height. */
+/* The name and the signature are flex items here, so the stock inline-code
+   vertical padding would add to the row's height; the horizontal padding stays. */
 .member-list .member-line > .lang-variant > .member-name,
 .member-list .member-line > .lang-variant > .member-signature {
-  padding: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* A method row's variant span holds the whole signature, and the `nowrap`

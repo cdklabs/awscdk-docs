@@ -41,9 +41,16 @@
 }
 
 /* An indented code block in a jsii remark renders as a bare <pre>, with no
-   `language-` wrapper to give it the stock horizontal scroll. */
-.vp-doc pre {
-  overflow-x: auto;
+   `language-` wrapper and so no scroll box; it wraps inside the column instead
+   of becoming a scroll region nothing focusable sits in. */
+.vp-doc pre:not([class]) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A block box, so a space preserved at a wrapped line's end hangs inside it rather than past it. */
+.vp-doc pre:not([class]) > code {
+  display: block;
 }
 
 /* ------------------------------------------------------------------ *
