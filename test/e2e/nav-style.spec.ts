@@ -192,7 +192,7 @@ test.describe('navigation style', () => {
     // empty list under an open caret.
     await page.goto(CFN_QUEUE_PAGE);
     await waitForSidebar(page);
-    // Let the load-time reveal finish scrolling the sidebar before clicking, or the click can land on a neighbour.
+    // Let the load-time reveal finish scrolling the sidebar before clicking, or the click can land on a neighbor.
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
     await page.getByRole('button', { name: 'Custom Resources', exact: true }).click();
     await page.evaluate((key) => window.localStorage.setItem(key, 'package'), NAV_KEY);

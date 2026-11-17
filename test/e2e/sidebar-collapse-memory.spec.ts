@@ -160,7 +160,7 @@ test.describe('sidebar collapse memory', () => {
     const name = 'Custom Resources';
     const items = (p: Page) => groupNamed(p, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li');
     await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'false');
-    // Let the load-time reveal finish scrolling the sidebar before clicking, or the click can land on a neighbour.
+    // Let the load-time reveal finish scrolling the sidebar before clicking, or the click can land on a neighbor.
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
     await groupNamed(page, name).click();
     await expect(items(page).first()).toBeVisible();
