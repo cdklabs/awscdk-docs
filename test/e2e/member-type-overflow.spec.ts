@@ -93,13 +93,17 @@ test.describe('member type overflow', () => {
     // The full type is still in the DOM for the tooltip and for copy.
     await expect(type).toHaveAttribute('title', /LoggingConfigProperty/);
     // A keyboard user reaching the link cut by the clamp sees it: the clamp
-    // releases and the type wraps inside the column while the link holds focus,
-    // so the row grows for that time and returns on blur. Focus without the
-    // browser's own scroll-into-view, so only the stylesheet can make the link visible.
+    // releases and the type wraps inside the column while the link holds
+    // keyboard focus, so the row grows for that time and returns on blur. The
+    // name stays on the type's first line. Focus arrives by Tab from the
+    // previous link, so only the stylesheet's keyboard rule can reveal it.
     const line = row.locator('.member-line');
     const lineBefore = (await line.boundingBox())!;
-    const last = type.locator('a').last();
-    await last.evaluate((el) => el.focus({ preventScroll: true }));
+    const nameOffset = nameBox.y - lineBefore.y;
+    const links = type.locator('a');
+    const last = links.last();
+    await links.nth((await links.count()) - 2).evaluate((el) => el.focus({ preventScroll: true }));
+    await page.keyboard.press('Tab');
     await expect(last).toBeFocused();
     expect(await type.evaluate((el) => getComputedStyle(el).overflowX)).toBe('visible');
     expect(await type.evaluate((el) => el.scrollLeft)).toBe(0);
@@ -110,12 +114,29 @@ test.describe('member type overflow', () => {
     expect(linkBox.x + linkBox.width).toBeLessThanOrEqual(focused.x + focused.width + 1);
     expect(focused.x + focused.width).toBeLessThanOrEqual(column.x + column.width + 1);
     expect(focused.height).toBeGreaterThan(typeBox.height);
-    expect((await line.boundingBox())!.height).toBeGreaterThan(lineBefore.height);
+    const lineFocused = (await line.boundingBox())!;
+    expect(lineFocused.height).toBeGreaterThan(lineBefore.height);
+    expect(Math.abs((await name.boundingBox())!.y - lineFocused.y - nameOffset)).toBeLessThanOrEqual(1);
     await last.blur();
     const after = (await type.boundingBox())!;
     expect(after.width).toBe(typeBox.width);
     expect(after.height).toBe(typeBox.height);
     expect((await line.boundingBox())!.height).toBe(lineBefore.height);
+  });
+
+  test('a mouse click on the visible part of a cut link follows it without a reflow', async ({ page }) => {
+    // Mouse focus is not keyboard focus, so the clamp stays and the click lands on the link.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(CFN_TOPIC_PAGE);
+    const type = page.locator('.member-row#deliverystatuslogging .member-line > .lang-variant[data-lang="ts"] .member-type');
+    const last = type.locator('a').last();
+    await type.scrollIntoViewIfNeeded();
+    const linkBox = (await last.boundingBox())!;
+    const clip = (await type.boundingBox())!;
+    const x = Math.max(linkBox.x, clip.x) + 8;
+    expect(x).toBeLessThan(clip.x + clip.width);
+    await page.mouse.click(x, linkBox.y + linkBox.height / 2);
+    await expect(page).toHaveURL(/CfnTopic\.LoggingConfigProperty\.html$/);
   });
 
   test('on a phone the long type wraps inside the column instead of clipping', async ({ page }) => {
@@ -156,7 +177,7 @@ test.describe('member rows with content the fixture lacks', () => {
     const column = (await page.locator('.vp-doc').boundingBox())!;
     const name = (await row.locator('.lang-variant[data-lang="ts"] .member-name').boundingBox())!;
     expect(name.x + name.width).toBeLessThanOrEqual(column.x + column.width + 1);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
   for (const width of [375, 1280]) {

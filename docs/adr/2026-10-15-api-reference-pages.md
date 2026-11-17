@@ -288,13 +288,15 @@ so the type stays complete (it is part of the member contract and appears
 nowhere else in the collapsed row) while the description clips. No `max-width`
 cap on the type — the shrink weighting alone orders it in one declaration. The
 type is a flex item that shrinks beside its name: in the multi-language row the
-language-variant span is an `inline-flex` container (`align-items: flex-end`),
+language-variant span is an `inline-flex` container (`align-items: baseline`, as on the row),
 and the name and signature drop the stock inline-code vertical padding so being
 flex items adds no row height; the type gets `white-space: nowrap`,
 `min-width: 0`, `overflow: hidden`, and a full-type `title`. Both clamps release
 at the `max-width: 640px` breakpoint where rows stack, and the type's clamp also
-releases while a link inside it holds keyboard focus (`:focus-within`: the type
-wraps inside the column), so a link the ellipsis cut is reachable and visible.
+releases while a link inside it holds keyboard focus (`:has(:focus-visible)`:
+the type wraps inside the column, the name staying on its first line), so a link
+the ellipsis cut is reachable and visible; a mouse click gets no reveal, so it
+lands on the link it aimed at.
 The row grows for as long as the focus is there and returns on blur; a fixed-box
 alternative was rejected because a hidden-overflow box does not scroll a focused
 link into view, which would leave the link reachable but invisible. The language-variant

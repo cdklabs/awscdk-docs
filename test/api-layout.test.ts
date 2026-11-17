@@ -1110,10 +1110,11 @@ describe('API page layout', () => {
       expect(wrapper).toContain('white-space: nowrap');
       expect(wrapper).toContain('min-width: 0');
       // The span is a flex container so the type shrinks beside its name and clamps at the
-      // column edge; end alignment keeps the type's bottom on the name's. The name and
-      // signature drop the stock inline-code vertical padding so they add no row height.
+      // column edge; baseline alignment, as on the row, keeps the name on the type's first
+      // line when a focused link makes the type wrap. The name and signature drop the stock
+      // inline-code vertical padding so they add no row height.
       expect(wrapper).toContain('display: inline-flex');
-      expect(wrapper).toContain('align-items: flex-end');
+      expect(wrapper).toContain('align-items: baseline');
       for (const selector of [
         '.member-list .member-line > .lang-variant > .member-name',
         '.member-list .member-line > .lang-variant > .member-signature',

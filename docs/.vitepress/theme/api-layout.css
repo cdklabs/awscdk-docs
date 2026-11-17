@@ -609,8 +609,9 @@ a.chain-item:hover {
 }
 
 /* A link cut by the clamp shows in full while it holds keyboard focus: the type
-   wraps inside the column, so the row grows for as long as the focus is there. */
-.member-list .member-type:focus-within {
+   wraps inside the column, so the row grows for as long as the focus is there.
+   Keyboard focus only, so a mouse click on the link lands where it was aimed. */
+.member-list .member-type:has(:focus-visible) {
   overflow: visible;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -661,11 +662,12 @@ a.chain-item:hover {
 
 /* With 2+ languages the row's flex child is the variant span, not the name or
    type inside it. The span is an inline-flex container: `nowrap` keeps the
-   pair on one line and the type shrinks beside its name; end alignment keeps
-   the type's bottom on the name's. */
+   pair on one line and the type shrinks beside its name; baseline alignment,
+   as on the row itself, keeps the name on the type's first line when the type
+   wraps for a focused link. */
 .member-list .member-line > .lang-variant {
   display: inline-flex;
-  align-items: flex-end;
+  align-items: baseline;
   min-width: 0;
   white-space: nowrap;
 }
