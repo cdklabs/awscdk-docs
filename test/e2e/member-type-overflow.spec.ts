@@ -4,8 +4,9 @@ import { CFN_QUEUE_PAGE } from './fixture.js';
 
 // Member rows with a long type never widen the page. The type span is clipped
 // with an ellipsis beside its name on desktop and wraps inside the column on a
-// phone, even when it is one unbreakable token. Code blocks and signatures
-// scroll inside their own box, which the overflow guard allows.
+// phone, even when it is one unbreakable token. Fenced code blocks and
+// `pre.signature` blocks scroll inside their own box, which the overflow guard
+// allows; a bare remark `<pre>` wraps.
 const CFN_TOPIC_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.CfnTopic.html';
 const CFN_SUBSCRIPTION_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.CfnSubscription.html';
 
@@ -91,17 +92,30 @@ test.describe('member type overflow', () => {
     expect(await type.evaluate((el) => getComputedStyle(el).textOverflow)).toBe('ellipsis');
     // The full type is still in the DOM for the tooltip and for copy.
     await expect(type).toHaveAttribute('title', /LoggingConfigProperty/);
-    // A keyboard user reaching the link cut by the clamp sees it: the type opens
-    // in full while it holds focus, inside the column, and closes again on blur.
+    // A keyboard user reaching the link cut by the clamp sees it: the clamp
+    // releases and the type wraps inside the column while the link holds focus,
+    // so the row grows for that time and returns on blur. Focus without the
+    // browser's own scroll-into-view, so only the stylesheet can make the link visible.
+    const line = row.locator('.member-line');
+    const lineBefore = (await line.boundingBox())!;
     const last = type.locator('a').last();
-    await last.focus();
+    await last.evaluate((el) => el.focus({ preventScroll: true }));
+    await expect(last).toBeFocused();
+    expect(await type.evaluate((el) => getComputedStyle(el).overflowX)).toBe('visible');
+    expect(await type.evaluate((el) => el.scrollLeft)).toBe(0);
+    expect(await type.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     const linkBox = (await last.boundingBox())!;
     const focused = (await type.boundingBox())!;
     expect(linkBox.x).toBeGreaterThanOrEqual(focused.x - 1);
     expect(linkBox.x + linkBox.width).toBeLessThanOrEqual(focused.x + focused.width + 1);
     expect(focused.x + focused.width).toBeLessThanOrEqual(column.x + column.width + 1);
+    expect(focused.height).toBeGreaterThan(typeBox.height);
+    expect((await line.boundingBox())!.height).toBeGreaterThan(lineBefore.height);
     await last.blur();
-    expect((await type.boundingBox())!.width).toBe(typeBox.width);
+    const after = (await type.boundingBox())!;
+    expect(after.width).toBe(typeBox.width);
+    expect(after.height).toBe(typeBox.height);
+    expect((await line.boundingBox())!.height).toBe(lineBefore.height);
   });
 
   test('on a phone the long type wraps inside the column instead of clipping', async ({ page }) => {

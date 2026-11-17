@@ -608,7 +608,8 @@ a.chain-item:hover {
   text-overflow: ellipsis;
 }
 
-/* A link cut by the clamp shows in full while it holds keyboard focus. */
+/* A link cut by the clamp shows in full while it holds keyboard focus: the type
+   wraps inside the column, so the row grows for as long as the focus is there. */
 .member-list .member-type:focus-within {
   overflow: visible;
   white-space: normal;

@@ -292,7 +292,12 @@ language-variant span is an `inline-flex` container (`align-items: flex-end`),
 and the name and signature drop the stock inline-code vertical padding so being
 flex items adds no row height; the type gets `white-space: nowrap`,
 `min-width: 0`, `overflow: hidden`, and a full-type `title`. Both clamps release
-at the `max-width: 640px` breakpoint where rows stack. The language-variant
+at the `max-width: 640px` breakpoint where rows stack, and the type's clamp also
+releases while a link inside it holds keyboard focus (`:focus-within`: the type
+wraps inside the column), so a link the ellipsis cut is reachable and visible.
+The row grows for as long as the focus is there and returns on blur; a fixed-box
+alternative was rejected because a hidden-overflow box does not scroll a focused
+link into view, which would leave the link reachable but invisible. The language-variant
 wrapper's `nowrap` is shared by method rows, where the variant holds the whole
 signature; `.member-signature` releases it (`white-space: normal`,
 `overflow-wrap: anywhere`) so a long signature wraps inside the content column
