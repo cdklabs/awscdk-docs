@@ -6,7 +6,7 @@
 // code-block theme).
 import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme-without-fonts";
-import { h, onMounted } from "vue";
+import { h, nextTick, onMounted } from "vue";
 import ApiSidebar from "./ApiSidebar.vue";
 import { initCodeTheme } from "./code-theme";
 import CopyMarkdown from "./CopyMarkdown.vue";
@@ -109,6 +109,8 @@ const theme: Theme = {
       applyFoldoutsAfterNavigation();
       // SSR renders through the same hook with no window; `to` is then not a jump to flash.
       if (typeof location !== "undefined") {
+        // The new page's rows exist after Vue has patched the route component in.
+        await nextTick();
         flashMember(new URL(to, location.href).hash);
       }
     };

@@ -139,12 +139,14 @@ describe('stylesheet', () => {
     );
   });
 
-  test('reduced motion shows the static tint with no animation', () => {
+  test('reduced motion shows a static mark with no animation, outlined so it survives forced colors', () => {
     const sheet = css();
     const reduced = sheet.slice(sheet.indexOf('@media (prefers-reduced-motion: reduce)'));
     const rule = reduced.slice(reduced.indexOf(`.member-row.${FLASH_CLASS}`));
     const body = rule.slice(rule.indexOf('{'), rule.indexOf('}'));
     expect(body).toContain('animation: none');
-    expect(body).toContain('background-color: var(--vp-c-bg-soft)');
+    expect(body).toContain('background-color: var(--api-c-flash)');
+    expect(body).toContain('outline: 2px solid var(--vp-c-brand-1)');
+    expect(body).toContain('outline-offset: -2px');
   });
 });

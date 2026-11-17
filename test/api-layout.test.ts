@@ -1056,9 +1056,12 @@ describe('API page layout', () => {
         const layout = split(css())[scheme];
         const surface = split(theme())[scheme];
         const flash = hex(layout, '--api-c-flash');
-        // Most of a row's text is text-2, which the theme does not override: VitePress 1.6's defaults.
-        const text2 = scheme === 'light' ? '#67676c' : '#98989f';
+        // Most of a row's text is text-2, which the theme does not override, so it is read from VitePress itself.
         expect(surface).not.toMatch(/--vp-c-text-2:/);
+        const vpVars = readFileSync(resolve(ROOT, 'node_modules/vitepress/dist/client/theme-default/styles/vars.css'), 'utf-8');
+        // The text tokens are one `:root` / `.dark` pair in VitePress's file; slice from the pair's opener.
+        const textBlock = vpVars.slice(vpVars.lastIndexOf(':root {', vpVars.indexOf('--vp-c-text-2')));
+        const text2 = hex(split(textBlock)[scheme], '--vp-c-text-2');
         for (const text of [hex(surface, '--vp-c-text-1'), text2, hex(surface, '--vp-c-brand-1'), hex(surface, '--vp-c-brand-2'), hex(layout, '--api-c-type')]) {
           expect([scheme, text, contrast(text, flash) >= 4.5]).toEqual([scheme, text, true]);
         }

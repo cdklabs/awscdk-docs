@@ -15,6 +15,8 @@ export const FLASH_CLASS = 'member-row-flash';
 export const READY_CLASS = 'member-flash-ready';
 /** Length of the fade, matched by the keyframes in api-layout.css. */
 export const FLASH_DURATION_MS = 1500;
+/** A second call for the same hash within this window is the same jump arriving by another event. */
+export const SAME_JUMP_MS = 250;
 
 /** The subset of the DOM the helper touches, so a unit test can pass a plain object. */
 export interface FlashDocument {
@@ -93,9 +95,11 @@ export function flashRow(
  * with a hash and a cross-page link that lands on a member are covered.
  *
  * The paths overlap: one click raises `hashchange` and then reaches the click
- * listener, back/forward raises `hashchange` and then the route hook, a load
- * with a hash reaches the hook and then the mount. The same hash is therefore
- * flashed once per task, so each jump starts exactly one fade.
+ * listener, a load with a hash reaches the hook and then the mount, and
+ * back/forward raises `popstate` and `hashchange` and then, once the route has
+ * reloaded, the hook. A second arrival for the same hash within `SAME_JUMP_MS`
+ * is skipped while the row still carries the mark, and the hashchange of a
+ * back/forward is left to the hook, so each jump starts exactly one fade.
  */
 export function installMemberFlash(): (hash: string) => void {
   const g = globalThis as { document?: Document; addEventListener?: Window['addEventListener']; location?: Location };
@@ -108,21 +112,48 @@ export function installMemberFlash(): (hash: string) => void {
   const flash = (hash: string) => {
     const row = flashRow(doc, hash, restart) as unknown as HTMLElement | null;
     if (row && !prefersReducedMotion()) {
-      // Drop the class once the fade ends, so the next jump starts clean. Under
-      // reduced motion nothing animates and the static tint stays until then.
-      row.addEventListener('animationend', () => row.classList.remove(FLASH_CLASS), { once: true });
+      // Drop the class once the row's own fade ends, so the next jump starts
+      // clean. `animationend` bubbles, so a child's animation is ignored. Under
+      // reduced motion nothing animates and the static mark stays until then.
+      const done = (e: AnimationEvent) => {
+        if (e.target !== row || e.animationName !== FLASH_CLASS) {
+          return;
+        }
+        row.classList.remove(FLASH_CLASS);
+        row.removeEventListener('animationend', done);
+      };
+      row.addEventListener('animationend', done);
     }
   };
-  let pending: string | null = null;
+  let lastHash: string | null = null;
+  let lastAt = 0;
   const flashOnce = (hash: string) => {
-    if (hash === pending) {
+    const now = performance.now();
+    // The same jump arriving again: skip it only while the mark is still on the
+    // row, because a route reload replaces the row and takes the mark with it.
+    const marked = rowForHash(doc, hash)?.classList.contains(FLASH_CLASS) ?? false;
+    if (marked && hash === lastHash && now - lastAt < SAME_JUMP_MS) {
       return;
     }
-    pending = hash;
-    setTimeout(() => (pending = null));
+    lastHash = hash;
+    lastAt = now;
     flash(hash);
   };
-  g.addEventListener('hashchange', () => flashOnce(g.location?.hash ?? ''));
+  // Back/forward: VitePress's popstate handler reloads the route, which replaces
+  // the rows, so a flash on the native hashchange that follows would land on a
+  // row about to be thrown away. The route hook marks the new row instead.
+  let reloading = false;
+  g.addEventListener('popstate', (e) => {
+    if (e.state !== null) {
+      reloading = true;
+      setTimeout(() => (reloading = false), 1000);
+    }
+  });
+  g.addEventListener('hashchange', () => {
+    if (!reloading) {
+      flashOnce(g.location?.hash ?? '');
+    }
+  });
   g.addEventListener('click', (e) => {
     // The same guards as VitePress's own link handler: a modified or secondary
     // click, or a link that opens elsewhere, is not a jump on this page.
@@ -139,5 +170,8 @@ export function installMemberFlash(): (hash: string) => void {
     }
   });
   g.document.documentElement.classList.add(READY_CLASS);
-  return flashOnce;
+  return (hash) => {
+    reloading = false;
+    flashOnce(hash);
+  };
 }

@@ -9,9 +9,7 @@
      The strikethrough on the identifier carries the deprecation
      independently, so nothing depends on this color alone. */
   --api-c-deprecated: #9a2c2c;
-  /* Start of the member-row flash. Brand-soft over the page falls to 4.3:1
-     under brand-1 text (a link in a summary, a hovered type); this stays at
-     AA for text-1, text-2, brand-1, brand-2 and the type color. */
+  /* Start of the member-row flash; text-1, text-2, brand-1, brand-2 and the type color stay at AA on it. */
   --api-c-flash: #fdf3e3;
 }
 
@@ -511,12 +509,15 @@ html:not(.member-flash-ready) .member-list .member-row:target {
   animation: member-row-flash 1500ms ease-out;
 }
 
-/* Reduced motion: no fade. The landed row keeps the static tint until the next
-   jump, so the mark is still there to find. */
+/* Reduced motion: no fade. The landed row keeps the flash color and a brand
+   outline until the next jump; the outline survives forced colors, where
+   author backgrounds are dropped, and sits inside the box so nothing moves. */
 @media (prefers-reduced-motion: reduce) {
   .member-list .member-row.member-row-flash {
     animation: none;
-    background-color: var(--vp-c-bg-soft);
+    background-color: var(--api-c-flash);
+    outline: 2px solid var(--vp-c-brand-1);
+    outline-offset: -2px;
   }
 }
 
