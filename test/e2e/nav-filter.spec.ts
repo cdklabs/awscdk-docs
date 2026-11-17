@@ -462,6 +462,26 @@ test.describe('in-sidebar symbol filter', () => {
     });
   }
 
+  test('below the sidebar breakpoint, the hint for the current page keeps focus on the input and the drawer open', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto(TOPIC_PAGE);
+    await page.locator('.VPLocalNav button.menu').click();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+    const input = filterInput(page);
+    await input.fill('Topic');
+    const button = page.locator('.nav-filter-hint').getByRole('button');
+    await expect(button).toBeVisible();
+    await expect(button).toContainText('Topic');
+    await button.click();
+
+    // Same route, so VitePress neither closes the drawer nor moves focus: the input must still hold it.
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+  });
+
   test('focus moves to the input before the activated hint button unmounts', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await waitForSidebar(page);

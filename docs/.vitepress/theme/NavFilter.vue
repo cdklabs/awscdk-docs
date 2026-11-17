@@ -89,9 +89,9 @@ async function onEnter() {
   }
   const target = filterSymbols(symbols.value, pressed, 1)[0];
   if (target) {
-    // Activated from the hint button, the focused element unmounts with the hint: move focus to the input first
-    // so it does not fall to <body> while the page loads. Focus is set again after the navigation.
-    focusInput();
+    // Activated from the hint button, the focused element unmounts with the hint: hold focus on the input while the
+    // page loads, at any width (the drawer is still open here). Only the refocus after navigation is width-guarded.
+    inputEl.value?.focus();
     clear();
     await router.go(withBase(target.link));
     focusInput();
