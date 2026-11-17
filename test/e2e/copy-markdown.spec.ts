@@ -53,7 +53,15 @@ test.describe('Copy Markdown control', () => {
       });
     });
     await copy.click();
-    await expect(status).toHaveText('Copied');
+    // The region already reads "Copied" from the first click, so wait on the log: the refill has happened only
+    // once the observer has seen "Copied" again.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as unknown as { __statusSeen: { text: string }[] }).__statusSeen.some((e) => e.text === 'Copied'),
+        ),
+      )
+      .toBe(true);
     const seen = await page.evaluate(
       () => (window as unknown as { __statusSeen: { text: string; at: number }[] }).__statusSeen,
     );
@@ -189,7 +197,7 @@ test.describe('Copy Markdown control', () => {
     await expect(item).toBeHidden();
   });
 
-  test('the menu item opens the Markdown file in a new tab instead of downloading it', async ({ page }) => {
+  test('the menu item opens the Markdown file in a new tab against the e2e server', async ({ page }) => {
     await open(page);
     await page.getByRole('button', { name: 'More Markdown options' }).click();
     const item = page.getByRole('menuitem', { name: 'View as Markdown' });

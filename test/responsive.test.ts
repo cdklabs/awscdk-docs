@@ -119,7 +119,7 @@ describe('responsive mobile layout', () => {
      * The sidebar drawer rows are height-only: they are block-level and their
      * width is the drawer's (247px inside a 311px drawer at a 375px viewport),
      * so a 44px `min-width` could never bind. The Markdown menu row is the same: it
-     fills the menu's width.
+     * fills the menu's width.
      */
     const TOUCH_TARGETS: ReadonlyArray<
       readonly [string, string, ReadonlyArray<'min-height' | 'min-width'>]

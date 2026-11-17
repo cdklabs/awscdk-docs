@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { REPRESENTATIVE_PAGES } from './fixture.js';
+import { REPRESENTATIVE_PAGES, TOPIC_PAGE } from './fixture.js';
 
 // Gates WCAG 2.5.8 target size (minimum) across the audited page set.
 //
@@ -39,6 +39,30 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
         .join('\n');
 
       expect(detail, `target-size violations on ${pagePath}:\n${detail}`).toBe('');
+    });
+  }
+
+  // The "View as Markdown" row exists only while the menu is open (it is `display: none` otherwise), so the scan
+  // above never measures it. Open the menu first, then scan, on desktop and at a phone width where 44px applies.
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 375, height: 800 }]) {
+    test(`the open Copy Markdown menu meets the 24px floor at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto(TOPIC_PAGE);
+      await expect(page.locator('.VPNav')).toBeVisible();
+      await page.locator('.copy-markdown[data-ready]').waitFor();
+      await page.getByRole('button', { name: 'More Markdown options' }).click();
+      await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeVisible();
+
+      const results = await new AxeBuilder({ page })
+        .options({ rules: { 'target-size': { enabled: true } } })
+        .withRules(['target-size'])
+        .analyze();
+      const detail = results.violations
+        .flatMap((violation) => violation.nodes)
+        .map((node) => `${node.target.join(' ')} — ${node.failureSummary ?? ''}`)
+        .join('\n');
+
+      expect(detail, `target-size violations with the menu open:\n${detail}`).toBe('');
     });
   }
 });

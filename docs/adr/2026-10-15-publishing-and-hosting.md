@@ -111,8 +111,10 @@ Adding another stream later is one more instantiation.
   as `text/markdown` or `text/plain` without `Content-Disposition: attachment`.
   This repository ships the zip and does not set object metadata; the system
   that extracts and serves it must. The local e2e server maps `.md` itself, so
-  no test here proves the production headers. Confirm with the owner of that
-  system.
+  no test here proves the production headers. A `HEAD` request on 2026-11-17 for
+  an existing twin (`/cdk/api/v2/docs/aws-cdk-lib.aws_sns.Topic.md` on
+  `docs.aws.amazon.com`) returned `Content-Type: text/markdown; charset=utf-8`
+  and no `Content-Disposition`, so the link opens the file there today.
 - **The `latest-awscdk-docs` marker is a v2 manifest:**
 
   ```
