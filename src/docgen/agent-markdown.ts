@@ -145,10 +145,9 @@ function unwrapContainers(s: string): string {
 
 const classes = (el: Element): Set<string> => new Set((el.attribs.class ?? '').split(/\s+/).filter(Boolean));
 
-// The fence tags that mark a TypeScript fallback copy. `renderReadmeBody` in index.ts fills an untranslated language
-// with the TypeScript source via `fenceFor(…, 'ts')`, which resolves to `FENCE_LANG.ts`. No producer emits
-// `typescript` today; it is accepted only so a producer that re-fenced with the long spelling would still be caught.
-const TS_FENCE_TAGS = new Set([FENCE_LANG[DEFAULT_LANGUAGE], 'typescript']);
+// The fence tag that marks a TypeScript fallback copy: `renderReadmeBody` in index.ts fills an untranslated language
+// with the TypeScript source via `fenceFor(…, 'ts')`, which resolves to `FENCE_LANG.ts`.
+const TS_FENCE_TAG = FENCE_LANG[DEFAULT_LANGUAGE];
 const LANGUAGE_LABEL = new Map<string, string>(LANGUAGES.map((l) => [l.id, l.label]));
 const isVariant = (n: Node): n is Element => isElement(n) && classes(n).has('lang-variant');
 const languageLabel = (variant: Element): string =>
@@ -229,7 +228,7 @@ function renderBlockGroup(group: Element[], copies: Map<Element, { raw: string; 
   const fenceLang = (v: Element) => /^ {0,3}(?:`{3,}|~{3,})([^\s`]*)/m.exec(copies.get(v)!.text)?.[1];
   // Only a `ts` fence in another language's copy is the fill; a copy that leads with a shell or JSON fence is its own.
   const isFallback = (v: Element) => v.attribs['data-lang'] !== DEFAULT_LANGUAGE
-    && TS_FENCE_TAGS.has(fenceLang(v) ?? '');
+    && fenceLang(v) === TS_FENCE_TAG;
   const fallbacks = group.filter(isFallback);
   const fallbackSet = new Set(fallbacks);
   const block = (label: string, v: Element) => `\n${label}:\n\n${copies.get(v)!.raw}\n`;
