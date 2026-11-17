@@ -85,9 +85,9 @@ const LEVEL_OVERRIDES: ReadonlyMap<string, ConstructLevel> = new Map<string, Con
 
 /**
  * Classify a construct, in order: an explicit {@link LEVEL_OVERRIDES} entry wins outright; then L1 has jsii
- * `cloudformationResource` metadata, L3 lives in a `*patterns*` submodule, L2 extends aws-cdk-lib.Resource, and
- * finally aws-cdk-lib.CfnElement and its descendants are L1. Constructs matching none of these (e.g.
- * constructs.Construct itself) get no level.
+ * `cloudformationResource` metadata and does not extend aws-cdk-lib.Resource, L3 lives in a `*patterns*` submodule,
+ * L2 extends aws-cdk-lib.Resource, and finally aws-cdk-lib.CfnElement and its descendants are L1. Constructs
+ * matching none of these (e.g. constructs.Construct itself) get no level.
  */
 export function constructLevel(type: spec.ClassType, index: TypeIndex): ConstructLevel | undefined {
   // First, so an explicit level always beats every derived one.
@@ -95,7 +95,9 @@ export function constructLevel(type: spec.ClassType, index: TypeIndex): Construc
   if (override) {
     return override;
   }
-  if (type.docs?.custom?.cloudformationResource) {
+  // A hand-written L2 may name the resource it wraps in a `cloudformationResource` doc tag (the alpha packages do),
+  // so the tag only makes an L1 when the type does not extend aws-cdk-lib.Resource.
+  if (type.docs?.custom?.cloudformationResource && !extendsFqn(type.fqn, RESOURCE_BASE_FQN, index)) {
     return 'L1';
   }
   if (/(?:^|[._])patterns$/.test(type.namespace ?? '')) {
@@ -104,8 +106,8 @@ export function constructLevel(type: spec.ClassType, index: TypeIndex): Construc
   if (extendsFqn(type.fqn, RESOURCE_BASE_FQN, index)) {
     return 'L2';
   }
-  // Only the GENERATED subtree members carry `cloudformationResource` metadata, so the rest need the inheritance
-  // test. The self-check is required because `extendsFqn` excludes self-matches.
+  // Only the GENERATED subtree members carry `cloudformationResource` metadata as an L1 marker, so the rest need the
+  // inheritance test. The self-check is required because `extendsFqn` excludes self-matches.
   if (type.fqn === CFN_ELEMENT_BASE_FQN || extendsFqn(type.fqn, CFN_ELEMENT_BASE_FQN, index)) {
     return 'L1';
   }

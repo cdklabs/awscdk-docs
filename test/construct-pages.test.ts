@@ -165,6 +165,40 @@ describe('construct detection and classification', () => {
     expect(constructLevel(resourceInSubtree, withSynthetics)).toBe('L2');
   });
 
+  test('an L2 that names its CloudFormation resource in a doc tag stays L2', () => {
+    // The alpha packages tag hand-written L2s with `@cloudformationResource`. The tag documents the wrapped resource,
+    // so it must not make an L1 of a type that extends Resource. The shape mirrors `aws-bedrock-alpha.Agent`.
+    const withAlpha: TypeIndex = new Map(index);
+    const classType = (fqn: string, base: string, docs?: spec.Docs): spec.ClassType => {
+      const type: spec.ClassType = {
+        kind: spec.TypeKind.Class,
+        fqn,
+        name: fqn.split('.').pop()!,
+        assembly: 'aws-bedrock-alpha',
+        base,
+        ...(docs ? { docs } : {}),
+      };
+      withAlpha.set(fqn, { type, assembly: cdk });
+      return type;
+    };
+    const agentBase = classType('aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
+    const agent = classType('aws-bedrock-alpha.Agent', agentBase.fqn, {
+      custom: { cloudformationResource: 'AWS::Bedrock::Agent' },
+    });
+    expect(constructLevel(agent, withAlpha)).toBe('L2');
+
+    // The tag still marks an L1 for a type outside the Resource subtree.
+    const tagged = classType('aws-cdk-lib.aws_fake.CfnThing', 'aws-cdk-lib.CfnResource', {
+      custom: { cloudformationResource: 'AWS::Fake::Thing' },
+    });
+    expect(constructLevel(tagged, withAlpha)).toBe('L1');
+    // And a tagged type with no resolvable base is still an L1, as before.
+    const orphan = classType('aws-fake.Orphan', 'aws-fake.Missing', {
+      custom: { cloudformationResource: 'AWS::Fake::Orphan' },
+    });
+    expect(constructLevel(orphan, withAlpha)).toBe('L1');
+  });
+
   test('builds version-pinned GitHub source URLs', () => {
     const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type;
     const url = sourceUrl(bucket, cdk)!;
@@ -461,6 +495,8 @@ describe('construct page generation', () => {
     // no such page is in the e2e fixture, so this is L3's only pin. Rendering
     // one page directly keeps it deterministic and independent of which
     // pattern constructs the shipped assembly happens to carry.
+    // The tagged fixture is an L1, so it extends CfnResource as a generated L1 does. A tagged type that extended
+    // Resource is an L2, which the classification test above covers.
     const level = (namespace: string, cloudformationResource?: string) => {
       const type: spec.ClassType = {
         kind: spec.TypeKind.Class,
@@ -468,7 +504,7 @@ describe('construct page generation', () => {
         name: 'Widget',
         assembly: 'aws-cdk-lib',
         namespace,
-        base: 'aws-cdk-lib.Resource',
+        base: cloudformationResource ? 'aws-cdk-lib.CfnResource' : 'aws-cdk-lib.Resource',
         ...(cloudformationResource ? { docs: { custom: { cloudformationResource } } } : {}),
       };
       const index: TypeIndex = new Map(fixtureIndex);
