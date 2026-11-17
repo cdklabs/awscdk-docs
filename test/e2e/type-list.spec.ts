@@ -1,0 +1,98 @@
+import { expect, test, type Page } from '@playwright/test';
+import { SQS_OVERVIEW_PAGE } from './fixture.js';
+
+// The module Types section is a list grouped by kind (ADR 2026-10-15-api-reference-pages, "Module type list"),
+// not a three-column table: a long nested name wraps instead of running past the page body. Geometry is the only
+// honest gate for that, so every measurement is taken in a browser, at each layout tier and density level.
+
+const SNS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sns-readme.html';
+
+/** The widths the layout tiers change at: phone, tablet, the tightest desktop column and a large screen. */
+const WIDTHS = [375, 768, 1280, 1920];
+const DENSITIES = ['compact', 'balanced', 'spacious'] as const;
+
+/** A nested name far wider than a phone, modelled on `CfnCapability.EdiConfigurationProperty`. */
+const LONG_NAME = 'CfnVeryLongResourceNameForTesting.EnormousConfigurationPropertyWithManyWordsInItsName';
+
+async function open(page: Page, url: string, density: (typeof DENSITIES)[number], width: number): Promise<void> {
+  await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript((level) => window.localStorage.setItem('cdk-docs-density', level), density);
+  await page.goto(url);
+  await page.locator('.type-list li').first().waitFor();
+}
+
+/** Entries that run past the page body, and whether the document scrolls sideways. */
+async function overflow(page: Page): Promise<{ wide: string[]; scrolls: boolean }> {
+  return page.evaluate(() => {
+    const body = document.querySelector('.vp-doc')!.getBoundingClientRect();
+    const wide = Array.from(document.querySelectorAll('.type-list li'))
+      .filter((li) => li.getBoundingClientRect().right > body.right + 0.5)
+      .map((li) => li.textContent ?? '');
+    const root = document.documentElement;
+    return { wide, scrolls: root.scrollWidth > root.clientWidth };
+  });
+}
+
+for (const url of [SQS_OVERVIEW_PAGE, SNS_OVERVIEW_PAGE]) {
+  test.describe(`type list on ${url}`, () => {
+    for (const density of DENSITIES) {
+      for (const width of WIDTHS) {
+        test(`no entry overflows and the page does not scroll sideways at ${width}px, ${density}`, async ({ page }) => {
+          await open(page, url, density, width);
+          expect(await overflow(page)).toEqual({ wide: [], scrolls: false });
+        });
+      }
+    }
+  });
+}
+
+test.describe('type list structure', () => {
+  test('is a real list, grouped under one heading per kind, each entry a link plus a kind tag and a summary', async ({ page }) => {
+    await open(page, SQS_OVERVIEW_PAGE, 'balanced', 1280);
+    const lists = page.locator('.vp-doc .type-list ul');
+    expect(await lists.count()).toBeGreaterThan(1);
+    // The Types section keeps its anchor; each kind group has a heading of its own right before its list.
+    await expect(page.locator('#types, h2:has-text("Types")').first()).toBeVisible();
+    const firstGroup = page.locator('.vp-doc h3[id^="types-"]').first();
+    await expect(firstGroup).toBeVisible();
+    const entry = page.locator('.type-list li').first();
+    await expect(entry.locator('a')).toHaveCount(1);
+    await expect(entry.locator('.type-kind')).not.toBeEmpty();
+    expect((await entry.textContent())!.replace(/\s+/g, ' ').trim().length).toBeGreaterThan(10);
+  });
+
+  test('copying a name yields exactly the name, with no break characters in it', async ({ page }) => {
+    await open(page, SQS_OVERVIEW_PAGE, 'balanced', 1280);
+    const names = await page.locator('.type-list li a code').evaluateAll((els) => els.map((el) => el.textContent ?? ''));
+    expect(names).toContain('Queue');
+    for (const name of names) {
+      expect(name).toMatch(/^[A-Za-z0-9_.]+$/);
+    }
+  });
+});
+
+test.describe('type list with a very long nested name', () => {
+  for (const width of WIDTHS) {
+    test(`wraps instead of overflowing at ${width}px`, async ({ page }) => {
+      await open(page, SQS_OVERVIEW_PAGE, 'spacious', width);
+      // Add an entry the way the generator emits one, then measure it.
+      await page.evaluate((name) => {
+        const list = document.querySelector('.type-list ul')!;
+        const li = document.createElement('li');
+        li.id = 'long-name-entry';
+        const breakable = name.replace(/\./g, '.<wbr>').replace(/([a-z0-9])(?=[A-Z])/g, '$1<wbr>');
+        li.innerHTML = `<a href="#"><code>${breakable}</code></a> <span class="type-kind">Struct</span><br>Summary.`;
+        list.appendChild(li);
+      }, LONG_NAME);
+      expect(await overflow(page)).toEqual({ wide: [], scrolls: false });
+      // On a phone the name is wider than the body, so it must occupy more than one line box.
+      const lines = await page.evaluate(() => {
+        const rects = Array.from(document.querySelector('#long-name-entry code')!.getClientRects());
+        return new Set(rects.map((r) => Math.round(r.top))).size;
+      });
+      if (width === 375) {
+        expect(lines).toBeGreaterThan(1);
+      }
+    });
+  }
+});

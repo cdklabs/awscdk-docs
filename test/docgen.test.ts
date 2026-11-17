@@ -111,11 +111,11 @@ describe('renderOverviewPage', () => {
     expect(page).not.toContain('# fake.sub');
     const readmeIdx = page.indexOf('Usage:');
     const typesIdx = page.indexOf('## Types');
-    const tableIdx = page.indexOf('| Name | Kind | Summary |');
+    const listIdx = page.indexOf('### Classes');
     expect(readmeIdx).toBeGreaterThan(0);
     expect(typesIdx).toBeGreaterThan(readmeIdx);
-    expect(tableIdx).toBeGreaterThan(typesIdx);
-    expect(page).toContain('[`Widget`](/v2/docs/fake.sub.Widget)');
+    expect(listIdx).toBeGreaterThan(typesIdx);
+    expect(page).toContain('[<code>Widget</code>](/v2/docs/fake.sub.Widget)');
   });
 
   test('escapes Vue-hostile prose but leaves code fences untouched, strips HTML comments', () => {
@@ -149,7 +149,7 @@ describe('renderOverviewPage', () => {
       const page = renderOverviewPage({ title: 'fake.sub', types, readme });
       expect(page.startsWith(OUTLINE_OFF + '# fake.sub')).toBe(true);
       expect(page).not.toContain('## Types');
-      expect(page).toContain('| Name | Kind | Summary |');
+      expect(page).toContain('## Classes {#types-classes}');
     }
   });
 
@@ -525,8 +525,8 @@ describe('docgen generation', () => {
     // Package overviews are README-backed: the README's own
     // H1 is the page title, not a synthesized `# <package name>`.
     expect(indexMd).toContain('# Constructs');
-    expect(indexMd).toContain('`Construct`');
-    expect(indexMd).toContain('| Name | Kind | Summary |');
+    expect(indexMd).toContain('<code>Construct</code>');
+    expect(indexMd).toContain('<div class="type-list">');
   });
 
   test('the API root renders the authored construct-library overview', () => {
@@ -717,25 +717,26 @@ describe('docgen generation', () => {
     expect(s3Page).not.toContain('# aws-cdk-lib.aws_s3');
     // README first, then the preview list under a Types heading
     const typesIdx = s3Page.indexOf('## Types');
-    const tableIdx = s3Page.indexOf('| Name | Kind | Summary |');
+    const listIdx = s3Page.indexOf('<div class="type-list">');
     expect(typesIdx).toBeGreaterThan(0);
-    expect(tableIdx).toBeGreaterThan(typesIdx);
+    expect(listIdx).toBeGreaterThan(typesIdx);
     // The interactive preview list is intact
-    expect(s3Page).toContain('[`Bucket`](/v2/docs/aws-cdk-lib.aws_s3.Bucket)');
+    expect(s3Page).toContain('[<code>Bucket</code>](/v2/docs/aws-cdk-lib.aws_s3.Bucket)');
     // HTML comments from the README are stripped, not rendered as text
     expect(s3Page).not.toContain('&lt;!--');
   });
 
-  test('type-table rows follow the sidebar order — L3, L2, L1, then unleveled', () => {
+  test('type-list entries follow the sidebar order — L3, L2, L1, then unleveled', () => {
     const s3Page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
     const LEVEL_RANK: Record<string, number> = { L3: 0, L2: 1, L1: 2 };
-    // Rows of the single type table: `| [`Name`](link) | Kind | Summary |`
-    const rows = s3Page.slice(s3Page.indexOf('| Name | Kind | Summary |'))
+    // Entries of the kind-grouped list: `- [<code>Name</code>](link) <span class="type-kind">Kind</span><br>Summary`
+    const rows = s3Page.slice(s3Page.indexOf('## Types'))
       .split('\n')
-      .map((line) => /^\| \[?`([^`]+)`\]?[^|]*\| ([^|]*?) *\|/.exec(line))
+      .map((line) => /^- \[?<code>(.+?)<\/code>\]?(?:\([^)]*\))? <span class="type-kind">([^<]*)<\/span>/.exec(line))
       .filter((m): m is RegExpExecArray => !!m)
       .map((m) => ({
-        name: m[1],
+        name: m[1].replace(/<wbr>/g, ''),
+        kind: m[2],
         rank: LEVEL_RANK[/Construct \((L[123])\)/.exec(m[2])?.[1] ?? ''] ?? 3,
       }));
 
@@ -744,12 +745,12 @@ describe('docgen generation', () => {
     // sort the other way round — the level is the primary key.
     const nameOrder = rows.map((r) => r.name);
     expect(nameOrder.indexOf('Bucket')).toBeLessThan(nameOrder.indexOf('CfnBucket'));
-    // Ranks never decrease down the table, and each tier is alphabetical
-    // within itself.
+    // Ranks never decrease down the list, and entries of one kind are
+    // alphabetical within themselves.
     const ranks = rows.map((r) => r.rank);
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
     for (let i = 1; i < rows.length; i++) {
-      if (ranks[i] === ranks[i - 1]) {
+      if (rows[i].kind === rows[i - 1].kind) {
         expect(rows[i - 1].name.localeCompare(rows[i].name)).toBeLessThan(0);
       }
     }
@@ -768,7 +769,7 @@ describe('docgen generation', () => {
       '# aws-cdk-lib.aws_cloudfront.experimental',
     );
     expect(page).not.toContain('## Types');
-    expect(page).toContain('| Name | Kind | Summary |');
+    expect(page).toContain('<div class="type-list">');
   });
 
   test('overview breadcrumbs are anchored at the module, not a synthetic root', () => {

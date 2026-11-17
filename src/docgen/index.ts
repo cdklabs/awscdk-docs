@@ -1142,7 +1142,7 @@ function renderModuleIndex(
     lines.push('');
   }
   if (rootTypes.length > 0) {
-    lines.push(anchoredHeading(2, 'Types', SECTION_ANCHORS.types), '', ...renderTypeTable(rootTypes), '');
+    lines.push(anchoredHeading(2, 'Types', SECTION_ANCHORS.types), '', ...renderTypeList(rootTypes), '');
   }
   return lines.join('\n');
 }
@@ -1253,7 +1253,8 @@ export function renderOverviewPage(options: OverviewPageOptions): string {
       frontmatter: overviewFrontmatter(['outline: false', ...upstreamKey(options.upstreamEditUrl)]),
       breadcrumb,
       heading: `# ${title}`,
-      body: [...preamble, ...sections, ...renderTypeTable(types), ''],
+      // No `## Types` section here, so the kind groups are the page's second-level headings.
+      body: [...preamble, ...sections, ...renderTypeList(types, 2), ''],
     }).join('\n');
   }
   // Hoist the README's leading H1 out of the v-pre container so the page
@@ -1277,7 +1278,7 @@ export function renderOverviewPage(options: OverviewPageOptions): string {
     lines.push(...renderReadmeBody(rest, examples));
   }
   lines.push(...sections);
-  lines.push(anchoredHeading(2, 'Types', SECTION_ANCHORS.types), '', ...renderTypeTable(types), '');
+  lines.push(anchoredHeading(2, 'Types', SECTION_ANCHORS.types), '', ...renderTypeList(types), '');
   return lines.join('\n');
 }
 
@@ -1597,13 +1598,51 @@ function stripRelativeRefs(text: string): string {
       (isRelativeTarget(target) ? label : m));
 }
 
-function renderTypeTable(types: TypeEntry[]): string[] {
-  return [
-    '| Name | Kind | Summary |',
-    '| --- | --- | --- |',
-    ...types.map((t) => {
-      const name = t.link ? `[\`${t.name}\`](${t.link})` : `\`${t.name}\``;
-      return `| ${name} | ${t.kind} | ${escapeCell(t.summary)} |`;
-    }),
-  ];
+/** Plural of a kind label for its group heading: `Class` -> `Classes`, `Construct (L1)` -> `Constructs (L1)`. */
+function kindPlural(kind: string): string {
+  const leveled = /^(.*?)( \(L\d\))$/.exec(kind);
+  const [base, level] = leveled ? [leveled[1], leveled[2]] : [kind, ''];
+  const plural = /(s|x|ch|sh)$/.test(base) ? `${base}es` : `${base}s`;
+  return `${plural}${level}`;
+}
+
+/**
+ * A type name with `<wbr>` break points after every dot and between camelCase words, so a long nested name
+ * (`CfnCapability.EdiConfigurationProperty`) wraps instead of overflowing. `<wbr>` is empty, so the copied text is
+ * exactly the name.
+ */
+function breakableName(name: string): string {
+  return name.replace(/\./g, '.<wbr>').replace(/([a-z0-9])(?=[A-Z])/g, '$1<wbr>');
+}
+
+/**
+ * The module's types as a list grouped by kind, one `###` heading per kind in the order each kind first appears.
+ * Each entry is the name as a link with the kind as a small tag, and the summary on the next line. A list wraps at
+ * any width where the three-column table it replaces overflowed on a long nested name. `headingLevel` is 3 under a
+ * `## Types` heading and 2 on the table-only layout, which has none.
+ */
+function renderTypeList(types: TypeEntry[], headingLevel = 3): string[] {
+  const groups = new Map<string, TypeEntry[]>();
+  for (const t of types) {
+    const group = groups.get(t.kind);
+    if (group) {
+      group.push(t);
+    } else {
+      groups.set(t.kind, [t]);
+    }
+  }
+  const lines: string[] = [];
+  for (const [kind, entries] of groups) {
+    const heading = kindPlural(kind);
+    const anchor = `types-${heading.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+    lines.push(anchoredHeading(headingLevel, heading, anchor), '', '<div class="type-list">', '');
+    for (const t of entries) {
+      const name = `<code>${breakableName(t.name)}</code>`;
+      const linked = t.link ? `[${name}](${t.link})` : name;
+      const summary = escapeCell(t.summary);
+      lines.push(`- ${linked} <span class="type-kind">${t.kind}</span>${summary ? `<br>${summary}` : ''}`);
+    }
+    lines.push('', '</div>', '');
+  }
+  return lines;
 }

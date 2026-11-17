@@ -1014,3 +1014,42 @@ a.chain-item:hover {
   margin-top: var(--density-section-header-margin-top);
   margin-bottom: var(--density-section-header-margin-bottom);
 }
+
+/* Module type list: the Types section of a module overview. One entry per type, grouped by kind. The name is a link
+   with the kind as a small tag beside it and the summary on the next line. Names wrap after dots and between words
+   (the generator inserts <wbr>), and `overflow-wrap: anywhere` is the backstop for a single unbroken word, so no
+   entry can be wider than the page body at any width or density. */
+.vp-doc .type-list ul {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.vp-doc .type-list li {
+  margin: 0;
+  padding: calc(var(--density-type-list-gap) / 2) 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.vp-doc .type-list li + li {
+  margin-top: 0;
+}
+
+.vp-doc .type-list code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.vp-doc .type-kind {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+  white-space: nowrap;
+  vertical-align: baseline;
+}

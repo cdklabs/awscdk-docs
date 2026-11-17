@@ -346,11 +346,11 @@ describe('mixin page generation', () => {
     expect(duration).not.toContain('text="Mixin"');
   });
 
-  test('type tables link mixins with Mixin kind and structs with Struct kind', () => {
+  test('type lists link mixins with Mixin kind and structs with Struct kind', () => {
     const constructsPage = readFileSync(join(outDir, 'docs', 'constructs-readme.md'), 'utf-8');
-    expect(constructsPage).toContain('[`IMixin`](/v2/docs/constructs.IMixin) | Mixin |');
+    expect(constructsPage).toContain('[<code>IMixin</code>](/v2/docs/constructs.IMixin) <span class="type-kind">Mixin</span>');
     const s3Page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
-    expect(s3Page).toContain('[`IBucket`](/v2/docs/aws-cdk-lib.aws_s3.IBucket) | Interface |');
-    expect(s3Page).toContain('[`BucketProps`](/v2/docs/aws-cdk-lib.aws_s3.BucketProps) | Struct |');
+    expect(s3Page).toContain('(/v2/docs/aws-cdk-lib.aws_s3.IBucket) <span class="type-kind">Interface</span>');
+    expect(s3Page).toContain('(/v2/docs/aws-cdk-lib.aws_s3.BucketProps) <span class="type-kind">Struct</span>');
   });
 });

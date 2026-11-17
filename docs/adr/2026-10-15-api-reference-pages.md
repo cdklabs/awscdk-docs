@@ -19,11 +19,28 @@ flags, `cloudformationResource` metadata, `docs.*`); see
 
 ## Decision
 
+### Module type list
+
+A module overview lists its types under a `## Types` heading as a list grouped by kind (`renderTypeList` in
+`src/docgen/index.ts`), not as a table. A three-column table forced a long nested name such as
+`CfnCapability.EdiConfigurationProperty` wider than the page, because a code span cannot wrap.
+
+- One `###` heading per kind, the plural of the kind label (`Constructs (L2)`, `Constructs (L1)`, `Structs`, ...).
+  Groups appear in the order each kind first appears in the sorted type list, and entries keep that order inside a
+  group. Empty groups are not shown. The `## Types` anchor does not change; each kind heading has its own
+  `types-<kind>` anchor. A module overview without a README has no `## Types` heading, and its kind headings are
+  `##` so the heading order stays valid.
+- One entry per type: the name as a link, the kind label as a small tag beside it, the summary on the next line.
+  Names carry `<wbr>` after each dot and between camelCase words, so they wrap there. `<wbr>` is empty, so the copied
+  text, the link target and the search index see exactly the name.
+- The list is plain markdown plus a `type-list` wrapper, so the Markdown twin of the page still lists each entry
+  with its name link, kind and summary. Spacing reads `--density-type-list-gap`, which follows the density level.
+
 ### One page per type, dispatched by classification
 
 Every jsii type gets a markdown page under
 `docs/api/modules/<pkg>/<submodule>/<Name>` (`core` for module-root types),
-reachable from the submodule type tables and indexed by Pagefind. A single
+reachable from the module type lists and indexed by Pagefind. A single
 dispatch in `src/docgen/index.ts` assembles frontmatter, breadcrumb, body,
 and search filters per page, then routes by kind:
 

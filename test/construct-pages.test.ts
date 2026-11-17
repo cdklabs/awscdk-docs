@@ -664,11 +664,11 @@ describe('construct page generation', () => {
     expect(page).toContain('<code class="member-name">cluster</code>');
   });
 
-  test('type tables link construct names to their pages with level kinds', () => {
+  test('type lists link construct names to their pages with level kinds', () => {
     const s3Page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
-    expect(s3Page).toContain('[`Bucket`](/v2/docs/aws-cdk-lib.aws_s3.Bucket) | Construct (L2) |');
-    expect(s3Page).toContain('[`CfnBucket`](/v2/docs/aws-cdk-lib.aws_s3.CfnBucket) | Construct (L1) |');
+    expect(s3Page).toContain('[<code>Bucket</code>](/v2/docs/aws-cdk-lib.aws_s3.Bucket) <span class="type-kind">Construct (L2)</span>');
+    expect(s3Page).toContain('(/v2/docs/aws-cdk-lib.aws_s3.CfnBucket) <span class="type-kind">Construct (L1)</span>');
     // Non-constructs are linked to their own symbol pages
-    expect(s3Page).toContain('[`BucketProps`](/v2/docs/aws-cdk-lib.aws_s3.BucketProps) | Struct |');
+    expect(s3Page).toContain('(/v2/docs/aws-cdk-lib.aws_s3.BucketProps) <span class="type-kind">Struct</span>');
   });
 });

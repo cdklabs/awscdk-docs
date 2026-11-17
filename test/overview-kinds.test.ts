@@ -53,7 +53,7 @@ describe('per-module overview kinds end to end', () => {
     expect(page.indexOf('## What are constructs?')).toBeLessThan(page.indexOf('## Types'));
     expect(page).toContain('> Version ');
     expect(page.indexOf('> Version ')).toBeLessThan(page.indexOf('## What are constructs?'));
-    expect(page).toContain('| Name | Kind | Summary |');
+    expect(page).toContain('<div class="type-list">');
   });
 
   test('the separate-install alert stays above the README body', () => {
@@ -101,7 +101,7 @@ describe('per-module overview kinds end to end', () => {
     expect(page).not.toContain('## What are constructs?');
     expect(page).not.toContain('<div v-pre>');
     // The page is NOT removed and still carries the type table.
-    expect(page).toContain('| Name | Kind | Summary |');
+    expect(page).toContain('<div class="type-list">');
   });
 
   test('kind "generated" reproduces the artificial index page', () => {
@@ -127,11 +127,11 @@ describe('per-module overview kinds end to end', () => {
     expect(page).toContain('## What are constructs?');
     // …but the alpha package's own sections and types, not constructs'.
     expect(page).toContain('::: warning Separate package');
-    expect(page).toContain('`PythonFunction`');
-    expect(page).not.toContain('`Construct`');
+    expect(page.replace(/<wbr>/g, '')).toContain('<code>PythonFunction</code>');
+    expect(page).not.toContain('<code>Construct</code>');
     // The source module's own page is untouched.
     const source = readFileSync(join(out, 'docs', 'constructs-readme.md'), 'utf-8');
-    expect(source).toContain('`Construct`');
+    expect(source).toContain('<code>Construct</code>');
   });
 
   test('an unresolvable overviews key fails the generate step, naming the key', () => {

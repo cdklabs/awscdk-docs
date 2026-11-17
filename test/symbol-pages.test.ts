@@ -200,10 +200,10 @@ describe('symbol page generation', () => {
     expect(mixin).toContain('text="Mixin" />');
   });
 
-  test('every type in a submodule table is linked to a dedicated page', () => {
+  test('every type in a submodule list is linked to a dedicated page', () => {
     const table = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
-    expect(table).toContain('[`BucketProps`](/v2/docs/aws-cdk-lib.aws_s3.BucketProps) | Struct |');
-    expect(table).toContain('[`BucketEncryption`](/v2/docs/aws-cdk-lib.aws_s3.BucketEncryption) | Enum |');
+    expect(table).toContain('(/v2/docs/aws-cdk-lib.aws_s3.BucketProps) <span class="type-kind">Struct</span>');
+    expect(table).toContain('(/v2/docs/aws-cdk-lib.aws_s3.BucketEncryption) <span class="type-kind">Enum</span>');
     expect(existsSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'))).toBe(true);
   });
 
