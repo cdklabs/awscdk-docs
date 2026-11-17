@@ -152,7 +152,9 @@ macOS a browser that binds Cmd+K itself (Firefox's web search bar) could act on
 the key too. A capture-phase `window` listener prevents the default for Cmd+K
 and Ctrl+K, and leaves the key alone when Alt or Shift is also held. It runs
 before the plugin's own window listener, which ignores `defaultPrevented` and
-still opens the dialog.
+still opens the dialog. The theme only declines to prevent the Alt and Shift
+chords; the plugin still opens search on them, and still prevents the default
+for Ctrl+Alt+K, because its own check ignores Alt.
 
 WCAG 2.1.4 (Character Key Shortcuts) accepts a single-character shortcut when it
 can be turned off, remapped, or is active only while a control has focus. This

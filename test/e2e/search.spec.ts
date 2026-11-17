@@ -314,8 +314,15 @@ test.describe('pagefind search', () => {
       test(`${chord} keeps its default`, async ({ page }) => {
         await page.goto('/');
         await recordK(page);
+        // Positive control: the guard is installed and records Meta+K as prevented, so the false below is the
+        // guard's decision, not a missing listener.
+        await page.keyboard.press('Meta+k');
+        await expect(page.locator(`#${SEARCH_INPUT_ID}`)).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.locator(SEARCH_DIALOG_SELECTOR)).toHaveCount(0);
+
         await page.keyboard.press(chord);
-        expect(await ks(page)).toEqual([false]);
+        expect(await ks(page)).toEqual([true, false]);
       });
     }
   });
