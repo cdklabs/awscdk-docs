@@ -257,7 +257,8 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 18px;
+  /* 24px: the hint button and the locate control fit inside the row, so nothing overhangs the header. */
+  min-height: 24px;
   margin: 2px 0 0;
 }
 
@@ -266,8 +267,6 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   gap: 4px;
   min-width: 0;
-  /* The 24px button overhangs the 18px row by 3px each side, so the header keeps its height. */
-  margin-block: -3px;
   padding: 0 9px;
   overflow: hidden;
   color: var(--vp-c-text-3);

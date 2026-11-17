@@ -437,25 +437,31 @@ test.describe('in-sidebar symbol filter', () => {
     await expect(input).toBeFocused();
   });
 
-  test('focus stays in the page, on the input, while the activated hint button unmounts', async ({ page }) => {
+  test('focus moves to the input before the activated hint button unmounts', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await waitForSidebar(page);
 
-    // Hold the page chunk back so the navigation is still pending when focus is read. If the pattern matches nothing
-    // the delay is simply absent and the final focus check below still runs.
-    await page.route('**/assets/**Queue*.js', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      await route.continue();
-    });
-
     const input = filterInput(page);
     await input.fill('Queue');
-    const button = page.locator('.nav-filter-hint').getByRole('button');
-    await expect(button).toBeVisible();
-    await button.focus();
-    await page.keyboard.press('Space');
+    await expect(page.locator('.nav-filter-hint').getByRole('button')).toBeVisible();
 
-    await expect(input).toBeFocused();
+    // One read, no retry: activate the button, wait one macrotask so the filter has cleared and the button has
+    // unmounted, then record where focus is. The page chunk fetch takes longer than one macrotask, so the
+    // navigation is still pending and the refocus after it cannot hide a focus drop to <body>.
+    const seen = await page.evaluate(async () => {
+      const button = document.querySelector<HTMLButtonElement>('.nav-filter-hint button')!;
+      const before = location.pathname;
+      button.focus();
+      button.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return {
+        unmounted: !document.contains(button),
+        stillOnPage: location.pathname === before,
+        onInput: document.activeElement?.matches('.nav-filter-input') ?? false,
+      };
+    });
+    expect(seen).toEqual({ unmounted: true, stillOnPage: true, onInput: true });
+
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
     await expect(input).toBeFocused();
   });

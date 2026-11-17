@@ -31,10 +31,10 @@ const show = computed(() => activePath.value.startsWith(API_ROOT.replace(/^\//, 
   display: flex;
   align-items: center;
   gap: 6px;
-  /* 24px of hit area (WCAG 2.5.8) from a row the sidebar header reserves at
-     18px: the padding grows the button's box, the negative block margin gives
-     the 6px back to the flow, so the header keeps one height whether this
-     control renders or not. */
+  /* 24px of hit area (WCAG 2.5.8) inside a row the sidebar header reserves at
+     24px: the padding grows the button's box and the negative block margin
+     keeps its flow height at 18px, so the header keeps one height whether
+     this control renders or not. */
   min-height: 24px;
   margin: -3px 0;
   padding: 3px 4px;

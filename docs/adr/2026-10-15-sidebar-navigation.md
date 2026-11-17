@@ -348,8 +348,9 @@ reveal uses the shared duration-pinned scroll animation
 with distance (a long jump measured ~1,506ms against a ~300ms budget).
 Rendering is gated on `activePath.startsWith("api/")`, excluding the `/api/`
 overview root (which has no entry to reveal). The control carries a 24px box
-inside the 18px row via 3px padding offset by a `-3px` block margin
-(footprint stays 18px), meeting WCAG 2.5.8's 24px minimum; the 44px floor
+via 3px padding offset by a `-3px` block margin, inside a status row
+reserved at 24px so that neither it nor the filter hint button overhangs the
+header, meeting WCAG 2.5.8's 24px minimum; the 44px floor
 `test/responsive.test.ts` sets for drawer/nav controls cannot be honored
 here without reinstating the route-dependent height difference, and the
 control is outside that test's enumerated selectors.

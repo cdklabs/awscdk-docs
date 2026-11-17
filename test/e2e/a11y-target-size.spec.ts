@@ -52,8 +52,16 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
     await page.getByRole('textbox', { name: 'Filter navigation in the sidebar' }).fill('Queue');
     await expect(page.locator('.nav-filter-hint').getByRole('button')).toBeVisible();
 
-    // Scoped to the hint: with a query active the tree pins group headings under the header, and a pinned link can sit
-    // mostly behind it. That is not this control, and the page scans above cover the unfiltered state.
+    // The hint must not hang below the pinned header, or it would cover the tree targets under it.
+    const overhang = await page.evaluate(() => {
+      const header = document.querySelector('.VPSidebar .sidebar-header')!.getBoundingClientRect();
+      const hint = document.querySelector('.nav-filter-hint button')!.getBoundingClientRect();
+      return hint.bottom - header.bottom;
+    });
+    expect(overhang).toBeLessThanOrEqual(0);
+
+    // Scoped to the hint. With a query active the tree pins group headings under the header, and a tree link scrolled
+    // under them is reported as obscured. The check above shows the hint does not cause that.
     const results = await new AxeBuilder({ page })
       .include('.nav-filter-hint')
       .options({ rules: { 'target-size': { enabled: true } } })
