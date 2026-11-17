@@ -948,7 +948,7 @@ describe('buildServiceSidebar', () => {
       const sections = sidebar.flatMap((top) => top.items ?? []).map((s) => s.text);
       expect(sections).toEqual(['EC2']);
       const ec2Section = sidebar.flatMap((top) => top.items ?? [])[0];
-      const overviews = ec2Section.items!.filter((i) => i.text.startsWith('Overview'));
+      const overviews = ec2Section.items!.filter((i) => /^\/api\/modules\/|-readme$/.test(i.link ?? ''));
       expect(overviews.map((i) => i.link)).toEqual(['/api/modules/aws-cdk-lib/aws-ec2']);
     });
 
@@ -2063,8 +2063,8 @@ describe('packages whose submodule overviews are all omitted', () => {
 
   test('a service section lists only its own Overview, not the package root', () => {
     const dlm = section(fixture(), SERVICES_SECTION, 'DLM')!;
-    const overviews = dlm.items!.filter((i) => i.text.startsWith('Overview'));
-    expect(overviews).toEqual([{ text: 'Overview', link: moduleReadmeLink('aws-cdk-lib', 'aws_dlm') }]);
+    const readmes = dlm.items!.filter((i) => i.link?.endsWith('-readme'));
+    expect(readmes).toEqual([{ text: 'Overview', link: moduleReadmeLink('aws-cdk-lib', 'aws_dlm') }]);
   });
 
   test('the service keeps its mixin types where they were', () => {
