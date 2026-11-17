@@ -139,8 +139,7 @@ describe('badges in generated pages', () => {
     const constructPage = readFileSync(join(outDir, 'docs', 'constructs.Construct.md'), 'utf-8');
     expect(constructPage).not.toMatch(/<Badge type="info" text="constructs v/);
     expect(constructPage).not.toContain('Added in v');
-    expect(constructPage).toContain('<dt class="type-metadata-label">Type last changed</dt>'
-      + '<dd class="type-metadata-value"><span class="type-metadata-changed" data-pagefind-ignore>v10.0.0 · 1 Jan 2020</span></dd>');
+    expect(constructPage).toContain('<th class="type-metadata-label" scope="row">Type last changed</th><td class="type-metadata-value"><span class="type-metadata-changed" data-pagefind-ignore>v10.0.0 · 1 Jan 2020</span></td>');
     expect(constructPage).toContain('cdkDocsIntroducedIn: "10.0.0"');
     expect(constructPage).toContain('cdkDocsLastChangedAt: "2020-01-01T00:00:00.000Z"');
 

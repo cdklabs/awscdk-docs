@@ -1113,8 +1113,8 @@ describe('docgen generation', () => {
   });
 
   test('type pages mark experimental types in the metadata block and stable ones not at all', () => {
-    const stabilityRow = '<dt class="type-metadata-label">Stability</dt><dd class="type-metadata-value">'
-      + '<a class="type-metadata-stability" data-pagefind-ignore href="/stability.html">Experimental</a></dd>';
+    const stabilityRow = '<th class="type-metadata-label" scope="row">Stability</th><td class="type-metadata-value">'
+      + '<a class="type-metadata-stability" data-pagefind-ignore href="/stability.html">Experimental</a></td>';
     // Every type of an alpha module inherits the module's level.
     const alphaType = readFileSync(
       join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha.PythonFunction.md'),

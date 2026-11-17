@@ -112,9 +112,14 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('```ts');
     expect(twin).not.toContain('```python');
     expect(twin).not.toContain('agentMarkdown');
-    for (const marker of ['<LanguageTabs', 'lang-variant', '<Badge', 'data-pagefind', '<nav', 'v-pre', '---\n']) {
+    for (const marker of [
+      '<LanguageTabs', 'lang-variant', '<Badge', 'data-pagefind', '<nav', '<table', '<td', 'v-pre', '---\n',
+    ]) {
       expect(twin).not.toContain(marker);
     }
+    // The metadata table is rewritten, not dropped: the page had one, and its rows survive as bullets.
+    expect(canonical).toContain('<table class="type-metadata"');
+    expect(twin).toMatch(/^- Source: /m);
     // Real content shrinks but survives: a documented member and its prose are still there.
     expect(twin).toContain('addDependency');
     expect(twin.length).toBeLessThan(canonical.length);

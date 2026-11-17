@@ -268,11 +268,11 @@ describe('symbol page generation', () => {
     // source chip is in the title row. Deleting any one of these renderer
     // lines has to fail something.
     const page = readFileSync(join(outDir, 'docs', file), 'utf-8');
-    const block = /<dl class="type-metadata"[^>]*>([\s\S]*?)<\/dl>/.exec(page);
+    const block = /<table class="type-metadata"[^>]*>([\s\S]*?)<\/table>/.exec(page);
     expect(block).not.toBeNull();
     // Exactly one row, and it is Source: a non-construct has no CloudFormation
     // resource and is not its own L1.
-    expect([...block![1].matchAll(/class="type-metadata-label">([^<]*)</g)].map((m) => m[1]))
+    expect([...block![1].matchAll(/class="type-metadata-label" scope="row">([^<]*)</g)].map((m) => m[1]))
       .toEqual(['Source']);
     expect(page).not.toContain('class="header-tag"');
   });
@@ -284,8 +284,8 @@ describe('symbol page generation', () => {
     // neither the chain nor the extends bar renders on it.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ILocalBundling.md'), 'utf-8');
     expect(page).not.toContain('<nav class="inheritance-chain"');
-    expect(page).toContain('<dl class="type-metadata"');
-    expect(page).toContain('<dt class="type-metadata-label">Source</dt>');
+    expect(page).toContain('<table class="type-metadata"');
+    expect(page).toContain('<th class="type-metadata-label" scope="row">Source</th>');
   });
 
   test('interface pages show linked parent interfaces in the hierarchy bar', () => {

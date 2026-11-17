@@ -303,6 +303,21 @@ describe('API kind badge palette', () => {
     return bodies.join('\n');
   };
 
+  // The body of the one rule whose selector list is exactly `selectors`, so a
+  // declaration cannot be alibied by a longer selector that merely contains it.
+  const exactRuleBody = (...selectors: string[]): string => {
+    const want = selectors.join(',');
+    const bodies: string[] = [];
+    const re = /([^{}]+)\{([^}]*)\}/g;
+    for (let m = re.exec(bare); m !== null; m = re.exec(bare)) {
+      if (m[1].split(',').map((s) => s.trim()).join(',') === want) {
+        bodies.push(m[2]);
+      }
+    }
+    expect(bodies).toHaveLength(1);
+    return bodies[0];
+  };
+
   // The palette declares its own `:root` / `.dark` pair, which is the
   // SECOND such pair in this stylesheet — slice from the palette block
   // rather than from the first `:root {` in the file.
@@ -521,15 +536,24 @@ describe('API kind badge palette', () => {
     expect(generated).not.toContain('text-decoration: underline');
   });
 
-  test('the metadata block layout is not keyed to the row count', () => {
-    // A fourth metadata row must need no CSS change, so no rule under the
-    // block may use a position proxy such as nth-child or a fixed row count.
-    const start = css.indexOf('.type-metadata {');
-    const end = css.indexOf('/* ---------- Member rows', start);
-    const section = css.slice(start, end);
-    expect(section).toContain('display: grid');
-    expect(section).toContain('grid-template-columns: max-content 1fr');
-    expect(section).not.toMatch(/nth-child|:first-child|:last-child/);
+  test('the metadata table uses the body typeface', () => {
+    const table = ruleBody('.type-metadata');
+    expect(table).toContain('font-family: var(--vp-font-family-base)');
+    expect(table).not.toContain('font-family: var(--vp-font-family-mono)');
+
+    const cells = exactRuleBody('.vp-doc .type-metadata-label', '.vp-doc .type-metadata-value');
+    expect(cells).toContain('font-size: inherit');
+    expect(cells).toContain('vertical-align: baseline');
+
+    const labels = ruleBody('.vp-doc .type-metadata-label');
+    expect(labels).toContain('font-weight: 500');
+
+    const rows = ruleBody('.vp-doc .type-metadata tr');
+    expect(rows).toContain('background-color: transparent');
+    expect(rows).toContain('border: 0');
+
+    const values = ruleBody('.vp-doc .type-metadata-value code');
+    expect(values).toContain('font-family: inherit');
   });
 
 });

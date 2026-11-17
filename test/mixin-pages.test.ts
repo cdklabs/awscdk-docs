@@ -281,9 +281,9 @@ describe('mixin page generation', () => {
     // `toContain`, which holds whether or not a source chip sits in the title
     // row, so deleting the renderer line has to fail something else.
     const page = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
-    const block = /<dl class="type-metadata"[^>]*>([\s\S]*?)<\/dl>/.exec(page);
+    const block = /<table class="type-metadata"[^>]*>([\s\S]*?)<\/table>/.exec(page);
     expect(block).not.toBeNull();
-    expect([...block![1].matchAll(/class="type-metadata-label">([^<]*)</g)].map((m) => m[1]))
+    expect([...block![1].matchAll(/class="type-metadata-label" scope="row">([^<]*)</g)].map((m) => m[1]))
       .toEqual(['Source']);
     expect(page).not.toContain('class="header-tag"');
   });
