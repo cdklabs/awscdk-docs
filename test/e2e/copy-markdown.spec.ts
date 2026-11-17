@@ -193,7 +193,7 @@ test.describe('Copy Markdown control', () => {
       await page.evaluate(() => {
         const root = document.querySelector('.copy-markdown')!;
         const active = document.activeElement!;
-        // The position is a bit field. Test the FOLLOWING bit (4) by arithmetic, as the lint rules ban bitwise operators.
+        // Test DOCUMENT_POSITION_FOLLOWING (4) by arithmetic; lint bans bitwise operators.
         const following = Math.floor(root.compareDocumentPosition(active) / Node.DOCUMENT_POSITION_FOLLOWING) % 2 === 1;
         return active !== document.body && !root.contains(active) && following;
       }),
