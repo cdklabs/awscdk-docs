@@ -226,7 +226,8 @@ floating listbox:
   typing; Escape clears. The hint is a `<button>` whose name is its visible
   text, so a click does what Enter does. At 960px and wider focus returns to
   the input after the jump. In the narrow drawer it is left where VitePress
-  puts it on route change, because the closed drawer stays in the tab order
+  puts it on route change (a jump to the current page keeps focus on the
+  input and the drawer open), because the closed drawer stays in the tab order
   (it is only transparent and translated off-screen). On non-`/api/` pages the
   sidebar does not render but Enter-to-jump still works, so the input is not
   dead weight.
