@@ -136,12 +136,13 @@ the merge. The hand-written homepage is the one exception: it declares
 transforms its finished Markdown into the root twin during the same overlay
 step, keeping the advertised file and its producer together. The compressed
 corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
-`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 29 MB with
-every enabled language (labeled copies and member sub-bullets), up from about
-12 MB at `f18f6ea` when the twin kept TypeScript only. The deployed
-`docs-site` zip (the same five-language `aws-cdk-lib` 2.277.0 build), which
-`package-site.sh` checks against its 900 MiB `MAX_ZIP_MB` gate, grows from 661
-MiB at `f36e864` to 684 MiB with every-language twins. The tree is overlaid
+`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 30 MB with
+every enabled language (29,612,069 B at `71e4847`, labeled copies, member
+sub-bullets and the legend), up from about 12 MB at `f18f6ea` when the twin
+kept TypeScript only. The deployed `docs-site` zip (the same five-language
+`aws-cdk-lib` 2.277.0 build), which `package-site.sh` checks against its 900
+MiB `MAX_ZIP_MB` gate, grows from 661 MiB at `f36e864` to 687 MiB at
+`b3dafd1`. The tree is overlaid
 once, with no per-shard cost.
 
 ### llms.txt index
