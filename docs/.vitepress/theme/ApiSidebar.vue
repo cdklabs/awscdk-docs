@@ -122,6 +122,7 @@ const scrollMemories = {
 };
 const scrollMemory = computed(() => scrollMemories[navStyle.value]);
 let scrollContainer: HTMLElement | null = null;
+let lastSidebarScroll = 0; // performance.now() of the last sidebar scroll
 let traversal = false; // set by popstate, consumed by the route watcher
 const recordScroll = createThrottledScrollSaver(
   (path, top) => scrollMemory.value.save(path, top),
@@ -150,6 +151,7 @@ const sticky = new StickyHeadings();
 // read here and handed over as values: reading either when the frame
 // runs would file it under the incoming route.
 function onSidebarScroll() {
+  lastSidebarScroll = performance.now();
   if (!scrollContainer || !isApi.value) return;
   recordScroll(activePath.value, scrollContainer.scrollTop);
 }
@@ -409,11 +411,53 @@ function ensureLoaded() {
     });
 }
 
-// Fetch a closed group's chunk when the reader shows intent to open it, so the
-// click renders at once.
+// Start fetching a closed group's chunk once its heading has stayed in view, with
+// the sidebar not scrolling, for PRELOAD_DELAY_MS, so a tap, click or Enter on any
+// heading the reader can see usually finds its items loaded. Headings that only
+// pass by during a scroll, the reader's or the load-time reveal, fetch nothing.
 function preload(key: string) {
   if (filtering.value || status.value !== "ready") return;
   for (const name of unloadedChunks(key, false)) loadChunk(name).catch(() => undefined);
+}
+
+const PRELOAD_DELAY_MS = 100;
+const headingKeys = new Map<Element, string>();
+const headingTimers = new Map<Element, ReturnType<typeof setTimeout>>();
+let headingObserver: IntersectionObserver | undefined;
+function clearHeadingTimer(el: Element) {
+  const timer = headingTimers.get(el);
+  if (timer !== undefined) clearTimeout(timer);
+  headingTimers.delete(el);
+}
+function armHeading(el: Element, delay: number) {
+  headingTimers.set(el, setTimeout(() => {
+    const still = performance.now() - lastSidebarScroll;
+    if (still < PRELOAD_DELAY_MS) {
+      armHeading(el, PRELOAD_DELAY_MS - still);
+      return;
+    }
+    headingTimers.delete(el);
+    const key = headingKeys.get(el);
+    if (key !== undefined) preload(key);
+  }, delay));
+}
+function onHeadingsSeen(entries: IntersectionObserverEntry[]) {
+  for (const entry of entries) {
+    const el = entry.target;
+    if (!entry.isIntersecting) clearHeadingTimer(el);
+    else if (!headingTimers.has(el)) armHeading(el, PRELOAD_DELAY_MS);
+  }
+}
+function watchHeading(el: Element, key: string) {
+  if (typeof IntersectionObserver === "undefined") return;
+  headingObserver ??= new IntersectionObserver(onHeadingsSeen);
+  headingKeys.set(el, key);
+  headingObserver.observe(el);
+}
+function unwatchHeading(el: Element) {
+  headingObserver?.unobserve(el);
+  headingKeys.delete(el);
+  clearHeadingTimer(el);
 }
 
 function toggle(key: string) {
@@ -463,7 +507,8 @@ provide("apiSidebar", {
   activePath,
   base,
   toggle,
-  preload,
+  watchHeading,
+  unwatchHeading,
   filtering,
   filterCollapsed,
   displayLang: activeLanguage,
@@ -485,6 +530,10 @@ onUnmounted(() => {
   window.removeEventListener("popstate", onPopState);
   sticky.detach();
   if (packageCooldown !== undefined) clearTimeout(packageCooldown);
+  headingObserver?.disconnect();
+  for (const timer of headingTimers.values()) clearTimeout(timer);
+  headingTimers.clear();
+  headingKeys.clear();
 });
 // Client-side navigation keeps this component mounted, so react to route
 // changes: load on first entry into /api/, and re-open the active branch.

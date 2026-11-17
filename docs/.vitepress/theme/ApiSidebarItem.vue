@@ -11,7 +11,9 @@ interface ApiSidebarContext {
   activePath: Ref<string>;
   base: Ref<string>;
   toggle: (key: string) => void;
-  preload: (key: string) => void;
+  /** Fetches a closed group's chunk once its heading has been in view for a moment. */
+  watchHeading: (el: Element, key: string) => void;
+  unwatchHeading: (el: Element) => void;
   /** True while the in-sidebar symbol filter is active. */
   filtering: Ref<boolean>;
   /** Groups folded during the current filter session; empty outside it. */
@@ -111,22 +113,21 @@ function onToggle() {
   });
 }
 
-// Hover or focus starts the group's chunk fetch only after resting on the heading for the delay. A pointer
-// sweep or fast Tab fetches nothing; each heading focus rests on for the delay loads.
-// Short enough to fire before a typical hover-then-click.
-const PRELOAD_DELAY_MS = 100;
-let preloadTimer: ReturnType<typeof setTimeout> | undefined;
-function cancelPreload() {
-  if (preloadTimer !== undefined) clearTimeout(preloadTimer);
-  preloadTimer = undefined;
-}
-function schedulePreload() {
-  cancelPreload();
-  preloadTimer = setTimeout(() => {
-    preloadTimer = undefined;
-    ctx.preload(key.value);
-  }, PRELOAD_DELAY_MS);
-}
+// A closed group whose items still sit in a chunk file hands its heading to the
+// root, which fetches the chunk once the heading has been in view for a moment.
+const headingEl = ref<HTMLElement | null>(null);
+const preloadable = computed(
+  () => isGroup.value && !open.value && !!(props.node.chunk || props.node.chunks?.length),
+);
+watch(
+  [headingEl, preloadable, key],
+  ([el, eligible, groupKey], previous) => {
+    const prevEl = previous?.[0];
+    if (prevEl && (prevEl !== el || !eligible)) ctx.unwatchHeading(prevEl);
+    if (el && eligible) ctx.watchHeading(el, groupKey);
+  },
+  { flush: "post", immediate: true },
+);
 
 // Eligible to pin under the header: a collapsible group that is not a kind
 // group. Only those `<li>`s are handed to the sticky tracker.
@@ -143,7 +144,7 @@ watch(
   { flush: "post" },
 );
 onBeforeUnmount(() => {
-  cancelPreload();
+  if (headingEl.value) ctx.unwatchHeading(headingEl.value);
   if (itemEl.value) ctx.sticky.unregister(itemEl.value);
 });
 </script>
@@ -170,13 +171,10 @@ onBeforeUnmount(() => {
   <li v-else ref="itemEl" class="api-sidebar-item" :style="{ '--api-sidebar-depth': depth }" :data-depth="depth" :data-kind-group="node.kindGroup ? '' : undefined" :data-active-parent="activeParent ? '' : undefined">
     <button
       v-if="isGroup"
+      ref="headingEl"
       type="button"
       class="api-sidebar-group"
       :aria-expanded="open"
-      @mouseenter="schedulePreload"
-      @mouseleave="cancelPreload"
-      @focus="schedulePreload"
-      @blur="cancelPreload"
       @click="onToggle"
     >
       <span class="api-sidebar-caret" :class="{ open }" aria-hidden="true">›</span>

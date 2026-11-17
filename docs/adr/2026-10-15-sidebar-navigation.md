@@ -189,8 +189,15 @@ VitePress sidebar shell:
   page (matched against `modules` stems on a whole-stem boundary — `<stem>.`
   or `<stem>-readme`, longest stem wins, so `aws_s3` cannot claim
   `aws_s3_deployment`); on section open; when a stored choice reopens its
-  section on load or on a style switch; and **every** chunk when the
-  in-sidebar symbol filter activates (it prunes the whole corpus). Fetches
+  section on load or on a style switch; once a closed section's heading
+  has stayed in view, with the sidebar not scrolling, for 100 ms; and
+  **every** chunk when the in-sidebar symbol filter activates (it prunes
+  the whole corpus). Loading the headings in view lets a tap, click or
+  Enter on any heading the reader can see usually find its items already
+  there, with no wait on the network while the caret turns. It costs one
+  chunk per closed heading that rests in view, about a screenful of
+  sections on each load and after each scroll that stops; headings that
+  only pass by during a scroll fetch nothing. Fetches
   go through one memoized retry-on-failure loader; a failed chunk leaves the
   skeleton usable. Internal links are native `<a>`, so the VitePress router
   preserves SPA navigation; active-state and auto-expansion derive from

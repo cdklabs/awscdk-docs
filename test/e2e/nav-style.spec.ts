@@ -4,10 +4,10 @@ import { CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
 // Selectable navigation style (docs/adr/2026-10-23-sidebar-navigation-styles.md):
 // the Settings menu offers By service (the default) and By package; the choice
 // is stored under `cdk-docs-nav-style`; the sidebar regroups the data it
-// already holds, fetches only the chunks of groups the new style has open,
-// reveals the active page in the new tree, and keeps collapse and scroll memory
-// apart per style. A reader with nothing stored open sees the service tree and
-// makes no extra request.
+// already holds, fetches only the chunks of groups the new style has open or
+// shows closed in view, reveals the active page in the new tree, and keeps
+// collapse and scroll memory apart per style. A reader who never opens the
+// picker sees the service tree.
 test.describe('navigation style', () => {
   // The Settings dropdown and the sidebar are desktop surfaces.
   test.use({ viewport: { width: 1440, height: 900 } });
@@ -69,7 +69,7 @@ test.describe('navigation style', () => {
     await expect(page.locator('.api-sidebar-nav > .api-sidebar-list > li > p.api-sidebar-section-title')).toHaveText(['Framework', 'Services']);
   });
 
-  test('switching to By package regroups at once, with no new request, and reveals the active page', async ({ page }) => {
+  test('switching to By package regroups at once, refetches nothing, and reveals the active page', async ({ page }) => {
     const requests = trackSidebarRequests(page);
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
@@ -82,7 +82,7 @@ test.describe('navigation style', () => {
     await expect(group.getByRole('button', { name: 'By package' })).toHaveAttribute('aria-pressed', 'true');
     expect(await page.evaluate((key) => window.localStorage.getItem(key), NAV_KEY)).toBe('package');
 
-    // No skeleton, no loading state, no fetch: the same data regrouped.
+    // No skeleton, no loading state, nothing fetched twice: the same data regrouped.
     await expect(page.locator('.api-sidebar-status')).toHaveCount(0);
     await expect(topButton(page, 'API Reference')).toHaveAttribute('aria-expanded', 'true');
     await expect(topGroup(page, 'API Reference').locator('a.api-sidebar-link')).toHaveText(['Overview']);
@@ -92,12 +92,14 @@ test.describe('navigation style', () => {
     await expect(active).toHaveCount(1);
     await expect(active).toHaveAttribute('href', /aws-cdk-lib\.aws_sqs\.Queue/);
     await expect(active).toBeInViewport();
-    expect(requests).toEqual(before);
+    // The only new requests are chunks of package headings now in view, each fetched once.
+    expect(requests.slice(before.length).every((name) => name.startsWith('chunks/'))).toBe(true);
+    expect(new Set(requests).size).toBe(requests.length);
     // Same page, same URL.
     expect(page.url()).toContain('aws-cdk-lib.aws_sqs.Queue');
   });
 
-  test('a stored package choice applies on load, and opening a package fetches only its chunk', async ({ page }) => {
+  test('a stored package choice applies on load, and opening a package fetches its chunk once', async ({ page }) => {
     await page.addInitScript((key) => {
       window.localStorage.setItem(key, 'package');
     }, NAV_KEY);
@@ -106,8 +108,7 @@ test.describe('navigation style', () => {
     await waitForSidebar(page);
     await expect(topButton(page, 'API Reference')).toHaveAttribute('aria-expanded', 'true');
     await expect(topButton(page, 'aws-cdk-lib.aws_sqs')).toHaveAttribute('aria-expanded', 'true');
-    // The same two assets a service-style load makes: the skeleton and the active page's chunk.
-    expect(requests.filter((name) => name.startsWith('chunks/'))).toHaveLength(1);
+    // The active page's chunk comes first, as in a service-style load.
     expect(requests.filter((name) => name.startsWith('chunks/'))[0]).toMatch(/^chunks\/sqs\./);
 
     // Let the load-time reveal finish scrolling the sidebar before clicking a
@@ -118,27 +119,25 @@ test.describe('navigation style', () => {
     await expect(page.getByRole('button', { name: 'aws-cdk-lib.aws_sns', exact: true })).toHaveAttribute('aria-expanded', 'true');
     await expect(sns.locator('.api-sidebar-section-title').first()).toHaveText('Constructs');
     await expect(sns.locator('a.api-sidebar-link', { hasText: 'Topic' }).first()).toBeVisible();
-    const chunks = requests.filter((name) => name.startsWith('chunks/'));
-    expect(chunks).toHaveLength(2);
-    expect(chunks[1]).toMatch(/^chunks\/sns\./);
+    expect(requests.filter((name) => /^chunks\/sns\./.test(name))).toHaveLength(1);
   });
 
-  test('in the package style, resting on a closed package fetches its chunk before the click', async ({ page }) => {
+  test('in the package style, a closed package heading in view loads before the click', async ({ page }) => {
     await page.addInitScript((key) => {
       window.localStorage.setItem(key, 'package');
     }, NAV_KEY);
     const requests = trackSidebarRequests(page);
+    const loaded = page.waitForResponse((response) => /\/api-sidebar\/chunks\/sns\./.test(response.url()));
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
     const button = page.getByRole('button', { name: 'aws-cdk-lib.aws_sns', exact: true });
+    await expect(button).toBeInViewport();
     await expect(button).toHaveAttribute('aria-expanded', 'false');
 
-    const loaded = page.waitForResponse((response) => /\/api-sidebar\/chunks\/sns\./.test(response.url()));
-    await button.hover();
+    // Nothing touches the heading: being in view is enough.
     const snsChunks = () => requests.filter((name) => /^chunks\/sns\./.test(name));
     await expect.poll(snsChunks).toHaveLength(1);
-    await expect(button).toHaveAttribute('aria-expanded', 'false');
     await loaded;
 
     // A click that still needed the chunk would get no items.
