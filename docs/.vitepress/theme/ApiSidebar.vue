@@ -152,6 +152,7 @@ const sticky = new StickyHeadings();
 // runs would file it under the incoming route.
 function onSidebarScroll() {
   lastSidebarScroll = performance.now();
+  rearmCoveredHeadings();
   if (!scrollContainer || !isApi.value) return;
   recordScroll(activePath.value, scrollContainer.scrollTop);
 }
@@ -285,15 +286,20 @@ function syncActive() {
 // Generated page links live under `<API root>docs/`.
 const DOCS_PREFIX = `${API_SECTION}/docs/`;
 
-function loadChunk(name: string): Promise<void> {
+function loadChunk(name: string, preloading = false): Promise<void> {
   if (chunkItems.has(name)) return Promise.resolve();
   return loadApiSidebar(withBase(chunkAsset(name)), `chunk:${name}`).then((items) => {
-    if (chunkItems.has(name)) return;
-    chunkItems.set(name, items);
-    // Both styles read from here: the service tree takes the items in
-    // place, and the package tree is regrouped from the loaded chunks.
-    serviceTree.value = withChunk(serviceTree.value, name, items);
-    schedulePackageRebuild();
+    if (!chunkItems.has(name)) {
+      chunkItems.set(name, items);
+      // Both styles read from here: the service tree takes the items in
+      // place, and the package tree is regrouped from the loaded chunks.
+      serviceTree.value = withChunk(serviceTree.value, name, items);
+    }
+    // A preload lands in closed groups the reader cannot see into, so the package tree is only
+    // marked stale; opening a package rebuilds it. Any other load, including an open that joined
+    // a preload in flight, regroups at once.
+    if (preloading) packageStale = true;
+    else schedulePackageRebuild();
   });
 }
 
@@ -311,7 +317,7 @@ function loadAllChunks() {
   }
 }
 
-// The chunk files an open package entry needs but does not have yet. A
+// The chunk files a package entry needs but does not have yet. A
 // package is a top-level entry, so its key is its text. `rebuild` refreshes a
 // stale package tree first; a preload skips it, since that would bypass the throttle.
 function unloadedPackageChunks(key: string, rebuild = true): string[] {
@@ -337,9 +343,9 @@ function loadOpenPackageChunks() {
 }
 
 // Load what the open groups of the service style need. A group the reader
-// opened before a reload comes back open from the stored choices, but only the
-// active page's chunk is fetched on load, so without this its child list
-// would render empty under an open caret.
+// opened before a reload comes back open from the stored choices, and only
+// closed headings are preloaded, so without this its child list would render
+// empty under an open caret.
 function loadOpenServiceChunks() {
   for (const key of expandedByStyle.value.service) {
     const chunk = unloadedChunkForKey(serviceTree.value, key);
@@ -417,36 +423,50 @@ function ensureLoaded() {
 // pass by during a scroll, the reader's or the load-time reveal, fetch nothing.
 function preload(key: string) {
   if (filtering.value || status.value !== "ready") return;
-  for (const name of unloadedChunks(key, false)) loadChunk(name).catch(() => undefined);
+  for (const name of unloadedChunks(key, false)) loadChunk(name, true).catch(() => undefined);
+}
+// Whether a heading's group still misses a chunk. Before the sidebar is ready nothing is known, so it counts.
+function needsChunks(key: string): boolean {
+  return status.value !== "ready" || filtering.value || unloadedChunks(key, false).length > 0;
 }
 
 const PRELOAD_DELAY_MS = 100;
 const headingKeys = new Map<Element, string>();
 const headingTimers = new Map<Element, ReturnType<typeof setTimeout>>();
+// Headings in the scroller but under its sticky header: only a scroll or a header resize can uncover them.
+const coveredHeadings = new Set<Element>();
 let headingObserver: IntersectionObserver | undefined;
+let headerObserver: ResizeObserver | undefined;
 function clearHeadingTimer(el: Element) {
   const timer = headingTimers.get(el);
   if (timer !== undefined) clearTimeout(timer);
   headingTimers.delete(el);
+  coveredHeadings.delete(el);
 }
 function armHeading(el: Element, delay: number) {
+  coveredHeadings.delete(el);
   headingTimers.set(el, setTimeout(() => {
     const still = performance.now() - lastSidebarScroll;
     if (still < PRELOAD_DELAY_MS) {
       armHeading(el, PRELOAD_DELAY_MS - still);
       return;
     }
+    headingTimers.delete(el);
     // The observer reports a scroll one frame late and cannot see the sticky header painted over the
-    // scroller, so check the heading is visible now. A heading under the header is checked again
-    // later; one that has left the scroller is dropped when the observer reports it.
+    // scroller, so check the heading is visible now. One that has left the scroller is dropped when
+    // the observer reports it; one under the header waits for a scroll or a header resize.
     if (!headingInView(el)) {
-      armHeading(el, PRELOAD_DELAY_MS);
+      coveredHeadings.add(el);
       return;
     }
-    headingTimers.delete(el);
     const key = headingKeys.get(el);
     if (key !== undefined) preload(key);
+    // Nothing is left to fetch for it; a group closed again registers anew.
+    unwatchHeading(el);
   }, delay));
+}
+function rearmCoveredHeadings() {
+  for (const el of [...coveredHeadings]) armHeading(el, PRELOAD_DELAY_MS);
 }
 function headingInView(el: Element): boolean {
   const box = el.getBoundingClientRect();
@@ -465,8 +485,13 @@ function onHeadingsSeen(entries: IntersectionObserverEntry[]) {
   }
 }
 function watchHeading(el: Element, key: string) {
-  if (typeof IntersectionObserver === "undefined") return;
+  if (typeof IntersectionObserver === "undefined" || !needsChunks(key)) return;
   headingObserver ??= new IntersectionObserver(onHeadingsSeen);
+  const header = el.closest(".VPSidebar")?.querySelector(".sidebar-header");
+  if (!headerObserver && header && typeof ResizeObserver !== "undefined") {
+    headerObserver = new ResizeObserver(rearmCoveredHeadings);
+    headerObserver.observe(header);
+  }
   headingKeys.set(el, key);
   headingObserver.observe(el);
 }
@@ -547,6 +572,8 @@ onUnmounted(() => {
   sticky.detach();
   if (packageCooldown !== undefined) clearTimeout(packageCooldown);
   headingObserver?.disconnect();
+  headerObserver?.disconnect();
+  coveredHeadings.clear();
   for (const timer of headingTimers.values()) clearTimeout(timer);
   headingTimers.clear();
   headingKeys.clear();

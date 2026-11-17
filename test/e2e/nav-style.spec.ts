@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { apiSidebarAssetPath, chunkBase, CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
+import { closedHeadings, scrollSettled } from './sidebar-view.js';
 import { buildPackageSidebar, decodePackageModules } from '../../docs/.vitepress/theme/api-sidebar-package.js';
 import type { ApiSidebarNode } from '../../docs/.vitepress/theme/api-sidebar.js';
 import { API_ROOT } from '../../src/site-routes.js';
@@ -41,43 +42,23 @@ test.describe('navigation style', () => {
 
   /** Resolves once the sidebar has stopped scrolling and any in-view preloads have had time to start. */
   async function settled(page: Page) {
-    const top = () => page.evaluate(() => document.querySelector('.VPSidebar')?.scrollTop ?? 0);
-    let last = -1;
-    await expect.poll(async () => {
-      const now = await top();
-      const still = now === last;
-      last = now;
-      return still;
-    }, { intervals: [150] }).toBe(true);
+    await scrollSettled(page);
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)));
   }
 
   /**
-   * Chunks named by the closed package headings in view and by those out of view, from the same
-   * package tree the sidebar builds. A chunk named by both counts as in view.
+   * Chunks named by the closed package headings the reader can see (even partly) and by those fully
+   * hidden, from the same package tree the sidebar builds. A chunk named by both counts as in view.
    */
   async function packageChunksByView(page: Page): Promise<{ inView: Set<string>; outOfView: Set<string> }> {
     const skeleton: ApiSidebarNode[] = await (await page.request.get(apiSidebarAssetPath('sidebar'))).json();
     const modules = decodePackageModules(skeleton[0].packageModules!, skeleton, API_ROOT);
     const tree = buildPackageSidebar(modules, skeleton, new Map(), API_ROOT);
     const chunksOf = new Map(tree.map((node) => [node.text, (node.chunks ?? []).map(chunkBase)]));
-    const seen = await page.evaluate(() => {
-      const scroller = document.querySelector('.VPSidebar')!;
-      const box = scroller.getBoundingClientRect();
-      const header = scroller.querySelector('.sidebar-header')?.getBoundingClientRect();
-      const top = Math.max(0, box.top, header?.bottom ?? 0);
-      const bottom = Math.min(window.innerHeight, box.bottom);
-      return Array.from(document.querySelectorAll<HTMLElement>('.api-sidebar-group[aria-expanded="false"]')).map((button) => {
-        const rect = button.getBoundingClientRect();
-        return {
-          text: button.querySelector('.api-sidebar-text')?.textContent ?? '',
-          inView: rect.bottom > top && rect.top < bottom && rect.height > 0,
-        };
-      });
-    });
-    const inView = new Set(seen.filter((h) => h.inView).flatMap((h) => chunksOf.get(h.text) ?? []));
+    const seen = await closedHeadings(page);
+    const inView = new Set(seen.filter((h) => h.view !== 'hidden').flatMap((h) => chunksOf.get(h.text) ?? []));
     const outOfView = new Set(
-      seen.filter((h) => !h.inView).flatMap((h) => chunksOf.get(h.text) ?? []).filter((name) => !inView.has(name)),
+      seen.filter((h) => h.view === 'hidden').flatMap((h) => chunksOf.get(h.text) ?? []).filter((name) => !inView.has(name)),
     );
     return { inView, outOfView };
   }

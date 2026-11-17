@@ -113,8 +113,8 @@ function onToggle() {
   });
 }
 
-// A closed group whose items still sit in a chunk file hands its heading to the
-// root, which fetches the chunk once the heading has been in view for a moment.
+// A closed group backed by a chunk file hands its heading to the root, which fetches
+// any chunk it still misses once the heading has been in view for a moment.
 const headingEl = ref<HTMLElement | null>(null);
 const preloadable = computed(
   () => isGroup.value && !open.value && !!(props.node.chunk || props.node.chunks?.length),

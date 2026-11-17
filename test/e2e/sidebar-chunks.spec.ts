@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { apiSidebarAssetPath, chunkBase, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
+import { closedHeadings, scrollSettled } from './sidebar-view.js';
 
 // Per-section sidebar chunks: the
 // sidebar fetches a small skeleton plus the chunk of the section holding the
@@ -18,44 +19,16 @@ test.describe('per-section sidebar chunks', () => {
 
   const chunks = (urls: string[]) => urls.filter((u) => u.includes('/api-sidebar/chunks/'));
 
-  /** Resolves once the sidebar has stopped scrolling, so the load-time reveal is done. */
-  async function scrollSettled(page: Page) {
-    const top = () => page.evaluate(() => document.querySelector('.VPSidebar')?.scrollTop ?? 0);
-    let last = -1;
-    await expect.poll(async () => {
-      const now = await top();
-      const still = now === last;
-      last = now;
-      return still;
-    }, { intervals: [150] }).toBe(true);
-  }
-
-  /** Chunk of each closed section heading, split by whether the heading is in the viewport now. */
+  /** Chunk of each closed section heading the reader can see, and of each one fully hidden. */
   async function sectionChunksByView(page: Page): Promise<{ inView: string[]; outOfView: string[] }> {
     const skeleton = await (await page.request.get(apiSidebarAssetPath('sidebar'))).json();
     const chunkOf = new Map<string, string>(
       skeleton.flatMap((root: { items: { text: string; chunk?: string }[] }) =>
         root.items.filter((s) => s.chunk).map((s) => [s.text, s.chunk!])),
     );
-    // The sidebar scroller clips its rows, so "in view" is inside its box, below its header, and in the window.
-    const seen = await page.evaluate(() => {
-      const scroller = document.querySelector('.VPSidebar')!;
-      const area = scroller.getBoundingClientRect();
-      // The sticky header paints over the top of the scroller.
-      const header = scroller.querySelector('.sidebar-header')?.getBoundingClientRect();
-      const top = Math.max(0, area.top, header?.bottom ?? 0);
-      const bottom = Math.min(window.innerHeight, area.bottom);
-      return Array.from(document.querySelectorAll<HTMLElement>('.api-sidebar-group[aria-expanded="false"]')).map((button) => {
-        const box = button.getBoundingClientRect();
-        return {
-          text: button.querySelector('.api-sidebar-text')?.textContent ?? '',
-          inView: box.bottom > top && box.top < bottom && box.height > 0,
-        };
-      });
-    });
-    const pick = (inView: boolean) =>
-      seen.filter((h) => h.inView === inView && chunkOf.has(h.text)).map((h) => chunkBase(chunkOf.get(h.text)!));
-    return { inView: pick(true), outOfView: pick(false) };
+    const headings = (await closedHeadings(page)).filter((h) => chunkOf.has(h.text));
+    const pick = (view: string) => headings.filter((h) => h.view === view).map((h) => chunkBase(chunkOf.get(h.text)!));
+    return { inView: pick('seen'), outOfView: pick('hidden') };
   }
 
   test('a cold load fetches the skeleton, the current page\'s chunk, and only sections in view', async ({ page }) => {
@@ -161,6 +134,63 @@ test.describe('per-section sidebar chunks', () => {
     const name = chunkBase(target.chunk);
     expect(chunkNamesOf(swept)).not.toContain(name);
     expect(chunkNamesOf(rested)).toContain(name);
+  });
+
+  test('a closed section under the sticky header fetches nothing until it comes out', async ({ page }) => {
+    await page.addInitScript(() => {
+      const started: string[] = [];
+      (window as unknown as { sidebarFetches: string[] }).sidebarFetches = started;
+      const original = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        started.push(String(input instanceof Request ? input.url : input));
+        return original(input, init);
+      };
+    });
+    await page.goto(TOPIC_PAGE);
+    await expect(page.locator('.api-sidebar-nav')).toBeVisible();
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
+    await scrollSettled(page);
+    const { outOfView } = await sectionChunksByView(page);
+    const skeleton = await (await page.request.get(apiSidebarAssetPath('sidebar'))).json();
+    const hiddenSections: { text: string; chunk: string }[] = skeleton
+      .flatMap((root: { items: { text: string; chunk?: string }[] }) => root.items)
+      .filter((s: { chunk?: string }) => s.chunk && outOfView.includes(chunkBase(s.chunk)));
+
+    const { text, covered, under, uncovered } = await page.evaluate(async (texts) => {
+      // The first hidden heading below the window, so the scroller can still move it under the header.
+      const button = Array.from(document.querySelectorAll<HTMLElement>('.api-sidebar-group .api-sidebar-text'))
+        .filter((label) => texts.includes(label.textContent ?? ''))
+        .map((label) => label.closest('button')!)
+        .find((b) => b.getBoundingClientRect().top > window.innerHeight)!;
+      const container = button.closest<HTMLElement>('.VPSidebar')!;
+      const header = container.querySelector<HTMLElement>('.sidebar-header')!;
+      const fetches = () => [...(window as unknown as { sidebarFetches: string[] }).sidebarFetches];
+      const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      const middle = (box: DOMRect) => box.top + box.height / 2;
+      // Park the heading's middle behind the header's middle.
+      const offset = middle(button.getBoundingClientRect()) - middle(header.getBoundingClientRect());
+      container.scrollTo({ top: container.scrollTop + offset, behavior: 'instant' });
+      await wait(400);
+      const box = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, middle(box));
+      const hidden = !!hit && !button.contains(hit);
+      const before = fetches();
+      // Bring it out below the header without any other change.
+      const headerBottom = header.getBoundingClientRect().bottom;
+      container.scrollTo({ top: container.scrollTop - (headerBottom - box.top) - 40, behavior: 'instant' });
+      await wait(400);
+      return {
+        text: button.querySelector('.api-sidebar-text')!.textContent!,
+        covered: hidden,
+        under: before,
+        uncovered: fetches(),
+      };
+    }, hiddenSections.map((s) => s.text));
+    const chunkNamesOf = (list: string[]) => list.filter((url) => url.includes('/api-sidebar/chunks/')).map(chunkBase);
+    const name = chunkBase(hiddenSections.find((s) => s.text === text)!.chunk);
+    expect(covered).toBe(true);
+    expect(chunkNamesOf(under)).not.toContain(name);
+    expect(chunkNamesOf(uncovered)).toContain(name);
   });
 
   test('opening a section whose early load failed fetches its chunk again and renders its items', async ({ page }) => {
