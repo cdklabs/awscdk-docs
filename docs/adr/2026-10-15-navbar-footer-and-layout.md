@@ -297,6 +297,55 @@ Ease-out cubic (not ease-in-out) so a navigation aid reads as immediate.
 Rejected: CSS `scroll-behavior: smooth` — same UA animator, and it would also
 capture anchor and search-result jumps that never asked for animation.
 
+### Wide-screen tier
+
+The default theme stops growing at its 1440px tier: `--vp-layout-max-width` is
+1440px, a page without a sidebar caps its doc container at 1104px and its
+content at 784px, and the column beside the outline (`.content-container`) caps
+at 688px on every page. Above 1440px nothing grows, so a 2560px monitor shows
+the docs in a narrow column with empty space on both sides.
+
+One more tier, `@media (min-width: 1920px)` in
+`docs/.vitepress/theme/wide-layout.css`, raises `--vp-layout-max-width` to
+1920px, the no-sidebar container cap to 1440px and the content column cap to
+992px; the no-sidebar `.content` cap becomes 1056px (992px plus its own 2 x 32px
+padding) so the column it holds can reach 992px. Inside the tier, running prose
+(the `p`, `ul`, `ol` and `blockquote` children of the page body) keeps a 784px
+maximum width, so line length stays at the 1440px tier's; tables, signatures,
+code blocks and docgen member rows use the full column. The breakpoint is the
+most common large-monitor width, and every width is one already in the code:
+1440px is the stock layout max, 992px the stock no-sidebar container at 960px,
+784px the stock no-sidebar content at 1440px. Not a full-width layout and not a
+settings option: one more breakpoint, decided on the issue.
+
+The sidebar keeps `--vp-sidebar-width` (320px) and the outline its 256px. Every
+rule that centers on the layout width — the stock `VPContent`, `VPSidebar`,
+`VPNavBar` and `VPLocalNav` 1440px tiers, the nav mirror above and the footer
+offset — reads `var(--vp-layout-max-width)`, so raising the variable **is**
+their 1920px tier. They are deliberately not duplicated into the new tier: the
+nav mirror is pinned to the stock tiers by `test/nav-controls.test.ts`, and a
+second copy of the footer math would be one more place to drift. The three width
+caps carry `!important` for the same reason the divider rules do: the stock
+declarations are component-scoped at (0,4,0).
+
+The same stylesheet centers `/versions`, the one hand-written page the issue
+named, in the lane right of the sidebar. The page has no sidebar, so the stock
+theme centered its container in the full viewport while the nav bar above it
+carries the sidebar-lane inset from the geometry section; the sheet mirrors
+`VPContent.has-sidebar`'s padding onto
+`.VPContent:not(.has-sidebar):has(.vp-doc._versions)` in both stock tiers. The
+hook is the page class VitePress derives from the route (`/versions.html` →
+`_versions`), pinned against the installed `VPDoc.vue` by
+`test/wide-layout.test.ts`. The other hand-written pages (`/skills`,
+`/stability`, `/aws-construct-library`) keep the stock full-viewport centering.
+
+`test/e2e/wide-layout.spec.ts` measures the result at 1280, 1440, 1920 and
+2560px: the column grows from 688px to 992px, prose stays at or under 784px,
+member-row remarks are uncapped, the content, nav and footer start on one lane,
+below 1920px every width is the stock one, and `/versions` is centered within
+2px of the sidebar pages' lane. `test/e2e/nav-controls.spec.ts` runs its
+page-independence check at 1920 and 2560px as well.
+
 ## Consequences
 
 - One consistent footer appears on home, versions, and every `/api/**` page;
@@ -327,3 +376,8 @@ capture anchor and search-result jumps that never asked for animation.
   declaration-by-declaration rather than hard-coding mirrored values, so an
   upstream geometry or height change fails at the test instead of letting the
   page types silently diverge.
+- Above 1920px the layout is 1920px wide and the content column 992px; a
+  VitePress bump that moves the 1440px tier or its three caps fails
+  `test/wide-layout.test.ts`, which reads them from the installed sources. Any
+  rule that ever hard-codes 1440px instead of reading `--vp-layout-max-width`
+  will drift at 1920px; the e2e lane assertions are the mitigation.

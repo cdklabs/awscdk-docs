@@ -1,0 +1,88 @@
+/**
+ * Wide-screen layout tier.
+ *
+ * The default theme stops growing at its 1440px tier: `--vp-layout-max-width`
+ * is 1440px, the doc container of a page without a sidebar caps at 1104px and
+ * the content column beside the outline (`.content-container`) caps at 688px.
+ * On a 2560px monitor most of the screen is empty. One more tier at 1920px,
+ * the most common large-monitor width, lets the content area grow while
+ * running prose keeps a readable line length and the left navigation keeps its
+ * width (`--vp-sidebar-width`, 320px) and the stock centering rules.
+ *
+ * The three widths come from values already in the code: 1440px (the stock
+ * layout max, now the no-sidebar container cap), 992px (the stock no-sidebar
+ * container width at 960px, now the content column cap) and 784px (the stock
+ * no-sidebar content width at 1440px, now the prose cap). The no-sidebar
+ * `.content` cap is derived: 992px plus its own 2 x 32px padding, so the
+ * column it holds can reach 992px.
+ *
+ * Every rule that centers on the layout width -- the stock `VPContent`,
+ * `VPSidebar`, `VPNavBar` and `VPLocalNav` 1440px tiers, the mirrored
+ * no-sidebar nav geometry in nav-controls.css and the footer offset in
+ * SiteFooter.vue -- reads `var(--vp-layout-max-width)`, so raising the
+ * variable here IS their 1920px tier. They are deliberately not duplicated:
+ * test/nav-controls.test.ts pins the nav mirror to the stock tiers, and a
+ * second copy of the footer math would be one more place to drift.
+ *
+ * `!important` on the three width caps: the stock declarations are
+ * component-scoped (`.VPDoc:not(.has-sidebar) .container[data-v-...]` at
+ * (0,4,0)), which an unscoped selector naming the same classes cannot reach,
+ * the same situation nav-controls.css documents.
+ *
+ * Below 1920px nothing in this file applies except the versions-page
+ * centering at the bottom, which changes position, not width.
+ */
+
+@media (min-width: 1920px) {
+  :root {
+    --vp-layout-max-width: 1920px;
+  }
+
+  /* Pages without a sidebar (/versions and the other hand-written pages). */
+  .VPDoc:not(.has-sidebar) .container {
+    max-width: 1440px !important;
+  }
+
+  .VPDoc:not(.has-sidebar) .content {
+    max-width: 1056px !important;
+  }
+
+  /* The column beside the outline, on every page that has one. */
+  .VPDoc.has-aside .content-container {
+    max-width: 992px !important;
+  }
+
+  /* Running prose keeps the 1440px tier's line length. Direct children of
+     the page body only (every page wraps its content in one
+     `[data-pagefind-body]` div): the summaries and remarks inside docgen
+     member rows, tables, signatures and code blocks use the full column. */
+  .vp-doc > :is(p, ul, ol, blockquote),
+  .vp-doc > [data-pagefind-body] > :is(p, ul, ol, blockquote) {
+    max-width: 784px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * /versions is centered in the area right of the sidebar lane
+ *
+ * The page has no sidebar, so the stock theme centers its doc container in
+ * the full viewport, while nav-controls.css gives the nav bar on every page
+ * the sidebar-lane inset. Mirror `VPContent.has-sidebar`'s offsets onto this
+ * one page so its content sits under the nav bar content, in both stock
+ * tiers. The hook is VitePress's own page class on `.vp-doc` (the route path
+ * with `[./]` runs replaced by `_` and `_html` dropped: `/versions.html` ->
+ * `_versions`); test/wide-layout.test.ts pins that derivation against the
+ * installed VPDoc.vue.
+ * ------------------------------------------------------------------ */
+@media (min-width: 960px) {
+  .VPContent:not(.has-sidebar):has(.vp-doc._versions) {
+    padding-left: var(--vp-sidebar-width);
+  }
+}
+
+@media (min-width: 1440px) {
+  .VPContent:not(.has-sidebar):has(.vp-doc._versions) {
+    padding-right: calc((100vw - var(--vp-layout-max-width)) / 2);
+    padding-left: calc((100vw - var(--vp-layout-max-width)) / 2 + var(--vp-sidebar-width));
+  }
+}
