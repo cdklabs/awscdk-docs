@@ -344,9 +344,9 @@ HTML VitePress renders.
   The previous reference also appended its experimental/deprecated badge markup
   to the title id; that tail is not reproduced.
 - **Sections:** fixed ids `example`, `initializer`, `properties`, `methods`,
-  `members`, `referenced-by` and `used-as-props-by`. Module overview sections are
-  `module-submodules` and `module-types`, because README prose above them can
-  carry its own `## Types` heading.
+  `members`, `referenced-by`, `used-as-props-by` and `obtainable-from`. Module
+  overview sections are `module-submodules` and `module-types`, because README
+  prose above them can carry its own `## Types` heading.
 - **Members:** `memberAnchor(name)` from the canonical TypeScript name; inlined
   construct props as `props-<shortname>-<prop>` (above).
 - **Enum members:** the lowercased member name on each Members row.
