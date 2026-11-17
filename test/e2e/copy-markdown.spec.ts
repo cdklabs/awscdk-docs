@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { SKILLS_PAGE, TOPIC_PAGE } from './fixture.js';
+import { expect, test, type Page } from '@playwright/test';
+import { SKILLS_PAGE, SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // The Copy Markdown split button at the top of the page: the main button copies the page's Markdown twin, the
 // options button opens a menu that links the file. Clipboard contents and focus movement are only observable in a
@@ -9,8 +9,15 @@ test.describe('Copy Markdown control', () => {
 
   const twin = TOPIC_PAGE.replace(/\.html$/, '.md');
 
+  // The control is server-rendered, so its buttons exist before Vue hydrates. A click that lands first hits no
+  // handler. `data-ready` is set in onMounted, so waiting for it removes the race on a slow runner.
+  const open = async (page: Page, path: string = TOPIC_PAGE) => {
+    await page.goto(path);
+    await page.locator('.copy-markdown[data-ready]').waitFor();
+  };
+
   test('copies the page Markdown and shows Copied for two seconds', async ({ page, request }) => {
-    await page.goto(TOPIC_PAGE);
+    await open(page);
     const expected = await (await request.get(twin)).text();
 
     const copy = page.locator('.copy-markdown-main');
@@ -28,7 +35,7 @@ test.describe('Copy Markdown control', () => {
 
   test('shows Copy failed when the file cannot be fetched and the menu stays usable', async ({ page }) => {
     await page.route(`**${twin}`, (route) => route.fulfill({ status: 404, body: 'missing' }));
-    await page.goto(TOPIC_PAGE);
+    await open(page);
 
     const copy = page.locator('.copy-markdown-main');
     await copy.click();
@@ -40,7 +47,7 @@ test.describe('Copy Markdown control', () => {
   });
 
   test('the options menu follows the keyboard contract', async ({ page }) => {
-    await page.goto(TOPIC_PAGE);
+    await open(page);
     const options = page.getByRole('button', { name: 'More Markdown options' });
     const item = page.getByRole('menuitem', { name: 'View as Markdown' });
 
@@ -67,8 +74,53 @@ test.describe('Copy Markdown control', () => {
     await expect(item).toBeFocused();
   });
 
+  test('Tab and Shift+Tab leave the open menu closed and move focus on', async ({ page }) => {
+    await open(page);
+    const options = page.getByRole('button', { name: 'More Markdown options' });
+    const item = page.getByRole('menuitem', { name: 'View as Markdown' });
+
+    await options.focus();
+    await page.keyboard.press('Enter');
+    await expect(item).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(item).toBeHidden();
+    await expect(options).toHaveAttribute('aria-expanded', 'false');
+    expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+
+    await options.focus();
+    await page.keyboard.press('Enter');
+    await expect(item).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(item).toBeHidden();
+    await expect(options).toHaveAttribute('aria-expanded', 'false');
+    expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+  });
+
+  test('client-side navigation resets the menu and the result', async ({ page }) => {
+    await open(page);
+    const copy = page.locator('.copy-markdown-main');
+    await copy.click();
+    await expect(copy).toHaveText('Copied');
+    await page.getByRole('button', { name: 'More Markdown options' }).click();
+    await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeVisible();
+
+    // Follow an in-site link through the router (no full page load), well inside the 2 s result window.
+    await page.evaluate((href) => {
+      const link = document.createElement('a');
+      link.href = href;
+      document.querySelector('.VPContent')!.appendChild(link);
+      link.click();
+    }, SQS_OVERVIEW_PAGE);
+    await expect(page).toHaveURL(new RegExp(`${SQS_OVERVIEW_PAGE}$`));
+
+    await expect(copy).toHaveText('Copy Markdown', { timeout: 1_000 });
+    await expect(page.locator('.copy-markdown [role="status"]')).toHaveText('');
+    await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'More Markdown options' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
   test('a click outside closes the menu', async ({ page }) => {
-    await page.goto(TOPIC_PAGE);
+    await open(page);
     await page.getByRole('button', { name: 'More Markdown options' }).click();
     const item = page.getByRole('menuitem', { name: 'View as Markdown' });
     await expect(item).toBeVisible();
@@ -79,7 +131,7 @@ test.describe('Copy Markdown control', () => {
   });
 
   test('the menu item opens the Markdown file in a new tab instead of downloading it', async ({ page }) => {
-    await page.goto(TOPIC_PAGE);
+    await open(page);
     await page.getByRole('button', { name: 'More Markdown options' }).click();
     const item = page.getByRole('menuitem', { name: 'View as Markdown' });
     await expect(item).toHaveAttribute('href', twin);
@@ -97,7 +149,7 @@ test.describe('Copy Markdown control', () => {
   });
 
   test('activating View as Markdown with the keyboard returns focus to the options button', async ({ page }) => {
-    await page.goto(TOPIC_PAGE);
+    await open(page);
     const options = page.getByRole('button', { name: 'More Markdown options' });
     const popup = page.waitForEvent('popup');
     await options.focus();

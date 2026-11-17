@@ -1,4 +1,4 @@
-<!-- "Copy Markdown" split button rendered from the doc-before slot, at the top of the page above the breadcrumb
+<!-- "Copy Markdown" split button (a labelled region, so landmark navigation reaches it) rendered from the doc-before slot, at the top of the page above the breadcrumb
      bar (the favorite star teleports into the breadcrumb bar on API pages). The main button copies the page's
      Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page without a
      twin (no `agentMarkdown` frontmatter) renders nothing. -->
@@ -18,6 +18,8 @@ const markdownUrl = computed(() => {
 const RESULT_MS = 2000;
 const result = ref<CopyResult | undefined>(undefined);
 const menuOpen = ref(false);
+// Set once hydration has run, so a test (or any script) can tell a live button from the server-rendered shell.
+const ready = ref(false);
 const root = ref<HTMLElement | null>(null);
 const optionsButton = ref<HTMLButtonElement | null>(null);
 const viewLink = ref<HTMLAnchorElement | null>(null);
@@ -29,7 +31,7 @@ const label = computed(() =>
 
 async function copy(): Promise<void> {
   if (!markdownUrl.value) return;
-  result.value = await copyMarkdownFrom(markdownUrl.value, {
+  const outcome = await copyMarkdownFrom(markdownUrl.value, {
     fetch: (url) => fetch(url),
     clipboard: {
       writeText: (text) => navigator.clipboard.writeText(text),
@@ -41,6 +43,11 @@ async function copy(): Promise<void> {
         : (text) =>
             new ClipboardItem({ "text/plain": text.then((value) => new Blob([value], { type: "text/plain" })) }),
   });
+  // A repeat of the same result must still change the live region, or screen readers stay silent: clear it for a
+  // tick first. The clipboard write has already started by now, so the click's user activation is not at stake.
+  result.value = undefined;
+  await nextTick();
+  result.value = outcome;
   clearTimeout(resetTimer);
   resetTimer = setTimeout(() => (result.value = undefined), RESULT_MS);
 }
@@ -90,7 +97,10 @@ watch(
   }
 );
 
-onMounted(() => document.addEventListener("pointerdown", onDocumentPointerDown));
+onMounted(() => {
+  ready.value = true;
+  document.addEventListener("pointerdown", onDocumentPointerDown);
+});
 onUnmounted(() => {
   document.removeEventListener("pointerdown", onDocumentPointerDown);
   clearTimeout(resetTimer);
@@ -98,7 +108,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="markdownUrl" ref="root" class="copy-markdown" data-pagefind-ignore>
+  <section
+    v-if="markdownUrl"
+    ref="root"
+    class="copy-markdown"
+    aria-label="Page Markdown"
+    :data-ready="ready ? '' : undefined"
+    data-pagefind-ignore
+  >
     <div class="copy-markdown-split">
       <button type="button" class="copy-markdown-main" @click="copy">{{ label }}</button>
       <button
@@ -131,12 +148,14 @@ onUnmounted(() => {
         rel="noopener noreferrer"
         @click="closeMenu(true)"
       >
-        View as Markdown<span aria-hidden="true"> ↗</span
-        ><span class="copy-markdown-sr-only"> (opens in a new tab)</span>
+        <span
+          >View as Markdown<span aria-hidden="true"> ↗</span
+          ><span class="copy-markdown-sr-only"> (opens in a new tab)</span></span
+        >
       </a>
     </div>
     <span class="copy-markdown-status" role="status" aria-live="polite">{{ result ? label : "" }}</span>
-  </div>
+  </section>
 </template>
 
 <style scoped>
@@ -192,7 +211,8 @@ onUnmounted(() => {
 }
 
 .copy-markdown-item {
-  display: block;
+  display: flex;
+  align-items: center;
   padding: 4px 10px;
   font-size: 13px;
   white-space: nowrap;

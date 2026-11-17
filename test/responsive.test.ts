@@ -118,7 +118,8 @@ describe('responsive mobile layout', () => {
      *
      * The sidebar drawer rows are height-only: they are block-level and their
      * width is the drawer's (247px inside a 311px drawer at a 375px viewport),
-     * so a 44px `min-width` could never bind.
+     * so a 44px `min-width` could never bind. The Markdown menu row is the same: it
+     fills the menu's width.
      */
     const TOUCH_TARGETS: ReadonlyArray<
       readonly [string, string, ReadonlyArray<'min-height' | 'min-width'>]
@@ -130,6 +131,9 @@ describe('responsive mobile layout', () => {
       ['.VPSidebar .api-sidebar-link', 'API sidebar links', ['min-height']],
       ['.VPNavBarHamburger', 'navbar hamburger', ['min-height', 'min-width']],
       ['.favorite-star-button', 'breadcrumb favorite star', ['min-height', 'min-width']],
+      ['.copy-markdown-main', 'Copy Markdown button', ['min-height', 'min-width']],
+      ['.copy-markdown-options', 'Markdown options button', ['min-height', 'min-width']],
+      ['.copy-markdown-item', 'Markdown menu row', ['min-height']],
     ];
 
     // These two guards pin the parse: the block is brace-bounded, and every
@@ -158,6 +162,7 @@ describe('responsive mobile layout', () => {
         '.VPSidebar .VPSidebarItem .item',
         '.VPSidebar .api-sidebar-group',
         '.VPSidebar .api-sidebar-link',
+        '.copy-markdown-item',
       ]);
     });
 

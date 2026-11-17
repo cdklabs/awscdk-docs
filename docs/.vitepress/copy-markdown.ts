@@ -7,7 +7,7 @@ export interface CopyDeps {
   fetch: (url: string) => Promise<{ ok: boolean; text: () => Promise<string> }>;
   clipboard: {
     writeText: (text: string) => Promise<void>;
-    /** Present where `ClipboardItem` exists. Takes the items built by `item`. */
+    /** Used only together with `item`: takes the items `item` builds. Without `item`, `writeText` is used. */
     write?: (items: unknown[]) => Promise<void>;
   };
   /** Builds a clipboard item that resolves to the text later. Needed with `write`; absent where unsupported. */

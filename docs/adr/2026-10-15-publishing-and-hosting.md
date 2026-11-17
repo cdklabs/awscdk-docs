@@ -105,6 +105,14 @@ Adding another stream later is one more instantiation.
   version is validated against the shared `VERSION_PARSE_PATTERN` before it
   reaches the object key. A missing endpoint, missing aws-cdk-lib entry, or
   empty timestamp fails the job rather than publishing a garbage key.
+- **Markdown twins need a text Content-Type.** The "View as Markdown" link
+  ([SEO and agent discoverability](./2026-10-15-seo-and-agent-discoverability.md))
+  opens each `.md` twin in a new tab, which works only if the host serves `.md`
+  as `text/markdown` or `text/plain` without `Content-Disposition: attachment`.
+  This repository ships the zip and does not set object metadata; the system
+  that extracts and serves it must. The local e2e server maps `.md` itself, so
+  no test here proves the production headers. Confirm with the owner of that
+  system.
 - **The `latest-awscdk-docs` marker is a v2 manifest:**
 
   ```

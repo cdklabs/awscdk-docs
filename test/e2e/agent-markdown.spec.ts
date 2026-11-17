@@ -7,7 +7,7 @@ import { SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 test.describe('agent-oriented Markdown twin', () => {
   const twinOf = (htmlPath: string) => htmlPath.replace(/\.html$/, '.md');
 
-  test('the title button and the alternate head link both name the .md twin of this page', async ({ page }) => {
+  test('the Copy Markdown menu item and the alternate head link both name the .md twin of this page', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
 
     const view = page.getByRole('menuitem', { name: 'View as Markdown', includeHidden: true });
