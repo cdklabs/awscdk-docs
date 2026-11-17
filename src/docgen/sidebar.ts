@@ -830,8 +830,8 @@ function goPackageName(importPath: string): string {
 /**
  * The Go package name qualified by its module, for two readmes that share a package name in one section:
  * `github.com/aws/aws-cdk-go/awscdkcfnpropertymixins/v2/awss3` is `awscdkcfnpropertymixins/awss3`. Outside
- * `aws-cdk-go` the qualifier is the segment before the package. A module root whose package is the module itself
- * stays unqualified.
+ * `aws-cdk-go` the qualifier is the segment before the package. Inside `aws-cdk-go`, a module root whose package is
+ * the module itself stays unqualified.
  */
 function goQualifiedName(importPath: string): string {
   const segments = importPath.split('/').filter((s) => !/^v\d+$/.test(s));
