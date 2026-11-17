@@ -1525,6 +1525,26 @@ describe('buildServiceSidebar', () => {
       ]);
     });
 
+    test('a colliding Go package outside aws-cdk-go is qualified by the segment before it', () => {
+      const sidebar = sidebarSections([
+        entry({
+          name: 'Bucket',
+          kind: 'Construct (L2)',
+          link: '/bucket',
+          moduleLabels: { go: 'github.com/aws/aws-cdk-go/awscdk/v2/awss3' },
+        }),
+        entry({
+          name: 'FancyBucket',
+          kind: 'Construct (L3)',
+          assemblyName: 'some-standalone-pkg',
+          link: '/fancy-bucket',
+          indexLink: '/api/modules/some-standalone-pkg/aws-s3',
+          moduleLabels: { go: 'example.com/somepkg/v1/awss3' },
+        }),
+      ], ['ts', 'go']);
+      expect(sidebar[0].items![1].labels).toEqual({ go: 'somepkg/awss3' });
+    });
+
     test('the service\'s own alpha readme is Developer Preview', () => {
       const sidebar = sidebarSections([
         entry({

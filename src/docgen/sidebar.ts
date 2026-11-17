@@ -828,14 +828,15 @@ function goPackageName(importPath: string): string {
 
 /**
  * The Go package name qualified by its module, for two readmes that share a package name in one section:
- * `github.com/aws/aws-cdk-go/awscdkcfnpropertymixins/v2/awss3` is `awscdkcfnpropertymixins/awss3`. A module root
- * whose package is the module itself stays unqualified.
+ * `github.com/aws/aws-cdk-go/awscdkcfnpropertymixins/v2/awss3` is `awscdkcfnpropertymixins/awss3`. Outside
+ * `aws-cdk-go` the qualifier is the segment before the package. A module root whose package is the module itself
+ * stays unqualified.
  */
 function goQualifiedName(importPath: string): string {
   const segments = importPath.split('/').filter((s) => !/^v\d+$/.test(s));
   const last = segments[segments.length - 1];
   const at = segments.indexOf('aws-cdk-go');
-  const root = at === -1 ? undefined : segments[at + 1];
+  const root = at === -1 ? segments[segments.length - 2] : segments[at + 1];
   return root && root !== last ? `${root}/${last}` : last;
 }
 
@@ -853,11 +854,13 @@ function fixedReadmeLabel(e: SidebarEntry): string | undefined {
  * the resource/kind groups so a submodule's Overview page (e.g. `aws_s3` -> `/v2/docs/aws-cdk-lib.aws_s3-readme`)
  * is one click from the sidebar. The link is each entry's existing `indexLink` — the canonical module page path
  * computed by the docgen — so it stays base-aware via the component's `withBase`. A section holding a single
- * (sub)module gets a plain `Overview` entry; a section folding several (e.g. S3 with `aws_s3` + `aws_s3_deployment`)
- * disambiguates each, mirroring the `Type index (...)` convention. Structural submodules (`interfaces.*`, `*.mixins`)
- * never surface an overview of their own — they are internal assembly layout, not navigation.
+ * (sub)module gets a plain `Overview` entry. In a Framework section folding several (e.g. Core with `aws-cdk-lib`
+ * + `assets`), each is `Overview (<module>)`, mirroring the `Type index (...)` convention. Structural submodules
+ * (`interfaces.*`, `*.mixins`) never surface an overview of their own — they are internal assembly layout, not
+ * navigation.
  *
- * In a Services section folding several readmes, only the primary `aws-cdk-lib` service module is `Overview`. A few
+ * In a Services section folding several readmes (e.g. S3 with `aws_s3` + `aws_s3_deployment`), only the primary
+ * `aws-cdk-lib` service module is `Overview`. A few
  * readmes carry a fixed label ({@link FIXED_README_LABELS}), the service's own experimental
  * `@aws-cdk/aws-<service>-alpha` readme is `Developer Preview`, and every other readme is labeled by its module name
  * in the reader's language: the short submodule or package name in TypeScript, and the Go package name in Go,
@@ -888,7 +891,7 @@ function overviewItems(entries: SidebarEntry[], languages: readonly Language[], 
   const shortLabel = (e: SidebarEntry) => e.submodule || e.assemblyName;
   // Two packages can contribute the SAME submodule to one section
   // (`aws_s3` from aws-cdk-lib and a standalone package); qualify
-  // colliding labels with their package so each Overview stays
+  // colliding labels with their package so each label stays
   // unambiguous.
   const counts = new Map<string, number>();
   for (const [, e] of chosen) {
