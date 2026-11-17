@@ -93,14 +93,14 @@ describe('per-module overview kinds end to end', () => {
     expect((page.match(/<\/div>/g) ?? []).length).toBeGreaterThanOrEqual(opens);
   });
 
-  test('kind "none" yields the table-only layout at the same URL', () => {
+  test('kind "none" yields the list-only layout at the same URL', () => {
     const out = generate({ constructs: { kind: 'none' } });
     const page = readFileSync(join(out, 'docs', 'constructs-readme.md'), 'utf-8');
     expect(page.startsWith(OUTLINE_OFF)).toBe(true);
     expect(page).toContain('# constructs');
     expect(page).not.toContain('## What are constructs?');
     expect(page).not.toContain('<div v-pre>');
-    // The page is NOT removed and still carries the type table.
+    // The page is NOT removed and still carries the type list.
     expect(page).toContain('<div class="type-list">');
   });
 

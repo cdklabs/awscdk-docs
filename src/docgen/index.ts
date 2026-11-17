@@ -1044,7 +1044,7 @@ export function renderSeparateInstallAlert(assembly: spec.Assembly): string[] {
 /**
  * YAML frontmatter that hides VitePress's right-hand "On this page" outline — applied ONLY where the outline merely
  * mirrors the navigation the left sidebar already provides: module index pages (`## Submodules` / `## Types`) and
- * table-only submodule pages. README-backed pages keep their outline: their README section headings are quick
+ * list-only submodule pages. README-backed pages keep their outline: their README section headings are quick
  * navigation the sidebar does not cover. `outline: false` is VitePress's per-page toggle; the aside column itself is
  * kept (no `aside: false`) so these pages keep the same content width as every other page.
  */
@@ -1180,7 +1180,7 @@ export interface OverviewPageOptions {
   readonly title: string;
   /** Types listed on this page (root types for a package root). */
   readonly types: TypeEntry[];
-  /** Resolved README markdown, or undefined for the table-only variant. */
+  /** Resolved README markdown, or undefined for the list-only variant. */
   readonly readme?: string;
   /** Pre-rendered breadcrumb, emitted above the H1. */
   readonly breadcrumb?: string[];
@@ -1230,13 +1230,13 @@ export function overviewReadme(
 
 /**
  * One overview-page renderer for package roots and submodules alike. The resolved README comes first, then the type
- * list. A module with no README (or `kind: 'none'`) gets the table-only layout.
+ * list. A module with no README (or `kind: 'none'`) gets the list-only layout.
  *
  * READMEs open with their own `# <Title>` heading, which becomes the page title; the `title` option is a fallback
  * used only when the README is missing or lacks a leading heading. The heading is emitted at the top level (so
  * VitePress still extracts the page title); the rest of the README body is wrapped in a `<div v-pre>` container.
  *
- * The right-hand "On this page" outline is suppressed only on the table-only variant, where it merely mirrors the
+ * The right-hand "On this page" outline is suppressed only on the list-only variant, where it merely mirrors the
  * left sidebar. README-backed pages KEEP the outline — their section headings are rich quick navigation the sidebar
  * does not provide. The redundant inline `## Table of Contents` some READMEs open with is stripped instead (see
  * {@link stripInlineToc}).
@@ -1469,7 +1469,7 @@ function splitReadmeExamples(body: string, options?: ReadmeExampleOptions): Read
  * outside code, strip HTML comments and neutralize repo-relative
  * image/link targets, then escape Vue-hostile characters fence-aware.
  * Returns '' for effectively-empty READMEs so callers can fall back to
- * the table-only layout.
+ * the list-only layout.
  *
  * Repo-relative `![](./img.png)` / `[](../doc.md)` targets are stripped
  * because Vite treats a relative `![]()` image as a build-time asset to
@@ -1610,7 +1610,7 @@ function kindPlural(kind: string): string {
 /**
  * The module's types as a list grouped by kind, one heading per kind in the order each kind first appears. Each entry
  * is the name as a link with the kind as a small tag, and the summary on the next line. Names wrap at any width.
- * `headingLevel` is 3 under a `## Types` heading and 2 on the table-only layout, which has none.
+ * `headingLevel` is 3 under a `## Types` heading and 2 on the list-only layout, which has none.
  */
 function renderTypeList(types: TypeEntry[], headingLevel = 3): string[] {
   const groups = new Map<string, TypeEntry[]>();

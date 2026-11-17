@@ -144,7 +144,7 @@ describe('renderOverviewPage', () => {
     expect(page).toContain('## Types');
   });
 
-  test('no README or whitespace-only README falls back to the table-only layout', () => {
+  test('no README or whitespace-only README falls back to the list-only layout', () => {
     for (const readme of [undefined, '', '  \n \n']) {
       const page = renderOverviewPage({ title: 'fake.sub', types, readme });
       expect(page.startsWith(OUTLINE_OFF + '# fake.sub')).toBe(true);
@@ -219,7 +219,7 @@ describe('renderOverviewPage', () => {
     expect(page.startsWith('# Lib')).toBe(true);
   });
 
-  test('table-only submodule pages still suppress the outline', () => {
+  test('list-only submodule pages still suppress the outline', () => {
     const page = renderOverviewPage({ title: 'fake.sub', types });
     // Without a README the page is just the types table the sidebar
     // already mirrors — the outline stays off, and the frontmatter is
@@ -756,7 +756,7 @@ describe('docgen generation', () => {
     }
   });
 
-  test('submodule without a README keeps the table-only layout', () => {
+  test('submodule without a README keeps the list-only layout', () => {
     // aws_cloudfront.experimental carries no README in the assembly
     const page = readFileSync(
       join(outDir, 'docs', 'aws-cdk-lib.aws_cloudfront.experimental-readme.md'),
@@ -943,7 +943,7 @@ describe('docgen generation', () => {
 
   test('pages with no editable upstream file record no edit target', () => {
     // An L1 page is built from generated code that is not in the upstream
-    // repository, and a table-only overview has no README at all — neither
+    // repository, and a list-only overview has no README at all — neither
     // has a file a reader can edit, so the footer must render no link
     // rather than a misleading one.
     const l1 = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
@@ -966,7 +966,7 @@ describe('docgen generation', () => {
       'aws-cdk-lib-readme.md',
       // renderOverviewPage({  }), README branch
       'aws-cdk-lib.aws_s3-readme.md',
-      // renderOverviewPage({  }), table-only branch
+      // renderOverviewPage({  }), list-only branch
       'aws-cdk-lib.aws_cloudfront.experimental-readme.md',
     ];
     for (const name of overviews) {
@@ -1280,7 +1280,7 @@ describe('docgen generation', () => {
     expect(moduleIndex.split('\n').find((l) => /^#{1,6}\s/.test(l))).toBe(
       '# AWS Cloud Development Kit Library',
     );
-    // The table-only submodule variant still suppresses it:
+    // The list-only submodule variant still suppresses it:
     // aws_cloudfront.experimental carries no README, so its page merely
     // mirrors the sidebar…
     const tableOnly = readFileSync(

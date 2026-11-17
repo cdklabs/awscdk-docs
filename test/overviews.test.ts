@@ -127,14 +127,14 @@ describe('renderOverviewPage', () => {
     expect(list).toBeGreaterThan(subs);
   });
 
-  test('without a README the page is table-only and suppresses the outline', () => {
+  test('without a README the page is list-only and suppresses the outline', () => {
     const page = renderOverviewPage({ title: 'aws-cdk-lib', types });
     expect(page.startsWith('---\noutline: false\n---\n\n')).toBe(true);
     expect(page).toContain('# aws-cdk-lib');
     expect(page).toContain('## Classes {#module-types-classes}');
   });
 
-  test('extra sections still render on the table-only variant', () => {
+  test('extra sections still render on the list-only variant', () => {
     const page = renderOverviewPage({
       title: 'aws-cdk-lib',
       types,

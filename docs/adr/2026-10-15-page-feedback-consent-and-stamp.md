@@ -53,7 +53,7 @@ a page's `editLink: false` frontmatter suppresses it (see
 - **Symbol pages** (class, interface, struct, enum) link the upstream source
   file their docstrings are declared in — superseded in
   [edit link on type pages](./2026-10-23-type-page-edit-link.md); before it they
-  rendered no edit link. L1 pages built from generated code and table-only
+  rendered no edit link. L1 pages built from generated code and list-only
   overviews render **no edit link** — a misleading link is worse than none. The
   footer still shows the report link, so footer shape differs by page kind
   deliberately, and the browser spec pins both shapes.

@@ -49,9 +49,9 @@ export interface AgentMarkdown {
 export function toAgentMarkdown(page: string): AgentMarkdown {
   const protectedPage = protectCode(stripFrontmatter(page));
   const { restore } = protectedPage;
-  // A line that is only a markdown-it-attrs block (`{role=list}`, `{.class}`) styles the element above it in the
-  // browser and is not Markdown. Fenced code is still a placeholder here, so a `{...}` line in a sample is untouched.
-  const text = protectedPage.text.replace(/^\{[#.\w=" -]+\}[ \t]*\n?/gm, '');
+  // The `{role=list}` line docgen writes after each module type list is a markdown-it-attrs block: it sets the list
+  // role in the browser and is not Markdown. Fenced code is still a placeholder here, so a sample's own line stays.
+  const text = protectedPage.text.replace(/^\{role=list\}[ \t]*\n?/gm, '');
   restoreProtected = restore;
   // `<Badge … />` is a Vue component, self-closed in the source; without the flag the parser would open it and
   // swallow the rest of the page. Tag names keep their case so an unknown one can be put back verbatim.

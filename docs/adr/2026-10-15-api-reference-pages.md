@@ -464,7 +464,7 @@ or `<assemblyName>.<submodule>`), discriminated exhaustively on `kind`:
 
 `readme` as the default means a package root like `aws-cdk-lib` renders the
 library README at its canonical URL rather than an artificial index; a missing
-README degrades to table-only. The canonical URL never moves (`links.ts`
+README degrades to list-only. The canonical URL never moves (`links.ts`
 untouched) — `none` changes content, never existence, since removing a page
 would 404 tens of thousands of breadcrumb roots. Package roots pass root-only
 extras through two ordered slots: a **preamble** (documented version +

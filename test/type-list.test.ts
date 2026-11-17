@@ -69,7 +69,7 @@ describe('module type list', () => {
     expect(camelBreaks(longPart)).toContain('Cfn<wbr>VPC<wbr>Peering');
   });
 
-  test('the table-only layout uses second-level kind headings, so the heading order stays valid', () => {
+  test('the list-only layout uses second-level kind headings, so the heading order stays valid', () => {
     const tableOnly = renderOverviewPage({ title: 'fake.sub', types });
     expect(tableOnly).toContain('## Constructs (L2) {#');
     expect(tableOnly).not.toContain('### ');
