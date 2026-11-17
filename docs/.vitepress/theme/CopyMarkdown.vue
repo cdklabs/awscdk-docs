@@ -92,6 +92,10 @@ function onMenuKeydown(event: KeyboardEvent): void {
     // The menu has one item, so both arrows land on it.
     event.preventDefault();
     viewLink.value?.focus();
+  } else if (event.key === " ") {
+    // Space activates a menu item. Without this the link's default action scrolls the page behind the menu.
+    event.preventDefault();
+    viewLink.value?.click();
   } else if (event.key === "Tab") {
     closeMenu(false);
   }

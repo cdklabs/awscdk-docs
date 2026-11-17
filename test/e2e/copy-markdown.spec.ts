@@ -16,6 +16,18 @@ test.describe('Copy Markdown control', () => {
     await page.locator('.copy-markdown[data-ready]').waitFor();
   };
 
+  test('the control sits at the top of the page, above the content', async ({ page }) => {
+    await open(page, SQS_OVERVIEW_PAGE);
+    await expect(page.locator('.copy-markdown')).toBeInViewport();
+    // The position is a bit field. Test the FOLLOWING bit (4) by arithmetic; lint bans bitwise operators.
+    const aboveHeading = await page.evaluate(() => {
+      const control = document.querySelector('.copy-markdown')!;
+      const h1 = document.querySelector('.vp-doc h1')!;
+      return Math.floor(control.compareDocumentPosition(h1) / Node.DOCUMENT_POSITION_FOLLOWING) % 2 === 1;
+    });
+    expect(aboveHeading).toBe(true);
+  });
+
   test('copies the page Markdown and shows Copied, then restores the label', async ({ page, request }) => {
     await open(page);
     const expected = await (await request.get(twin)).text();
@@ -319,6 +331,20 @@ test.describe('Copy Markdown control', () => {
     await page.keyboard.press('Enter');
     await page.keyboard.press('Enter');
     await (await popup).close();
+    await expect(options).toBeFocused();
+  });
+
+  test('Space on the View as Markdown item activates it without scrolling the page', async ({ page }) => {
+    await open(page);
+    const options = page.getByRole('button', { name: 'More Markdown options' });
+    const popup = page.waitForEvent('popup');
+    await options.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeFocused();
+    const scrollBefore = await page.evaluate(() => window.scrollY);
+    await page.keyboard.press('Space');
+    await (await popup).close();
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore);
     await expect(options).toBeFocused();
   });
 
