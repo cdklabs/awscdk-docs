@@ -51,7 +51,7 @@ test.describe('type list structure', () => {
     expect(await lists.count()).toBeGreaterThan(1);
     await expect(lists.first()).toHaveAttribute('role', 'list');
     // The Types section keeps its anchor; each kind group has a heading of its own right before its list.
-    await expect(page.locator('#types, h2:has-text("Types")').first()).toBeVisible();
+    await expect(page.locator('h2#module-types')).toBeVisible();
     const firstGroup = page.locator('.vp-doc h3[id^="module-types-"]').first();
     await expect(firstGroup).toBeVisible();
     const entry = page.locator('.type-list li').first();

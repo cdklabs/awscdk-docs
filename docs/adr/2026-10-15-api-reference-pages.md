@@ -39,7 +39,7 @@ A module overview lists its types under a `## Types` heading as a list grouped b
 - Each list is a real `<ul role="list">`. The role is explicit because the markers are hidden, and a browser may
   drop the list role from a list without visible markers.
 - The list is plain markdown plus a `type-list` wrapper. The Markdown twin of the page keeps each entry's name link,
-  kind and summary on one line, in that order. Spacing reads `--density-type-list-gap`, which follows the density
+  kind and summary on one line, in that order, and drops the `{role=list}` attribute line, which is browser-only. Spacing reads `--density-type-list-gap`, which follows the density
   level.
 
 ### One page per type, dispatched by classification

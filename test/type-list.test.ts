@@ -88,6 +88,9 @@ describe('module type list in the Markdown twin', () => {
     expect(twin).toContain('### Structs');
     expect(twin).not.toContain('<wbr>');
     expect(twin).not.toContain('<div');
+    // The `{role=list}` line is browser-only markup, and a code sample's own `{...}` line is left alone.
+    expect(twin).not.toContain('{role=list}');
+    expect(twin).not.toMatch(/^\{[^}]*\}$/m);
   });
 });
 
@@ -108,5 +111,15 @@ describe('typeKindAnchor', () => {
     expect(typeKindAnchor('Structs')).toBe('module-types-structs');
     expect(typeKindAnchor('Constructs (L1)')).toBe('module-types-constructs-l1');
     expect(typeKindAnchor('Classes')).toBe('module-types-classes');
+  });
+});
+
+describe('attribute lines in the Markdown twin', () => {
+  test('a standalone attribute line is dropped, but one inside a code fence is kept', () => {
+    const page = ['# T', '', '- item', '{role=list}', '', '```json', '{role=list}', '```', ''].join('\n');
+    const twin = toAgentMarkdown(page).markdown;
+    expect(twin).toContain('- item\n');
+    expect(twin.match(/\{role=list\}/g)).toHaveLength(1);
+    expect(twin).toContain('```json\n{role=list}\n```');
   });
 });

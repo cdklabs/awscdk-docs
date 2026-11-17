@@ -1016,9 +1016,10 @@ a.chain-item:hover {
 }
 
 /* Module type list: the Types section of a module overview. One entry per type, grouped by kind. The name is a link
-   with the kind as a small tag beside it and the summary on the next line. Names wrap after dots and between words
-   (the generator inserts <wbr>), and `overflow-wrap: anywhere` is the backstop for a single unbroken word, so no
-   entry can be wider than the page body at any width or density. */
+   with the kind as a small tag beside it and the summary on the next line. A name over the break budget carries
+   <wbr> after each dot (and at camelCase boundaries inside an over-budget part; see `breakableTypeName`), and
+   `overflow-wrap: anywhere` is the backstop for everything else, so no entry can be wider than the page body at any
+   width or density. */
 .vp-doc .type-list ul {
   list-style: none;
   margin: 0 0 16px;
