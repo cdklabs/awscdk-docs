@@ -201,15 +201,9 @@ function splitToBudget(items: readonly RelationItem[]): { shown: RelationItem[];
 }
 
 /**
- * One relation row of the hierarchy block: `implements I1, I2`. Every row reuses {@link chainLink}, so there is
- * exactly one emitter of cross-reference anchors for the whole block. The overflow disclosure is a SIBLING of the
- * visible names, never their wrapper — names inside `<summary>` would be a `nested-interactive` violation. The
- * leading gutter is a CSS border, not a `|` a screen reader would announce on every row.
- *
- * The names are ONE `<ul>` per relation, so assistive tech announces the item count and boundaries; the disclosure
- * is the list's final item, with the hidden names as a nested list inside it. `role` is re-asserted explicitly
- * because the items render `display: inline` with `list-style: none`, which makes WebKit strip native list
- * semantics, so the markup alone would announce nothing in Safari.
+ * One type relation row of the hierarchy block: `implements I1, I2`. Type rows build their entries with
+ * {@link chainLink} and member rows with {@link memberRelationRow}; both share the list and disclosure markup of
+ * {@link relationRowOf}.
  */
 function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolver, id?: string): string {
   return relationRowOf(label, fqns.map((fqn) => ({ text: shortName(fqn), html: chainLink(fqn, linkFor) })), id);
@@ -260,6 +254,16 @@ function memberRelationRow(
   }), id);
 }
 
+/**
+ * The row markup both entry kinds share. The overflow disclosure is a SIBLING of the visible entries, never their
+ * wrapper — entries inside `<summary>` would be a `nested-interactive` violation. The leading gutter is a CSS
+ * border, not a `|` a screen reader would announce on every row.
+ *
+ * The entries are ONE `<ul>` per relation, so assistive tech announces the item count and boundaries; the
+ * disclosure is the list's final item, with the hidden entries as a nested list inside it. `role` is re-asserted
+ * explicitly because the items render `display: inline` with `list-style: none`, which makes WebKit strip native
+ * list semantics, so the markup alone would announce nothing in Safari.
+ */
 function relationRowOf(label: string, items: readonly RelationItem[], id?: string): string {
   const { shown, hidden } = splitToBudget(items);
   // One formatted value for the visible text AND the accessible name:

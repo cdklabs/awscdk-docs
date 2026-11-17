@@ -82,13 +82,18 @@ test.describe('obtainable from row', () => {
   });
 
   test('the row is at most two lines at desktop width', async ({ page }) => {
-    // The 70-character budget was tuned on short type names; this row holds
-    // the fixture's longest entries, so the two-line promise is measured here
-    // too, the same way subclasses.spec.ts measures it on the Construct page.
+    // The 70-character budget is measured on the widest translation of each
+    // entry. SubscriptionFilter's first two entries total 72 characters that
+    // way, so exactly one entry is visible and the other three fold; pin that
+    // input, then measure the line count the same way subclasses.spec.ts does
+    // on the Construct page.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(SUBSCRIPTION_FILTER_PAGE);
 
-    const lines = await page.locator('.inheritance-chain .chain-row#obtainable-from').evaluate((el) => {
+    const row = page.locator('.inheritance-chain .chain-row#obtainable-from');
+    await expect(row.locator(':scope > ul > li > a.chain-item')).toHaveCount(1);
+    await expect(row.locator('.chain-more summary')).toHaveText('3 more');
+    const lines = await row.evaluate((el) => {
       const cs = getComputedStyle(el);
       const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
       const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);

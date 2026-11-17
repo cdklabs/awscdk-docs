@@ -70,6 +70,42 @@ describe('usage index', () => {
     }
   });
 
+  test('factories sort by owner FQN then member in code-unit order, each once', () => {
+    // Two owners listed in reverse FQN order; `VER_1` declared twice so the dedup is exercised; `of` after
+    // `VER_1` because `V` (0x56) sorts before `o` (0x6F) in code-unit order, where a locale sort would put `of`
+    // first.
+    const target: spec.ClassType = { assembly: 'lib', fqn: 'lib.Version', name: 'Version', kind: spec.TypeKind.Class };
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const owner = (fqn: string, name: string): spec.ClassType => ({
+      assembly: 'lib',
+      fqn,
+      name,
+      kind: spec.TypeKind.Class,
+      methods: [{ name: 'of', static: true, returns: { type: ref('lib.Version') } }],
+      properties: [
+        { name: 'VER_1', static: true, const: true, immutable: true, type: ref('lib.Version') },
+        { name: 'VER_1', static: true, const: true, immutable: true, type: ref('lib.Version') },
+      ],
+    });
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.Version': target, 'lib.Zeta': owner('lib.Zeta', 'Zeta'), 'lib.Alpha': owner('lib.Alpha', 'Alpha'),
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    expect(synthetic.obtainableFrom.get('lib.Version')).toEqual([
+      { ownerFqn: 'lib.Alpha', memberName: 'VER_1', kind: 'property', constant: true },
+      { ownerFqn: 'lib.Alpha', memberName: 'of', kind: 'method' },
+      { ownerFqn: 'lib.Zeta', memberName: 'VER_1', kind: 'property', constant: true },
+      { ownerFqn: 'lib.Zeta', memberName: 'of', kind: 'method' },
+    ]);
+    // The same order on the real catalog: constants first, `of` last.
+    const pev = usage.obtainableFrom.get('aws-cdk-lib.aws_rds.PostgresEngineVersion')!;
+    expect(pev[0].memberName.startsWith('VER_')).toBe(true);
+    expect(pev[pev.length - 1].memberName).toBe('of');
+  });
+
   test('class member collection walks the base-class chain', () => {
     const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType;
     const methods = classMethods(bucket, index).map((m) => m.name);
