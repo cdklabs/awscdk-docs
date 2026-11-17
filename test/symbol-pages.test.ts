@@ -8,6 +8,9 @@ import { generateDocs, loadAssembly as loadCachedAssembly } from '../src/docgen/
 import { renderExtendsBar } from '../src/docgen/layout.js';
 import { buildUsageIndex, classMethods, classProperties, renderClassPage, renderInterfacePage, renderStructPage, UsageIndex } from '../src/docgen/symbols.js';
 
+// Twins carry absolute site links; a fixed site URL keeps these expectations independent of DOCS_SITE_URL.
+const SITE_URL = 'https://docs.example.com/cdk/api/';
+
 const ROOT = resolve(import.meta.dirname, '..');
 
 function loadAssembly(module: string): spec.Assembly {
@@ -419,7 +422,7 @@ describe('symbol page generation', () => {
 
   test('the agent Markdown twin keeps cross-page links in the row, drops the <wbr> and non-TypeScript variants', () => {
     // A same-page `#instance` link renders as text, like every other same-page link in the twin.
-    const jsonNull = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.JsonNull.md'), 'utf-8')).markdown;
+    const jsonNull = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.JsonNull.md'), 'utf-8'), SITE_URL).markdown;
     expect(jsonNull).toContain('Obtainable from: JsonNull.INSTANCE');
     expect(jsonNull).not.toContain('<wbr>');
     // A cross-page entry keeps its deep link to the factory, and only the TypeScript variant appears.
@@ -429,30 +432,30 @@ describe('symbol page generation', () => {
     const usage = buildUsageIndex(index);
     const ibucket = index.get('aws-cdk-lib.aws_s3.IBucket')!.type as spec.InterfaceType;
     const page = renderInterfacePage({ type: ibucket, assembly, index, usage, linkFor, languages: ['ts', 'python'], emitExamples: false });
-    const twin = toAgentMarkdown(page).markdown;
-    expect(twin).toContain('Obtainable from: [Bucket.fromBucketArn](/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn), ');
+    const twin = toAgentMarkdown(page, SITE_URL).markdown;
+    expect(twin).toContain('Obtainable from: [Bucket.fromBucketArn](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn), ');
     // Factories folded behind the disclosure keep their deep link too: the URL is the point of this row.
-    expect(twin).toContain('[Bucket.fromCfnBucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket)');
+    expect(twin).toContain('[Bucket.fromCfnBucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket)');
     expect(twin).not.toContain('from_bucket_arn');
     expect(twin).not.toContain('<wbr>');
   });
 
   test('the agent Markdown twin links the shown entries of every hierarchy row and folds the rest as text', () => {
     // The same renderer serves the breadcrumb and the existing rows, so their visible entries link too.
-    const bucket = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8')).markdown;
-    expect(bucket).toMatch(/^Extends: \[Construct\]\(\/v2\/docs\/constructs\.Construct\.html\) › .*Bucket$/m);
-    expect(bucket).toMatch(/^Implements: .*\[IBucket\]\(\/v2\/docs\/aws-cdk-lib\.aws_s3\.IBucket\.html\)/m);
+    const bucket = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8'), SITE_URL).markdown;
+    expect(bucket).toMatch(/^Extends: \[Construct\]\(https:\/\/docs\.example\.com\/cdk\/api\/v2\/docs\/constructs\.Construct\.html\) › .*Bucket$/m);
+    expect(bucket).toMatch(/^Implements: .*\[IBucket\]\(https:\/\/docs\.example\.com\/cdk\/api\/v2\/docs\/aws-cdk-lib\.aws_s3\.IBucket\.html\)/m);
     // Entries folded behind the row's disclosure stay plain text: Construct has 2,332 descendants, and linking
     // them all would quadruple its twin for entries the page itself hides.
-    const construct = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'constructs.Construct.md'), 'utf-8')).markdown;
+    const construct = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'constructs.Construct.md'), 'utf-8'), SITE_URL).markdown;
     const superclassOf = construct.split('\n').find((l) => l.startsWith('Superclass of: '))!;
-    const links = (superclassOf.match(/\]\(\/v2\/docs\//g) ?? []).length;
+    const links = (superclassOf.match(/\]\(https:\/\/docs\.example\.com\/cdk\/api\/v2\/docs\//g) ?? []).length;
     const entries = superclassOf.split(', ').length;
     expect(links).toBeGreaterThan(0);
     expect(links).toBeLessThan(10);
     expect(entries).toBeGreaterThan(1000);
     // A type whose block exists only for its factories has no ancestor, so no `Extends:` line claims it extends itself.
-    const duration = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8')).markdown;
+    const duration = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8'), SITE_URL).markdown;
     expect(duration).not.toMatch(/^Extends: Duration$/m);
     expect(duration).toMatch(/^Obtainable from: /m);
   });
