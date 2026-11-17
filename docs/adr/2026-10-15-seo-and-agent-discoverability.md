@@ -98,10 +98,9 @@ generated pages have: authored routes such as `/stability`, `/versions` and
 `/skills` ship no twin. Each rendered page advertises its own twin through
 `<link rel="alternate" type="text/markdown">`. Other root-relative Markdown
 targets, such as `/llms.txt` and `![…](…)` image sources, are joined onto
-`DOCS_SITE_URL` unchanged, except that under `/v2/` only `.txt`, `.json`,
-`.xml`, `.png`, `.svg`, `.jpg`/`.jpeg`, `.gif`, `.webp`, `.css`, `.js`, `.map`,
-`.ico`, `.pdf` and `.zip`, lowercase, count as files, so PascalCase type IDs
-such as `…Map` stay pages. Raw `<a href>` anchors are rewritten the same way,
+`DOCS_SITE_URL` unchanged, except that under `/v2/` only the lowercase
+extensions in `API_ASSET_EXTENSION` (`src/docgen/agent-markdown.ts`) count as
+files, so PascalCase type IDs such as `…Map` stay pages. Raw `<a href>` anchors are rewritten the same way,
 with `(`, `)` and `|` in the target percent-encoded, as in rewritten Markdown
 links, so the copied URL still works; other raw HTML such as
 `<img src>`, and autolinks, pass through as authored. Targets that still

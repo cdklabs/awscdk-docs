@@ -158,8 +158,14 @@ function inline(el: Element): string {
 }
 
 /**
- * Make a root-relative site target absolute against DOCS_SITE_URL (pages get their .html route);
- * return anything else unchanged.
+ * Lowercase extensions that mark a `/v2/` target as a file rather than a page. Case-sensitive, so PascalCase type
+ * IDs such as `…stepfunctions.Map` stay pages.
+ */
+const API_ASSET_EXTENSION = /\.(?:txt|json|xml|png|svg|jpe?g|gif|webp|css|js|map|ico|pdf|zip)$/;
+
+/**
+ * Make a root-relative site target absolute against the transform's site URL (DOCS_SITE_URL by default);
+ * pages get their .html route; return anything else unchanged.
  */
 function publishedPageHref(href: string): string {
   const [, path, suffix = ''] = /^([^?#]*)(.*)$/.exec(href)!;
@@ -174,14 +180,13 @@ function publishedPageHref(href: string): string {
     return href;
   }
 
-  const asset = /\.(?:txt|json|xml|png|svg|jpe?g|gif|webp|css|js|map|ico|pdf|zip)$/;
   // A `.md` target names a page by its source file; link the rendered page, since authored routes have no twin.
   if (sitePath.endsWith('.md')) {
     sitePath = sitePath.slice(0, -3);
   }
   // Generated API pages may end in a dotted segment (`aws-cdk-lib.pipelines`, `…stepfunctions.Map`) that looks like
   // a file extension; anywhere else any extension, in either case, marks a file rather than a page.
-  const isApiPage = sitePath.startsWith(API_ROOT) && !asset.test(sitePath);
+  const isApiPage = sitePath.startsWith(API_ROOT) && !API_ASSET_EXTENSION.test(sitePath);
   const isPage = isApiPage
     || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/i.test(sitePath));
   const relative = isPage && !sitePath.endsWith('.html')
