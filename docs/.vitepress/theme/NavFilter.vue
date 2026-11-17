@@ -254,7 +254,7 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 24px;
+  min-height: 18px;
   margin: 2px 0 0;
 }
 
@@ -263,6 +263,8 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   gap: 4px;
   min-width: 0;
+  /* The 24px button overhangs the 18px row by 3px each side, so the header keeps its height. */
+  margin-block: -3px;
   padding: 0 12px;
   overflow: hidden;
   color: var(--vp-c-text-3);
@@ -294,7 +296,8 @@ function onKeydown(e: KeyboardEvent) {
 
 .nav-filter-hint-button:focus-visible {
   outline: 2px solid var(--vp-c-brand-1);
-  outline-offset: 1px;
+  /* Inset: the paragraph clips overflow, so an outside ring would lose its top and bottom. */
+  outline-offset: -2px;
 }
 
 .nav-filter-key {

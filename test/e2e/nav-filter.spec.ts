@@ -443,11 +443,13 @@ test.describe('in-sidebar symbol filter', () => {
 
     const input = filterInput(page);
     await input.fill('Queue');
+    // The button renders once the symbol index has loaded: wait for it before tabbing.
+    const button = page.locator('.nav-filter-hint').getByRole('button');
+    await expect(button).toBeVisible();
     // The clear button sits between the input and the hint.
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: 'Clear filter' })).toBeFocused();
     await page.keyboard.press('Tab');
-    const button = page.locator('.nav-filter-hint').getByRole('button');
     await expect(button).toBeFocused();
     await page.keyboard.press('Space');
 
