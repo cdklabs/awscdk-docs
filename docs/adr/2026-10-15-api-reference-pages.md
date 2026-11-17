@@ -68,9 +68,9 @@ Constructs matching none (e.g. `constructs.Construct` itself, `CfnJson`) get
 no badge rather than a wrong one. The level is also a sort key: `byLevelThenName`
 (`src/docgen/ordering.ts`) ranks L3 > L2 > L1 > unleveled in sidebar leaf
 lists and type tables, so the overrides and the `CfnElement` subtree reorder
-listings too. Source links pin the assembly version tag, and an alpha assembly,
-which has no tag of its own, pins the tag of its release version
-(`2.277.0-alpha.0` -> `v2.277.0`). They are omitted for
+listings too. Source links pin the assembly version tag with any prerelease
+suffix removed, so an alpha assembly, which has no tag of its own, pins the tag
+of its release version (`2.277.0-alpha.0` -> `v2.277.0`). They are omitted for
 `*.generated.ts` files (build-only, would 404). Props tables inline inherited
 properties — users care about the full passable set, not the declaration
 hierarchy.

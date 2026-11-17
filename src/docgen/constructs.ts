@@ -128,7 +128,7 @@ function extendsFqn(fqn: string, baseFqn: string, index: TypeIndex): boolean {
 /**
  * The link to a type's source file and the file path shown for it, resolved together so they cannot disagree.
  * A type in a repository the assembly names is pinned to the assembly's release tag, with the declaration line.
- * An alpha assembly has no tag of its own, so it uses the release it was built with: `2.277.0-alpha.0` -> `v2.277.0`.
+ * The tag drops any prerelease suffix, since an alpha version has no tag of its own: `2.277.0-alpha.0` -> `v2.277.0`.
  * A type from a relocated package links to the default branch of the repository that owns the package, with no
  * line anchor, and shows its path inside that package.
  * Undefined for build-generated files (e.g. `*.generated.ts` L1 sources), which do not exist in the repository,
