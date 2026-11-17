@@ -1,9 +1,10 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
+import { toAgentMarkdown } from '../src/docgen/agent-markdown.js';
 import { withoutLiteralsAndComments } from '../src/docgen/examples.js';
 import { generateDocs } from '../src/docgen/index.js';
-import { importBindings, importModules, readmeTypeLinksAttr } from '../src/docgen/readme-links.js';
+import { importBindings, importModules, linkPackageReferences, readmeTypeLinksAttr } from '../src/docgen/readme-links.js';
 import { importStatements } from '../src/docgen/rosetta.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -160,6 +161,41 @@ describe('README example type links', () => {
   });
 });
 
+describe('README package references', () => {
+  const documented = new Set(['@aws-cdk/aws-amplify-alpha']);
+
+  test('a documented package links its readme page on this site, named in inline code', () => {
+    expect(linkPackageReferences('<span class="package-reference">@aws-cdk/aws-amplify-alpha</span>', documented)).toBe(
+      '[`@aws-cdk/aws-amplify-alpha`](/v2/docs/@aws-cdk_aws-amplify-alpha-readme)',
+    );
+  });
+
+  test('a package not documented here links its npm page', () => {
+    expect(linkPackageReferences('<span class="package-reference">@aws-cdk/aws-ivs-alpha</span>', documented)).toBe(
+      '[`@aws-cdk/aws-ivs-alpha`](https://www.npmjs.com/package/@aws-cdk/aws-ivs-alpha)',
+    );
+  });
+
+  test('a reference inside a blockquote, a list item or a paragraph keeps its surroundings', () => {
+    const link = '[`@aws-cdk/aws-amplify-alpha`](/v2/docs/@aws-cdk_aws-amplify-alpha-readme)';
+    const span = '<span class="package-reference">@aws-cdk/aws-amplify-alpha</span>';
+    expect(linkPackageReferences(`> ${span}`, documented)).toBe(`> ${link}`);
+    expect(linkPackageReferences(`- see ${span}.`, documented)).toBe(`- see ${link}.`);
+    expect(linkPackageReferences(`Use ${span} for L2s.`, documented)).toBe(`Use ${link} for L2s.`);
+  });
+
+  test('any other span, or a reference that does not name a package, is left as it is', () => {
+    for (const html of [
+      '<span class="other">@aws-cdk/aws-amplify-alpha</span>',
+      '<span class="package-reference extra">@aws-cdk/aws-amplify-alpha</span>',
+      '<span class="package-reference">not a package</span>',
+      '<span class="package-reference">x](javascript:alert(1)</span>',
+    ]) {
+      expect(linkPackageReferences(html, documented)).toBe(html);
+    }
+  });
+});
+
 describe('README type links in the built pages', () => {
   let tmp: string;
   let docs: string;
@@ -167,7 +203,7 @@ describe('README type links in the built pages', () => {
   beforeAll(() => {
     tmp = mkdtempSync(join(tmpdir(), 'readme-links-'));
     generateDocs(
-      { modules: ['aws-cdk-lib', 'constructs'] },
+      { modules: ['aws-cdk-lib', 'constructs', '@aws-cdk/aws-amplify-alpha'] },
       { outDir: join(tmp, 'modules'), publicDir: join(tmp, 'public'), packageRoot: ROOT, languages: ['ts', 'python', 'java'] },
     );
     docs = join(tmp, 'modules', 'docs');
@@ -195,6 +231,23 @@ describe('README type links in the built pages', () => {
     for (const heading of page.split('\n').filter((l) => /^#{1,6}\s/.test(l))) {
       expect(heading).not.toMatch(/\]\(\/v2\/docs\//);
     }
+  });
+
+  test('a package reference links the documented package readme, or npm for a package not documented here', () => {
+    const amplify = readFileSync(join(docs, 'aws-cdk-lib.aws_amplify-readme.md'), 'utf-8');
+    expect(amplify).toContain('> [`@aws-cdk/aws-amplify-alpha`](/v2/docs/@aws-cdk_aws-amplify-alpha-readme)');
+    expect(existsSync(join(docs, '@aws-cdk_aws-amplify-alpha-readme.md'))).toBe(true);
+    const apprunner = readFileSync(join(docs, 'aws-cdk-lib.aws_apprunner-readme.md'), 'utf-8');
+    expect(apprunner).toContain(
+      '> [`@aws-cdk/aws-apprunner-alpha`](https://www.npmjs.com/package/@aws-cdk/aws-apprunner-alpha)',
+    );
+    for (const page of [amplify, apprunner]) {
+      expect(page).not.toContain('package-reference');
+      expect(page).not.toContain('&lt;span');
+    }
+    expect(toAgentMarkdown(amplify).markdown).toContain(
+      '[`@aws-cdk/aws-amplify-alpha`](/v2/docs/@aws-cdk_aws-amplify-alpha-readme)',
+    );
   });
 
   test('every link added to a README points at an existing page', () => {
