@@ -216,8 +216,8 @@ VitePress sidebar shell:
 
 Framework-free logic (path normalization, active-branch computation, fetch
 memoization) lives in `docs/.vitepress/theme/api-sidebar.ts` and is unit
-tested. Measured on the e2e fixture build (`npx projen docs:e2e`: the full
-skeleton and all 322 chunks; sizes are each served file gzipped at Node's
+tested. Measured on the e2e fixture build documenting aws-cdk-lib 2.277.0
+(`npx projen docs:e2e`: the full skeleton and all 322 chunks; sizes are each served file gzipped at Node's
 default level), a cold load of the SNS Topic page at 1440×900 fetches ~27 KB
 gzip of sidebar data in 16 requests: ~13 KB for the skeleton and that
 section, and the rest for the 14 closed sections visible below the
