@@ -162,20 +162,27 @@ export function installMemberFlash(): (hash: string) => void {
   const doc = g.document as unknown as FlashDocument;
   // Reading `offsetWidth` forces a reflow, so a removed-then-added class restarts the keyframes.
   const restart = (el: FlashElement) => void (el as unknown as HTMLElement).offsetWidth;
+  // One listener per fade: a fade cut short by the next jump ends in
+  // `animationcancel`, not `animationend`, so its listener is aborted instead.
+  let pending: AbortController | undefined;
   const flash = (hash: string) => {
+    pending?.abort();
+    pending = undefined;
     const row = flashRow(doc, hash, restart) as unknown as HTMLElement | null;
     if (row && !prefersReducedMotion()) {
       // Drop the class once the row's own fade ends, so the next jump starts
       // clean. `animationend` bubbles, so a child's animation is ignored. Under
       // reduced motion nothing animates and the static mark stays until then.
+      pending = new AbortController();
       const done = (e: AnimationEvent) => {
         if (e.target !== row || e.animationName !== FLASH_CLASS) {
           return;
         }
         row.classList.remove(FLASH_CLASS);
-        row.removeEventListener('animationend', done);
+        pending?.abort();
+        pending = undefined;
       };
-      row.addEventListener('animationend', done);
+      row.addEventListener('animationend', done, { signal: pending.signal });
     }
   };
   const flashOnce = createFlashOnce(doc, flash);
