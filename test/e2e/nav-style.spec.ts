@@ -103,7 +103,9 @@ test.describe('navigation style', () => {
     const requests = trackSidebarRequests(page);
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
-    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeVisible();
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
+    // The service-style reveal and its in-view preloads are done, so later requests come from the switch.
+    await settled(page);
     const before = [...requests];
     expect(before.length).toBeGreaterThan(0);
 
