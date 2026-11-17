@@ -16,6 +16,7 @@ import FavoriteStar from "./FavoriteStar.vue";
 import FavoritesList from "./FavoritesList.vue";
 import LanguageTabs from "./LanguageTabs.vue";
 import LanguageToggle from "./LanguageToggle.vue";
+import { installMemberFlash } from "./member-flash";
 import JumpToCurrent from "./JumpToCurrent.vue";
 import NavFilter from "./NavFilter.vue";
 import NavSiteTitle from "./NavSiteTitle.vue";
@@ -45,6 +46,9 @@ import "./outline.css";
 import "./home-features.css";
 import "./callouts.css";
 import "./glyphs.css";
+
+// Set in enhanceApp, called from setup and after each route change.
+let flashMember: (hash: string) => void = () => {};
 
 const theme: Theme = {
   extends: DefaultTheme,
@@ -95,10 +99,18 @@ const theme: Theme = {
     // Spacious opens every fold-out; a client-side navigation renders a new
     // page whose fold-outs start closed, so reapply the level after each one.
     // Chained so any hook another module set keeps running.
+    // Mark the member row a jump lands on. In-page jumps arrive as `hashchange`
+    // (VitePress dispatches one for its pushState links); a cross-page link
+    // with a hash arrives here, after the new page has rendered.
+    flashMember = installMemberFlash();
     const previousAfterRouteChange = router.onAfterRouteChange;
     router.onAfterRouteChange = async (to) => {
       await previousAfterRouteChange?.(to);
       applyFoldoutsAfterNavigation();
+      // SSR renders through the same hook with no window; `to` is then not a jump to flash.
+      if (typeof location !== "undefined") {
+        flashMember(new URL(to, location.href).hash);
+      }
     };
     installTypeTooltips(siteData.value.themeConfig.typeSummariesAsset ?? "");
     installFavoritesSearchBoost();
@@ -112,6 +124,8 @@ const theme: Theme = {
   setup() {
     // Runs inside the root component, so the navbar search button exists once mounted.
     onMounted(markSearchShortcuts);
+    // The first page's rows exist only once mounted; a load with a member hash flashes then.
+    onMounted(() => flashMember(location.hash));
   },
 };
 

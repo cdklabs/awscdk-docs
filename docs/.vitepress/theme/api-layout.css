@@ -483,10 +483,38 @@ a.chain-item:hover {
   border-bottom: none;
 }
 
-/* A row navigated to by its permalink is tinted briefly so the landing is
-   visible; the id lives on the row, so the whole member highlights. */
+/* A row navigated to by its permalink is tinted so the landing is visible; the
+   id lives on the row, so the whole member highlights. `:target` is set by the
+   browser on a page load with a hash only; member-flash.ts marks every other
+   jump with `.member-row-flash`. */
 .member-list .member-row:target {
   background-color: var(--vp-c-bg-soft);
+}
+
+/* The landed row flashes brand-soft and fades out over 1.5s, then the class is
+   removed. `forwards` holds the transparent end state until then, so the row is
+   not tinted twice where `:target` also applies. */
+@keyframes member-row-flash {
+  from {
+    background-color: var(--vp-c-brand-soft);
+  }
+
+  to {
+    background-color: transparent;
+  }
+}
+
+.member-list .member-row.member-row-flash {
+  animation: member-row-flash 1500ms ease-out forwards;
+}
+
+/* Reduced motion: no fade. The landed row keeps the static tint until the next
+   jump, so the mark is still there to find. */
+@media (prefers-reduced-motion: reduce) {
+  .member-list .member-row.member-row-flash {
+    animation: none;
+    background-color: var(--vp-c-bg-soft);
+  }
 }
 
 /* The header line wraps rather than clamping: it holds a full method
