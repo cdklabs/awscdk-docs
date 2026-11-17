@@ -46,6 +46,9 @@ test.describe('page titles', () => {
     await expect(name).toHaveText('CfnQueueInlinePolicyProps');
     await expect(name.locator('wbr')).toHaveCount(4);
     await expect(page).toHaveTitle(/^CfnQueueInlinePolicyProps \| /);
+    // The permalink names the type once, as one word, with no markup.
+    await expect(page.locator('h1 a.header-anchor'))
+      .toHaveAttribute('aria-label', 'Permalink to "CfnQueueInlinePolicyProps"');
 
     const words = await name.evaluate((element) => [...element.childNodes]
       .filter((node) => node.nodeType === Node.TEXT_NODE)
