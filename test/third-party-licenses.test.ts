@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { generateThirdPartyLicenses, renderThirdPartyLicenses } from '../src/docgen/third-party-licenses.js';
@@ -33,32 +33,35 @@ describe('THIRD_PARTY_LICENSES', () => {
     expect(text).not.toContain('/workspace');
   });
 
-  test('writes the file at the package root from the production report, skipping platform builds', () => {
-    writeFileSync(join(root, 'package.json'), '{"private":true}');
-    const platformDir = join(root, 'node_modules', '@esbuild', 'linux-x64');
-    mkdirSync(platformDir, { recursive: true });
-    writeFileSync(join(platformDir, 'package.json'), JSON.stringify({ name: '@esbuild/linux-x64', os: ['linux'], cpu: ['x64'] }));
+  test('writes the file at the package root from the production report, skipping platform builds', async () => {
+    const pkg = (dir: string, manifest: Record<string, unknown>) => {
+      mkdirSync(join(root, dir), { recursive: true });
+      writeFileSync(join(root, dir, 'package.json'), JSON.stringify(manifest));
+    };
+    pkg('.', {
+      name: 'fixture',
+      version: '0.0.0',
+      private: true,
+      dependencies: { 'vitepress': '1.6.4', '@esbuild/linux-x64': '0.21.5' },
+      devDependencies: { jest: '30.5.2' },
+    });
+    pkg('node_modules/vitepress', { name: 'vitepress', version: '1.6.4', license: 'MIT' });
+    pkg('node_modules/@esbuild/linux-x64', {
+      name: '@esbuild/linux-x64',
+      version: '0.21.5',
+      license: 'MIT',
+      os: ['linux'],
+      cpu: ['x64'],
+    });
+    pkg('node_modules/jest', { name: 'jest', version: '30.5.2', license: 'MIT' });
 
-    const checkerDir = join(root, 'node_modules', 'license-checker', 'bin');
-    mkdirSync(checkerDir, { recursive: true });
-    const checker = join(checkerDir, 'license-checker');
-    writeFileSync(
-      checker,
-      [
-        "const production = process.argv.includes('--production');",
-        `const report = { 'vitepress@1.6.4': { licenses: 'MIT' }, '@esbuild/linux-x64@0.21.5': { licenses: 'MIT', path: ${JSON.stringify(platformDir)} } };`,
-        "if (!production) report['jest@30.5.2'] = { licenses: 'MIT' };",
-        'process.stdout.write(JSON.stringify(report));',
-      ].join('\n'),
-    );
-    chmodSync(checker, 0o755);
-
-    const file = generateThirdPartyLicenses(root, checker);
+    const file = await generateThirdPartyLicenses(root);
     const text = readFileSync(file, 'utf-8');
 
     expect(file).toBe(join(root, 'THIRD_PARTY_LICENSES'));
     expect(text).toContain('vitepress@1.6.4\n  License: MIT\n');
     expect(text).not.toContain('jest');
     expect(text).not.toContain('@esbuild/linux-x64');
+    expect(text).not.toContain('fixture');
   });
 });

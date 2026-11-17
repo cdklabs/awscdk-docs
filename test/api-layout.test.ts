@@ -232,9 +232,9 @@ describe('API page layout', () => {
       ]);
     });
 
-    test('types with neither base class nor interfaces get no chain', () => {
-      // Duration is a plain root class implementing nothing.
-      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
+    test('types with no base class, interfaces, subclasses or producing statics get no chain', () => {
+      // Arn is a plain root class implementing nothing, extended by nothing, and no static member hands one out.
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Arn.md'), 'utf-8');
       expect(page).not.toContain('inheritance-chain');
     });
   });
@@ -401,7 +401,13 @@ describe('API page layout', () => {
       // rather than on one span inside it.
       expect(page).toContain('<div class="member-row" id="versioned" data-optional="input">');
       expect(page).toContain('<a class="member-permalink" href="#versioned"'
-        + ' aria-label="Permalink to versioned">#</a>');
+        + ' aria-label="Permalink to versioned" data-pagefind-ignore>#</a>');
+      // The permalink is kept out of the index, and the header-line parts are space-separated, so a search excerpt
+      // reads `fromBucketArn(...) static`.
+      const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+      const row = bucket.slice(bucket.indexOf('<div class="member-row" id="frombucketarn"'));
+      const line = row.slice(0, row.indexOf('</div>'));
+      expect(line).toContain('</code> <span class="member-static">static</span> <a class="member-permalink"');
       // Identity is the canonical TS name, not the displayed one, so a deep
       // link survives a language switch.
       const rows = [...page.matchAll(/<div class="member-row" id="([^"]+)"/g)].map((m) => m[1]);
@@ -749,6 +755,20 @@ describe('API page layout', () => {
       expect(propsIdx).toBeGreaterThan(-1);
       expect(page.indexOf('<div class="props-table member-list" v-pre>', propsIdx))
         .toBeGreaterThan(propsIdx);
+    });
+  });
+
+  describe('summary lines render Markdown links', () => {
+    test('the CfnFunction runtime summary links the word runtime to the Lambda runtimes page', () => {
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_lambda.CfnFunction.md'), 'utf-8');
+      const row = page.match(/<div class="member-row" id="runtime"[\s\S]*?<div class="member-summary"[^>]*>([^\n]*)<\/div>/);
+      expect(row).not.toBeNull();
+      const summary = row![1];
+      // Opens in a new tab like every other external link on the page.
+      expect(summary).toContain(
+        '<a href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html" target="_blank" rel="noopener noreferrer">runtime</a>',
+      );
+      expect(summary).not.toMatch(/\[runtime\]|\(https:/);
     });
   });
 

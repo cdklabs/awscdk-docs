@@ -1,4 +1,6 @@
 import * as spec from '@jsii/spec';
+import { createHighlighter, createJavaScriptRegexEngine } from 'shiki';
+import { applyTypeLinks, codeNolinkTransformer, mayHoldLiterals } from '../docs/.vitepress/type-links.js';
 import { exampleSection, exampleTypeLinksAttr } from '../src/docgen/examples.js';
 
 // Types in examples link to their type pages.
@@ -212,5 +214,59 @@ describe('example fence', () => {
     expect(out).toContain('```ts');
     expect(out).toContain('```python');
     expect(out.join('\n')).not.toContain('type-links=');
+  });
+});
+
+// The whole path for a Go struct key that equals a type name: docgen still offers the name, because it does
+// appear in live code, and the highlight-time marker keeps the key itself plain while the real type links.
+describe('produced Go example with a field named like a type', () => {
+  const tableAssembly = {
+    name: 'aws-cdk-lib',
+    version: '2.0.0',
+    types: {
+      'aws-cdk-lib.aws_dynamodb.Table': { assembly: 'aws-cdk-lib', fqn: 'aws-cdk-lib.aws_dynamodb.Table', kind: 'class', name: 'Table' },
+      'aws-cdk-lib.aws_dynamodb.TableProps': { assembly: 'aws-cdk-lib', fqn: 'aws-cdk-lib.aws_dynamodb.TableProps', kind: 'interface', name: 'TableProps', datatype: true },
+      'aws-cdk-lib.aws_dynamodb.StreamViewType': { assembly: 'aws-cdk-lib', fqn: 'aws-cdk-lib.aws_dynamodb.StreamViewType', kind: 'enum', name: 'StreamViewType' },
+      'aws-cdk-lib.aws_kinesis.Stream': { assembly: 'aws-cdk-lib', fqn: 'aws-cdk-lib.aws_kinesis.Stream', kind: 'class', name: 'Stream' },
+    },
+  } as unknown as spec.Assembly;
+  const code = [
+    'table := awsdynamodb.NewTable(this, jsii.String("Table"), &awsdynamodb.TableProps{',
+    '\tPartitionKey: &awsdynamodb.Attribute{Name: jsii.String("id"), Type: awsdynamodb.AttributeType_STRING},',
+    '\tStream: awsdynamodb.StreamViewType_NEW_IMAGE,',
+    '})',
+  ].join('\n');
+
+  test('offers Stream, because the name is live code, and the rendered key stays plain', async () => {
+    const attr = exampleTypeLinksAttr(code, tableAssembly, linkFor);
+    expect(attr).toContain('Stream:/v2/docs/aws-cdk-lib.aws_kinesis.Stream.html');
+    expect(attr).toContain('TableProps:/v2/docs/aws-cdk-lib.aws_dynamodb.TableProps.html');
+    // Spelled as one identifier, the enum member is not the enum's display name.
+    expect(attr).not.toContain('StreamViewType:');
+
+    const highlighter = await createHighlighter({
+      langs: ['go'],
+      themes: ['github-light', 'github-dark'],
+      engine: createJavaScriptRegexEngine(),
+    });
+    try {
+      expect(mayHoldLiterals(code)).toBe(true);
+      const html = applyTypeLinks(
+        highlighter.codeToHtml(code, {
+          lang: 'go',
+          themes: { light: 'github-light', dark: 'github-dark' },
+          defaultColor: false,
+          includeExplanation: 'scopeName',
+          tokenizeTimeLimit: 0,
+          transformers: [codeNolinkTransformer as never],
+        } as never),
+        attr,
+      );
+      const anchors = [...html.matchAll(/<a class="code-type-link" href="([^"]+)">(\w+)<\/a>/g)].map((m) => `${m[2]}->${m[1]}`);
+      expect(anchors).toEqual(['TableProps->/v2/docs/aws-cdk-lib.aws_dynamodb.TableProps.html']);
+      expect(html).not.toMatch(/>Stream<\/a>/);
+    } finally {
+      highlighter.dispose();
+    }
   });
 });

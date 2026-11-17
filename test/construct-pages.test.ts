@@ -16,6 +16,8 @@ import {
   TypeIndex,
 } from '../src/docgen/constructs.js';
 import { generateDocs, loadAssembly as loadCachedAssembly } from '../src/docgen/index.js';
+import { upstreamSourceUrl } from '../src/docgen/provenance.js';
+import { TRACKED_PACKAGES } from '../src/docgen/versions.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -175,6 +177,44 @@ describe('construct detection and classification', () => {
     expect(sourceUrl(cfnBucket, cdk)).toBeUndefined();
   });
 
+  test('links a cloud-assembly-schema type to its file in aws-cdk-cli on the default branch', () => {
+    const featureFlag = index.get('aws-cdk-lib.cloud_assembly_schema.FeatureFlag')!.type;
+    expect(sourceUrl(featureFlag, cdk)).toBe(
+      'https://github.com/aws/aws-cdk-cli/blob/HEAD/packages/@aws-cdk/cloud-assembly-schema/lib/cloud-assembly/artifact-schema.ts',
+    );
+    const rows = typeMetadataRows(featureFlag, cdk, index, (fqn) => `/v2/docs/${fqn}`);
+    const source = rows.find((r) => r.label === 'Source')!;
+    expect(source.value).toContain('aws/aws-cdk-cli/blob/HEAD/packages/@aws-cdk/cloud-assembly-schema/');
+    const tracked = TRACKED_PACKAGES.find((p) => p.name === '@aws-cdk/cloud-assembly-schema')!;
+    expect(sourceUrl(featureFlag, cdk)).toContain(`https://github.com/${tracked.repo}/blob/`);
+    expect(source.value).toContain('<code>lib/cloud-assembly/artifact-schema.ts</code>');
+    expect(source.value).not.toMatch(/node_modules|\.d\.ts/);
+  });
+
+  test('gives a generated or non-TypeScript file in a mapped package no source link and no edit link', () => {
+    const featureFlag = index.get('aws-cdk-lib.cloud_assembly_schema.FeatureFlag')!.type;
+    for (const filename of [
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/x.generated.d.ts',
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/schema.json',
+    ]) {
+      const moved = { ...featureFlag, locationInModule: { filename, line: 7 } };
+      expect(sourceUrl(moved, cdk)).toBeUndefined();
+      expect(upstreamSourceUrl(moved, cdk)).toBeUndefined();
+    }
+  });
+
+  test('never links a source file under node_modules or a declaration file', () => {
+    const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type;
+    for (const filename of ['node_modules/other-package/lib/thing.ts', 'aws-s3/lib/bucket.d.ts']) {
+      const moved = { ...bucket, locationInModule: { filename, line: 7 } };
+      expect(sourceUrl(moved, cdk)).toBeUndefined();
+      expect(typeMetadataRows(moved, cdk, index, (fqn) => `/v2/docs/${fqn}`).map((r) => r.label)).not.toContain('Source');
+    }
+    for (const entry of index.values()) {
+      expect(sourceUrl(entry.type, cdk) ?? '').not.toMatch(/node_modules|\.d\.ts/);
+    }
+  });
+
   test('typeMetadataRows resolves CloudFormation, L1 and Source for an L2', () => {
     const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type;
     const rows = typeMetadataRows(bucket, cdk, index, (fqn) => `/v2/docs/${fqn}`);
@@ -201,7 +241,7 @@ describe('construct detection and classification', () => {
     expect(rows[0].value).toContain('<code>AWS::S3::Bucket</code>');
     // A generated source has no repository file: a plain marker, not a dead link.
     expect(rows[1].value).toBe(
-      '<span class="type-metadata-generated" data-pagefind-ignore>Generated code</span>',
+      '<span class="type-metadata-generated" data-pagefind-ignore>Generated at build time</span>',
     );
   });
 
@@ -456,7 +496,7 @@ describe('construct page generation', () => {
     expect(chain).toBeGreaterThan(-1);
     expect(metadata).toBeGreaterThan(chain);
     expect(example).toBeGreaterThan(metadata);
-    expect(page).toMatch(/<dd class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/dd>/);
+    expect(page).toMatch(/<dd class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener noreferrer"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/dd>/);
     // Breadcrumb module hierarchy above the H1
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>Bucket</strong>');
     // The link text carries no full file path, which would be noise
@@ -489,6 +529,20 @@ describe('construct page generation', () => {
     expect(page).toContain('<nav class="inheritance-chain"');
   });
 
+  test('construct page lists the static factories that return the construct', () => {
+    // Stack.of(construct) returns a Stack, so the Stack page says where to get one; the row follows the
+    // downward `superclass of` row and, the owner being the page itself, links the member by fragment alone.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Stack.md'), 'utf-8');
+    expect(page).toContain(
+      '<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from</span> '
+      + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="#of">Stack.<wbr>of</a></li></ul></div></nav>',
+    );
+    expect(page.indexOf('<span class="chain-label">superclass of</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
+    // Nothing returns a Bucket itself (the factories return IBucket), so its page has no row.
+    const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    expect(bucket).not.toContain('obtainable from');
+  });
+
   test('metadata table is gone from type pages; no empty shell remains', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(page).not.toContain('| | |');
@@ -505,7 +559,7 @@ describe('construct page generation', () => {
     expect(page).toContain(
       '<dt class="type-metadata-label">CloudFormation</dt><dd class="type-metadata-value">'
       + '<a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html"'
-      + ' target="_blank" rel="noopener"><code>AWS::S3::Bucket</code></a></dd>',
+      + ' target="_blank" rel="noopener noreferrer"><code>AWS::S3::Bucket</code></a></dd>',
     );
     expect(page).not.toContain('Defines the [`AWS::S3::Bucket`]');
     // No in-site self-link and no L1 row on the L1 page
@@ -513,7 +567,7 @@ describe('construct page generation', () => {
     expect(page).not.toContain('<dt class="type-metadata-label">L1 type</dt>');
     // Generated L1 sources have no repository file: a marker, not a dead link
     // and not a silently missing fact
-    expect(page).toContain('<span class="type-metadata-generated" data-pagefind-ignore>Generated code</span>');
+    expect(page).toContain('<span class="type-metadata-generated" data-pagefind-ignore>Generated at build time</span>');
   });
 
   test('L2 construct page links its backing CloudFormation resource and L1 page', () => {
@@ -524,7 +578,7 @@ describe('construct page generation', () => {
     expect(page).toContain(
       '<dt class="type-metadata-label">CloudFormation</dt><dd class="type-metadata-value">'
       + '<a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html"'
-      + ' target="_blank" rel="noopener"><code>AWS::S3::Bucket</code></a></dd>',
+      + ' target="_blank" rel="noopener noreferrer"><code>AWS::S3::Bucket</code></a></dd>',
     );
     expect(page).toContain(
       '<dt class="type-metadata-label">L1 type</dt><dd class="type-metadata-value">'

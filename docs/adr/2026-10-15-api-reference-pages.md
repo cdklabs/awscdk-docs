@@ -35,7 +35,9 @@ and search filters per page, then routes by kind:
   class initializer parameters.
 - **Behavioral interfaces** that are not mixins show methods and properties.
 - **Enums** show a members table and a "Referenced by" list of properties
-  typed by the enum.
+  typed by the enum. A deprecated member is marked like a deprecated
+  property row: struck-through name, a `deprecated` badge, and the
+  deprecation reason in place of the summary.
 
 Type references in property tables render as markdown links when the target
 has a documented page (`linkFor` over a global FQN → link map), falling back
@@ -137,14 +139,34 @@ overview pages) the Teleport is disabled and the star keeps its standalone
 
 ### One type-hierarchy block: every relation as a row
 
-All five relationships — `implements`, `extends`, `implemented by`,
-`superclass of`, and a struct's `used as props by` — render as rows of one
-hierarchy block under the breadcrumb, emitted by a single `relationRow`
-renderer. There is no separate `## Subclasses`, `## Implemented by` or
+All six relationships — `implements`, `extends`, `implemented by`,
+`superclass of`, a struct's `used as props by`, and `obtainable from` — render
+as rows of one hierarchy block under the breadcrumb, emitted through one shared
+row renderer (`relationRowOf`): type entries via `relationRow`, member entries
+via `memberRelationRow`. There is no separate `## Subclasses`, `## Implemented by` or
 `## Used as props by` section and no inline-vs-section split by direction.
 `used as props by` lists the classes whose initializer takes the struct (from
 the reverse usage index); its row keeps the `used-as-props-by` id, so deep
-links to the former section still land on it. `implements` lists the **full transitive closure** of
+links to the former section still land on it. `obtainable from` is the last
+row on class, interface, struct and construct pages: the static methods and
+static properties (including constants) in the documented assemblies whose
+declared type is the page's type or an optional of it — arrays, maps and
+unions do not produce one instance, so they do not count. Protected statics are
+skipped, as the member tables skip them. Each entry reads `Owner.member`
+(`Bucket.fromBucketName`) and links the owner's page at the member's row
+anchor, or the fragment alone when the owner is the page's own type; entries
+are sorted by owner FQN then member, each once; the row carries the
+`obtainable-from` id and shares the budget and disclosure below. The whole
+entry is rendered as inline language variants, translated per enabled language
+like the member rows (the multi-language ADR's canonical identity, translated
+display): the member name through the member-name translators (a `const`
+keeps its UPPER_SNAKE name in Python, as the member rows do) and the
+separator `_` for Go, where a static is the package-level `Owner_Member`. The
+anchor stays on the canonical jsii name and the width budget uses the widest
+translation; the block is wrapped in `<LanguageTabs>` only when this row is
+present. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
+the agent Markdown twin drops it. `implements`
+lists the **full transitive closure** of
 interfaces reachable through class ancestors *and* interface `extends`
 (the Javadoc "All Implemented Interfaces" rule), via a memoized cycle-guarded
 resolver in `src/docgen/interfaces.ts` cached per `TypeIndex`. `superclass of`
@@ -191,7 +213,7 @@ hierarchy block on every type page, carrying at most three rows:
 |---|---|---|
 | CloudFormation | the L1's own resource type, or the L1 an L2 is backed by | AWS resource reference, `target="_blank"` |
 | L1 type | the backing L1, on non-L1 pages only | that L1's page, via `pageHref` |
-| Source | upstream file and line | repository, or the text *Generated code* |
+| Source | upstream file and line | repository, or the text *Generated at build time* |
 
 Provenance is neither prose nor title material, so it lives here rather than in
 the H1 or the description. The block emits nothing when there are no rows (no
@@ -322,9 +344,9 @@ HTML VitePress renders.
   The previous reference also appended its experimental/deprecated badge markup
   to the title id; that tail is not reproduced.
 - **Sections:** fixed ids `example`, `initializer`, `properties`, `methods`,
-  `members`, `referenced-by` and `used-as-props-by`. Module overview sections are
-  `module-submodules` and `module-types`, because README prose above them can
-  carry its own `## Types` heading.
+  `members`, `referenced-by`, `used-as-props-by` and `obtainable-from`. Module
+  overview sections are `module-submodules` and `module-types`, because README
+  prose above them can carry its own `## Types` heading.
 - **Members:** `memberAnchor(name)` from the canonical TypeScript name; inlined
   construct props as `props-<shortname>-<prop>` (above).
 - **Enum members:** the lowercased member name on each Members row.

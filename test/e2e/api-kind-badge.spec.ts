@@ -105,7 +105,7 @@ test.describe('API kind badge', () => {
     const link = page.locator('.type-metadata a.type-metadata-source');
     await expect(link).toBeVisible();
     // Rest state, no hover: the anchor must carry an underline and must not
-    // be the same color as the plain `Generated code` marker.
+    // be the same color as the plain `Generated at build time` marker.
     const linkStyle = await link.evaluate((el) => {
       const style = getComputedStyle(el);
       return { decoration: style.textDecorationLine, color: style.color };

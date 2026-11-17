@@ -1013,7 +1013,7 @@ describe('docgen generation', () => {
     const cases: [string, string][] = [
       // Source-link chip (has an upstream location).
       ['aws-cdk-lib.aws_s3.Bucket.md', 'Bucket'],
-      // "Generated code" chip (an L1, from a .generated. file).
+      // "Generated at build time" chip (an L1, from a .generated. file).
       ['aws-cdk-lib.aws_s3.CfnBucket.md', 'CfnBucket'],
       // Non-construct kinds go through symbols.ts / mixins.ts call sites.
       ['aws-cdk-lib.aws_s3.BucketProps.md', 'BucketProps'],

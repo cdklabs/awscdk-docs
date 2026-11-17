@@ -1,12 +1,13 @@
 import * as spec from '@jsii/spec';
 import { anchoredHeading, PROPS_ANCHOR_PREFIX, SECTION_ANCHORS } from './anchors.js';
-import { escapeAttr, escapeVueText } from './escape.js';
+import { escapeAttr, escapeVueText, EXTERNAL_LINK_ATTRS } from './escape.js';
 import { exampleSection } from './examples.js';
 import { PageHistory } from './history.js';
 import { DEFAULT_LANGUAGE, Language } from './languages.js';
 import {
   classMethods,
   classProperties,
+  MemberRef,
   renderDescription,
   renderExpandableProps,
   renderInheritanceChain,
@@ -15,6 +16,7 @@ import {
   TypeMetadataRow,
 } from './layout.js';
 import { pageHref } from './links.js';
+import { isUnlinkableSource, relocatedSource } from './provenance.js';
 import { RosettaTablet } from './rosetta.js';
 import { formatDateOnly } from '../page-history.js';
 import { STABILITY_ROUTE } from '../site-routes.js';
@@ -123,25 +125,40 @@ function extendsFqn(fqn: string, baseFqn: string, index: TypeIndex): boolean {
 }
 
 /**
- * GitHub URL of the type's source, pinned to the assembly's version tag.
- * Returns undefined for build-generated files (e.g. `*.generated.ts`
- * L1 sources), which do not exist in the repository.
+ * The link to a type's source file and the file path shown for it, resolved together so they cannot disagree.
+ * A type in a repository the assembly names is pinned to the assembly's version tag, with the declaration line.
+ * A type from a relocated package links to the default branch of the repository that owns the package, with no
+ * line anchor, and shows its path inside that package.
+ * Undefined for build-generated files (e.g. `*.generated.ts` L1 sources), which do not exist in the repository,
+ * and for files under `node_modules` or declaration files in any other package.
  */
-export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
+function resolveSource(type: spec.Type, assembly: spec.Assembly): { url: string; label: string } | undefined {
   const repo = assembly.repository;
   const loc = type.locationInModule;
-  if (!repo?.url || !loc || /\.generated\./.test(loc.filename)) {
+  if (!loc || /\.generated\./.test(loc.filename)) {
+    return undefined;
+  }
+  const relocated = relocatedSource(loc.filename);
+  if (relocated) {
+    return { url: relocated.url, label: relocated.file };
+  }
+  if (!repo?.url || isUnlinkableSource(loc.filename)) {
     return undefined;
   }
   const base = repo.url.replace(/^git\+/, '').replace(/\.git$/, '');
   const dir = repo.directory ? `${repo.directory}/` : '';
-  return `${base}/blob/v${assembly.version}/${dir}${loc.filename}#L${loc.line}`;
+  return { url: `${base}/blob/v${assembly.version}/${dir}${loc.filename}#L${loc.line}`, label: loc.filename };
+}
+
+/** GitHub URL of the type's source file; see {@link resolveSource}. */
+export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | undefined {
+  return resolveSource(type, assembly)?.url;
 }
 
 /**
  * Whether a type's source is build-generated rather than a file in the repository — the L1 `Cfn*` types emitted
  * into `*.generated.*`, plus any type carrying `cloudformationResource`. Distinguishes "no link because the file
- * does not exist" from "no location information at all", so the metadata block can say `Generated code` in the
+ * does not exist" from "no location information at all", so the metadata block can say `Generated at build time` in the
  * first case and omit the row entirely in the second.
  */
 export function isGeneratedSource(type: spec.Type): boolean {
@@ -186,7 +203,7 @@ export function typeStability(type: spec.Type, assembly: spec.Assembly): spec.St
  * Stability renders only for experimental types, matching the module page, which warns on experimental modules and
  * says nothing on stable ones; the value links to the guide that explains what the level means.
  *
- * The `Source` value carries `data-pagefind-ignore` so file paths and `Generated code` markers do not compete
+ * The `Source` value carries `data-pagefind-ignore` so file paths and `Generated at build time` markers do not compete
  * with real prose in the index; the CloudFormation and L1 values are indexed so the resource name stays searchable.
  */
 export function typeMetadataRows(
@@ -208,7 +225,7 @@ export function typeMetadataRows(
   if (cfn) {
     rows.push({
       label: 'CloudFormation',
-      value: `<a href="${escapeAttr(cfn.docsUrl)}" target="_blank" rel="noopener">`
+      value: `<a href="${escapeAttr(cfn.docsUrl)}" ${EXTERNAL_LINK_ATTRS}>`
         + `<code>${escapeVueText(cfn.resourceType)}</code></a>`,
     });
   }
@@ -220,18 +237,17 @@ export function typeMetadataRows(
         + `<code>${escapeVueText(shortName(cfn.l1Fqn))}</code></a>`,
     });
   }
-  const loc = type.locationInModule;
-  const url = sourceUrl(type, assembly);
-  if (url && loc) {
+  const source = resolveSource(type, assembly);
+  if (source) {
     rows.push({
       label: 'Source',
-      value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(url)}"`
-        + ` target="_blank" rel="noopener"><code>${escapeVueText(loc.filename)}</code></a>`,
+      value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(source.url)}"`
+        + ` ${EXTERNAL_LINK_ATTRS}><code>${escapeVueText(source.label)}</code></a>`,
     });
   } else if (isGeneratedSource(type)) {
     rows.push({
       label: 'Source',
-      value: `<span class="type-metadata-generated" ${PAGEFIND_IGNORE}>Generated code</span>`,
+      value: `<span class="type-metadata-generated" ${PAGEFIND_IGNORE}>Generated at build time</span>`,
     });
   }
   // The release the type's shape last changed in, dated by that release — never raised by the site-wide revision
@@ -278,6 +294,11 @@ export interface ConstructPageOptions {
    * ordinary class pages do, since `Construct` and `Resource` are themselves constructs.
    */
   readonly subclasses?: ReadonlyMap<string, readonly string[]>;
+  /**
+   * Type FQN -> static members that produce it, for the `obtainable from` hierarchy row. Optional like `subclasses`,
+   * for callers that render a single page without the usage index.
+   */
+  readonly obtainableFrom?: ReadonlyMap<string, readonly MemberRef[]>;
   /** Rosetta tablet supplying the authored example's per-language translations. */
   readonly tablet?: RosettaTablet;
   /** Whether to emit the type-level example section. Defaults to true. */
@@ -309,7 +330,8 @@ export function renderConstructPage(options: ConstructPageOptions): string {
   // Merged description: tagline + remarks as one continuous block, no `## Overview` row. The CloudFormation backing
   // resource is a row of the metadata block below.
   lines.push(...renderDescription(type));
-  lines.push(...renderInheritanceChain(type, index, linkFor, options.subclasses?.get(type.fqn) ?? []));
+  lines.push(...renderInheritanceChain(
+    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], options.obtainableFrom?.get(type.fqn) ?? [], languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
 
   if (options.emitExamples !== false) {

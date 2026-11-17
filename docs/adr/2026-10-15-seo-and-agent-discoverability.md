@@ -63,7 +63,7 @@ consulted.
 `docs/.vitepress/structured-data.ts` emits one `application/ld+json` node per
 page: the home page is a `WebSite`, every other page a `TechArticle`
 referencing the site node by `@id`. `dateModified` is `contentRevised()` — the
-same version-history value the footer's "Content revised" stamp shows (see
+same version-history value the footer's "Page last updated" stamp shows (see
 [versions-and-history](./2026-10-15-versions-and-history.md)), not a build
 timestamp, so a rebuild with no content change does not re-date any page.
 Resolution is day-level. JSON for the script element escapes `<`, `>`, `&`,
@@ -82,18 +82,25 @@ that merely looks like markup — fenced/indented code, autolinks,
 frontmatter, the breadcrumb `<nav>`, every non-canonical language variant, Vue
 components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `<div>`s; member lists become bullets, the type hierarchy becomes
-`Extends:`/`Implements:` lines, `:::` containers become titled blockquotes.
-Headings, prose, fenced code and tables pass through. Links keep their text and
-external target. Site page links use `pageHref()` for the `.html` route, then
-`DOCS_SITE_URL` to become absolute URLs. They target the rendered page rather
-than another twin, so the same link works when the Markdown is fetched, saved or
-pasted without a site origin. Other root-relative targets, such as `/llms.txt`,
-are joined onto `DOCS_SITE_URL` unchanged. Image sources, and targets containing
-whitespace or a backslash, stay as authored. Only single-line, untitled inline
-links within one text run are rewritten; reference definitions and titled links
-pass through, and the pipeline test fails if one with a root-relative target
-appears. The pipeline test also checks that every twin site link is the
-`pageUrl()` of a page the site serves.
+`Extends:`/`Implements:` lines (one `Label: …` line per relation row, emitted
+for `Extends:` only when the type has an ancestor; entries shown without
+opening the row's disclosure keep their cross-page link, folded entries render
+as text, except in the `obtainable from` row, where every factory keeps its
+deep link), `:::` containers become titled blockquotes. Headings, prose,
+fenced code and tables pass through. Links keep their text and external
+target. Site page links use `pageHref()` for the `.html` route, then
+`DOCS_SITE_URL` to become absolute URLs, so they work when the Markdown is
+fetched, saved or pasted without a site origin. They target the rendered page,
+which every link target has, rather than a twin, which only generated pages
+have: authored routes such as `/stability`, `/versions` and `/skills` ship no
+twin. Each rendered page advertises its own twin through
+`<link rel="alternate" type="text/markdown">`. Other root-relative targets,
+such as `/llms.txt` and image sources, are joined onto `DOCS_SITE_URL`
+unchanged. Targets containing whitespace or a backslash stay as authored. Only
+single-line, untitled inline links within one text run are rewritten;
+reference definitions and titled links pass through, and the pipeline test
+fails if one with a root-relative target appears. The pipeline test also
+checks that every twin site link is the `pageUrl()` of a page the site serves.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the

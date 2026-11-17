@@ -953,7 +953,9 @@ function renderTypePage(
   const { type } = entry;
   if (spec.isClassType(type)) {
     return isConstruct(type.fqn, index)
-      ? renderConstructPage({ type, assembly, index, linkFor, languages, subclasses, tablet, emitExamples, history })
+      ? renderConstructPage({
+        type, assembly, index, linkFor, languages, subclasses, obtainableFrom: usage.obtainableFrom, tablet, emitExamples, history,
+      })
       : renderClassPage({
         type,
         assembly,

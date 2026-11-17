@@ -40,7 +40,7 @@ describe('class subclasses', () => {
       type: target,
       assembly: assemblies[0],
       index,
-      usage: { propsUsers: new Map(), enumRefs: new Map() },
+      usage: { propsUsers: new Map(), enumRefs: new Map(), obtainableFrom: new Map() },
       linkFor,
       subclasses: buildSubclassIndex(index),
     });

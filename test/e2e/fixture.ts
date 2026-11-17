@@ -10,7 +10,7 @@ export const QUEUE_PROPS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueProps.html';
 export const IQUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.IQueue.html';
 export const QUEUE_ENCRYPTION_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueEncryption.html';
 export const SQS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs-readme.html';
-// An L1. Its header chip is the "Generated code" label rather than a Source
+// An L1. Its header chip is the "Generated at build time" label rather than a Source
 // link, which is the other shape the page title has to stay clean of.
 export const CFN_QUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue.html';
 // A NESTED type: its page name is `CfnTopic.SubscriptionProperty`, one trail
@@ -19,6 +19,11 @@ export const CFN_QUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue.html';
 export const NESTED_TYPE_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.CfnTopic.SubscriptionProperty.html';
 /** A Facade class: the fixture surfaces `QueueGrants`. */
 export const QUEUE_GRANTS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueGrants.html';
+/**
+ * A class with four static factories of its own type (`existsFilter`, `notExistsFilter`, `numericFilter`,
+ * `stringFilter`): the only fixture type whose `obtainable from` row overflows its two-line budget.
+ */
+export const SUBSCRIPTION_FILTER_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.SubscriptionFilter.html';
 export const API_OVERVIEW = '/v2/';
 // The hand-written agent-skills page. It is the OTHER page with no resolved
 // sidebar besides the home page — themeConfig.sidebar is keyed only on
@@ -75,6 +80,9 @@ export const REPRESENTATIVE_PAGES = [
   // relation rows only appear on a type with descendants or implementors,
   // which none of the pages above has.
   CONSTRUCT_PAGE,
+  // The `obtainable from` row and its overflow disclosure: no page above has a
+  // static member returning its own type, so the audits would never see it.
+  SUBSCRIPTION_FILTER_PAGE,
 ] as const;
 
 // Severities that FAIL the accessibility gate. Moderate and minor

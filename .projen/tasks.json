@@ -83,7 +83,7 @@
       "steps": [
         {
           "execArgs": [
-            "license-checker",
+            "license-checker-rseidelsohn",
             "--summary",
             "--onlyAllow",
             "MIT;ISC;Apache-2.0;Python-2.0;0BSD;BSD-2-Clause;BSD-3-Clause;BlueOak-1.0.0;CC0-1.0;CC-BY-4.0;CC-BY-3.0;MPL-2.0",
@@ -668,7 +668,7 @@
             "--peer",
             "--no-deprecated",
             "--dep=dev",
-            "--filter=@axe-core/playwright,@jsii/spec,@playwright/test,@types/jest,@types/node,eslint-import-resolver-typescript,eslint-plugin-import,jest,license-checker,ts-jest,tsx,typescript"
+            "--filter=@axe-core/playwright,@jsii/spec,@playwright/test,@types/jest,@types/node,eslint-import-resolver-typescript,eslint-plugin-import,jest,ts-jest,tsx,typescript"
           ]
         },
         {
@@ -696,7 +696,7 @@
             "htmlparser2",
             "jest",
             "jest-junit",
-            "license-checker",
+            "license-checker-rseidelsohn",
             "lighthouse",
             "ts-jest",
             "tsx",

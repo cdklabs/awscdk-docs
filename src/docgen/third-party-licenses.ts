@@ -1,7 +1,7 @@
-import { execFileSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { createRequire } from 'module';
 import { join } from 'path';
+import { promisify } from 'util';
+import { init } from 'license-checker-rseidelsohn';
 
 export const THIRD_PARTY_LICENSES_FILE = 'THIRD_PARTY_LICENSES';
 
@@ -9,7 +9,6 @@ export interface LicenseCheckerRecord {
   readonly licenses?: unknown;
   readonly repository?: unknown;
   readonly path?: unknown;
-  readonly [key: string]: unknown;
 }
 
 export type LicenseCheckerReport = Readonly<Record<string, LicenseCheckerRecord>>;
@@ -94,20 +93,12 @@ export function renderThirdPartyLicenses(report: LicenseCheckerReport): string {
   return lines.join('\n');
 }
 
-export function collectProductionLicenses(
-  packageRoot: string,
-  checkerFile = createRequire(import.meta.url).resolve('license-checker/bin/license-checker'),
-): LicenseCheckerReport {
-  const output = execFileSync(
-    process.execPath,
-    [checkerFile, '--production', '--json', '--excludePrivatePackages'],
-    { cwd: packageRoot, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
-  );
-  return JSON.parse(output) as LicenseCheckerReport;
+export async function collectProductionLicenses(packageRoot: string): Promise<LicenseCheckerReport> {
+  return promisify(init)({ start: packageRoot, production: true, excludePrivatePackages: true });
 }
 
-export function generateThirdPartyLicenses(packageRoot: string, checkerFile?: string): string {
+export async function generateThirdPartyLicenses(packageRoot: string): Promise<string> {
   const outputFile = join(packageRoot, THIRD_PARTY_LICENSES_FILE);
-  writeFileSync(outputFile, renderThirdPartyLicenses(collectProductionLicenses(packageRoot, checkerFile)));
+  writeFileSync(outputFile, renderThirdPartyLicenses(await collectProductionLicenses(packageRoot)));
   return outputFile;
 }

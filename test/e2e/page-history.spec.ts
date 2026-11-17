@@ -4,7 +4,7 @@ import { CFN_QUEUE_PAGE, REPRESENTATIVE_PAGES, TOPIC_PAGE } from './fixture.js';
 // Every page states when it was last revised, in the footer for readers and as a `cdk-docs-content-revised` meta
 // for machines; a page's own version history is emitted only when the ledger records it, never as an empty meta.
 
-const REVISED_LINE = /^Content revised \d{1,2} [A-Z][a-z]{2} \d{4}$/;
+const REVISED_LINE = /^Page last updated \d{1,2} [A-Z][a-z]{2} \d{4}$/;
 
 test.describe('page revision date', () => {
   test('every doc page footer carries the revised line, server-rendered', async ({ page }) => {
@@ -13,7 +13,7 @@ test.describe('page revision date', () => {
       const response = await page.goto(url);
       const html = await response!.text();
       // Server-rendered, so a reader without JS sees it too.
-      expect(html, url).toMatch(/<span class="footer-revised"[^>]*>Content revised /);
+      expect(html, url).toMatch(/<span class="footer-revised"[^>]*>Page last updated /);
       const revised = page.locator('.page-footer-links .footer-revised');
       await expect(revised, url).toHaveCount(1);
       await expect(revised, url).toHaveText(REVISED_LINE);
@@ -34,7 +34,7 @@ test.describe('page revision date', () => {
     await page.goto(TOPIC_PAGE);
     const meta = await page.locator('meta[name="cdk-docs-content-revised"]').getAttribute('content');
     const day = new Date(meta!).getUTCDate();
-    await expect(page.locator('.page-footer-links .footer-revised')).toContainText(`Content revised ${day} `);
+    await expect(page.locator('.page-footer-links .footer-revised')).toContainText(`Page last updated ${day} `);
   });
 
   test('recorded history is present in the head and reader metadata', async ({ page }) => {

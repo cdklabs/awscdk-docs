@@ -289,7 +289,7 @@ function isKnownTag(inner: string): boolean {
 /** Tags docgen or the theme emit. Anything else was documentation text that happened to look like a tag. */
 const KNOWN_TAGS = new Set([
   'a', 'br', 'code', 'dd', 'details', 'div', 'dl', 'dt', 'li', 'nav', 'ol', 'p', 'section', 'span', 'summary', 'ul',
-  'languagetabs', 'badge',
+  'wbr', 'languagetabs', 'badge',
 ]);
 
 /** Put an unrecognized tag back the way the author wrote it (`<REGION>`, `<CloudFront distribution ID>`). */
@@ -304,13 +304,25 @@ function renderInheritance(el: Element): string {
   for (const child of el.children) {
     if (!isElement(child)) continue;
     const cls = classes(child);
+    // Entries shown without opening the row's disclosure keep their cross-page link (a same-page `#…` link renders
+    // as text like everywhere else in the twin); entries folded inside `.chain-more` render as text, except in the
+    // `obtainable from` row, whose deep links to factories are the point of the row. Recorded in the SEO ADR.
+    const linkFolded = child.attribs.id === 'obtainable-from';
+    const folded = (n: Element): boolean => {
+      for (let p = DomUtils.getParent(n); p && p !== child; p = DomUtils.getParent(p)) {
+        if (isElement(p) && classes(p).has('chain-more')) return true;
+      }
+      return false;
+    };
+    const items = () => DomUtils.findAll((n) => classes(n).has('chain-item'), child.children)
+      .map((n) => (folded(n) && !linkFolded ? inline(n) : render(n).replace(/\s+/g, ' ').trim()));
     if (cls.has('chain-line')) {
-      const items = DomUtils.findAll((n) => classes(n).has('chain-item'), child.children).map((n) => inline(n));
-      lines.push(`Extends: ${items.join(' › ')}`);
+      // The line always holds the type itself; only a real ancestor makes it an `Extends:` relation.
+      const chain = items();
+      if (chain.length > 1) lines.push(`Extends: ${chain.join(' › ')}`);
     } else if (cls.has('chain-row')) {
       const label = DomUtils.findOne((n) => classes(n).has('chain-label'), child.children);
-      const items = DomUtils.findAll((n) => classes(n).has('chain-item'), child.children).map((n) => inline(n));
-      lines.push(`${label ? `${capitalize(textOf(label))}: ` : ''}${items.join(', ')}`);
+      lines.push(`${label ? `${capitalize(textOf(label))}: ` : ''}${items().join(', ')}`);
     }
   }
   return `\n${lines.join('  \n')}\n`;
