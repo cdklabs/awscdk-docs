@@ -104,6 +104,13 @@ test.describe('Copy Markdown control', () => {
 
   test('a slow first copy that fails does not overwrite a second copy that succeeded', async ({ page }) => {
     // The first twin request waits behind a gate and then 404s; the second goes through at once.
+    // Stub the clipboard so Chromium's own write queue cannot decide the outcome. Each write still waits for its
+    // blob, so a failed fetch rejects that write. The real clipboard round trip is covered by the first test.
+    await page.addInitScript(() => {
+      navigator.clipboard.write = async (items) => {
+        await items[0].getType('text/plain');
+      };
+    });
     let release!: () => void;
     const gate = new Promise<void>((done) => (release = done));
     let calls = 0;
@@ -181,7 +188,15 @@ test.describe('Copy Markdown control', () => {
     await page.keyboard.press('Tab');
     await expect(item).toBeHidden();
     await expect(options).toHaveAttribute('aria-expanded', 'false');
-    expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+    // Focus moved on past the control, in document order, and not back to the top of the page.
+    expect(
+      await page.evaluate(() => {
+        const root = document.querySelector('.copy-markdown')!;
+        const active = document.activeElement!;
+        const following = root.compareDocumentPosition(active) >= Node.DOCUMENT_POSITION_FOLLOWING;
+        return !root.contains(active) && following;
+      }),
+    ).toBe(true);
 
     await options.focus();
     await page.keyboard.press('Enter');
@@ -189,7 +204,7 @@ test.describe('Copy Markdown control', () => {
     await page.keyboard.press('Shift+Tab');
     await expect(item).toBeHidden();
     await expect(options).toHaveAttribute('aria-expanded', 'false');
-    expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+    await expect(options).toBeFocused();
   });
 
   test('client-side navigation resets the menu and the result', async ({ page }) => {

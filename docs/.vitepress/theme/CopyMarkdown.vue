@@ -137,6 +137,7 @@ onUnmounted(() => {
     <div class="copy-markdown-split">
       <button type="button" class="copy-markdown-main" @click="copy">{{ label }}</button>
       <button
+        id="copy-markdown-options"
         ref="optionsButton"
         type="button"
         class="copy-markdown-options"
@@ -155,6 +156,7 @@ onUnmounted(() => {
       id="copy-markdown-menu"
       class="copy-markdown-menu"
       role="menu"
+      aria-labelledby="copy-markdown-options"
       @keydown="onMenuKeydown"
     >
       <a
