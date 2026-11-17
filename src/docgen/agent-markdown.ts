@@ -247,10 +247,10 @@ function renderInheritance(el: Element): string {
   for (const child of el.children) {
     if (!isElement(child)) continue;
     const cls = classes(child);
-    // An entry the page shows without opening the row's disclosure goes through the normal renderer, so it keeps
-    // its cross-page link as the SEO ADR's agent-twins section promises (a same-page `#…` link renders as text like
-    // everywhere else in the twin). An entry folded inside `.chain-more` renders as text: `Construct` has 2,332
-    // descendants, and linking every one would quadruple its twin for entries the page itself hides.
+    // Entries shown without opening the row's disclosure keep their cross-page link (a same-page `#…` link renders
+    // as text like everywhere else in the twin); entries folded inside `.chain-more` render as text, except in the
+    // `obtainable from` row, whose deep links to factories are the point of the row. Recorded in the SEO ADR.
+    const linkFolded = child.attribs.id === 'obtainable-from';
     const folded = (n: Element): boolean => {
       for (let p = DomUtils.getParent(n); p && p !== child; p = DomUtils.getParent(p)) {
         if (isElement(p) && classes(p).has('chain-more')) return true;
@@ -258,9 +258,11 @@ function renderInheritance(el: Element): string {
       return false;
     };
     const items = () => DomUtils.findAll((n) => classes(n).has('chain-item'), child.children)
-      .map((n) => (folded(n) ? inline(n) : render(n).replace(/\s+/g, ' ').trim()));
+      .map((n) => (folded(n) && !linkFolded ? inline(n) : render(n).replace(/\s+/g, ' ').trim()));
     if (cls.has('chain-line')) {
-      lines.push(`Extends: ${items().join(' › ')}`);
+      // The line always holds the type itself; only a real ancestor makes it an `Extends:` relation.
+      const chain = items();
+      if (chain.length > 1) lines.push(`Extends: ${chain.join(' › ')}`);
     } else if (cls.has('chain-row')) {
       const label = DomUtils.findOne((n) => classes(n).has('chain-label'), child.children);
       lines.push(`${label ? `${capitalize(textOf(label))}: ` : ''}${items().join(', ')}`);

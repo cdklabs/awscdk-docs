@@ -95,6 +95,15 @@ describe('property name translation', () => {
   ])('%s: bucketName -> %s', (lang, expected) => {
     expect(translatePropertyName('bucketName', lang)).toBe(expected);
   });
+
+  test('a const property is UPPER_SNAKE in Python and unchanged elsewhere', () => {
+    // jsii-pacmak snake-cases a constant and then upper-cases it, whatever its source casing.
+    expect(translatePropertyName('fooBar', 'python', true)).toBe('FOO_BAR');
+    expect(translatePropertyName('VER_10_1', 'python', true)).toBe('VER_10_1');
+    expect(translatePropertyName('fooBar', 'python')).toBe('foo_bar');
+    expect(translatePropertyName('VER_10_1', 'go', true)).toBe('VER_10_1');
+    expect(translatePropertyName('fooBar', 'dotnet', true)).toBe('FooBar');
+  });
 });
 
 describe('type reference translation', () => {

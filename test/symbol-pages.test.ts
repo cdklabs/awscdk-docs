@@ -431,6 +431,8 @@ describe('symbol page generation', () => {
     const page = renderInterfacePage({ type: ibucket, assembly, index, usage, linkFor, languages: ['ts', 'python'], emitExamples: false });
     const twin = toAgentMarkdown(page).markdown;
     expect(twin).toContain('Obtainable from: [Bucket.fromBucketArn](/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn), ');
+    // Factories folded behind the disclosure keep their deep link too: the URL is the point of this row.
+    expect(twin).toContain('[Bucket.fromCfnBucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket)');
     expect(twin).not.toContain('from_bucket_arn');
     expect(twin).not.toContain('<wbr>');
   });
@@ -449,6 +451,10 @@ describe('symbol page generation', () => {
     expect(links).toBeGreaterThan(0);
     expect(links).toBeLessThan(10);
     expect(entries).toBeGreaterThan(1000);
+    // A type whose block exists only for its factories has no ancestor, so no `Extends:` line claims it extends itself.
+    const duration = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8')).markdown;
+    expect(duration).not.toMatch(/^Extends: Duration$/m);
+    expect(duration).toMatch(/^Obtainable from: /m);
   });
 
   test('a type nothing produces has no obtainable-from row', () => {

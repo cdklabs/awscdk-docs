@@ -82,8 +82,12 @@ that merely looks like markup — fenced/indented code, autolinks,
 frontmatter, the breadcrumb `<nav>`, every non-canonical language variant, Vue
 components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `<div>`s; member lists become bullets, the type hierarchy becomes
-`Extends:`/`Implements:` lines, `:::` containers become titled blockquotes.
-Headings, prose, fenced code, tables and links pass through.
+`Extends:`/`Implements:` lines (one `Label: …` line per relation row, emitted
+for `Extends:` only when the type has an ancestor; entries shown without
+opening the row's disclosure keep their cross-page link, folded entries render
+as text, except in the `obtainable from` row, where every factory keeps its
+deep link), `:::` containers become titled blockquotes. Headings, prose,
+fenced code, tables and links pass through.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the
