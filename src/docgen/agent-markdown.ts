@@ -50,11 +50,12 @@ export function toAgentMarkdown(page: string): AgentMarkdown {
     lowerCaseAttributeNames: false,
   });
   let out = doc.children.map((n) => render(n)).join('');
+  // Before the restore, while every fence is still a placeholder, so a `# ` comment in code cannot match the title.
+  out = withLanguageLegend(out, doc.children);
   out = restore(out);
   out = unwrapContainers(out);
   // Explicit heading anchors (`## Title {#id}`) are markdown-it-attrs syntax, not Markdown.
   out = out.replace(/^(#{1,6} .*?) \{#[^}\n]*\}$/gm, '$1');
-  out = withLanguageLegend(out, doc.children);
   out = out.replace(/[ \t]+$/gm, '');
   return { markdown: `${collapseBlankLines(out).trim()}\n` };
 }
@@ -68,8 +69,10 @@ function withLanguageLegend(out: string, nodes: Node[]): string {
   const variants = DomUtils.findAll(isVariant, nodes);
   if (new Set(variants.map((v) => v.attribs['data-lang'])).size < 2) return out;
   const legend = `> Names, types and signatures are shown in ${languageLabel(variants[0])}; another language's `
-    + 'spelling follows, labeled, only where it differs.';
-  return out.replace(/^# .*$/m, (title) => `${title}\n\n${legend}`);
+    + 'spelling follows, labeled, only where it differs. Code examples are labeled by language; an unlabeled '
+    + 'example is TypeScript and has no translation.';
+  // Anchored to the page start: a page without a leading title gets no legend.
+  return out.replace(/^(\s*# [^\n]*)/, (title) => `${title}\n\n${legend}`);
 }
 
 /**

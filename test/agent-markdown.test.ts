@@ -384,12 +384,21 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       + '<span class="lang-variant" data-lang="python"><code class="member-signature">add_rule(rule_name)</code></span>'
       + '</div><details class="member-disclosure"><summary>1 parameter</summary><div class="member-details">\n\n'
       + `- ${p('ts', 'ruleName')}${p('python', 'rule_name')} — The rule.\n\n</div></details></div>\n`;
-    expect(toAgentMarkdown(page).markdown).toContain('  - `ruleName` (Python: `rule_name`) — The rule.');
+    // The whole row: the method's own Python signature is a sub-bullet, and the parameter list keeps both spellings.
+    expect(toAgentMarkdown(page).markdown).toBe([
+      '- `addRule(ruleName)`',
+      '',
+      '  - Python: `add_rule(rule_name)`',
+      '',
+      '  - `ruleName` (Python: `rule_name`) — The rule.',
+      '',
+    ].join('\n'));
   });
 
   describe('the language legend under the title', () => {
     const legend = (lang: string) => `> Names, types and signatures are shown in ${lang}; another language's `
-      + 'spelling follows, labeled, only where it differs.';
+      + 'spelling follows, labeled, only where it differs. Code examples are labeled by language; an unlabeled '
+      + 'example is TypeScript and has no translation.';
     const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
 
     test('names the canonical language on a page with two or more', () => {
@@ -407,6 +416,23 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     test('is left out of a one-language page', () => {
       const page = `# Bucket\n\nSee ${v('ts', 'bucketArn')}.\n`;
       expect(toAgentMarkdown(page).markdown).toBe('# Bucket\n\nSee `bucketArn`.\n');
+    });
+
+    test('an untranslated example stays a bare TypeScript fence under the legend', () => {
+      const group = '<div class="lang-variant" data-lang="ts">\n\n```ts\nconst a = 1;\n```\n\n</div>'
+        + '<div class="lang-variant" data-lang="python" data-pagefind-ignore>\n\n```python\na = 1\n```\n\n</div>';
+      const page = `# Bucket\n\n\`\`\`ts\nnew Bucket(this, "B");\n\`\`\`\n\n${group}\n`;
+      expect(toAgentMarkdown(page).markdown).toBe([
+        '# Bucket', '', legend('TypeScript'), '',
+        '```ts', 'new Bucket(this, "B");', '```', '',
+        'TypeScript:', '', '```ts', 'const a = 1;', '```', '',
+        'Python:', '', '```python', 'a = 1', '```', '',
+      ].join('\n'));
+    });
+
+    test('goes under the title only, never after a `# ` comment in code', () => {
+      const page = `\`\`\`python\n# a comment\n\`\`\`\n\nSee ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}.\n`;
+      expect(toAgentMarkdown(page).markdown).not.toContain('> Names');
     });
   });
 

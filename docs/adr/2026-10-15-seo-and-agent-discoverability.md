@@ -113,7 +113,8 @@ carries that name and type only, the type as plain code (the head already
 links it): the default is the jsii `@default` text,
 written in TypeScript. A page with variants in two or more languages gets one
 blockquote line under its title naming the language of the unlabeled spellings,
-so an agent can tell a shared spelling from a missing one. The languages are
+so an agent can tell a shared spelling from a missing one, and saying that an
+unlabeled code example is TypeScript with no translation. The languages are
 the ones the page was built with, so a one-language build emits one copy, no
 labels and no legend.
 
