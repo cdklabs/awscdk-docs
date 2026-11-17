@@ -6,7 +6,7 @@
 export const REPO_URL = "https://github.com/cdklabs/awscdk-docs";
 
 /** Repository that collects reports about this documentation site. */
-export const ISSUES_REPO_URL = "https://github.com/cdklabs/awscdk-docs";
+export const ISSUES_REPO_URL = REPO_URL;
 
 // Generated API pages live under this docs-relative prefix and are gitignored
 // build outputs, so their `filePath` names a file absent from the repository.

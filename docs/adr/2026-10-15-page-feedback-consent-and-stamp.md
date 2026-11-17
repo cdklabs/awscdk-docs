@@ -47,8 +47,8 @@ a page's `editLink: false` frontmatter suppresses it (see
   before it they linked `https://github.com/aws/aws-cdk/edit/main/docs/<filePath>`.
 - **Generated overview pages** link to the upstream `README.md` the prose came
   from, not to this repo's `src/docgen`. Docgen emits `upstreamEditUrl` into the
-  page frontmatter; the pure helper takes it as an argument and it wins
-  outright. `isGeneratedPage()` (path prefix `v2/`) guards against ever making a
+  page frontmatter; the pure helper takes it as an argument and it wins over
+  the path rule. `isGeneratedPage()` (path prefix `v2/`) guards against ever making a
   generated page's own gitignored path an edit target.
 - **Symbol pages** (class, interface, struct, enum) link the upstream source
   file their docstrings are declared in — superseded in
