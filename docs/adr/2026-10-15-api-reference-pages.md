@@ -318,11 +318,15 @@ the narrowest column holds whole (32 characters), after every dot, which the
 renderer follows with a `<wbr>` in the visible copy only — a nested-type name
 (`CfnRegistry.CustomMetadataSchemaConfigurationProperty`) breaks after
 `CfnRegistry.` rather than mid-word, while a short `typing.List` stays together
-because its dot would be taken before the bracket or space beside it. A single
-token wider than the whole column falls back to the page's `overflow-wrap:
-break-word`. The full spelling stays in the span's `title` as plain text. The
-wrapper's `nowrap` is shared by method rows, where the variant holds the whole
-signature;
+because its dot would be taken before the bracket or space beside it. That
+qualification exists in the TypeScript spelling; the other languages name a
+nested type by its last segment, which takes the `overflow-wrap` fallback when
+it does not fit. A single token wider than the whole column falls back to the
+page's `overflow-wrap: break-word`; the type span carries the wrapper's
+`min-width: 0` and `max-width: 100%` itself for the single-language shape,
+where it is the row's flex item. The full spelling stays in the span's `title`
+as plain text. The wrapper's `nowrap` is shared by method rows, where the
+variant holds the whole signature;
 `.member-signature` releases it (`white-space: normal`, `overflow-wrap:
 anywhere`) so a long signature wraps inside the content column instead of
 running over the outline — a signature has no single line to clamp to and is

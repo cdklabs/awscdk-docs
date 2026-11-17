@@ -71,22 +71,29 @@ async function openVariant(page: import('@playwright/test').Page, path: string, 
 }
 
 test.describe('long property types', () => {
-  for (const width of WIDTHS) {
-    test(`every type stays inside its row at ${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 });
-      await openVariant(page, CFN_TOPIC_PAGE, 'python');
+  // TypeScript is the default variant and the one whose nested-type names
+  // carry a `<wbr>`; Python has the widest type; Java has the generic shape.
+  for (const lang of ['python', 'ts', 'java']) {
+    for (const width of WIDTHS) {
+      test(`every ${lang} type stays inside its row at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await openVariant(page, CFN_TOPIC_PAGE, lang);
 
-      const types = await typeMetrics(page);
-      // The reported shape must be among them: if the fixture stops rendering
-      // it this spec is measuring nothing, which must fail rather than pass.
-      expect(types.map((t) => t.text), 'the widest fixture type is missing').toContain(WIDE_PYTHON_TYPE);
-      for (const type of types) {
-        expect(type.right, `type ran past its row: ${type.text}`).toBeLessThanOrEqual(type.rowRight + 1);
-        expect(type.right, `type ran past the content column: ${type.text}`).toBeLessThanOrEqual(type.docRight + 1);
-        expect(type.clipped, `type is clipped: ${type.text}`).toBe(false);
-      }
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    });
+        const types = await typeMetrics(page);
+        expect(types.length).toBeGreaterThan(0);
+        if (lang === 'python') {
+          // The reported shape must be among them: if the fixture stops rendering
+          // it this spec is measuring nothing, which must fail rather than pass.
+          expect(types.map((t) => t.text), 'the widest fixture type is missing').toContain(WIDE_PYTHON_TYPE);
+        }
+        for (const type of types) {
+          expect(type.right, `type ran past its row: ${type.text}`).toBeLessThanOrEqual(type.rowRight + 1);
+          expect(type.right, `type ran past the content column: ${type.text}`).toBeLessThanOrEqual(type.docRight + 1);
+          expect(type.clipped, `type is clipped: ${type.text}`).toBe(false);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      });
+    }
   }
 
   test('a type wider than its row wraps onto more lines, not into an ellipsis', async ({ page }) => {

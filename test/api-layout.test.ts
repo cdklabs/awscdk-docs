@@ -1092,6 +1092,10 @@ describe('API page layout', () => {
       for (const decl of ['overflow: hidden', 'text-overflow', 'white-space: nowrap', 'display: inline-block']) {
         expect(type).not.toContain(decl);
       }
+      // With a single language the span is the row's flex item, so it needs
+      // the wrapper's ceiling itself or an over-wide token widens the row.
+      expect(type).toContain('min-width: 0');
+      expect(type).toContain('max-width: 100%');
     });
 
     test('a dot in a long qualified name is a break point, and only in the visible copy', () => {

@@ -598,8 +598,14 @@ a.chain-item:hover {
 
 /* A type too long for its row wraps instead of clipping, at a space or after a
    dot in a long qualified name (the renderer follows those with a `<wbr>`).
-   The variant wrapper's `nowrap` is released for the type's own text only. */
+   The variant wrapper's `nowrap` is released for the type's own text only.
+   With a single language the span is a flex item of the header line itself,
+   so it carries the same ceiling as the wrapper: inert while inline, it keeps
+   an over-wide token on the page's `overflow-wrap` fallback once the row
+   stacks. */
 .member-list .member-type {
+  min-width: 0;
+  max-width: 100%;
   white-space: normal;
 }
 
