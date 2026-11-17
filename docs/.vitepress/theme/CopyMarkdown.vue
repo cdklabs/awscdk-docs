@@ -25,6 +25,8 @@ const root = ref<HTMLElement | null>(null);
 const optionsButton = ref<HTMLButtonElement | null>(null);
 const viewLink = ref<HTMLAnchorElement | null>(null);
 let resetTimer: ReturnType<typeof setTimeout> | undefined;
+// Counts clicks and navigations. A copy that finished after either one is stale and must not touch the page.
+let generation = 0;
 
 const label = computed(() =>
   result.value === "copied" ? "Copied" : result.value === "failed" ? "Copy failed" : "Copy Markdown"
@@ -32,6 +34,7 @@ const label = computed(() =>
 
 async function copy(): Promise<void> {
   if (!markdownUrl.value) return;
+  const mine = ++generation;
   const outcome = await copyMarkdownFrom(markdownUrl.value, {
     fetch: (url) => fetch(url),
     clipboard: {
@@ -44,12 +47,14 @@ async function copy(): Promise<void> {
         : (text) =>
             new ClipboardItem({ "text/plain": text.then((value) => new Blob([value], { type: "text/plain" })) }),
   });
+  if (mine !== generation) return;
   // A repeat of the same result must still change the live region, or screen readers stay silent: clear it and
   // wait long enough for the empty state to render before setting it again. A single tick is not enough, since
   // both updates would land before the browser paints. The clipboard write has already started, so the click's
   // user activation is not at stake.
   result.value = undefined;
   await new Promise((resolve) => setTimeout(resolve, REANNOUNCE_MS));
+  if (mine !== generation) return;
   result.value = outcome;
   clearTimeout(resetTimer);
   resetTimer = setTimeout(() => (result.value = undefined), RESULT_MS);
@@ -94,6 +99,7 @@ function onDocumentPointerDown(event: Event): void {
 watch(
   () => page.value.relativePath,
   () => {
+    generation++;
     menuOpen.value = false;
     result.value = undefined;
     clearTimeout(resetTimer);
@@ -179,7 +185,7 @@ onUnmounted(() => {
   font-size: 13px;
   line-height: 20px;
   color: var(--vp-c-text-1);
-  background: var(--vp-c-bg-soft);
+  background: var(--vp-c-default-soft);
   border: 1px solid var(--vp-c-divider);
   cursor: pointer;
 }

@@ -40,13 +40,13 @@ test.describe('Copy Markdown control', () => {
     await copy.click();
     await expect(status).toHaveText('Copied');
 
-    // Record every text the live region takes from here on, so an empty state that is only visible for a moment
-    // still counts.
+    // Record every text the live region takes from here on, with a timestamp. A single tick between the empty
+    // state and the refill would also log both texts, so the test measures how long the region stayed empty.
     await page.evaluate(() => {
       const node = document.querySelector('.copy-markdown [role="status"]')!;
-      const seen: string[] = [];
-      (window as unknown as { __statusSeen: string[] }).__statusSeen = seen;
-      new MutationObserver(() => seen.push(node.textContent ?? '')).observe(node, {
+      const seen: { text: string; at: number }[] = [];
+      (window as unknown as { __statusSeen: typeof seen }).__statusSeen = seen;
+      new MutationObserver(() => seen.push({ text: node.textContent ?? '', at: performance.now() })).observe(node, {
         childList: true,
         characterData: true,
         subtree: true,
@@ -54,9 +54,42 @@ test.describe('Copy Markdown control', () => {
     });
     await copy.click();
     await expect(status).toHaveText('Copied');
-    const seen = await page.evaluate(() => (window as unknown as { __statusSeen: string[] }).__statusSeen);
-    expect(seen).toContain('');
-    expect(seen[seen.length - 1]).toBe('Copied');
+    const seen = await page.evaluate(
+      () => (window as unknown as { __statusSeen: { text: string; at: number }[] }).__statusSeen,
+    );
+    const emptied = seen.find((entry) => entry.text === '');
+    const refilled = seen.filter((entry) => entry.text === 'Copied').pop();
+    expect(emptied).toBeDefined();
+    expect(refilled).toBeDefined();
+    // The component waits 100 ms between the two; allow some timer slack.
+    expect(refilled!.at - emptied!.at).toBeGreaterThanOrEqual(80);
+  });
+
+  test('a copy that finishes after the reader navigates does not mark the next page', async ({ page }) => {
+    // Hold the twin back so the copy is still in flight when the route changes.
+    let release!: () => void;
+    const gate = new Promise<void>((done) => (release = done));
+    await page.route(`**${twin}`, async (route) => {
+      await gate;
+      await route.continue();
+    });
+    await open(page);
+    const copy = page.locator('.copy-markdown-main');
+    await copy.click();
+
+    await page.evaluate((href) => {
+      const link = document.createElement('a');
+      link.href = href;
+      document.querySelector('.VPContent')!.appendChild(link);
+      link.click();
+    }, SQS_OVERVIEW_PAGE);
+    await expect(page).toHaveURL(new RegExp(`${SQS_OVERVIEW_PAGE}$`));
+
+    release();
+    // Longer than the 100 ms re-announce delay plus the fetch, so a stale result would be on screen by now.
+    await page.waitForTimeout(600);
+    await expect(copy).toHaveText('Copy Markdown');
+    await expect(page.locator('.copy-markdown [role="status"]')).toHaveText('');
   });
 
   test('shows Copy failed when the file cannot be fetched and the menu stays usable', async ({ page }) => {

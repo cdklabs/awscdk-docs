@@ -106,6 +106,7 @@ test.describe('accessibility audit (axe-core) @a11y', () => {
     if (await apiSidebar.count()) {
       await expect(apiSidebar.locator('.api-sidebar-nav')).toBeVisible();
     }
+    await page.locator('.copy-markdown[data-ready]').waitFor();
     await page.getByRole('button', { name: 'More Markdown options' }).click();
     await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeVisible();
     await audit(page, `${TOPIC_PAGE} with the Copy Markdown menu open`);
