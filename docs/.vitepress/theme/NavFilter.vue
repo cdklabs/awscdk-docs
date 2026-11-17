@@ -76,8 +76,9 @@ function focusInput() {
 // load, then rank. If the user kept typing while the index loaded, the captured
 // query is stale — drop the navigation rather than jump somewhere wrong.
 //
-// The jump clears the box and, where the sidebar is a fixed rail (960px and wider), returns focus to it so the next
-// query can be typed straight away. In the narrow drawer focus is left alone.
+// The jump clears the box and holds focus on the input while the page loads. After navigation, focus returns to the
+// input only where the sidebar is a fixed rail (960px and wider), so the next query can be typed straight away. In the
+// narrow drawer it stays where VitePress puts it on route change.
 async function onEnter() {
   const pressed = query.value;
   if (!isFilterActive(pressed)) {

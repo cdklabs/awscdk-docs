@@ -473,8 +473,10 @@ test.describe('in-sidebar symbol filter', () => {
     await input.fill('Topic');
     const button = page.locator('.nav-filter-hint').getByRole('button');
     await expect(button).toBeVisible();
-    await expect(button).toContainText('Topic');
+    // Pin the precondition: the best match is this page, so the jump stays on the same route.
+    await expect(button).toHaveAccessibleName('Enter opens Topic');
     await button.click();
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sns\.Topic\.html$/);
 
     // Same route, so VitePress neither closes the drawer nor moves focus: the input must still hold it.
     await expect(input).toHaveValue('');
