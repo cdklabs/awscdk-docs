@@ -93,11 +93,40 @@ test.describe('Copy Markdown control', () => {
     }, SQS_OVERVIEW_PAGE);
     await expect(page).toHaveURL(new RegExp(`${SQS_OVERVIEW_PAGE}$`));
 
+    const done = page.waitForResponse((response) => response.url().endsWith(twin));
     release();
-    // Longer than the 100 ms re-announce delay plus the fetch, so a stale result would be on screen by now.
-    await page.waitForTimeout(600);
+    await done;
+    // Past the 100 ms re-announce delay, so a stale result would be on screen by now.
+    await page.waitForTimeout(300);
     await expect(copy).toHaveText('Copy Markdown');
     await expect(page.locator('.copy-markdown [role="status"]')).toHaveText('');
+  });
+
+  test('a slow first copy that fails does not overwrite a second copy that succeeded', async ({ page }) => {
+    // The first twin request waits behind a gate and then 404s; the second goes through at once.
+    let release!: () => void;
+    const gate = new Promise<void>((done) => (release = done));
+    let calls = 0;
+    await page.route(`**${twin}`, async (route) => {
+      calls += 1;
+      if (calls === 1) {
+        await gate;
+        await route.fulfill({ status: 404, body: 'missing' });
+      } else {
+        await route.continue();
+      }
+    });
+    await open(page);
+    const copy = page.locator('.copy-markdown-main');
+    await copy.click();
+    await copy.click();
+    await expect(copy).toHaveText('Copied');
+
+    const done = page.waitForResponse((response) => response.url().endsWith(twin) && response.status() === 404);
+    release();
+    await done;
+    await page.waitForTimeout(300);
+    await expect(copy).toHaveText('Copied');
   });
 
   test('shows Copy failed when the file cannot be fetched and the menu stays usable', async ({ page }) => {

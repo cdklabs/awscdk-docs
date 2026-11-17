@@ -18,6 +18,8 @@ const markdownUrl = computed(() => {
 const RESULT_MS = 2000;
 const REANNOUNCE_MS = 100;
 const result = ref<CopyResult | undefined>(undefined);
+// What the live region says. It lags `result` by a beat on purpose, see `copy()`; the button text does not.
+const announcement = ref("");
 const menuOpen = ref(false);
 // Set once hydration has run, so a test (or any script) can tell a live button from the server-rendered shell.
 const ready = ref(false);
@@ -48,16 +50,20 @@ async function copy(): Promise<void> {
             new ClipboardItem({ "text/plain": text.then((value) => new Blob([value], { type: "text/plain" })) }),
   });
   if (mine !== generation) return;
-  // A repeat of the same result must still change the live region, or screen readers stay silent: clear it and
-  // wait long enough for the empty state to render before setting it again. A single tick is not enough, since
+  // The button shows the result at once. The live region is cleared first and refilled after REANNOUNCE_MS, so a
+  // repeat of the same result still changes it and screen readers speak again. A single tick is not enough, since
   // both updates would land before the browser paints. The clipboard write has already started, so the click's
   // user activation is not at stake.
-  result.value = undefined;
+  result.value = outcome;
+  announcement.value = "";
+  clearTimeout(resetTimer);
+  resetTimer = setTimeout(() => {
+    result.value = undefined;
+    announcement.value = "";
+  }, RESULT_MS);
   await new Promise((resolve) => setTimeout(resolve, REANNOUNCE_MS));
   if (mine !== generation) return;
-  result.value = outcome;
-  clearTimeout(resetTimer);
-  resetTimer = setTimeout(() => (result.value = undefined), RESULT_MS);
+  announcement.value = label.value;
 }
 
 async function openMenu(): Promise<void> {
@@ -102,6 +108,7 @@ watch(
     generation++;
     menuOpen.value = false;
     result.value = undefined;
+    announcement.value = "";
     clearTimeout(resetTimer);
   }
 );
@@ -163,7 +170,7 @@ onUnmounted(() => {
         >
       </a>
     </div>
-    <span class="copy-markdown-status" role="status" aria-live="polite">{{ result ? label : "" }}</span>
+    <span class="copy-markdown-status" role="status" aria-live="polite">{{ announcement }}</span>
   </section>
 </template>
 
