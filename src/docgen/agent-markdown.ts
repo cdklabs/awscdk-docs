@@ -14,6 +14,13 @@
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE } from './languages.js';
+import { TYPE_METADATA_OPEN } from './layout.js';
+
+/** The whole generated metadata table, matched from the exact opening tag `renderTypeMetadata` writes. */
+const METADATA_TABLE = new RegExp(
+  `${TYPE_METADATA_OPEN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?</table>`,
+  'g',
+);
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -77,8 +84,9 @@ function stripFrontmatter(s: string): string {
  * prose, which reaches the page verbatim. Fenced and indented code, and every angle-bracketed token that is not one
  * of the `KNOWN_TAGS`, are swapped for placeholders before the HTML parse and put back afterwards, byte for byte. The
  * generated `type-metadata` table is the one exception: its exact markup passes through to the parser whole, so table
- * tags elsewhere (README tables, `<Table>` generics, `<table name>` placeholders) stay literal. Fences come from the shared tokenizer every other fence-aware pass uses; a fence's info string keeps only its
- * language tag, dropping the `type-links=…` attribute that drives hover links.
+ * tags elsewhere (README tables, `<Table>` generics, `<table name>` placeholders) stay literal. Fences come from the
+ * shared tokenizer every other fence-aware pass uses; a fence's info string keeps only its language tag, dropping
+ * the `type-links=…` attribute that drives hover links.
  */
 function protectCode(s: string): { text: string; restore: (out: string) => string } {
   const slots: string[] = [];
@@ -101,7 +109,7 @@ function protectCode(s: string): { text: string; restore: (out: string) => strin
       }
       return span.text
         // Only the exact generated metadata table enters the parser; table-shaped documentation stays literal.
-        .replace(/<table class="type-metadata" aria-label="Type metadata">[\s\S]*?<\/table>/g, (table) =>
+        .replace(METADATA_TABLE, (table) =>
           table.replace(/<[^<>]+>/g, keepMetadataTag))
         // Indented code blocks: a run of lines indented four columns after a blank line (or the span start). Docgen
         // escapes docstring prose without recognizing this form, so the block is decoded back to what was written.

@@ -125,6 +125,9 @@ export interface TypeMetadataRow {
   readonly value: string;
 }
 
+/** Opening tag of the metadata table. The Markdown twin transform finds the table by this exact string. */
+export const TYPE_METADATA_OPEN = '<table class="type-metadata" aria-label="Type metadata">';
+
 /**
  * Metadata table under the type-hierarchy bar. Each label is a row header, and rows render only when the type has
  * the corresponding fact.
@@ -139,7 +142,7 @@ export function renderTypeMetadata(rows: readonly TypeMetadataRow[]): string[] {
       + `<td class="type-metadata-value">${row.value}</td>`
       + '</tr>')
     .join('');
-  return [`<table class="type-metadata" aria-label="Type metadata"><tbody>${body}</tbody></table>`, ''];
+  return [`${TYPE_METADATA_OPEN}<tbody>${body}</tbody></table>`, ''];
 }
 
 /** One linked type name of the hierarchy block. */
