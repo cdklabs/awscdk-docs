@@ -15,7 +15,7 @@
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
-import { DEFAULT_LANGUAGE, LANGUAGES } from './languages.js';
+import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -127,8 +127,9 @@ function unwrapContainers(s: string): string {
 
 const classes = (el: Element): Set<string> => new Set((el.attribs.class ?? '').split(/\s+/).filter(Boolean));
 
-// The fence tags docgen's README pass reads as TypeScript (`TS_FENCE` in index.ts): a fallback copy carries one.
-const TS_FENCE = /^(?:ts|typescript)$/;
+// The fence tags that mark a TypeScript fallback copy. `renderReadmeBody` in index.ts stamps the fallback with
+// `fenceFor(…, 'ts')`, which resolves to `FENCE_LANG.ts`; `typescript` is the other spelling a README author uses.
+const TS_FENCE_TAGS = new Set([FENCE_LANG[DEFAULT_LANGUAGE], 'typescript']);
 const LANGUAGE_LABEL = new Map<string, string>(LANGUAGES.map((l) => [l.id, l.label]));
 const isVariant = (n: Node): n is Element => isElement(n) && classes(n).has('lang-variant');
 const languageLabel = (variant: Element): string =>
@@ -209,7 +210,7 @@ function renderBlockGroup(group: Element[], copies: Map<Element, { raw: string; 
   const fenceLang = (v: Element) => /^ {0,3}(?:`{3,}|~{3,})([^\s`]*)/m.exec(copies.get(v)!.text)?.[1];
   // Only a `ts` fence in another language's copy is the fill; a copy that leads with a shell or JSON fence is its own.
   const isFallback = (v: Element) => v.attribs['data-lang'] !== DEFAULT_LANGUAGE
-    && TS_FENCE.test(fenceLang(v) ?? '');
+    && TS_FENCE_TAGS.has(fenceLang(v) ?? '');
   const fallbacks = group.filter(isFallback);
   const fallbackSet = new Set(fallbacks);
   const block = (label: string, v: Element) => `\n${label}:\n\n${copies.get(v)!.raw}\n`;

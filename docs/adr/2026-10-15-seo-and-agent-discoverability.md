@@ -98,7 +98,8 @@ back on it (`TypeScript (also shown for Python):`) and the fallbacks are not
 repeated. Without TypeScript, one fallback copy stands in at the position of
 the first language using it, labeled `TypeScript (shown for Python):`. A
 language docgen leaves out of a group, such as a type example with no
-translation, is not listed; the page shows it the TypeScript example. Member
+translation, is not listed; the page shows it the first embedded language's
+example (TypeScript when it is enabled). Member
 names, types and inline signatures (member bullets, names in tables and
 parameter lists) keep the canonical spelling only: TypeScript when it is enabled, and otherwise the
 first enabled language. Prose, tables and links appear once. The languages are
