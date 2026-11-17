@@ -432,7 +432,7 @@ test.describe('in-sidebar symbol filter', () => {
     await input.fill('Queue');
     await page.locator('.nav-filter-hint').getByRole('button').click();
 
-    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue/);
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
     await expect(input).toHaveValue('');
     await expect(input).toBeFocused();
   });
@@ -453,7 +453,7 @@ test.describe('in-sidebar symbol filter', () => {
     await expect(button).toBeFocused();
     await page.keyboard.press('Space');
 
-    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue/);
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
     await expect(input).toHaveValue('');
     await expect(input).toBeFocused();
   });
