@@ -96,9 +96,9 @@ const theme: Theme = {
     // Re-apply a stored layout-density choice at client boot. No-op on the
     // server and at the default (Balanced) level, which carries no attribute.
     initDensity();
-    // Mark the member row a jump lands on. In-page jumps arrive as `hashchange`
-    // (VitePress dispatches one for its pushState links); a cross-page link
-    // with a hash arrives here, after the new page has rendered.
+    // Mark the member row a jump lands on. Same-page links arrive as `hashchange`;
+    // the route hook below covers back/forward, cross-page links with a hash and,
+    // in a build, the initial load.
     flashMember = installMemberFlash();
     // Spacious opens every fold-out; a client-side navigation renders a new
     // page whose fold-outs start closed, so reapply the level after each one.
