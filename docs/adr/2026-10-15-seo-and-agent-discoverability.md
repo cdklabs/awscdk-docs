@@ -98,9 +98,10 @@ twin. Each rendered page advertises its own twin through
 such as `/llms.txt` and image sources, are joined onto `DOCS_SITE_URL`
 unchanged. Targets containing whitespace or a backslash stay as authored. Only
 single-line, untitled inline links within one text run are rewritten;
-reference definitions and titled links pass through, and the pipeline test
-fails if one with a root-relative target appears. The pipeline test also
-checks that every twin site link is the `pageUrl()` of a page the site serves.
+reference definitions and titled links pass through. The pipeline test builds
+the `constructs` package only. It fails if a twin there holds a root-relative
+target, and checks that each twin site link is the `pageUrl()` of a page the
+site serves. Twins of other packages are not scanned.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the
