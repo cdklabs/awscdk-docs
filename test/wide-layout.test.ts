@@ -40,8 +40,8 @@ function declarations(css: string, query: string, selector: string): string[] {
 }
 
 // The wide-screen tier: one more breakpoint above the default theme's 1440px
-// tier, so large monitors get a wider content area while prose keeps its line
-// length and the sidebar keeps its width. The browser spec
+// tier, so large monitors get a wider content area while prose stays near its
+// 1440px line length and the sidebar keeps its width. The browser spec
 // (test/e2e/wide-layout.spec.ts) measures the result; this pins the sheet.
 describe('wide-screen layout tier (wide-layout.css)', () => {
   const css = readFileSync(resolve(THEME_DIR, 'wide-layout.css'), 'utf-8');
@@ -114,23 +114,31 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
     expect(stripped).toContain('.Layout.versions-page .site-footer');
   });
 
-  test('the versions content offset mirrors VPContent.has-sidebar in both stock tiers', () => {
+  // The sidebar pages take their offsets from 960px; the versions page only from the tightest desktop
+  // tier, so a zoomed-in reader between 960 and 1279px keeps the page's full width.
+  const VERSIONS_TIERS: Array<[string, string]> = [
+    ['(min-width: 1280px)', '(min-width: 960px)'],
+    ['(min-width: 1440px)', '(min-width: 1440px)'],
+  ];
+
+  test('the versions content offset mirrors VPContent.has-sidebar, from 1280px up', () => {
     const content = readFileSync(resolve(VITEPRESS, 'components/VPContent.vue'), 'utf-8');
     const hook = '.Layout.versions-page .VPContent:not(.has-sidebar)';
-    const stock = (query: string) => declarations(content, query, '.VPContent.has-sidebar');
-    expect(declarations(stripped, '(min-width: 960px)', hook)).toEqual(
-      stock('(min-width: 960px)').filter((d) => d.startsWith('padding-left')),
-    );
-    expect(declarations(stripped, '(min-width: 1440px)', hook)).toEqual(stock('(min-width: 1440px)'));
+    expect(mediaBlocks(stripped, '(min-width: 960px)')).toEqual([]);
+    for (const [ours, theirs] of VERSIONS_TIERS) {
+      const stock = declarations(content, theirs, '.VPContent.has-sidebar').filter((d) => d.startsWith('padding'));
+      expect(stock.length).toBeGreaterThan(0);
+      expect(declarations(stripped, ours, hook)).toEqual(stock);
+    }
   });
 
-  test('the versions footer offset mirrors the site footer has-sidebar rules in both stock tiers', () => {
+  test('the versions footer offset mirrors the site footer has-sidebar rules, from 1280px up', () => {
     const footer = readFileSync(resolve(THEME_DIR, 'SiteFooter.vue'), 'utf-8');
     const hook = '.Layout.versions-page .site-footer';
-    for (const query of ['(min-width: 960px)', '(min-width: 1440px)']) {
-      const stock = declarations(footer, query, '.site-footer.has-sidebar');
+    for (const [ours, theirs] of VERSIONS_TIERS) {
+      const stock = declarations(footer, theirs, '.site-footer.has-sidebar');
       expect(stock.length).toBeGreaterThan(0);
-      expect(declarations(stripped, query, hook)).toEqual(stock);
+      expect(declarations(stripped, ours, hook)).toEqual(stock);
     }
   });
 

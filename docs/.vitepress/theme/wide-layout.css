@@ -35,11 +35,13 @@
   }
 }
 
-/* The versions page has no sidebar; place its content and footer in the lane
- * right of the sidebar, where the nav bar content sits, by mirroring the
- * `has-sidebar` offsets of VPContent and SiteFooter. `versions-page` is the
- * page's `pageClass` frontmatter, which VitePress puts on `.Layout`. */
-@media (min-width: 960px) {
+/* The versions page has no sidebar; from the tightest desktop tier up, place its
+ * content and footer in the lane right of the sidebar, where the nav bar content
+ * sits, by mirroring the `has-sidebar` offsets of VPContent and SiteFooter.
+ * Below 1280px (a zoomed-in large monitor) the page keeps its full width.
+ * `versions-page` is the page's `pageClass` frontmatter, which VitePress puts
+ * on `.Layout`. */
+@media (min-width: 1280px) {
   .Layout.versions-page .VPContent:not(.has-sidebar) {
     padding-left: var(--vp-sidebar-width);
   }

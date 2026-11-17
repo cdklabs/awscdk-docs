@@ -94,7 +94,7 @@ test.describe('wide-screen layout tier', () => {
     });
   }
 
-  for (const width of [960, 1280, 1440, ...WIDE] as const) {
+  for (const width of [1280, 1440, ...WIDE] as const) {
     test(`/versions content and footer sit in the lane right of the sidebar at ${width}px`, async ({ page }) => {
       // The lane is the area the sidebar pages' content uses at this width:
       // right of the 320px sidebar, inside the centered layout.
@@ -116,15 +116,26 @@ test.describe('wide-screen layout tier', () => {
       // The no-sidebar content box inside it: 1056px in the wide tier, the stock 784px (752px below 1440px)
       // under it, less the 256px outline aside that renders from 1280px up.
       const content = width >= 1920 ? 1056 : width >= 1440 ? 784 : 752;
-      const aside = width >= 1280 ? 256 : 0;
-      expect(await widthOf(page, '.VPDoc .container > .content')).toBe(Math.min(content, container.width - aside));
+      expect(await widthOf(page, '.VPDoc .container > .content')).toBe(Math.min(content, container.width - 256));
       // The footer moves with the content (its 24px is the footer's own padding).
       const footer = await innerLane(page, '.site-footer');
       expect(Math.abs(footer.left - (lane.left + 24)), `footer vs content at ${width}px`).toBeLessThanOrEqual(1);
-      // The versions table stays inside the viewport in the narrowest lane.
-      const table = (await page.locator('.vp-doc table').first().boundingBox())!;
-      expect(table.x + table.width).toBeLessThanOrEqual(width);
+      // The versions table keeps every column in view: no scroll inside its block, none on the document.
+      const table = page.locator('.vp-doc table').first();
+      expect(await table.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
     });
   }
+
+  test('below the tightest desktop tier /versions keeps its full stock width', async ({ page }) => {
+    // A zoomed-in large monitor lands here (1920px at 200% is 960 CSS px); the lane
+    // alignment would cost a third of the width, so the page stays viewport-centered.
+    await at(page, 960, VERSIONS_PAGE);
+    const container = (await page.locator('.VPDoc .container').boundingBox())!;
+    expect(container.width).toBe(896);
+    expect(Math.abs(container.x + container.width / 2 - 480)).toBeLessThanOrEqual(1);
+    const footer = await innerLane(page, '.site-footer');
+    expect(footer.left).toBe(24);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(960);
+  });
 });

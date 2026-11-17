@@ -313,7 +313,9 @@ padding) so the column it holds can reach 992px. Inside the tier, running prose
 (the `p`, `ul`, `ol` and `blockquote` children of the page body) is capped at
 784px, a little over the 688px it has beside the outline and the 720px it has
 on a no-sidebar page at the 1440px tier; tables, signatures, code blocks and
-docgen member rows use the full column. One more breakpoint rather than a
+docgen member rows use the full column, including the remarks prose inside a
+member row, which stays at the row's width so a row reads as one unit. One more
+breakpoint rather than a
 full-width layout or a settings option: a fixed tier keeps prose line length
 near its current value and the sidebar width constant, and adds no control to
 the Settings menu for a layout most readers never see. 1920px is the most common
@@ -339,9 +341,11 @@ no-sidebar page reached from the nav bar whose content sits directly under those
 inset controls, so it is the one page re-centered; `/skills`, `/stability` and
 `/aws-construct-library` keep the stock full-viewport centering until they are
 aligned as a group. The sheet mirrors `VPContent.has-sidebar`'s padding onto the
-page's content and `SiteFooter`'s `has-sidebar` offset onto its footer, in both
-stock tiers (960px and 1440px), so content, nav and footer share one lane there
-too. The hook is `pageClass: versions-page` in the page's frontmatter, which
+page's content and `SiteFooter`'s `has-sidebar` offset onto its footer, from the
+tightest desktop tier (1280px) and in the 1440px tier, so content, nav and
+footer share one lane there too. Between 960 and 1279px, where a zoomed-in large
+monitor lands (1920px at 200% is 960 CSS px), the page keeps its full
+viewport-centered width: the alignment would cost a third of it. The hook is `pageClass: versions-page` in the page's frontmatter, which
 VitePress puts on the `.Layout` root, an ancestor of both the content and the
 footer; `test/wide-layout.test.ts` pins the frontmatter, the `Layout.vue`
 binding and the mirrored declarations against the installed sources.
@@ -349,8 +353,10 @@ binding and the mirrored declarations against the installed sources.
 `test/e2e/wide-layout.spec.ts` measures the result at 960, 1280, 1440, 1920 and
 2560px: the column grows from 688px to 992px, prose stays at or under 784px,
 member-row remarks are uncapped, the content, nav and footer start on one lane,
-below 1920px every width is the stock one, and `/versions` content and footer
-sit within 2px of the sidebar pages' lane with no horizontal overflow.
+below 1920px every width on the sidebar pages is the stock one, `/versions`
+content and footer sit within 2px of the sidebar pages' lane from 1280px with no
+scroll inside the versions table or on the document, and at 960px `/versions`
+keeps its stock 896px container.
 `test/e2e/nav-controls.spec.ts` runs its page-independence check at 1920 and
 2560px as well.
 
@@ -384,6 +390,9 @@ sit within 2px of the sidebar pages' lane with no horizontal overflow.
   declaration-by-declaration rather than hard-coding mirrored values, so an
   upstream geometry or height change fails at the test instead of letting the
   page types silently diverge.
+- `/versions` trades width for alignment from 1280px up: its container is 896px
+  at 1280px and 1056px at 1440px, against the stock 992px and 1104px; below
+  1280px it keeps the stock width and the nav-lane misalignment.
 - Above 1920px the layout is 1920px wide and the content column 992px; a
   VitePress bump that moves the 1440px tier or its three caps fails
   `test/wide-layout.test.ts`, which reads them from the installed sources. Any
