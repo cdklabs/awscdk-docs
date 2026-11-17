@@ -93,8 +93,9 @@ export function isGuardedEscape(event: Pick<HotkeyEvent, 'key' | 'isComposing'>,
 }
 
 /**
- * Whether a keydown is the plugin's own open shortcut, Cmd+K or Ctrl+K, whose browser default must be prevented.
- * Alt or Shift held, or no Cmd or Ctrl, makes it another key that is left alone.
+ * Whether a keydown is Cmd+K or Ctrl+K, the plugin's open shortcut, whose browser default must be prevented.
+ * With Shift or Alt also held the default is kept, so browser chords such as Firefox's web console still work,
+ * even though the plugin may open search on them too.
  */
 export function isOpenSearchShortcut(
   event: Pick<HotkeyEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>,
