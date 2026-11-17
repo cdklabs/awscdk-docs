@@ -88,7 +88,7 @@ describe('module type list in the Markdown twin', () => {
     expect(twin).toContain('### Structs');
     expect(twin).not.toContain('<wbr>');
     expect(twin).not.toContain('<div');
-    // The `{role=list}` line is browser-only markup, and a code sample's own `{...}` line is left alone.
+    // The `{role=list}` line is browser-only markup.
     expect(twin).not.toContain('{role=list}');
     expect(twin).not.toMatch(/^\{[^}]*\}$/m);
   });

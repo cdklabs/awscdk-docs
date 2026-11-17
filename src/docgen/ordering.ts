@@ -21,8 +21,8 @@ const rank = (level?: ConstructLevel): number => (level ? LEVEL_RANK[level] : UN
 /**
  * Sort by construct level (L3, L2, L1, then unleveled), alphabetically
  * within each tier. Shared by the two places that order type lists — the
- * sidebar's leaf lists and the type tables on index/overview pages — so
- * the nav and the page tables cannot drift apart.
+ * sidebar's leaf lists and the entries within each kind group of a module's
+ * type list.
  *
  * The level is taken from the field the caller already carries
  * (`SidebarEntry.level` / `TypeEntry.level`, both from

@@ -357,7 +357,7 @@ function renderStructProps(
 export interface SymbolIndexEntry {
   readonly name: string;
   readonly kind: string;
-  /** Site-absolute link: dedicated page, or the (sub)module type table. */
+  /** Site-absolute link: dedicated page, or the (sub)module type list. */
   readonly link: string;
   /** Display label for the owning service/section. */
   readonly service: string;
@@ -376,7 +376,7 @@ export interface SymbolIndexEntry {
 
 /**
  * Flatten sidebar entries into the symbol index. Types without a
- * dedicated page fall back to their (sub)module type table so every
+ * dedicated page fall back to their (sub)module type list so every
  * result is navigable.
  */
 export function buildSymbolIndex(entries: SidebarEntry[]): SymbolIndexEntry[] {

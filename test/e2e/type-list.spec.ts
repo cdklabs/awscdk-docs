@@ -19,12 +19,19 @@ async function open(page: Page, url: string, density: (typeof DENSITIES)[number]
   await page.locator('.type-list li').first().waitFor();
 }
 
-/** Entries that run past the page body, and whether the document scrolls sideways. */
+/**
+ * Entries whose content runs past the page body, and whether the document scrolls sideways. A block-level entry is
+ * always as wide as its container, so the content is measured: an entry is wide when its scroll width exceeds its
+ * client width or when any line box of its name or link sits past the right edge of the page body.
+ */
 async function overflow(page: Page): Promise<{ wide: string[]; scrolls: boolean }> {
   return page.evaluate(() => {
     const body = document.querySelector('.vp-doc')!.getBoundingClientRect();
     const wide = Array.from(document.querySelectorAll('.type-list li'))
-      .filter((li) => li.getBoundingClientRect().right > body.right + 0.5)
+      .filter((li) => li.scrollWidth > li.clientWidth + 0.5
+        || Array.from(li.querySelectorAll('a, code')).some((el) => (
+          Array.from(el.getClientRects()).some((r) => r.right > body.right + 0.5)
+        )))
       .map((li) => li.textContent ?? '');
     const root = document.documentElement;
     return { wide, scrolls: root.scrollWidth > root.clientWidth };
@@ -84,12 +91,18 @@ test.describe('type list with a very long nested name', () => {
         list.appendChild(li);
       }, LONG_NAME);
       expect(await overflow(page)).toEqual({ wide: [], scrolls: false });
-      // On a phone the name is wider than the body, so it must occupy more than one line box.
-      const lines = await page.evaluate(() => {
-        const rects = Array.from(document.querySelector('#long-name-entry code')!.getClientRects());
-        return new Set(rects.map((r) => Math.round(r.top))).size;
+      // Wherever the name set on one line would be wider than the page body, it must occupy more than one line box.
+      const { unwrapped, bodyWidth, lines } = await page.evaluate(() => {
+        const code = document.querySelector('#long-name-entry code')!;
+        const context = document.createElement('canvas').getContext('2d')!;
+        context.font = getComputedStyle(code).font;
+        return {
+          unwrapped: context.measureText(code.textContent ?? '').width,
+          bodyWidth: document.querySelector('.vp-doc')!.getBoundingClientRect().width,
+          lines: new Set(Array.from(code.getClientRects()).map((r) => Math.round(r.top))).size,
+        };
       });
-      if (width === 375) {
+      if (unwrapped > bodyWidth) {
         expect(lines).toBeGreaterThan(1);
       }
     });
