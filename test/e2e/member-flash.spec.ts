@@ -32,19 +32,20 @@ test.describe('a jump to a member row flashes it', () => {
     expect(await animations(page, FIFO)).toEqual([]);
   });
 
-  test('the flash starts brand-soft and ends transparent', async ({ page }) => {
+  test('the flash starts at the flash color and ends at the row background', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     const row = page.locator(`.member-row${FIFO}`);
     // Pause the animation at its first frame to read the start color.
     const colors = await page.evaluate(async (hash) => {
       const el = document.querySelector<HTMLElement>(`.member-row${hash}`)!;
-      const brand = getComputedStyle(document.documentElement).getPropertyValue('--vp-c-brand-soft').trim();
+      const token = getComputedStyle(document.documentElement).getPropertyValue('--api-c-flash').trim();
       // Resolve the token through an element so the comparison is rgb to rgb.
       const probe = document.createElement('div');
-      probe.style.backgroundColor = brand;
+      probe.style.backgroundColor = token;
       document.body.append(probe);
-      const brandRgb = getComputedStyle(probe).backgroundColor;
+      const flashRgb = getComputedStyle(probe).backgroundColor;
       probe.remove();
+      const resting = getComputedStyle(el).backgroundColor;
       el.classList.add('member-row-flash');
       const anim = el.getAnimations()[0];
       anim.pause();
@@ -54,10 +55,11 @@ test.describe('a jump to a member row flashes it', () => {
       const end = getComputedStyle(el).backgroundColor;
       anim.cancel();
       el.classList.remove('member-row-flash');
-      return { brandRgb, start, end };
+      return { flashRgb, resting, start, end };
     }, FIFO);
-    expect(colors.start).toBe(colors.brandRgb);
-    expect(colors.end).toBe('rgba(0, 0, 0, 0)');
+    expect(colors.start).toBe(colors.flashRgb);
+    // Ending at the row's own background means nothing snaps when the class goes.
+    expect(colors.end).toBe(colors.resting);
     await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`));
   });
 
@@ -67,14 +69,28 @@ test.describe('a jump to a member row flashes it', () => {
     await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await page.locator(OUTLINE_LINK(RETENTION)).click();
     await expect(page.locator(`.member-row${RETENTION}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
-    await expect(page.locator(`.member-row${FIFO}`)).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    // Within 1s: the fade's own end at 1.5s must not be what clears the first row.
+    await expect(page.locator(`.member-row${FIFO}`)).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`), { timeout: 1000 });
+  });
+
+  test('a repeat jump to the row the page is already at flashes it again', async ({ page }) => {
+    // VitePress sends no hashchange for a link to the current hash; it only scrolls.
+    await page.goto(QUEUE_PAGE);
+    await page.locator(OUTLINE_LINK(FIFO)).click();
+    const row = page.locator(`.member-row${FIFO}`);
+    await expect(row).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`), { timeout: 3000 });
+    await page.locator(OUTLINE_LINK(FIFO)).click();
+    await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
+    await expect(row).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
   });
 
   test('a member permalink and a page load with a hash flash too', async ({ page }) => {
     await page.goto(`${QUEUE_PAGE}${FIFO}`);
     await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
-    // The static tint still applies on a load with a hash.
+    // The browser still sets `:target`; the stylesheet leaves it untinted once the module is installed.
     expect(await page.locator(`.member-row${FIFO}`).evaluate((el) => el.matches(':target'))).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.classList.contains('member-flash-ready'))).toBe(true);
 
     await page.locator(`.member-row${RETENTION} a.member-permalink`).click();
     await expect(page).toHaveURL(new RegExp(`${RETENTION}$`));
@@ -113,7 +129,7 @@ test.describe('a jump to a member row flashes it', () => {
     await page.locator(OUTLINE_LINK(FIFO)).click();
     await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await page.locator('a.header-anchor').first().click();
-    await expect(page.locator(`.${FLASH}`)).toHaveCount(0);
+    await expect(page.locator(`.${FLASH}`)).toHaveCount(0, { timeout: 1000 });
   });
 
   test('the mark is visual only: no attribute changes and the row keeps its size', async ({ page }) => {
@@ -161,5 +177,19 @@ test.describe('under reduced motion', () => {
     await page.locator(OUTLINE_LINK(RETENTION)).click();
     await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await expect(page.locator(`.member-row${RETENTION}`)).toHaveCSS('background-color', tint);
+  });
+
+  test('after a load with a hash, a jump leaves only the new row tinted', async ({ page }) => {
+    // `:target` stays on the first-loaded row forever; its tint must not sit
+    // beside the static mark, or two rows look landed on.
+    await page.goto(`${QUEUE_PAGE}${FIFO}`);
+    await page.locator(OUTLINE_LINK(RETENTION)).click();
+    await expect(page.locator(`.member-row${RETENTION}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    const tinted = await page.evaluate(() => {
+      const rows = Array.from(document.querySelectorAll<HTMLElement>('.props-table .member-row'));
+      const resting = getComputedStyle(rows.find((r) => !r.matches(':target') && !r.classList.contains('member-row-flash'))!).backgroundColor;
+      return rows.filter((r) => getComputedStyle(r).backgroundColor !== resting).map((r) => `#${r.id}`);
+    });
+    expect(tinted).toEqual([RETENTION]);
   });
 });

@@ -9,6 +9,10 @@
      The strikethrough on the identifier carries the deprecation
      independently, so nothing depends on this color alone. */
   --api-c-deprecated: #9a2c2c;
+  /* Start of the member-row flash. Brand-soft over the page falls to 4.3:1
+     under brand-1 text (a link in a summary, a hovered type); this stays at
+     AA for brand-1, brand-2, the type color and body text. */
+  --api-c-flash: #fdf3e3;
 }
 
 .dark {
@@ -16,6 +20,7 @@
   --api-c-badge-bg: #3b2c1a;
   --api-c-badge-text: #ffb84d;
   --api-c-deprecated: #ff9d9d;
+  --api-c-flash: #3b3226;
 }
 
 /* ---------- Type page header bar: breadcrumb + favorite ---------- */
@@ -484,28 +489,26 @@ a.chain-item:hover {
 }
 
 /* A row navigated to by its permalink is tinted so the landing is visible; the
-   id lives on the row, so the whole member highlights. `:target` is set by the
-   browser on a page load with a hash only; member-flash.ts marks every other
-   jump with `.member-row-flash`. */
-.member-list .member-row:target {
+   id lives on the row, so the whole member highlights. The browser sets
+   `:target` on a page load with a hash only and never moves it for a pushState
+   jump, so once member-flash.ts is installed (`html.member-flash-ready`) the
+   flash class is the one landing mark and this rule serves the no-JS and
+   pre-hydration case alone; otherwise the first-loaded row would keep this tint
+   beside every later landing. */
+html:not(.member-flash-ready) .member-list .member-row:target {
   background-color: var(--vp-c-bg-soft);
 }
 
-/* The landed row flashes brand-soft and fades out over 1.5s, then the class is
-   removed. `forwards` holds the transparent end state until then, so the row is
-   not tinted twice where `:target` also applies. */
+/* The landed row flashes and fades to its own background over 1.5s, then the
+   class is removed on `animationend`. */
 @keyframes member-row-flash {
   from {
-    background-color: var(--vp-c-brand-soft);
-  }
-
-  to {
-    background-color: transparent;
+    background-color: var(--api-c-flash);
   }
 }
 
 .member-list .member-row.member-row-flash {
-  animation: member-row-flash 1500ms ease-out forwards;
+  animation: member-row-flash 1500ms ease-out;
 }
 
 /* Reduced motion: no fade. The landed row keeps the static tint until the next

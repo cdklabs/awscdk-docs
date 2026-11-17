@@ -1050,6 +1050,17 @@ describe('API page layout', () => {
           .toBeGreaterThanOrEqual(4.5);
       });
 
+      test.each(['light', 'dark'] as const)('%s mode: text on a flashed row keeps AA at the start of the fade', (scheme) => {
+        // The flash starts at its darkest; a landed row can carry body text, a
+        // type link and a brand-colored link in its summary or hovered type.
+        const layout = split(css())[scheme];
+        const surface = split(theme())[scheme];
+        const flash = hex(layout, '--api-c-flash');
+        for (const text of [hex(surface, '--vp-c-text-1'), hex(surface, '--vp-c-brand-1'), hex(surface, '--vp-c-brand-2'), hex(layout, '--api-c-type')]) {
+          expect([scheme, text, contrast(text, flash) >= 4.5]).toEqual([scheme, text, true]);
+        }
+      });
+
       test('deprecation never depends on color alone', () => {
         // A reader who cannot distinguish the tag's hue still has the
         // strikethrough, which is why the mark is not just a color swap.

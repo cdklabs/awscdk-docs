@@ -9,6 +9,7 @@ import {
   FLASH_DURATION_MS,
   FlashDocument,
   FlashElement,
+  READY_CLASS,
   clearFlash,
   flashRow,
   rowForHash,
@@ -114,26 +115,36 @@ describe('flashRow', () => {
 describe('stylesheet', () => {
   const css = () => readFileSync(resolve(import.meta.dirname, '../docs/.vitepress/theme/api-layout.css'), 'utf-8');
 
-  test('the flash class animates brand-soft to transparent over the module duration, ease out', () => {
+  test('the flash class animates from the flash color to the row background over the module duration, ease out', () => {
     const sheet = css();
     const at = sheet.indexOf('@keyframes member-row-flash {');
     expect(at).toBeGreaterThan(-1);
     const keyframes = sheet.slice(at, sheet.indexOf('\n}', at));
-    expect(keyframes).toMatch(/from \{[^}]*background-color: var\(--vp-c-brand-soft\)/);
-    expect(keyframes).toMatch(/to \{[^}]*background-color: transparent/);
+    expect(keyframes).toMatch(/from \{[^}]*background-color: var\(--api-c-flash\)/);
+    // No `to` frame: the fade ends at whatever the row's own background is, so
+    // nothing snaps when the class is removed.
+    expect(keyframes).not.toContain('to {');
     expect(sheet).toMatch(
-      new RegExp(`\\.member-list \\.member-row\\.${FLASH_CLASS} \\{[^}]*animation: member-row-flash ${FLASH_DURATION_MS}ms ease-out forwards`),
+      new RegExp(`\\.member-list \\.member-row\\.${FLASH_CLASS} \\{[^}]*animation: member-row-flash ${FLASH_DURATION_MS}ms ease-out;`),
     );
     expect(FLASH_DURATION_MS).toBe(1500);
   });
 
-  test('reduced motion shows the static tint with no animation, and the :target tint stays', () => {
+  test('the :target tint yields to the flash once the module is installed', () => {
+    // The browser never moves `:target` on a pushState jump, so with the flash
+    // installed the first-loaded row would otherwise keep a tint beside every
+    // later landing. The rule stays for the no-JS case.
+    expect(css()).toMatch(
+      new RegExp(`html:not\\(\\.${READY_CLASS}\\) \\.member-list \\.member-row:target \\{[^}]*background-color: var\\(--vp-c-bg-soft\\)`),
+    );
+  });
+
+  test('reduced motion shows the static tint with no animation', () => {
     const sheet = css();
     const reduced = sheet.slice(sheet.indexOf('@media (prefers-reduced-motion: reduce)'));
     const rule = reduced.slice(reduced.indexOf(`.member-row.${FLASH_CLASS}`));
     const body = rule.slice(rule.indexOf('{'), rule.indexOf('}'));
     expect(body).toContain('animation: none');
     expect(body).toContain('background-color: var(--vp-c-bg-soft)');
-    expect(sheet).toMatch(/\.member-list \.member-row:target \{[^}]*background-color: var\(--vp-c-bg-soft\)/);
   });
 });

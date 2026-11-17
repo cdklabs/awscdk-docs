@@ -11,6 +11,8 @@ import { prefersReducedMotion } from './smooth-scroll.js';
 
 /** Class the stylesheet animates (or, under reduced motion, shows statically). */
 export const FLASH_CLASS = 'member-row-flash';
+/** Set on `<html>` once the flash is installed; the stylesheet then leaves `:target` to the no-JS case. */
+export const READY_CLASS = 'member-flash-ready';
 /** Length of the fade, matched by the keyframes in api-layout.css. */
 export const FLASH_DURATION_MS = 1500;
 
@@ -83,9 +85,12 @@ export function flashRow(
 /**
  * Wire the flash to the hash events: VitePress's synthetic `hashchange` for
  * in-page links (outline, permalinks, prose links) and the browser's own for
- * back/forward between hashes. Returns the handler so the theme can call it
- * once the first page has mounted and after each route change, which is how a
- * page load with a hash and a cross-page link that lands on a member are covered.
+ * back/forward between hashes. A click on a link to the hash the page is
+ * already at fires no `hashchange` (VitePress only scrolls), so a bubbling
+ * click listener, which runs after VitePress's capture-phase handler, covers
+ * that repeat jump. Returns the handler so the theme can call it once the
+ * first page has mounted and after each route change, which is how a page load
+ * with a hash and a cross-page link that lands on a member are covered.
  */
 export function installMemberFlash(): (hash: string) => void {
   const g = globalThis as { document?: Document; addEventListener?: Window['addEventListener']; location?: Location };
@@ -104,5 +109,13 @@ export function installMemberFlash(): (hash: string) => void {
     }
   };
   g.addEventListener('hashchange', () => flash(g.location?.hash ?? ''));
+  g.addEventListener('click', (e) => {
+    const link = (e.target as Element | null)?.closest?.('a[href*="#"]') as HTMLAnchorElement | null;
+    const loc = g.location;
+    if (link && loc && link.hash && link.pathname === loc.pathname && link.hash === loc.hash) {
+      flash(link.hash);
+    }
+  });
+  g.document.documentElement.classList.add(READY_CLASS);
   return flash;
 }
