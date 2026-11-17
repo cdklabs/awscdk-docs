@@ -28,9 +28,9 @@ export function isGeneratedPage(filePath: string): boolean {
  * file a type page's docstrings are declared in. A generated page with no such
  * file (a table-only overview, an L1 built from generated code) gets no link.
  *
- * `upstreamEditUrl` is checked first and wins outright. A page whose
- * frontmatter sets `editLink: false` (such as the live versions page) gets no
- * link at all.
+ * `editLink: false` in frontmatter is checked first and suppresses the link
+ * outright (such as on the live versions page). Otherwise `upstreamEditUrl`
+ * wins over the path rule.
  */
 export function editLinkFor(
   filePath: string,

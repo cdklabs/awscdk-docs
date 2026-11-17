@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { CFN_QUEUE_PAGE, SKILLS_PAGE, SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
+import {
+  CFN_QUEUE_PAGE,
+  CONSTRUCT_LIBRARY_PAGE,
+  SKILLS_PAGE,
+  SQS_OVERVIEW_PAGE,
+  TOPIC_PAGE,
+  VERSIONS_PAGE,
+} from './fixture.js';
 
 // Consolidated doc-footer contribution links (PageFooterLinks.vue): "Edit
 // this page" + "Report an issue" rendered together in the
@@ -79,8 +86,18 @@ test.describe('doc footer contribution links', () => {
     await expect(editLink).toHaveAttribute('target', '_blank');
   });
 
+  test('a rewritten hand-written page links its source file, not its served path', async ({ page }) => {
+    await page.goto(CONSTRUCT_LIBRARY_PAGE);
+
+    const editLink = page.locator('.page-footer-links .footer-link', { hasText: 'Edit this page' });
+    await expect(editLink).toHaveAttribute(
+      'href',
+      'https://github.com/cdklabs/awscdk-docs/edit/main/docs/aws-construct-library.md',
+    );
+  });
+
   test('the versions page renders no edit link and keeps the report link', async ({ page }) => {
-    await page.goto('/versions.html');
+    await page.goto(VERSIONS_PAGE);
 
     // The page lists live release data, so there is no file a reader could usefully edit.
     const footer = page.locator('.page-footer-links');

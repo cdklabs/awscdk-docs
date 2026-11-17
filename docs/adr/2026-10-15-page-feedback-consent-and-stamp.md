@@ -37,7 +37,9 @@ and user agent. The URL/body construction lives in a pure, Jest-testable module
 
 ### Edit-this-page link and upstream provenance
 
-The edit link resolves from `editLinkFor(filePath, upstreamEditUrl)`:
+The edit link resolves from `editLinkFor(filePath, upstreamEditUrl, editLink)`;
+a page's `editLink: false` frontmatter suppresses it (see
+[edit link on hand-written pages](./2026-11-17-hand-written-page-edit-link.md)):
 
 - **Hand-written pages** link to their own markdown — superseded in
   [edit link on hand-written pages](./2026-11-17-hand-written-page-edit-link.md),

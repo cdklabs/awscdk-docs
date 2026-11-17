@@ -33,6 +33,8 @@ export const API_OVERVIEW = '/v2/';
 // geometry assertion. The fixture prune keeps the hand-written pages, so it
 // is served by the e2e build.
 export const SKILLS_PAGE = '/skills.html';
+// The hand-written versions page, which lists live release data.
+export const VERSIONS_PAGE = '/versions.html';
 // The authored construct-library overview, served here through a VitePress rewrite.
 export const CONSTRUCT_LIBRARY_PAGE = '/v2/docs/aws-construct-library.html';
 // A class page with descendants, for the subclasses list. The
