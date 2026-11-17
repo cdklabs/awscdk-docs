@@ -865,7 +865,8 @@ function fixedReadmeLabel(e: SidebarEntry): string | undefined {
  * readmes carry a fixed label ({@link FIXED_README_LABELS}), the service's own experimental
  * `@aws-cdk/aws-<service>-alpha` readme is `Developer Preview`, and every other readme is labeled by its module name
  * in the reader's language: the short submodule or package name in TypeScript, and the Go package name in Go,
- * qualified by its module when two readmes share it. Framework sections keep `Overview (<module>)`.
+ * qualified by its module when two readmes share it; Python, Java and .NET use their full module label. Framework
+ * sections keep `Overview (<module>)`.
  */
 function overviewItems(entries: SidebarEntry[], languages: readonly Language[], service: boolean): SidebarItem[] {
   const byLink = new Map<string, SidebarEntry>();
