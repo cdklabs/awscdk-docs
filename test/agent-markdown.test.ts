@@ -256,7 +256,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect(toAgentMarkdown(page).markdown).toBe([
       '- `bucketName`: string (required) (static) = "x" — Physical name of this bucket.',
       '',
-      '  - Python: `bucket_name`: str',
+      '  - Python: `bucket_name`: `str`',
       '',
     ].join('\n'));
   });
@@ -277,6 +277,36 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       '',
     ].join('\n');
     expect(toAgentMarkdown(page).markdown).toBe('```ts\nnew Bucket(this, "B");\n```\n');
+  });
+
+  test('when one language fell back on the first copy, the first label names it and its copy is dropped', () => {
+    const ts = ['', '```ts', 'new Bucket(this, "B");', '```', ''];
+    const java = ['', '```java', 'new Bucket(this, "B");', '```', ''];
+    const page = [
+      '<div class="lang-variant" data-lang="ts">', ...ts,
+      '</div><div class="lang-variant" data-lang="python" data-pagefind-ignore>', ...ts,
+      '</div><div class="lang-variant" data-lang="java" data-pagefind-ignore>', ...java,
+      '</div>',
+      '',
+    ].join('\n');
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript (also shown for Python):\n\n```ts');
+    expect(markdown).toContain('Java:\n\n```java');
+    expect(markdown).not.toMatch(/^Python:/m);
+    expect(markdown.match(/```ts/g)).toHaveLength(1);
+  });
+
+  test('a sub-bullet type is a code span, so a generic does not read as a tag', () => {
+    const page = [
+      '<div class="member-row" id="tags"><div class="member-line">'
+      + '<span class="lang-variant" data-lang="ts"><code class="member-name">tags</code>'
+      + '<span class="member-type" data-pagefind-ignore title="string[]">string[]</span></span>'
+      + '<span class="lang-variant" data-lang="java" data-pagefind-ignore><code class="member-name">tags</code>'
+      + '<span class="member-type" data-pagefind-ignore title="List&lt;String&gt;">List&lt;String&gt;</span></span>'
+      + '</div></div>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `tags`: string[]\n\n  - Java: `tags`: `List<String>`\n');
   });
 
   test('languages that share an inline spelling are listed together', () => {

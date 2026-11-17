@@ -4,9 +4,9 @@
  * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
  * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
- * consume: every enabled language's variant, each labeled with its language, while prose, tables and links appear
- * once; headings, prose, fenced code, tables and links preserved; member lists rewritten as bullet lists;
- * everything that exists for the browser dropped.
+ * consume: every enabled language's variant — block copies after a language label (identical copies dropped), inline
+ * spellings in parentheses where they differ; headings, prose, fenced code, tables and links once; member lists
+ * rewritten as bullet lists; everything that exists for the browser dropped.
  *
  * It is a transform over the finished page rather than a second renderer so there is one source of truth for the
  * documentation content itself. The HTML is walked with a real parser: the member markup nests spans several deep
@@ -25,9 +25,9 @@ const isText = (n: Node): n is Text => n.type === ElementType.Text;
 const isElement = (n: Node): n is Element => n.type === ElementType.Tag;
 
 /**
- * Restores the placeholders `protectCode` planted, for the one renderer that must see real lines before it emits:
- * a member body is indented under its bullet, and a fence that is still a placeholder would get only its opening
- * line indented. Set per transform; the renderer is synchronous.
+ * Restores the placeholders `protectCode` planted, for renderers that must see real text before they emit: a member
+ * body indented under its bullet (a fence that is still a placeholder would get only its opening line indented), and
+ * variant copies compared for equality. Set per transform; the renderer is synchronous.
  */
 let restoreProtected: (s: string) => string = (s) => s;
 
@@ -186,9 +186,15 @@ function renderVariantGroup(group: Element[]): string {
   const restored = (v: Element) => restoreProtected(children(v)).trim();
   const first = restored(group[0]);
   if (group[0].name.toLowerCase() === 'div') {
-    const kept = group.filter((v, i) => i === 0 || restored(v) !== first);
-    if (kept.length === 1) return children(group[0]);
-    return kept.map((v) => `\n${languageLabel(v)}:\n\n${children(v).trim()}\n`).join('\n');
+    // A copy identical to the first is the TypeScript fallback for a snippet that was not translated: it is not
+    // repeated, and the first copy's label names the languages that fell back on it.
+    const same = group.slice(1).filter((v) => restored(v) === first);
+    if (same.length === group.length - 1) return children(group[0]);
+    const kept = group.filter((v) => !same.includes(v));
+    const label = (v: Element) => (v === group[0] && same.length
+      ? `${languageLabel(v)} (also shown for ${same.map(languageLabel).join(', ')})`
+      : languageLabel(v));
+    return kept.map((v) => `\n${label(v)}:\n\n${children(v).trim()}\n`).join('\n');
   }
   const canonical = children(group[0]).trim();
   const byText = new Map<string, { text: string; labels: string[] }>();
@@ -382,14 +388,18 @@ function renderMemberRow(el: Element): string {
   return `- ${head}${summaryText ? ` — ${summaryText}` : ''}\n${indented}`;
 }
 
-/** One language's name and type (or signature) of a member, from that language's variant alone. */
+/**
+ * One language's name and type (or signature) of a member, from that language's variant alone. The type is plain
+ * code: the head bullet already links it, and a code span keeps a generic such as `List<String>` from reading as a
+ * tag.
+ */
 function renderMemberIdentity(variant: Element): string {
   const find = (cls: string) => DomUtils.findOne((n) => classes(n).has(cls), variant.children);
   const signature = find('member-signature');
   if (signature) return `\`${textOf(signature)}\``;
   const name = find('member-name');
   const type = find('member-type');
-  return name ? `\`${textOf(name)}\`${type ? `: ${inline(type)}` : ''}` : '';
+  return name ? `\`${textOf(name)}\`${type ? `: \`${textOf(type)}\`` : ''}` : '';
 }
 
 /**

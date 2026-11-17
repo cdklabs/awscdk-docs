@@ -92,14 +92,16 @@ language is repeated; prose, tables and links appear once. An example group
 becomes one fenced block per language, in the site's language order, each
 after a plain label line naming the language (`Python:`); a copy identical to
 the first, such as an untranslated snippet docgen fills with the TypeScript
-source, is dropped. A per-language name
+source, is dropped, and the first label names the languages that fell back on
+it (`TypeScript (also shown for Python):`). A per-language name
 inline (a property in a table, a parameter in a list) keeps the canonical
 spelling and adds the others in parentheses where they differ, listing
 languages that share a spelling together
 (`bucketArn (Python: bucket_arn; C# / .NET, Golang: BucketArn)`). A member
 bullet keeps the canonical name, type, flags and default, with one labeled
 sub-bullet per language whose name or type reads differently. A sub-bullet
-carries that name and type only: the default is the jsii `@default` text,
+carries that name and type only, the type as plain code (the head already
+links it): the default is the jsii `@default` text,
 written in TypeScript. The languages are the ones the page was built with, so a
 one-language build emits one copy and no labels.
 
@@ -117,7 +119,7 @@ the merge. The hand-written homepage is the one exception: it declares
 transforms its finished Markdown into the root twin during the same overlay
 step, keeping the advertised file and its producer together. The compressed
 corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
-`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 30 MB, up
+`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 29 MB, up
 from about 12 MB when the twin kept TypeScript only. It is overlaid once, with
 no per-shard cost.
 

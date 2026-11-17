@@ -268,7 +268,7 @@ describe('agent-oriented Markdown twins with every site language', () => {
         at = next;
       }
       // A member whose name reads differently in Python gets its sub-bullet from docgen's real markup.
-      expect(twin).toMatch(/^- `bucketArn`: string.*\n\n {2}- Python: `bucket_arn`: str$/m);
+      expect(twin).toMatch(/^- `bucketArn`: string.*\n\n {2}- Python: `bucket_arn`: `str`$/m);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
