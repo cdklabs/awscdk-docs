@@ -54,7 +54,10 @@ the level in order, first match wins:
 
 0. **Explicit FQN override** — carries `Stage`, `App`, `Stack`,
    `NestedStack`, and `Resource` as **L2** (curated abstractions no
-   inheritance test can reach, since `Resource` is the base). Matched by
+   inheritance test can reach, since `Resource` is the base), and the
+   hand-written alpha `PromptVersion`, which extends `Construct` directly
+   (see
+   [Construct Level and the CloudFormation Tag](./2026-11-17-construct-level-and-the-cloudformation-tag.md)). Matched by
    exact FQN, never inherited, so `aws_servicecatalog.ProductStack` is not
    promoted with `Stack`.
 1. **L1** — has `cloudformationResource` metadata **and is or extends

@@ -362,11 +362,15 @@ describe('construct detection and classification', () => {
       fqn: 'aws-cdk-lib.aws_s3.CfnHostile',
       name: 'CfnHostile',
       assembly: 'aws-cdk-lib',
+      base: 'aws-cdk-lib.CfnResource',
       docs: {
         see: 'javascript:alert(1)',
         custom: { cloudformationResource: 'AWS::S3::Bucket' },
       },
     };
+    // The fixture is itself an L1, so its own `@see` reaches the guard. Going through the reverse map would check
+    // `CfnBucket`'s safe `@see` instead and the test would pass for the wrong reason.
+    expect(cfnMetadata(hostile, index)?.l1Fqn).toBeUndefined();
     const rows = typeMetadataRows(hostile, cdk, index, () => undefined);
     const cfn = rows.find((r) => r.label === 'CloudFormation')!;
     expect(cfn.value).not.toContain('javascript:');
@@ -387,8 +391,10 @@ describe('construct detection and classification', () => {
       fqn: 'aws-cdk-lib.aws_s3.CfnProbe',
       name: 'CfnProbe',
       assembly: 'aws-cdk-lib',
+      base: 'aws-cdk-lib.CfnResource',
       docs: { see, custom: { cloudformationResource: 'AWS::S3::Bucket' } },
     };
+    expect(cfnMetadata(l1, index)?.l1Fqn).toBeUndefined();
     const cfn = typeMetadataRows(l1, cdk, index, () => undefined)
       .find((r) => r.label === 'CloudFormation')!;
     expect(cfn.value).toContain('TemplateReference/aws-resource-s3-bucket.html');

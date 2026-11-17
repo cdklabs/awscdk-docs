@@ -129,7 +129,17 @@ function isTaggedL1(type: spec.Type, index: TypeIndex): boolean {
   if (!spec.isClassType(type)) {
     return true;
   }
-  return type.fqn === CFN_ELEMENT_BASE_FQN || extendsFqn(type.fqn, CFN_ELEMENT_BASE_FQN, index);
+  // Walk from the type's own base, not from an index lookup of its FQN, so a type that is not itself in the index
+  // is judged by the chain it declares.
+  let current = type.base;
+  while (current) {
+    if (current === CFN_ELEMENT_BASE_FQN) {
+      return true;
+    }
+    const entry = index.get(current);
+    current = entry && spec.isClassType(entry.type) ? entry.type.base : undefined;
+  }
+  return type.fqn === CFN_ELEMENT_BASE_FQN;
 }
 
 function extendsFqn(fqn: string, baseFqn: string, index: TypeIndex): boolean {
@@ -453,8 +463,8 @@ function cfnDocsUrl(resourceType: string, l1?: spec.Type): string {
  *    (handles L2s whose L1 lives under a different name or submodule,
  *    e.g. `Vpc` -> `CfnVPC`, `apigatewayv2.HttpApi` -> `CfnApi`).
  * 2. Otherwise the conventional same-submodule `Cfn<Name>` counterpart
- *    is looked up in the index and used only when it actually carries
- *    `cloudformationResource` metadata — the resource type string still
+ *    is looked up in the index and used only when it is an L1 by
+ *    {@link isTaggedL1} — the resource type string still
  *    comes from the assembly, never from the class name itself.
  *
  * Returns `undefined` for L1 types themselves (the page already *is*
