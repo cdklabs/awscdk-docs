@@ -6,7 +6,8 @@
 // and the panel has the room.
 //
 // State and persistence live in nav-style.ts; ApiSidebar.vue regroups the data
-// it already holds when the shared ref changes, so a click costs no request.
+// it already holds when the shared ref changes, and fetches only the chunks of
+// groups the new style has open.
 // Hydration: like ThemePicker, the active state is gated on `mounted` so the
 // server-rendered default never shows as the stored choice until the client
 // has read storage.
