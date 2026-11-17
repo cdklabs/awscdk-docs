@@ -13,12 +13,12 @@
   }
 
   /* Pages without a sidebar. */
-  .VPDoc:not(.has-sidebar) .container {
+  .VPDoc:not(.has-sidebar) > .container {
     max-width: 1440px !important;
   }
 
   /* 992px for the column inside, plus the element's own 2 x 32px padding. */
-  .VPDoc:not(.has-sidebar) .content {
+  .VPDoc:not(.has-sidebar) .container > .content {
     max-width: 1056px !important;
   }
 

@@ -318,11 +318,12 @@ member row, which stays at the row's width so a row reads as one unit. One more
 breakpoint rather than a full-width layout or a settings option: a fixed tier
 keeps prose line length near its current value and the sidebar width constant,
 and adds no control to the Settings menu for a layout most readers never see.
-1920px is the most common large-monitor width at 100% scaling; a monitor running
-at 125-150% scaling lands between 1440 and 1919 CSS px and stays on the stock
-tier. Every cap is a stock width or derived from one: 1440px is the stock layout
-max, 992px the stock no-sidebar container at 960px, 784px the stock no-sidebar
-content at 1440px, and 1056px is 992px plus the column's own padding.
+1920px is the most common large-monitor width. Breakpoints are in CSS pixels, so
+the tier depends on display scaling: a 2560px monitor reaches it at 100% or 125%
+(2048 CSS px) but not at 150% (1707 CSS px), and a 1920px monitor reaches it only
+at 100%. Every cap is a stock width or derived from one: 1440px is the stock
+layout max, 992px the stock no-sidebar container at 960px, 784px the stock
+no-sidebar content at 1440px, and 1056px is 992px plus the column's own padding.
 
 The sidebar keeps `--vp-sidebar-width` (320px) and the outline its 256px. Every
 rule that centers on the layout width — the stock `VPContent`, `VPSidebar`,

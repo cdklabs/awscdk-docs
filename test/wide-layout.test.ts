@@ -51,7 +51,10 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
   test('the stylesheet is imported by the theme entry, after the stock theme', () => {
     const entry = readFileSync(resolve(THEME_DIR, 'index.ts'), 'utf-8');
     expect(entry).toContain('import "./wide-layout.css"');
-    expect(entry.indexOf('vitepress/theme-without-fonts')).toBeLessThan(entry.indexOf('./wide-layout.css'));
+    // The tier's :root override only beats the stock vars.css rule by loading after it.
+    const stock = entry.indexOf('vitepress/theme-without-fonts');
+    expect(stock).toBeGreaterThan(-1);
+    expect(stock).toBeLessThan(entry.indexOf('./wide-layout.css'));
   });
 
   test('the tier starts at 1920px and raises the layout max width to 1920px', () => {
@@ -61,10 +64,10 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
   });
 
   test('the tier caps the no-sidebar container, its content box, the column and prose at 1440, 1056, 992 and 784px', () => {
-    expect(declarations(stripped, TIER, '.VPDoc:not(.has-sidebar) .container')).toEqual(['max-width: 1440px !important']);
+    expect(declarations(stripped, TIER, '.VPDoc:not(.has-sidebar) > .container')).toEqual(['max-width: 1440px !important']);
     expect(declarations(stripped, TIER, '.VPDoc.has-aside .content-container')).toEqual(['max-width: 992px !important']);
     // The no-sidebar column cap is derived: 992px plus the column's own 2 x 32px padding.
-    expect(declarations(stripped, TIER, '.VPDoc:not(.has-sidebar) .content')).toEqual(['max-width: 1056px !important']);
+    expect(declarations(stripped, TIER, '.VPDoc:not(.has-sidebar) .container > .content')).toEqual(['max-width: 1056px !important']);
     expect(declarations(stripped, TIER, '.vp-doc > [data-pagefind-body] > :is(p, ul, ol, blockquote)')).toEqual([
       'max-width: 784px',
     ]);
