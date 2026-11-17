@@ -67,8 +67,14 @@ export function toAgentMarkdown(page: string): AgentMarkdown {
  */
 function withLanguageLegend(out: string, nodes: Node[]): string {
   const variants = DomUtils.findAll(isVariant, nodes);
-  if (new Set(variants.map((v) => v.attribs['data-lang'])).size < 2) return out;
-  const legend = `> Member names, types and signatures are shown in ${languageLabel(variants[0])}; another language's `
+  const present = new Set(variants.map((v) => v.attribs['data-lang']));
+  if (present.size < 2) return out;
+  // The canonical language as docgen picks it: TypeScript when present, otherwise the first enabled language in site
+  // order. The page's first variant can be a later language, e.g. an example its first language has no copy in.
+  const canonical = LANGUAGES.find((l) => l.id === DEFAULT_LANGUAGE && present.has(l.id))
+    ?? LANGUAGES.find((l) => present.has(l.id));
+  const name = canonical?.label ?? languageLabel(variants[0]);
+  const legend = `> Member names, types and signatures are shown in ${name}; another language's `
     + 'spelling follows, labeled, only where it differs. Names in descriptions and README text, and default values, '
     + 'are TypeScript and are not translated. Code examples are labeled by language; an unlabeled `ts` example has no '
     + 'translation.';

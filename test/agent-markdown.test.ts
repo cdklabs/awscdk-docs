@@ -443,8 +443,17 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     });
 
     test('goes under the title only, never after a `# ` comment in code', () => {
-      const page = `\`\`\`python\n# a comment\n\`\`\`\n\nSee ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}.\n`;
-      expect(toAgentMarkdown(page).markdown).not.toContain('> Names');
+      const page = `\`\`\`python\n# a comment\n\`\`\`\n\n# Bucket\n\nSee ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}.\n`;
+      expect(toAgentMarkdown(page).markdown).toBe([
+        '```python', '# a comment', '```', '',
+        '# Bucket', '', legend('TypeScript'), '',
+        'See `bucketArn` (Python: `bucket_arn`).', '',
+      ].join('\n'));
+    });
+
+    test('names the canonical language even when a later language comes first on the page', () => {
+      const page = `# Bucket\n\nSee ${v('java', 'x')}.\n\nThen ${v('python', 'bucket_arn')}${v('java', 'bucketArn')}.\n`;
+      expect(toAgentMarkdown(page).markdown).toContain(`# Bucket\n\n${legend('Python')}`);
     });
   });
 
