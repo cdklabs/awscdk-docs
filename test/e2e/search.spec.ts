@@ -285,10 +285,6 @@ test.describe('pagefind search', () => {
     });
   });
 
-  // Preventing Escape's default while search is open is meant to keep Firefox
-  // for macOS in fullscreen. Fullscreen cannot be driven in CI, so these assert
-  // the page's side of it: defaultPrevented on the Escape keydown, dialog open
-  // vs closed.
   test.describe('Cmd+K and Ctrl+K and the browser default', () => {
     // Bubble-phase window listener, added after the theme's capture-phase one, so it sees the final
     // defaultPrevented of every k keydown.
@@ -324,6 +320,10 @@ test.describe('pagefind search', () => {
     }
   });
 
+  // Preventing Escape's default while search is open is meant to keep Firefox
+  // for macOS in fullscreen. Fullscreen cannot be driven in CI, so these assert
+  // the page's side of it: defaultPrevented on the Escape keydown, dialog open
+  // vs closed.
   test.describe('Escape and the browser default', () => {
     // Bubble-phase window listener, added after the theme's capture-phase one,
     // so it sees the final defaultPrevented of every keydown. It also records

@@ -99,7 +99,8 @@ export function isGuardedEscape(event: Pick<HotkeyEvent, 'key' | 'isComposing'>,
 export function isOpenSearchShortcut(
   event: Pick<HotkeyEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>,
 ): boolean {
-  return event.key === 'k'
+  // Lowercased, as the plugin's own matcher does: Caps Lock reports `K` without Shift and still opens search.
+  return event.key.toLowerCase() === 'k'
     && (event.ctrlKey || event.metaKey)
     && !event.altKey
     && event.shiftKey !== true;

@@ -79,6 +79,8 @@ describe('search hotkeys', () => {
     expect(isOpenSearchShortcut(k({ metaKey: true, altKey: true }))).toBe(false);
     expect(isOpenSearchShortcut(k({ ctrlKey: true, shiftKey: true }))).toBe(false);
     expect(isOpenSearchShortcut(keydown({ key: 'K', metaKey: true, shiftKey: true }))).toBe(false);
+    // Caps Lock: an uppercase key without Shift is still the shortcut.
+    expect(isOpenSearchShortcut(keydown({ key: 'K', metaKey: true }))).toBe(true);
     expect(isOpenSearchShortcut(keydown({ key: 'j', metaKey: true }))).toBe(false);
   });
 
