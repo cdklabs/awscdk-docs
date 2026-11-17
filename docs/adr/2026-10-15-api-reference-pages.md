@@ -303,23 +303,30 @@ sidebar. This is the one permitted out-of-flow rule in the member-row section; a
 density test permits exactly `.member-permalink` and fails any second
 `position: absolute` there.
 
-### Property row shrink priority
+### Property type wraps inside the row
 
-A property row is one `flex-wrap: nowrap` line. When too narrow for both the
-type and the description, the **description yields first**:
-`.props-table .prop-summary` has `flex-shrink: 100` against the type box's `1`,
-so the type stays complete (it is part of the member contract and appears
-nowhere else in the collapsed row) while the description clips. No `max-width`
-cap on the type — the shrink weighting alone orders it in one declaration. The
-clamp is an inline-block on the type (making it a flex item blockifies the
-adjacent name `code` and shifts row height); the span gets `white-space: nowrap`,
-`min-width: 0`, `overflow: hidden`, and a full-type `title`. Both clamps release
-at the `max-width: 640px` breakpoint where rows stack. The language-variant
+A property row's header line is `flex-wrap: wrap`; the summary sits in its own
+block below it, so the type competes with nothing on its line. A type too long
+for the column **wraps rather than clips**: the type is part of the member
+contract and appears nowhere else in the row, so an ellipsis hides exactly the
+part a reader came for. The language-variant wrapper is `white-space: nowrap`
+with `min-width: 0` and `max-width: 100%`, keeping the name and its type
+together and inside the row; `.member-list .member-type` releases the `nowrap`
+for the type's own text. Breaks happen at the spaces a type already has
+(`IResolvable | …`, `typing.Union[a, b]`) and, in a qualified name longer than
+the narrowest column holds whole (32 characters), after every dot, which the
+renderer follows with a `<wbr>` in the visible copy only — a nested-type name
+(`CfnRegistry.CustomMetadataSchemaConfigurationProperty`) breaks after
+`CfnRegistry.` rather than mid-word, while a short `typing.List` stays together
+because its dot would be taken before the bracket or space beside it. A single
+token wider than the whole column falls back to the page's `overflow-wrap:
+break-word`. The full spelling stays in the span's `title` as plain text. The
 wrapper's `nowrap` is shared by method rows, where the variant holds the whole
-signature; `.member-signature` releases it (`white-space: normal`,
-`overflow-wrap: anywhere`) so a long signature wraps inside the content column
-instead of running over the outline — a signature has no single line to clamp
-to and is never truncated.
+signature;
+`.member-signature` releases it (`white-space: normal`, `overflow-wrap:
+anywhere`) so a long signature wraps inside the content column instead of
+running over the outline — a signature has no single line to clamp to and is
+never truncated.
 
 ### "Construct Props" heading with a pinned anchor
 
