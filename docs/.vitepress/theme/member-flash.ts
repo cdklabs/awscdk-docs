@@ -30,7 +30,7 @@ export interface FlashElement {
     remove(...names: string[]): void;
     contains(name: string): boolean;
   };
-  /** True for a member row; the flash is scoped to those. */
+  /** `Element.matches`; `rowForHash` uses it to keep the flash on member rows. */
   matches(selector: string): boolean;
 }
 

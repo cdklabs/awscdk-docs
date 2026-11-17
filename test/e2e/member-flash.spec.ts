@@ -106,11 +106,13 @@ test.describe('a jump to a member row flashes it', () => {
       await page.addInitScript((theme) => window.localStorage.setItem('vitepress-theme-appearance', theme), scheme);
       await page.goto(QUEUE_PAGE);
       await expect(page.locator('html')).toHaveClass(scheme === 'dark' ? /\bdark\b/ : /^(?!.*\bdark\b)/);
-      // The row renders text-1 (name), text-2 (summary), the type link, a brand link and a type parameter in a
-      // signature when it has one; every distinct computed color in the member list is measured, so an element
-      // the fixture lacks is covered by any row that has it.
+      // Every distinct text color across every member list (properties and methods), with every fold-out open,
+      // is measured: names, summaries, type links, signature parts, defaults, notes and details all sit on the
+      // flash background when their row is landed on.
       const pairs = await page.evaluate(() => {
-        const list = document.querySelector('.member-list')!;
+        for (const d of document.querySelectorAll<HTMLDetailsElement>('.member-list details')) {
+          d.open = true;
+        }
         const flash = getComputedStyle(document.documentElement).getPropertyValue('--api-c-flash').trim();
         const probe = document.createElement('div');
         probe.style.backgroundColor = flash;
@@ -118,13 +120,19 @@ test.describe('a jump to a member row flashes it', () => {
         const flashRgb = getComputedStyle(probe).backgroundColor;
         probe.remove();
         const colors = new Set<string>();
-        for (const el of list.querySelectorAll<HTMLElement>('.member-line *, .member-summary, .member-summary *')) {
-          if (el.getBoundingClientRect().width > 0 && (el.textContent ?? '').trim()) {
-            colors.add(getComputedStyle(el).color);
+        let lists = 0;
+        for (const list of document.querySelectorAll('.member-list')) {
+          lists += 1;
+          for (const el of list.querySelectorAll<HTMLElement>('.member-row *')) {
+            if (el.getBoundingClientRect().width > 0 && (el.textContent ?? '').trim()) {
+              colors.add(getComputedStyle(el).color);
+            }
           }
         }
-        return { flashRgb, colors: [...colors] };
+        return { flashRgb, colors: [...colors], lists };
       });
+      // Both the properties and the methods list are on the Queue page.
+      expect(pairs.lists).toBeGreaterThanOrEqual(2);
       const channels = (rgb: string) => rgb.match(/[\d.]+/g)!.slice(0, 3).map(Number);
       const luminance = (rgb: string) => {
         const [r, g, b] = channels(rgb).map((c) => {
@@ -153,6 +161,22 @@ test.describe('a jump to a member row flashes it', () => {
     await expect(page.locator(`.member-row${RETENTION}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     // Within 1s: the fade's own end at 1.5s must not be what clears the first row.
     await expect(page.locator(`.member-row${FIFO}`)).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`), { timeout: 1000 });
+  });
+
+  test('a repeat jump during the fade restarts it', async ({ page }) => {
+    // Re-adding a class never restarts a CSS animation on its own; the module
+    // removes it and forces a reflow before adding it back.
+    await countFlashStarts(page);
+    await page.goto(QUEUE_PAGE);
+    await page.locator(OUTLINE_LINK(FIFO)).click();
+    await expect.poll(() => flashStarts(page)).toBe(1);
+    // Past the same-click window, inside the 1.5s fade.
+    await page.waitForTimeout(600);
+    await page.locator(OUTLINE_LINK(FIFO)).click();
+    await expect.poll(() => flashStarts(page)).toBe(2);
+    // Still marked after the first fade would have ended on its own.
+    await page.waitForTimeout(1000);
+    await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
   });
 
   test('a repeat jump to the row the page is already at flashes it again', async ({ page }) => {
