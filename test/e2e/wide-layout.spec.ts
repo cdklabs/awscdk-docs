@@ -3,7 +3,7 @@ import { TOPIC_PAGE } from './fixture.js';
 
 // The 1920px layout tier (wide-layout.css). The unit test pins the stylesheet's
 // values; the browser checks are what the text cannot answer: that the content
-// column really grows on a large monitor, that prose stays at its line length,
+// column really grows on a large monitor, that prose is capped near its 1440px line length,
 // that the stock tiers below 1920px are untouched, and that the nav bar, the
 // footer and the /versions page all center on the same lane.
 const VERSIONS_PAGE = '/versions.html';
@@ -48,7 +48,7 @@ test.describe('wide-screen layout tier', () => {
   });
 
   for (const width of WIDE) {
-    test(`running prose keeps its line length at ${width}px, member rows do not`, async ({ page }) => {
+    test(`running prose is capped at 784px at ${width}px, member rows are not`, async ({ page }) => {
       await at(page, width, TOPIC_PAGE);
       const paragraph = page.locator(PROSE).first();
       await expect(paragraph).toBeVisible();
@@ -113,6 +113,11 @@ test.describe('wide-screen layout tier', () => {
       expect(container.x).toBeGreaterThanOrEqual(SIDEBAR_WIDTH);
       const cap = width >= 1920 ? 1440 : width >= 1440 ? 1104 : 992;
       expect(container.width).toBe(Math.min(cap, lane.right - lane.left - 64));
+      // The no-sidebar content box inside it: 1056px in the wide tier, the stock 784px (752px below 1440px)
+      // under it, less the 256px outline aside that renders from 1280px up.
+      const content = width >= 1920 ? 1056 : width >= 1440 ? 784 : 752;
+      const aside = width >= 1280 ? 256 : 0;
+      expect(await widthOf(page, '.VPDoc .container > .content')).toBe(Math.min(content, container.width - aside));
       // The footer moves with the content (its 24px is the footer's own padding).
       const footer = await innerLane(page, '.site-footer');
       expect(Math.abs(footer.left - (lane.left + 24)), `footer vs content at ${width}px`).toBeLessThanOrEqual(1);

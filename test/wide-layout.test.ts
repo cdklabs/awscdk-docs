@@ -60,7 +60,7 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
     expect(stripped.match(/--vp-layout-max-width:/g)).toHaveLength(1);
   });
 
-  test('the caps are the three widths already in the code: 1440, 992 and 784', () => {
+  test('the tier caps the no-sidebar container, its content box, the column and prose at 1440, 1056, 992 and 784px', () => {
     expect(declarations(stripped, TIER, '.VPDoc:not(.has-sidebar) .container')).toEqual(['max-width: 1440px !important']);
     expect(declarations(stripped, TIER, '.VPDoc.has-aside .content-container')).toEqual(['max-width: 992px !important']);
     // The no-sidebar column cap is derived: 992px plus the column's own 2 x 32px padding.
@@ -70,7 +70,7 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
     ]);
   });
 
-  test('the three stock values the caps replace are still what VitePress ships', () => {
+  test('the stock tier values the overrides depend on are still what VitePress ships', () => {
     // A VitePress bump that moves its tiers should fail here, not silently
     // leave the override pointing at a different geometry.
     const doc = readFileSync(resolve(VITEPRESS, 'components/VPDoc.vue'), 'utf-8');

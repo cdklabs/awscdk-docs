@@ -1,10 +1,10 @@
 /**
  * Wide-screen layout tier: one more breakpoint above the default theme's
  * 1440px tier, so large monitors get a wider content column while running
- * prose keeps its line length and the sidebar keeps its width. Every stock
- * centering rule reads `--vp-layout-max-width`, so raising it here moves
- * them too. `!important` because the stock caps are component-scoped at
- * (0,4,0), which an unscoped selector cannot reach.
+ * prose stays near its 1440px line length and the sidebar keeps its width.
+ * Every stock centering rule reads `--vp-layout-max-width`, so raising it
+ * here moves them too. `!important` because the stock caps are
+ * component-scoped at (0,4,0), which an unscoped selector cannot reach.
  */
 
 @media (min-width: 1920px) {
@@ -27,7 +27,8 @@
     max-width: 992px !important;
   }
 
-  /* Running prose only: member rows, tables, signatures and code use the full column. */
+  /* Running prose is capped at 784px, a little over its 688-720px at the 1440px tier; member
+     rows, tables, signatures and code use the full column. */
   .vp-doc > :is(p, ul, ol, blockquote),
   .vp-doc > [data-pagefind-body] > :is(p, ul, ol, blockquote) {
     max-width: 784px;

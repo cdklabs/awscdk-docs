@@ -310,12 +310,13 @@ One more tier, `@media (min-width: 1920px)` in
 1920px, the no-sidebar container cap to 1440px and the content column cap to
 992px; the no-sidebar `.content` cap becomes 1056px (992px plus its own 2 x 32px
 padding) so the column it holds can reach 992px. Inside the tier, running prose
-(the `p`, `ul`, `ol` and `blockquote` children of the page body) keeps a 784px
-maximum width, so line length stays at the 1440px tier's; tables, signatures,
-code blocks and docgen member rows use the full column. One more breakpoint
-rather than a full-width layout or a settings option: a fixed tier keeps prose
-line length and the sidebar width constant, and adds no control to the Settings
-menu for a layout most readers never see. 1920px is the most common
+(the `p`, `ul`, `ol` and `blockquote` children of the page body) is capped at
+784px, a little over the 688px it has beside the outline and the 720px it has
+on a no-sidebar page at the 1440px tier; tables, signatures, code blocks and
+docgen member rows use the full column. One more breakpoint rather than a
+full-width layout or a settings option: a fixed tier keeps prose line length
+near its current value and the sidebar width constant, and adds no control to
+the Settings menu for a layout most readers never see. 1920px is the most common
 large-monitor width and the first common width above the stock tier. Every width
 is one the theme already uses: 1440px is the stock layout max, 992px the stock
 no-sidebar container at 960px, 784px the stock no-sidebar content at 1440px.
