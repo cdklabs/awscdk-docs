@@ -1,5 +1,7 @@
 import { toAgentMarkdown, withFrontmatterKey } from '../src/docgen/agent-markdown.js';
+import { renderOverviewPage } from '../src/docgen/index.js';
 import { renderTypeMetadata } from '../src/docgen/layout.js';
+import type { RosettaTablet } from '../src/docgen/rosetta.js';
 
 describe('withFrontmatterKey', () => {
   test('inserts into an existing block right after the opening fence', () => {
@@ -95,11 +97,17 @@ describe('toAgentMarkdown', () => {
     expect(markdown).not.toContain('<span');
   });
 
-  test('keeps only the canonical TypeScript variant', () => {
-    expect(markdown).toContain('```ts\nnew Bucket(scope: Construct, id: string, props?: BucketProps)\n```');
-    expect(markdown).not.toContain('```python');
+  test('keeps every language variant, each block after a label line naming its language', () => {
+    expect(markdown).toContain('TypeScript:\n\n```ts\nnew Bucket(scope: Construct, id: string, props?: BucketProps)\n```');
+    expect(markdown).toContain('Python:\n\n```python\nBucket(scope, id, *, versioned=None)\n```');
+    expect(markdown.indexOf('TypeScript:')).toBeLessThan(markdown.indexOf('Python:'));
+  });
+
+  test('an inline name keeps the canonical spelling, and prose and tables appear once', () => {
     expect(markdown).toContain('| bucketArn | `string` |');
     expect(markdown).not.toContain('bucket_arn');
+    expect(markdown.match(/An S3 bucket with helpers\./g)).toHaveLength(1);
+    expect(markdown.match(/\| Name \| Type \|/g)).toHaveLength(1);
   });
 
   test('preserves the documentation content', () => {
@@ -255,5 +263,193 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       '',
     ].join('\n');
     expect(toAgentMarkdown(page).markdown).toBe('- `bucketName`: string — Physical name of this bucket.\n');
+  });
+
+  // A member line with one variant span per language, and the flags and default outside them, as docgen emits it.
+  const variantRow = (python: string) => [
+    '<div class="member-row" id="bucketname"><div class="member-line">'
+    + '<span class="lang-variant" data-lang="ts"><code class="member-name">bucketName</code>'
+    + '<span class="member-type" data-pagefind-ignore title="string">string</span></span>'
+    + `<span class="lang-variant" data-lang="python" data-pagefind-ignore>${python}</span>`
+    + '<span class="member-required">required</span><span class="member-static">static</span>'
+    + '<span class="member-default" data-pagefind-ignore>= "x"</span></div>',
+    '<div class="member-summary">Physical name of this bucket.</div></div>',
+    '',
+  ].join('\n');
+
+  test('a member row keeps the canonical name and type only, with the flags and default', () => {
+    const page = variantRow('<code class="member-name">bucket_name</code>'
+      + '<span class="member-type" data-pagefind-ignore title="str">str</span>');
+    expect(toAgentMarkdown(page).markdown)
+      .toBe('- `bucketName`: string (required) (static) = "x" — Physical name of this bucket.\n');
+  });
+
+  test('when every other language fell back on the TypeScript copy, its label still names them', () => {
+    const fence = ['', '```ts', 'new Bucket(this, "B");', '```', ''];
+    const page = [
+      '<div class="lang-variant" data-lang="ts">', ...fence,
+      '</div><div class="lang-variant" data-lang="python" data-pagefind-ignore>', ...fence,
+      '</div>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe('TypeScript (also shown for Python):\n\n```ts\nnew Bucket(this, "B");\n```\n');
+  });
+
+  test('when one language fell back on the first copy, the first label names it and its copy is dropped', () => {
+    const ts = ['', '```ts', 'new Bucket(this, "B");', '```', ''];
+    const java = ['', '```java', 'new Bucket(this, "B");', '```', ''];
+    const page = [
+      '<div class="lang-variant" data-lang="ts">', ...ts,
+      '</div><div class="lang-variant" data-lang="python" data-pagefind-ignore>', ...ts,
+      '</div><div class="lang-variant" data-lang="java" data-pagefind-ignore>', ...java,
+      '</div>',
+      '',
+    ].join('\n');
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript (also shown for Python):\n\n```ts');
+    expect(markdown).toContain('Java:\n\n```java');
+    expect(markdown).not.toMatch(/^Python:/m);
+    expect(markdown.match(/```ts/g)).toHaveLength(1);
+  });
+
+  // An example group as docgen emits it: one `div` per language, each holding a fence.
+  const exampleGroup = (copies: Array<[lang: string, fence: string, code: string, trailing?: string]>) => [
+    ...copies.flatMap(([lang, fence, code, trailing = ''], i) => [
+      `${i === 0 ? '' : '</div>'}<div class="lang-variant" data-lang="${lang}"${i === 0 ? '' : ' data-pagefind-ignore'}>`,
+      '', `\`\`\`${fence}`, code, `${trailing}\`\`\``, '',
+    ]),
+    '</div>',
+    '',
+  ].join('\n');
+
+  test('a fallback copy is found by its fence tag, even when its whitespace differs from the first copy', () => {
+    const page = exampleGroup([
+      ['ts', 'ts', 'new Bucket(this, "B");'],
+      ['python', 'ts', 'new Bucket(this, "B");', '\n'],
+      ['java', 'java', 'new Bucket(this, "B");'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript (also shown for Python):\n\n```ts');
+    expect(markdown).not.toMatch(/^Python:/m);
+    expect(markdown.match(/```ts/g)).toHaveLength(1);
+  });
+
+  test('a README snippet with no translation for one language, from the real overview renderer, is labeled TypeScript', () => {
+    // A tablet that translated the snippet into Python but not Java: renderReadmeBody fills Java with the TypeScript
+    // source, and the twin must name that copy TypeScript rather than Java.
+    const tablet = { translationsFor: () => ({ ts: 'new Bucket(this, "B");\n', python: 'Bucket(self, "B")\n' }) };
+    const page = renderOverviewPage({
+      title: 'm',
+      types: [],
+      readme: '# M\n\n```ts\nnew Bucket(this, "B");\n```\n',
+      examples: { moduleFqn: 'm', languages: ['ts', 'python', 'java'], tablet: tablet as unknown as RosettaTablet },
+    });
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript (also shown for Java):\n\n```ts');
+    expect(markdown).toContain('Python:\n\n```python');
+    expect(markdown).not.toMatch(/^Java:/m);
+  });
+
+  test('without TypeScript, a TypeScript fallback is labeled TypeScript, never another language', () => {
+    const page = exampleGroup([
+      ['python', 'python', 'Bucket(self, "B")'],
+      ['java', 'ts', 'new Bucket(this, "B");'],
+      ['go', 'ts', 'new Bucket(this, "B");'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('Python:\n\n```python');
+    expect(markdown).toContain('TypeScript (shown for Java, Golang):\n\n```ts');
+    expect(markdown).not.toMatch(/^(Java|Golang):/m);
+    expect(markdown.match(/```ts/g)).toHaveLength(1);
+  });
+
+  test('without TypeScript, a fallback in the first language stands in at its place, labeled TypeScript', () => {
+    const page = exampleGroup([
+      ['python', 'ts', 'new Bucket(this, "B");'],
+      ['java', 'java', 'new Bucket(this, "B");'],
+      ['go', 'go', 'awss3.NewBucket(stack, jsii.String("B"))'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).not.toMatch(/^Python:/m);
+    const order = ['TypeScript (shown for Python):\n\n```ts', 'Java:\n\n```java', 'Golang:\n\n```go']
+      .map((label) => markdown.indexOf(label));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  test('a TypeScript copy that leads with a shell fence is kept, and so is a copy whose shell fence is its own', () => {
+    const page = exampleGroup([
+      ['ts', 'sh', 'npm install aws-cdk-lib'],
+      ['python', 'sh', 'pip install aws-cdk-lib'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript:\n\n```sh\nnpm install aws-cdk-lib');
+    expect(markdown).toContain('Python:\n\n```sh\npip install aws-cdk-lib');
+  });
+
+  test('without TypeScript, the head is the first language, its type a code span so a generic does not read as a tag', () => {
+    const page = [
+      '<div class="member-row" id="tags"><div class="member-line">'
+      + '<span class="lang-variant" data-lang="java"><code class="member-name">tags</code>'
+      + '<span class="member-type" data-pagefind-ignore title="List&lt;String&gt;">List&lt;String&gt;</span></span>'
+      + '<span class="lang-variant" data-lang="go" data-pagefind-ignore><code class="member-name">Tags</code>'
+      + '<span class="member-type" data-pagefind-ignore title="*[]*string">*[]*string</span></span>'
+      + '</div></div>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `tags`: `List<String>`\n');
+  });
+
+  test('a method row and its parameter list keep the canonical spelling only', () => {
+    const p = (lang: string, n: string) => `<span class="lang-variant" data-lang="${lang}">\`${n}\`</span>`;
+    const page = '<div class="member-row" id="addrule"><div class="member-line">'
+      + '<span class="lang-variant" data-lang="ts"><code class="member-signature">addRule(ruleName)</code></span>'
+      + '<span class="lang-variant" data-lang="python"><code class="member-signature">add_rule(rule_name)</code></span>'
+      + '</div><details class="member-disclosure"><summary>1 parameter</summary><div class="member-details">\n\n'
+      + `- ${p('ts', 'ruleName')}${p('python', 'rule_name')} — The rule.\n\n</div></details></div>\n`;
+    expect(toAgentMarkdown(page).markdown).toBe('- `addRule(ruleName)`\n\n  - `ruleName` — The rule.\n');
+  });
+
+  test('without TypeScript the first language is the head line', () => {
+    const page = [
+      '<div class="member-row" id="bucketname"><div class="member-line">'
+      + '<span class="lang-variant" data-lang="python"><code class="member-name">bucket_name</code></span>'
+      + '<span class="lang-variant" data-lang="java" data-pagefind-ignore><code class="member-name">bucketName</code></span>'
+      + '</div></div>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `bucket_name`\n');
+  });
+
+  test('without TypeScript an example keeps every language and an inline name keeps the first', () => {
+    const page = [
+      'Call <span class="lang-variant" data-lang="python"><code>add_rule</code></span>'
+      + '<span class="lang-variant" data-lang="java" data-pagefind-ignore><code>addRule</code></span>.',
+      '',
+      '<div class="lang-variant" data-lang="python">',
+      '',
+      '```python',
+      'x = 1',
+      '```',
+      '',
+      '</div><div class="lang-variant" data-lang="java" data-pagefind-ignore>',
+      '',
+      '```java',
+      'int x = 1;',
+      '```',
+      '',
+      '</div>',
+      '',
+    ].join('\n');
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('Call `add_rule`.');
+    expect(markdown).toContain('Python:\n\n```python\nx = 1\n```');
+    expect(markdown).toContain('Java:\n\n```java\nint x = 1;\n```');
+  });
+
+  test('an inline name keeps the canonical spelling only, and two groups side by side each render once', () => {
+    const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
+    const page = `See ${v('ts', 'a')}${v('python', 'a_py')} ${v('ts', 'b')}${v('python', 'b_py')}.\n`;
+    expect(toAgentMarkdown(page).markdown).toBe('See `a` `b`.\n');
   });
 });

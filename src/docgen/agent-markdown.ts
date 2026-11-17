@@ -4,8 +4,11 @@
  * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
  * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
- * consume: the canonical (TypeScript) variant only; headings, prose, fenced code, tables and links preserved;
- * member lists rewritten as bullet lists; everything that exists for the browser dropped.
+ * consume: type-page and README examples and initializer signatures in every enabled language, each copy after a
+ * language label (a copy docgen filled with the TypeScript source is named on the TypeScript label, not repeated);
+ * member `@example` blocks once, in TypeScript, as on the page; member names, types and
+ * inline signatures in the canonical language only; headings, prose, fenced code, tables and links once; member
+ * lists rewritten as bullet lists; everything that exists for the browser dropped.
  *
  * It is a transform over the finished page rather than a second renderer so there is one source of truth for the
  * documentation content itself. The HTML is walked with a real parser: the member markup nests spans several deep
@@ -13,7 +16,7 @@
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
-import { DEFAULT_LANGUAGE } from './languages.js';
+import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
 import { TYPE_METADATA_OPEN } from './layout.js';
 
 /** The whole generated metadata table, matched from the exact opening tag `renderTypeMetadata` writes. */
@@ -31,9 +34,9 @@ const isText = (n: Node): n is Text => n.type === ElementType.Text;
 const isElement = (n: Node): n is Element => n.type === ElementType.Tag;
 
 /**
- * Restores the placeholders `protectCode` planted, for the one renderer that must see real lines before it emits:
- * a member body is indented under its bullet, and a fence that is still a placeholder would get only its opening
- * line indented. Set per transform; the renderer is synchronous.
+ * Restores the placeholders `protectCode` planted, for renderers that must see real text before they emit: a member
+ * body indented under its bullet (a fence that is still a placeholder would get only its opening line indented), and
+ * variant copies, whose first fence tag marks a TypeScript fallback. Set per transform; the renderer is synchronous.
  */
 let restoreProtected: (s: string) => string = (s) => s;
 
@@ -143,8 +146,108 @@ function unwrapContainers(s: string): string {
 
 const classes = (el: Element): Set<string> => new Set((el.attribs.class ?? '').split(/\s+/).filter(Boolean));
 
+// The fence tag that marks a TypeScript fallback copy: `renderReadmeBody` in index.ts fills an untranslated language
+// with the TypeScript source via `fenceFor(…, 'ts')`, which resolves to `FENCE_LANG.ts`.
+const TS_FENCE_TAG = FENCE_LANG[DEFAULT_LANGUAGE];
+const LANGUAGE_LABEL = new Map<string, string>(LANGUAGES.map((l) => [l.id, l.label]));
+const isVariant = (n: Node): n is Element => isElement(n) && classes(n).has('lang-variant');
+const languageLabel = (variant: Element): string =>
+  LANGUAGE_LABEL.get(variant.attribs['data-lang']) ?? variant.attribs['data-lang'] ?? '';
+
+/**
+ * The group of sibling `.lang-variant` elements that starts at `el`: one per language docgen embedded (every enabled
+ * language, or fewer for a type example with an untranslated language), in the site's language order, side by side.
+ * Whitespace between them is skipped. A language seen twice starts the next group.
+ */
+function variantGroup(el: Element): Element[] {
+  const siblings = el.parent?.children ?? [el];
+  const group: Element[] = [];
+  for (let i = siblings.indexOf(el); i < siblings.length; i++) {
+    const n = siblings[i];
+    if (isVariant(n)) {
+      if (group.some((v) => v.attribs['data-lang'] === n.attribs['data-lang'])) break;
+      group.push(n);
+    } else if (!(isText(n) && n.data.trim() === '')) {
+      break;
+    }
+  }
+  return group;
+}
+
+/**
+ * Whether `el` is the first variant of its group: the first variant docgen emits is the canonical one, TypeScript
+ * when it is enabled and otherwise the first enabled language.
+ */
+function startsVariantGroup(el: Element): boolean {
+  const siblings = el.parent?.children ?? [el];
+  // Walk back to the first variant of the contiguous run, which can hold several groups, then step through them.
+  let start = siblings.indexOf(el);
+  for (let i = start - 1; i >= 0; i--) {
+    const n = siblings[i];
+    if (isVariant(n)) start = i;
+    else if (!(isText(n) && n.data.trim() === '')) break;
+  }
+  let head = siblings[start] as Element;
+  while (head !== el) {
+    const group = variantGroup(head);
+    if (group.includes(el)) return false;
+    const next = group[group.length - 1];
+    head = siblings.slice(siblings.indexOf(next) + 1).find(isVariant)!;
+  }
+  return true;
+}
+
+/**
+ * One group of language variants. A block variant (an example) is repeated once per language, each copy after a
+ * plain label line naming its language (see `renderBlockGroup`). An inline variant (a name in prose or a parameter
+ * list) keeps the canonical spelling only: the first variant, TypeScript when it is enabled.
+ */
+function renderVariantGroup(group: Element[]): string {
+  if (group.length === 1 || group[0].name.toLowerCase() !== 'div') return children(group[0]);
+  // Each copy is rendered once. Protected code is a placeholder per occurrence, so fences are read only once restored.
+  const copies = new Map(group.map((v) => {
+    const raw = children(v).trim();
+    return [v, { raw, text: restoreProtected(raw) }] as const;
+  }));
+  return renderBlockGroup(group, copies);
+}
+
 function children(el: Element): string {
   return el.children.map((n) => render(n)).join('');
+}
+
+/**
+ * A block group (examples), one copy per language in the site's language order. A copy in another language whose
+ * first fence is tagged `ts` is the TypeScript source docgen fills in for a snippet that was not translated; the
+ * TypeScript copy itself is never one, whatever its fences. That fallback is never labeled as its own language. With
+ * TypeScript enabled,
+ * the TypeScript copy's label names the languages that fall back on it (`TypeScript (also shown for Python):`) and
+ * the fallbacks are not repeated. Without TypeScript, one fallback copy stands in, at the position of the first
+ * language that uses it, labeled `TypeScript (shown for Python):`.
+ */
+function renderBlockGroup(group: Element[], copies: Map<Element, { raw: string; text: string }>): string {
+  const fenceLang = (v: Element) => /^ {0,3}(?:`{3,}|~{3,})([^\s`]*)/m.exec(copies.get(v)!.text)?.[1];
+  // Only a `ts` fence in another language's copy is the fill; a copy that leads with a shell or JSON fence is its own.
+  const isFallback = (v: Element) => v.attribs['data-lang'] !== DEFAULT_LANGUAGE
+    && fenceLang(v) === TS_FENCE_TAG;
+  const fallbacks = group.filter(isFallback);
+  const fallbackSet = new Set(fallbacks);
+  const block = (label: string, v: Element) => `\n${label}:\n\n${copies.get(v)!.raw}\n`;
+  const names = fallbacks.map(languageLabel).join(', ');
+  const tsFirst = group[0].attribs['data-lang'] === DEFAULT_LANGUAGE;
+  const typescript = LANGUAGE_LABEL.get(DEFAULT_LANGUAGE) ?? DEFAULT_LANGUAGE;
+  const blocks: string[] = [];
+  for (const v of group) {
+    if (!fallbackSet.has(v)) {
+      const label = tsFirst && v === group[0] && fallbacks.length
+        ? `${languageLabel(v)} (also shown for ${names})`
+        : languageLabel(v);
+      blocks.push(block(label, v));
+    } else if (!tsFirst && v === fallbacks[0]) {
+      blocks.push(block(`${typescript} (shown for ${names})`, v));
+    }
+  }
+  return blocks.join('\n');
 }
 
 /** Plain text of a subtree, with links and code rendered as Markdown. */
@@ -169,9 +272,9 @@ function render(node: Node): string {
     return literalTag(el);
   }
 
-  // Language variants: keep the canonical one's content, drop the rest and the tab wrapper.
+  // Language variants: the first of each group renders the whole group; the others are rendered with it.
   if (cls.has('lang-variant')) {
-    return el.attribs['data-lang'] === DEFAULT_LANGUAGE ? children(el) : '';
+    return startsVariantGroup(el) ? renderVariantGroup(variantGroup(el)) : '';
   }
   if (tag === 'languagetabs') {
     return `\n${children(el)}\n`;
@@ -309,15 +412,14 @@ function renderMetadata(el: Element): string {
  * the same line, and any longer description or disclosure content indented beneath it.
  */
 function renderMemberRow(el: Element): string {
-  // Only the canonical variant's name and type take part in the bullet.
-  for (const variant of DomUtils.findAll((n) => classes(n).has('lang-variant'), el.children)) {
-    if (variant.attribs['data-lang'] !== DEFAULT_LANGUAGE) DomUtils.removeElement(variant);
-  }
   const line = DomUtils.findOne((n) => classes(n).has('member-line'), el.children);
   const summary = DomUtils.findOne((n) => classes(n).has('member-summary'), el.children);
   const rest = el.children.filter((n) => n !== line && n !== summary);
 
-  const head = line ? renderMemberLine(line) : '';
+  // The bullet carries the canonical name and type only: the first variant, as docgen emits it. That is TypeScript
+  // when it is enabled, and otherwise the first enabled language, so a build without TypeScript still has a head.
+  const variants = line ? DomUtils.findAll(isVariant, line.children) : [];
+  const head = line ? renderMemberLine(line, variants[0]) : '';
   const summaryText = summary ? inline(summary) : '';
   // Restore fences before indenting so every line of a block — content and closer, not just the opener — sits
   // under the bullet; an opener indented alone would leave the closer starting a fence of its own.
@@ -326,21 +428,31 @@ function renderMemberRow(el: Element): string {
   return `- ${head}${summaryText ? ` — ${summaryText}` : ''}\n${indented}`;
 }
 
-function renderMemberLine(line: Element): string {
+/**
+ * The bullet head of a member line: name and type (or signature) from `variant` when the line has per-language
+ * variants, flags and default from the line itself.
+ */
+function renderMemberLine(line: Element, variant?: Element): string {
   const parts: string[] = [];
-  const name = DomUtils.findOne((n) => classes(n).has('member-name'), line.children);
-  const signature = DomUtils.findOne((n) => classes(n).has('member-signature'), line.children);
-  const type = DomUtils.findOne((n) => classes(n).has('member-type'), line.children);
-  const def = DomUtils.findOne((n) => classes(n).has('member-default'), line.children);
-  const flags = DomUtils.findAll(
-    (n) => classes(n).has('member-required') || classes(n).has('member-static'),
-    line.children,
-  );
+  const scope = variant ? variant.children : line.children;
+  // Flags and defaults sit outside the variants; a lookup must not pick them up from another language's copy.
+  const shared = line.children.filter((n) => !isVariant(n));
+  const find = (cls: string) =>
+    DomUtils.findOne((n) => classes(n).has(cls), scope) ?? DomUtils.findOne((n) => classes(n).has(cls), shared);
+  const name = find('member-name');
+  const signature = find('member-signature');
+  const type = find('member-type');
+  const def = find('member-default');
+  const flagOf = (n: Element) => classes(n).has('member-required') || classes(n).has('member-static');
+  const flags = [...DomUtils.findAll(flagOf, scope), ...(variant ? DomUtils.findAll(flagOf, shared) : [])];
   if (signature) {
     parts.push(`\`${textOf(signature)}\``);
   } else if (name) {
     parts.push(`\`${textOf(name)}\``);
-    if (type) parts.push(`: ${inline(type)}`);
+    // A TypeScript head keeps its type links. Another language's type is a code span, so a generic such as
+    // `List<String>` does not read as a tag.
+    const tsHead = !variant || variant.attribs['data-lang'] === DEFAULT_LANGUAGE;
+    if (type) parts.push(tsHead ? `: ${inline(type)}` : `: \`${textOf(type)}\``);
   }
   for (const flag of flags) parts.push(` (${textOf(flag)})`);
   // The visible default is elided for long values; `title` carries the whole thing.

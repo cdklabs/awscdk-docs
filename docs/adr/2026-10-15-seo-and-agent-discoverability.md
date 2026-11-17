@@ -79,7 +79,7 @@ of truth for what a page says. It parses the page with `htmlparser2` (a regex
 cannot pair the nested per-language signature markup), after swapping anything
 that merely looks like markup — fenced/indented code, autolinks,
 `<placeholder>` tokens — for placeholders restored byte for byte. It drops
-frontmatter, the breadcrumb `<nav>`, every non-canonical language variant, Vue
+frontmatter, the breadcrumb `<nav>`, Vue
 components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `<div>`s; member lists become bullets, the type hierarchy becomes
 `Extends:`/`Implements:` lines (one `Label: …` line per relation row, emitted
@@ -90,6 +90,32 @@ deep link), the type-metadata table becomes `- Label: value` bullets, `:::`
 containers become titled blockquotes. The type-metadata table is the only
 `<table>` the transform parses; every other table-shaped text passes through
 literally. Headings, prose, fenced code, tables and links pass through.
+
+The twin keeps type-page `## Example` sections, README examples and initializer
+signatures in every enabled language
+(superseding the earlier rule that it dropped every non-canonical variant), so a reader or
+assistant working in Python, Java, C# or Go gets their own code. Member `@example`
+blocks are authored in TypeScript and appear once as a `ts` fence, as on the page. An example
+group becomes one fenced block per language, in the site's language order, each
+after a plain label line naming the language (`Python:`). A copy in another
+language whose first fence is tagged `ts` (docgen's `fenceFor(…, 'ts')`) is the TypeScript source docgen fills
+in for a snippet that was not translated, and it is never labeled as that
+language; the TypeScript copy itself is never one, whatever its fences. With
+TypeScript enabled, the TypeScript copy's label names the languages that fall
+back on it (`TypeScript (also shown for Python):`) and the fallbacks are not
+repeated. Without TypeScript, one fallback copy stands in at the position of
+the first language using it, labeled `TypeScript (shown for Python):`. A
+language docgen leaves out of a group, such as a type example with no
+translation, is not listed; the page shows it the first embedded language's
+example (TypeScript when it is enabled). A README fence with no translation, a
+fence inside a list item, and a type example translated into no other language
+are not variant groups: they appear once, unlabeled, as the `ts` fence the page
+shows. Member
+names, types and inline signatures (member bullets, names in tables and
+parameter lists) keep the canonical spelling only: TypeScript when it is enabled, and otherwise the
+first enabled language. Prose, tables and links appear once. The languages are
+the ones the page was built with, so a one-language build emits one copy and no
+labels.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the
@@ -111,8 +137,15 @@ count, behind an explicit `--agent-markdown <dir>` flag; a missing tree fails
 the merge. The hand-written homepage is the one exception: it declares
 `agentMarkdown: "/index.md"`, and `scripts/agent-markdown-overlay.cjs`
 transforms its finished Markdown into the root twin during the same overlay
-step, keeping the advertised file and its producer together. The ~27 MB
-compressed corpus is overlaid once, with no per-shard cost.
+step, keeping the advertised file and its producer together. The compressed
+corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
+`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 23 MB with
+examples in every enabled language (22,752,643 B at `6a0affa`), up from about
+12 MB at `f18f6ea` when the twin kept TypeScript only. The deployed
+`docs-site` zip (the same five-language `aws-cdk-lib` 2.277.0 build), which
+`package-site.sh` checks against its 900 MiB `MAX_ZIP_MB` gate, was 661 MiB at
+`f36e864`. The tree is overlaid
+once, with no per-shard cost.
 
 ### llms.txt index
 
@@ -179,11 +212,14 @@ run, including failures.
   a preview deploy gets a sitemap and canonicals rooted at its host.
 - Bumping `CONTENT_REVISED_DATE` re-dates every page without a later release of
   its own, in both the JSON-LD and the footer.
-- The twin keeps TypeScript signatures, examples, member tables, warnings and
-  cross-links and drops the other languages, badges, breadcrumb and search
-  plumbing; widening what it keeps is a change to one transform. The merge step
-  has one non-shard input, and a missing twin tree or module index fails the
-  build.
+- The twin keeps every enabled language's type-page and README examples and
+  initializer signatures (labeled, where the page has a variant per language),
+  member `@example` blocks once in TypeScript,
+  and member names, member tables, warnings and cross-links once in
+  the canonical language; it drops badges, breadcrumb
+  and search plumbing. Widening what it keeps is a change to one transform. The
+  merge step has one non-shard input, and a missing twin tree or module index
+  fails the build.
 - The install command is deliberately duplicated between upstream and this
   repo; the pin turns silent drift into a failing test. Readers who want the
   skill's contents still leave the site to read the single published copy.
