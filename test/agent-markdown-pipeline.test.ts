@@ -269,7 +269,7 @@ describe('agent-oriented Markdown twins with every site language', () => {
       }
       // Members keep the TypeScript name and type only; only the examples carry other languages.
       expect(twin).toMatch(/^- `bucketArn`: string — The ARN of the bucket\.$/m);
-      expect(twin).not.toContain('bucket_arn');
+      expect(twin).not.toMatch(/^\s*- `bucket_arn`/m);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -307,6 +307,16 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect(markdown.match(/```ts/g)).toHaveLength(1);
   });
 
+  test('a fallback whose fence is tagged typescript is found too', () => {
+    const page = exampleGroup([
+      ['ts', 'ts', 'new Bucket(this, "B");'],
+      ['python', 'typescript', 'new Bucket(this, "B");'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript (also shown for Python):\n\n```ts');
+    expect(markdown).not.toMatch(/^Python:/m);
+  });
+
   test('without TypeScript, a TypeScript fallback is labeled TypeScript, never another language', () => {
     const page = exampleGroup([
       ['python', 'python', 'Bucket(self, "B")'],

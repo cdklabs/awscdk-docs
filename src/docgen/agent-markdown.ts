@@ -4,10 +4,10 @@
  * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
  * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
- * consume: code examples in every enabled language, each copy after a language label (a copy docgen filled with
- * the TypeScript source is named on the TypeScript label, not repeated); names and signatures in the canonical
- * language only; headings, prose, fenced code, tables and links once; member lists rewritten as bullet lists;
- * everything that exists for the browser dropped.
+ * consume: code examples and signature blocks in every enabled language, each copy after a language label (a copy
+ * docgen filled with the TypeScript source is named on the TypeScript label, not repeated); member names, types and
+ * inline signatures in the canonical language only; headings, prose, fenced code, tables and links once; member
+ * lists rewritten as bullet lists; everything that exists for the browser dropped.
  *
  * It is a transform over the finished page rather than a second renderer so there is one source of truth for the
  * documentation content itself. The HTML is walked with a real parser: the member markup nests spans several deep
@@ -15,7 +15,7 @@
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
-import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
+import { DEFAULT_LANGUAGE, LANGUAGES } from './languages.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -28,7 +28,7 @@ const isElement = (n: Node): n is Element => n.type === ElementType.Tag;
 /**
  * Restores the placeholders `protectCode` planted, for renderers that must see real text before they emit: a member
  * body indented under its bullet (a fence that is still a placeholder would get only its opening line indented), and
- * variant copies compared for equality. Set per transform; the renderer is synchronous.
+ * variant copies, whose first fence tag marks a TypeScript fallback. Set per transform; the renderer is synchronous.
  */
 let restoreProtected: (s: string) => string = (s) => s;
 
@@ -127,6 +127,8 @@ function unwrapContainers(s: string): string {
 
 const classes = (el: Element): Set<string> => new Set((el.attribs.class ?? '').split(/\s+/).filter(Boolean));
 
+// The fence tags docgen's README pass reads as TypeScript (`TS_FENCE` in index.ts): a fallback copy carries one.
+const TS_FENCE = /^(?:ts|typescript)$/;
 const LANGUAGE_LABEL = new Map<string, string>(LANGUAGES.map((l) => [l.id, l.label]));
 const isVariant = (n: Node): n is Element => isElement(n) && classes(n).has('lang-variant');
 const languageLabel = (variant: Element): string =>
@@ -207,7 +209,7 @@ function renderBlockGroup(group: Element[], copies: Map<Element, { raw: string; 
   const fenceLang = (v: Element) => /^ {0,3}(?:`{3,}|~{3,})([^\s`]*)/m.exec(copies.get(v)!.text)?.[1];
   // Only a `ts` fence in another language's copy is the fill; a copy that leads with a shell or JSON fence is its own.
   const isFallback = (v: Element) => v.attribs['data-lang'] !== DEFAULT_LANGUAGE
-    && fenceLang(v) === FENCE_LANG[DEFAULT_LANGUAGE];
+    && TS_FENCE.test(fenceLang(v) ?? '');
   const fallbacks = group.filter(isFallback);
   const fallbackSet = new Set(fallbacks);
   const block = (label: string, v: Element) => `\n${label}:\n\n${copies.get(v)!.raw}\n`;

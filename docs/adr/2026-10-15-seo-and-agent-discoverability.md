@@ -85,12 +85,12 @@ components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `Extends:`/`Implements:` lines, `:::` containers become titled blockquotes.
 Headings, prose, fenced code, tables and links pass through.
 
-The twin keeps code examples in every enabled language (superseding the
-earlier rule that it dropped every non-canonical variant), so a reader or
+The twin keeps code examples and signature blocks in every enabled language
+(superseding the earlier rule that it dropped every non-canonical variant), so a reader or
 assistant working in Python, Java, C# or Go gets their own code. An example
 group becomes one fenced block per language, in the site's language order, each
 after a plain label line naming the language (`Python:`). A copy in another
-language whose first fence is tagged `ts` is the TypeScript source docgen fills
+language whose first fence is tagged `ts` (or `typescript`) is the TypeScript source docgen fills
 in for a snippet that was not translated, and it is never labeled as that
 language; the TypeScript copy itself is never one, whatever its fences. With
 TypeScript enabled, the TypeScript copy's label names the languages that fall
@@ -98,9 +98,9 @@ back on it (`TypeScript (also shown for Python):`) and the fallbacks are not
 repeated. Without TypeScript, one fallback copy stands in at the position of
 the first language using it, labeled `TypeScript (shown for Python):`. A
 language docgen leaves out of a group, such as a type example with no
-translation, is not listed; the page shows it the TypeScript example. Names,
-types and signatures (member bullets, names in tables and parameter lists) keep
-the canonical spelling only: TypeScript when it is enabled, and otherwise the
+translation, is not listed; the page shows it the TypeScript example. Member
+names, types and inline signatures (member bullets, names in tables and
+parameter lists) keep the canonical spelling only: TypeScript when it is enabled, and otherwise the
 first enabled language. Prose, tables and links appear once. The languages are
 the ones the page was built with, so a one-language build emits one copy and no
 labels.
