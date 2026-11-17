@@ -123,15 +123,14 @@ test.describe('API kind badge', () => {
     expect(noteStyle.color).not.toBe(linkStyle.color);
   });
 
-  test('the metadata block is a two-column grid whose rows align', async ({ page }) => {
-    // The layout requirement a stylesheet assertion cannot reach: every label
-    // shares one column edge and each value sits beside its own label, so a
-    // fourth row would need no new CSS. Measured, because `display: grid` in
-    // the file does not prove the element is a grid on the page.
+  test('the metadata table has aligned row headers and values', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     const block = page.locator('.type-metadata');
     await expect(block).toBeVisible();
-    expect(await block.evaluate((el) => getComputedStyle(el).display)).toBe('grid');
+    expect(await block.evaluate((el) => getComputedStyle(el).display)).toBe('table');
+
+    const headers = block.locator('th.type-metadata-label[scope="row"]');
+    expect(await headers.count()).toBeGreaterThanOrEqual(2);
 
     const geometry = await block.evaluate((el) => {
       const read = (sel: string) => Array.from(el.querySelectorAll(sel))
@@ -142,9 +141,8 @@ test.describe('API kind badge', () => {
 
     expect(geometry.labels.length).toBeGreaterThanOrEqual(2);
     expect(geometry.values).toHaveLength(geometry.labels.length);
-    // One shared left edge for every label: that is the `max-content` column.
+    // Table layout keeps all row headers and values on shared column edges.
     expect(new Set(geometry.labels.map((b) => b.left)).size).toBe(1);
-    // ...and one for every value, to the right of the labels'.
     expect(new Set(geometry.values.map((b) => b.left)).size).toBe(1);
     expect(geometry.values[0].left).toBeGreaterThan(geometry.labels[0].left);
     // Each value is on its own label's row, and the rows descend in order.
@@ -156,43 +154,89 @@ test.describe('API kind badge', () => {
     }
   });
 
-  test('a metadata value renders as plain text at the block size, not a code pill', async ({ page }) => {
-    // Browser-only, and it caught a real defect: VitePress styles prose code
-    // as a tinted padded pill via `.vp-doc :not(pre,h1..h6) > code`, whose
-    // specificity beat the block's own rule, so every linked value rendered as
-    // a pill at 0.875em. A stylesheet assertion cannot see this -- the
-    // declarations were present in the file and losing in the cascade.
-    await page.goto(QUEUE_PAGE);
-    const block = page.locator('.type-metadata');
-    await expect(block).toBeVisible();
+  test('the metadata table reflows at narrow widths and scales with the hierarchy bar', async ({ page }) => {
+    for (const width of [375, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(QUEUE_PAGE);
+      const block = page.locator('.type-metadata');
+      await expect(block).toBeVisible();
 
-    const measured = await block.evaluate((el) => {
-      const value = el.querySelector('.type-metadata-value a[href*="TemplateReference"]');
-      const code = value.querySelector('code');
-      const blockSize = getComputedStyle(el).fontSize;
-      const cs = getComputedStyle(code);
-      const as = getComputedStyle(value);
-      return {
-        blockSize,
-        codeSize: cs.fontSize,
-        codeBg: cs.backgroundColor,
-        codePad: cs.padding,
-        codeColor: cs.color,
-        anchorColor: as.color,
-        anchorDecoration: as.textDecorationLine,
-      };
-    });
-
-    // No chip of its own: the value IS the text.
-    expect(measured.codeSize).toBe(measured.blockSize);
-    expect(measured.codePad).toBe('0px');
-    // Fully transparent, whatever notation the browser reports.
-    expect(measured.codeBg).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
-    // The link affordance governs the text the reader sees, so the code takes
-    // the anchor's color rather than the prose-code color.
-    expect(measured.codeColor).toBe(measured.anchorColor);
-    expect(measured.anchorDecoration).toContain('underline');
+      // The table fits the viewport and never forces a horizontal page scroll.
+      const box = await block.boundingBox();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      // Below 640px the block scales with the hierarchy bar above it.
+      const chainSize = await page.locator('.inheritance-chain').first()
+        .evaluate((el) => getComputedStyle(el).fontSize);
+      expect(await block.evaluate((el) => getComputedStyle(el).fontSize)).toBe(chainSize);
+    }
   });
+
+  for (const width of [1280, 375]) {
+    test(`a metadata value uses the body typeface without a code pill at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      // Browser-only, and it caught a real defect: VitePress styles prose code
+      // as a tinted padded pill via `.vp-doc :not(pre,h1..h6) > code`, whose
+      // specificity beat the block's own rule, so every linked value rendered as
+      // a pill at 0.875em. A stylesheet assertion cannot see this -- the
+      // declarations were present in the file and losing in the cascade.
+      await page.goto(QUEUE_PAGE);
+      const block = page.locator('.type-metadata');
+      await expect(block).toBeVisible();
+
+      const measured = await block.evaluate((el) => {
+        const value = el.querySelector('.type-metadata-value a[href*="TemplateReference"]');
+        const code = value.querySelector('code');
+        const blockStyle = getComputedStyle(el);
+        const labelStyle = getComputedStyle(el.querySelector('.type-metadata-label'));
+        const valueCellStyle = getComputedStyle(value.closest('.type-metadata-value'));
+        const rowBgs = Array.from(el.querySelectorAll('tr')).map((row) => getComputedStyle(row).backgroundColor);
+        const blockSize = blockStyle.fontSize;
+        const blockFamily = blockStyle.fontFamily;
+        const cs = getComputedStyle(code);
+        const as = getComputedStyle(value);
+        return {
+          blockSize,
+          blockFamily,
+          labelSize: labelStyle.fontSize,
+          labelWeight: labelStyle.fontWeight,
+          labelVerticalAlign: labelStyle.verticalAlign,
+          valueVerticalAlign: valueCellStyle.verticalAlign,
+          rowBgs,
+          valueSize: as.fontSize,
+          codeSize: cs.fontSize,
+          codeFamily: cs.fontFamily,
+          codeBg: cs.backgroundColor,
+          codePad: cs.padding,
+          codeColor: cs.color,
+          anchorColor: as.color,
+          anchorDecoration: as.textDecorationLine,
+        };
+      });
+
+      // No chip of its own: the value IS the text.
+      expect(measured.codeSize).toBe(measured.blockSize);
+      expect(measured.valueSize).toBe(measured.blockSize);
+      expect(measured.labelSize).toBe(measured.blockSize);
+      expect(measured.labelWeight).toBe('500');
+      expect(measured.labelVerticalAlign).toBe('baseline');
+      expect(measured.valueVerticalAlign).toBe('baseline');
+      expect(measured.rowBgs.length).toBeGreaterThanOrEqual(2);
+      for (const background of measured.rowBgs) {
+        expect(background).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+      }
+      expect(measured.codeFamily).toBe(measured.blockFamily);
+      expect(measured.codeFamily.toLowerCase()).not.toContain('mono');
+      expect(measured.codePad).toBe('0px');
+      // Fully transparent, whatever notation the browser reports.
+      expect(measured.codeBg).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+      // The link affordance governs the text the reader sees, so the code takes
+      // the anchor's color rather than the prose-code color.
+      expect(measured.codeColor).toBe(measured.anchorColor);
+      expect(measured.anchorDecoration).toContain('underline');
+    });
+  }
 
   test('the metadata link uses the AA-checked brand tone, not the default link tone', async ({ page }) => {
     // brand-2 is used rather than brand-1, which measures 4.22:1 on

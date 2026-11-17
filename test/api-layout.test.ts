@@ -1240,8 +1240,6 @@ describe('renderTypeMetadata', () => {
   });
 
   test('a fourth row is just a row -- the emitter is not arity-bound', () => {
-    // The extensibility claim, asserted at the emitter rather than only as the
-    // absence of position-keyed CSS.
     const rows: TypeMetadataRow[] = [
       { label: 'CloudFormation', value: '<code>AWS::S3::Bucket</code>' },
       { label: 'L1 type', value: '<code>CfnBucket</code>' },
@@ -1250,21 +1248,17 @@ describe('renderTypeMetadata', () => {
     ];
     const [html, blank] = renderTypeMetadata(rows);
     expect(blank).toBe('');
-    // Every row present, in the order given, as a dt/dd pair.
-    expect([...html.matchAll(/<dt class="type-metadata-label">([^<]*)<\/dt>/g)].map((m) => m[1]))
+    expect([...html.matchAll(/<th class="type-metadata-label" scope="row">([^<]*)<\/th>/g)].map((m) => m[1]))
       .toEqual(['CloudFormation', 'L1 type', 'Source', 'Since']);
-    expect((html.match(/<dd class="type-metadata-value">/g) ?? [])).toHaveLength(4);
-    // One container, not one per row.
-    expect((html.match(/<dl /g) ?? [])).toHaveLength(1);
+    expect((html.match(/<td class="type-metadata-value">/g) ?? [])).toHaveLength(4);
+    expect((html.match(/<tr>/g) ?? [])).toHaveLength(4);
+    expect((html.match(/<table /g) ?? [])).toHaveLength(1);
     expect(html).toContain('aria-label="Type metadata"');
   });
 
   test('labels are escaped and values are passed through as the pre-escaped HTML they are', () => {
-    // The asymmetry is deliberate and is the emitter's contract: a label is
-    // text, a value is markup the caller already escaped. Stating it here means
-    // a later change to either side has to change this test on purpose.
     const [html] = renderTypeMetadata([{ label: 'A & B', value: '<code>x &amp; y</code>' }]);
-    expect(html).toContain('<dt class="type-metadata-label">A &amp; B</dt>');
-    expect(html).toContain('<dd class="type-metadata-value"><code>x &amp; y</code></dd>');
+    expect(html).toContain('<th class="type-metadata-label" scope="row">A &amp; B</th>');
+    expect(html).toContain('<td class="type-metadata-value"><code>x &amp; y</code></td>');
   });
 });
