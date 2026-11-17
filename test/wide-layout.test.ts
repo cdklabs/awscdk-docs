@@ -83,13 +83,13 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
   });
 
   test('the prose cap is scoped to the page body, never to member rows', () => {
-    // Direct children of `.vp-doc` or of its `[data-pagefind-body]` wrapper
-    // only; a descendant selector would also cap the remarks inside member
-    // rows, which keep the full column width.
+    // Direct children of the `[data-pagefind-body]` wrapper every page has
+    // under `.vp-doc`; a descendant selector would also cap the remarks inside
+    // member rows, which keep the full column width.
     const prose = [...stripped.matchAll(/([^{}]+)\{[^{}]*max-width: 784px[^{}]*\}/g)].map((m) => m[1].trim());
     expect(prose).toHaveLength(1);
     for (const selector of splitSelectors(prose[0])) {
-      expect(selector).toMatch(/^\.vp-doc > (\[data-pagefind-body\] > )?:is\(p, ul, ol, blockquote\)$/);
+      expect(selector).toMatch(/^\.vp-doc > \[data-pagefind-body\] > :is\(p, ul, ol, blockquote\)$/);
     }
   });
 

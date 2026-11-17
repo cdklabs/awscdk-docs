@@ -319,9 +319,10 @@ breakpoint rather than a
 full-width layout or a settings option: a fixed tier keeps prose line length
 near its current value and the sidebar width constant, and adds no control to
 the Settings menu for a layout most readers never see. 1920px is the most common
-large-monitor width and the first common width above the stock tier. Every width
-is one the theme already uses: 1440px is the stock layout max, 992px the stock
-no-sidebar container at 960px, 784px the stock no-sidebar content at 1440px.
+large-monitor width and the first common width above the stock tier. Every cap
+is a stock width or derived from one: 1440px is the stock layout max, 992px the
+stock no-sidebar container at 960px, 784px the stock no-sidebar content at
+1440px, and 1056px is 992px plus the column's own padding.
 
 The sidebar keeps `--vp-sidebar-width` (320px) and the outline its 256px. Every
 rule that centers on the layout width — the stock `VPContent`, `VPSidebar`,

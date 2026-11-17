@@ -28,8 +28,8 @@
   }
 
   /* Running prose is capped at 784px, a little over its 688-720px at the 1440px tier; member
-     rows, tables, signatures and code use the full column. */
-  .vp-doc > :is(p, ul, ol, blockquote),
+     rows, tables, signatures and code use the full column. Every page's content sits in one
+     `[data-pagefind-body]` div under `.vp-doc`. */
   .vp-doc > [data-pagefind-body] > :is(p, ul, ol, blockquote) {
     max-width: 784px;
   }
