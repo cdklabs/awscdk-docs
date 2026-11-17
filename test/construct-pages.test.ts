@@ -4,9 +4,11 @@ import { join, resolve } from 'path';
 import * as spec from '@jsii/spec';
 import {
   buildTypeIndex,
+  cfnMetadata,
   cfnResourceRef,
   constructLevel,
   isConstruct,
+  isGeneratedSource,
   normalizeCfnSee,
   renderConstructPage,
   typeMetadataRows,
@@ -165,38 +167,74 @@ describe('construct detection and classification', () => {
     expect(constructLevel(resourceInSubtree, withSynthetics)).toBe('L2');
   });
 
-  test('an L2 that names its CloudFormation resource in a doc tag stays L2', () => {
-    // The alpha packages tag hand-written L2s with `@cloudformationResource`. The tag documents the wrapped resource,
-    // so it must not make an L1 of a type that extends Resource. The shape mirrors `aws-bedrock-alpha.Agent`.
-    const withAlpha: TypeIndex = new Map(index);
-    const classType = (fqn: string, base: string, docs?: spec.Docs): spec.ClassType => {
+  describe('a hand-written construct that names its CloudFormation resource in a doc tag', () => {
+    // The alpha packages tag hand-written constructs with `@cloudformationResource`. The tag documents the wrapped
+    // resource, so it must not make an L1 of a type outside the CfnElement subtree. The shapes mirror
+    // `aws-bedrock-alpha.Agent` (an L2 through `Resource`) and `aws-bedrock-alpha.PromptVersion` (extends `Construct`).
+    let withAlpha: TypeIndex;
+    const classType = (fqn: string, base: string, docs?: spec.Docs, namespace?: string): spec.ClassType => {
       const type: spec.ClassType = {
         kind: spec.TypeKind.Class,
         fqn,
         name: fqn.split('.').pop()!,
-        assembly: 'aws-bedrock-alpha',
+        assembly: fqn.split('.')[0],
         base,
         ...(docs ? { docs } : {}),
+        ...(namespace ? { namespace } : {}),
       };
       withAlpha.set(fqn, { type, assembly: cdk });
       return type;
     };
-    const agentBase = classType('aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
-    const agent = classType('aws-bedrock-alpha.Agent', agentBase.fqn, {
-      custom: { cloudformationResource: 'AWS::Bedrock::Agent' },
-    });
-    expect(constructLevel(agent, withAlpha)).toBe('L2');
+    const tag = (resource: string): spec.Docs => ({ custom: { cloudformationResource: resource } });
 
-    // The tag still marks an L1 for a type outside the Resource subtree.
-    const tagged = classType('aws-cdk-lib.aws_fake.CfnThing', 'aws-cdk-lib.CfnResource', {
-      custom: { cloudformationResource: 'AWS::Fake::Thing' },
+    beforeEach(() => {
+      withAlpha = new Map(index);
     });
-    expect(constructLevel(tagged, withAlpha)).toBe('L1');
-    // And a tagged type with no resolvable base is still an L1, as before.
-    const orphan = classType('aws-fake.Orphan', 'aws-fake.Missing', {
-      custom: { cloudformationResource: 'AWS::Fake::Orphan' },
+
+    test('an L2 through Resource stays L2', () => {
+      const agentBase = classType('@aws-cdk/aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
+      const agent = classType('@aws-cdk/aws-bedrock-alpha.Agent', agentBase.fqn, tag('AWS::Bedrock::Agent'));
+      expect(constructLevel(agent, withAlpha)).toBe('L2');
     });
-    expect(constructLevel(orphan, withAlpha)).toBe('L1');
+
+    test('a tagged type in the CfnElement subtree is still L1', () => {
+      const cfn = classType('aws-cdk-lib.aws_fake.CfnThing', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Thing'));
+      expect(constructLevel(cfn, withAlpha)).toBe('L1');
+    });
+
+    test('a tagged type that extends Construct gets no level unless it is listed', () => {
+      const other = classType('@aws-cdk/aws-fake-alpha.Other', 'constructs.Construct', tag('AWS::Fake::Other'));
+      expect(constructLevel(other, withAlpha)).toBeUndefined();
+      // The one real case is listed by FQN.
+      const promptVersion = classType(
+        '@aws-cdk/aws-bedrock-alpha.PromptVersion', 'constructs.Construct', tag('AWS::Bedrock::PromptVersion'),
+      );
+      expect(constructLevel(promptVersion, withAlpha)).toBe('L2');
+    });
+
+    test('a tagged Resource subtype in a patterns namespace is L3', () => {
+      const pattern = classType(
+        'aws-cdk-lib.aws_fake_patterns.Tagged', 'aws-cdk-lib.Resource', tag('AWS::Fake::Tagged'), 'aws_fake_patterns',
+      );
+      expect(constructLevel(pattern, withAlpha)).toBe('L3');
+    });
+
+    test('the metadata block treats the tagged L2 as an L2: L1 type row, no generated-source marker', () => {
+      const cfnAgent = classType(
+        'aws-cdk-lib.aws_bedrock.CfnAgent', 'aws-cdk-lib.CfnResource', tag('AWS::Bedrock::Agent'),
+      );
+      const agentBase = classType('@aws-cdk/aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
+      const agent = classType('@aws-cdk/aws-bedrock-alpha.Agent', agentBase.fqn, tag('AWS::Bedrock::Agent'));
+
+      expect(isGeneratedSource(agent, withAlpha)).toBe(false);
+      expect(isGeneratedSource(cfnAgent, withAlpha)).toBe(true);
+      // The L1 is found through its own tag, and the L2 is not mistaken for it.
+      expect(cfnMetadata(agent, withAlpha)).toMatchObject({ resourceType: 'AWS::Bedrock::Agent' });
+      expect(cfnResourceRef(agent, withAlpha)).toMatchObject({ l1Fqn: cfnAgent.fqn });
+      // An L1 still names its own resource and has no counterpart to point at.
+      expect(cfnResourceRef(cfnAgent, withAlpha)).toBeUndefined();
+      expect(cfnMetadata(cfnAgent, withAlpha)).toMatchObject({ resourceType: 'AWS::Bedrock::Agent' });
+    });
   });
 
   test('builds version-pinned GitHub source URLs', () => {

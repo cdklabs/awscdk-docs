@@ -5,29 +5,39 @@
 Accepted
 
 Extends the construct level rules in [API reference pages](./2026-10-15-api-reference-pages.md), which stays Accepted.
-Only rule 1 changes: the `cloudformationResource` tag no longer makes an L1 of a type that extends
-`aws-cdk-lib.Resource`. The override, L3, L2 and `CfnElement` rules, and their order, stand.
+Only rule 1 changes: the `cloudformationResource` tag makes an L1 only on a class that also extends
+`aws-cdk-lib.CfnElement`. The override, L3, L2 and `CfnElement` rules and their order stand. One consequence of the
+order: a tagged `Resource` subtype in a `*patterns*` namespace is now classified L3, where it was L1 before. No type
+in the assemblies installed at the time of the change is affected.
 
 ## Context
 
 Rule 1 treated the jsii `cloudformationResource` doc tag as the mark of an L1. That held for generated `CfnXxx`
 classes, which are the only types in `aws-cdk-lib` that carry the tag. The alpha packages also put the tag on
-hand-written L2 classes to name the resource they wrap. `aws-bedrock-alpha.Agent` is one: it extends `Resource`
+hand-written constructs to name the resource they wrap. `aws-bedrock-alpha.Agent` is one: it extends `Resource`
 through `AgentBase`, carries `AWS::Bedrock::Agent`, and the rule gave it the L1 badge. Rule 1 ran before the L2 rule,
 so the correct answer was never reached.
 
+Other code read the tag the same way. The metadata block showed no L1 type row for such a page, marked its source as
+generated at build time, and the reverse lookup from a resource type to its L1 could return the hand-written
+construct.
+
 ## Decision
 
-- **A type that extends `aws-cdk-lib.Resource` is never an L1 by tag.** The tag still makes an L1 of every type
-  outside the `Resource` subtree, so generated `CfnXxx` classes and any type whose base chain does not resolve keep
-  L1.
-- **The rule is fixed, not the page.** No per-type override was added, so any other alpha L2 that tags its resource
-  gets the right level without a new table entry.
-- Across the `aws-cdk-lib` and alpha assemblies installed at the time of the change, five types move from L1 to L2:
-  `Agent`, `AgentAlias`, `ApplicationInferenceProfile`, `Guardrail` and `Prompt`, all in `aws-bedrock-alpha`.
+- **One predicate decides whether the tag means L1.** A tagged class is an L1 when it is `CfnElement` or extends it.
+  The level rule, the metadata block, the generated-source marker and the reverse lookup from resource type to L1 all
+  use it, so they cannot disagree. A tagged type that is not a class keeps the old behavior.
+- **A tagged hand-written construct gets the level its base class gives it.** `Agent`, `AgentAlias`,
+  `ApplicationInferenceProfile`, `Guardrail` and `Prompt` extend `Resource` and become L2. Their metadata block now
+  shows the L1 type row that other L2 pages show, resolved from the tag.
+- **`aws-bedrock-alpha.PromptVersion` is listed by FQN as L2.** It is tagged and hand-written but extends `Construct`
+  directly, so no inheritance test reaches it, and without an entry it would show no badge. It joins the other exact
+  FQN entries.
+- **The rule is fixed, not the page.** Across the `aws-cdk-lib` and alpha assemblies installed at the time of the
+  change, exactly six tagged classes are outside the `CfnElement` subtree. These six are all of them.
 
 ## Consequences
 
-- The badge, the hover preview, the sidebar chip and the sidebar sort order for those types change from L1 to L2.
-- A hand-written type that carries the tag and does not extend `Resource` is still an L1. If one appears that is not,
-  it needs its own rule or an override entry, with a reason.
+- The badge, the hover preview, the sidebar chip and the sidebar sort order for those six types change from L1 to L2.
+- A new tagged construct outside the `CfnElement` subtree that does not extend `Resource` gets no badge until it is
+  listed or a rule reaches it. That is a missing badge, not a wrong one.
