@@ -4,9 +4,10 @@ import { CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
 // Selectable navigation style (docs/adr/2026-10-23-sidebar-navigation-styles.md):
 // the Settings menu offers By service (the default) and By package; the choice
 // is stored under `cdk-docs-nav-style`; the sidebar regroups the data it
-// already fetched, reveals the active page in the new tree, and keeps collapse
-// and scroll memory apart per style. A reader who never opens the picker sees
-// the service tree and makes no extra request.
+// already holds, fetches only the chunks of groups the new style has open,
+// reveals the active page in the new tree, and keeps collapse and scroll memory
+// apart per style. A reader with nothing stored open sees the service tree and
+// makes no extra request.
 test.describe('navigation style', () => {
   // The Settings dropdown and the sidebar are desktop surfaces.
   test.use({ viewport: { width: 1440, height: 900 } });
@@ -191,6 +192,8 @@ test.describe('navigation style', () => {
     // empty list under an open caret.
     await page.goto(CFN_QUEUE_PAGE);
     await waitForSidebar(page);
+    // Let the load-time reveal finish scrolling the sidebar before clicking, or the click can land on a neighbour.
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
     await page.getByRole('button', { name: 'Custom Resources', exact: true }).click();
     await page.evaluate((key) => window.localStorage.setItem(key, 'package'), NAV_KEY);
     await page.reload();

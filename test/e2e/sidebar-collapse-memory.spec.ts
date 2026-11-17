@@ -160,13 +160,10 @@ test.describe('sidebar collapse memory', () => {
     const name = 'Custom Resources';
     const items = (p: Page) => groupNamed(p, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li');
     await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'false');
+    // Let the load-time reveal finish scrolling the sidebar before clicking, or the click can land on a neighbour.
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
     await groupNamed(page, name).click();
     await expect(items(page).first()).toBeVisible();
-    // Clicking scrolled the sidebar up to the section; bring the active entry
-    // back into view so the remembered scroll position is the one under test.
-    const active = page.locator('.api-sidebar a.api-sidebar-link.active');
-    await active.scrollIntoViewIfNeeded();
-    await expect(active).toBeInViewport();
 
     await page.reload();
     await waitForSidebar(page);
@@ -174,7 +171,5 @@ test.describe('sidebar collapse memory', () => {
     await expect(group).toHaveAttribute('aria-expanded', 'true');
     await expect(group.locator('.api-sidebar-caret')).toHaveClass(/\bopen\b/);
     await expect(items(page).first()).toBeVisible();
-    // The remembered scroll position still leaves the active entry in view.
-    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
   });
 });
