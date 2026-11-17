@@ -165,10 +165,57 @@ describe('construct detection and classification', () => {
     expect(constructLevel(resourceInSubtree, withSynthetics)).toBe('L2');
   });
 
+  test('a tagged class is L1 only when its name starts with Cfn', () => {
+    // The alpha packages tag hand-written constructs with `@cloudformationResource` to name the resource they wrap.
+    // Those are L2. The shapes mirror `aws-bedrock-alpha.Agent` (extends Resource through a base) and
+    // `aws-bedrock-alpha.PromptVersion` (extends Construct directly).
+    const withAlpha: TypeIndex = new Map(index);
+    const classType = (fqn: string, base: string, docs?: spec.Docs): spec.ClassType => {
+      const type: spec.ClassType = {
+        kind: spec.TypeKind.Class,
+        fqn,
+        name: fqn.split('.').pop()!,
+        assembly: 'aws-bedrock-alpha',
+        base,
+        ...(docs ? { docs } : {}),
+      };
+      withAlpha.set(fqn, { type, assembly: cdk });
+      return type;
+    };
+    const tag = (cloudformationResource: string): spec.Docs => ({ custom: { cloudformationResource } });
+
+    const agentBase = classType('aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
+    const agent = classType('aws-bedrock-alpha.Agent', agentBase.fqn, tag('AWS::Bedrock::Agent'));
+    expect(constructLevel(agent, withAlpha)).toBe('L2');
+    const promptVersion = classType(
+      'aws-bedrock-alpha.PromptVersion', 'constructs.Construct', tag('AWS::Bedrock::PromptVersion'),
+    );
+    expect(constructLevel(promptVersion, withAlpha)).toBe('L2');
+
+    // A tagged `Cfn` class is still the L1, wherever its base chain leads.
+    const cfn = classType('aws-cdk-lib.aws_fake.CfnThing', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Thing'));
+    expect(constructLevel(cfn, withAlpha)).toBe('L1');
+    const orphan = classType('aws-fake.CfnOrphan', 'aws-fake.Missing', tag('AWS::Fake::Orphan'));
+    expect(constructLevel(orphan, withAlpha)).toBe('L1');
+  });
+
   test('builds version-pinned GitHub source URLs', () => {
     const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type;
     const url = sourceUrl(bucket, cdk)!;
     expect(url).toMatch(/^https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+$/);
+  });
+
+  test('pins an alpha type source URL to the release tag, since alpha versions have no tag of their own', () => {
+    const bedrock = loadAssembly('@aws-cdk/aws-bedrock-alpha');
+    expect(bedrock.version).toMatch(/^\d+\.\d+\.\d+-alpha\.\d+$/);
+    const release = bedrock.version.replace(/-alpha\.\d+$/, '');
+    const promptVersion = bedrock.types['@aws-cdk/aws-bedrock-alpha.PromptVersion'];
+    const url = sourceUrl(promptVersion, bedrock)!;
+    expect(url).toBe(
+      `https://github.com/aws/aws-cdk/blob/v${release}/packages/@aws-cdk/aws-bedrock-alpha/` +
+        `${promptVersion.locationInModule!.filename}#L${promptVersion.locationInModule!.line}`,
+    );
+    expect(url).not.toContain('-alpha.');
   });
 
   test('omits source URLs for build-generated files', () => {
@@ -461,14 +508,16 @@ describe('construct page generation', () => {
     // no such page is in the e2e fixture, so this is L3's only pin. Rendering
     // one page directly keeps it deterministic and independent of which
     // pattern constructs the shipped assembly happens to carry.
+    // The tagged fixture is an L1, so it carries a `Cfn` name as a generated L1 does. A tagged class with any other
+    // name is an L2, which the classification test above covers.
     const level = (namespace: string, cloudformationResource?: string) => {
       const type: spec.ClassType = {
         kind: spec.TypeKind.Class,
-        fqn: `aws-cdk-lib.${namespace}.Widget`,
-        name: 'Widget',
+        fqn: `aws-cdk-lib.${namespace}.${cloudformationResource ? 'CfnWidget' : 'Widget'}`,
+        name: cloudformationResource ? 'CfnWidget' : 'Widget',
         assembly: 'aws-cdk-lib',
         namespace,
-        base: 'aws-cdk-lib.Resource',
+        base: cloudformationResource ? 'aws-cdk-lib.CfnResource' : 'aws-cdk-lib.Resource',
         ...(cloudformationResource ? { docs: { custom: { cloudformationResource } } } : {}),
       };
       const index: TypeIndex = new Map(fixtureIndex);

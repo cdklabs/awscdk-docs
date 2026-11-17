@@ -35,6 +35,7 @@ import "./signatures.css";
 import "./api-layout.css";
 import "./density.css";
 import "./responsive.css";
+import "./wide-layout.css";
 import "./favorites.css";
 import "./api-sidebar.css";
 import "./theme-picker.css";

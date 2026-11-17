@@ -596,19 +596,17 @@ a.chain-item:hover {
   text-decoration-style: solid;
 }
 
-/* A long translated spelling (Python's `int | float` for jsii `number`, a
-   nested Java generic) would otherwise take the header line's whole width.
-   `inline-block` rather than a flex item on purpose: making the
-   variant wrapper a flex container blockifies the name `code` beside it,
-   whose height then comes from line-height instead of the font. */
+/* A type too long for its row wraps instead of clipping, at a space or after a
+   dot in a long qualified name (the renderer follows those with a `<wbr>`).
+   The variant wrapper's `nowrap` is released for the type's own text only.
+   With a single language the span is a flex item of the header line itself,
+   so it carries the same ceiling as the wrapper: inert while inline, it keeps
+   an over-wide token on the page's `overflow-wrap` fallback once the row
+   stacks. */
 .member-list .member-type {
-  display: inline-block;
-  max-width: 100%;
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  vertical-align: bottom;
+  max-width: 100%;
+  white-space: normal;
 }
 
 /* The name and its type are adjacent inline boxes inside one variant, so the
@@ -655,9 +653,13 @@ a.chain-item:hover {
 }
 
 /* With 2+ languages the row's flex child is the variant span, not the name or
-   type inside it: `nowrap` keeps the pair from breaking apart. */
+   type inside it: `nowrap` keeps the pair from breaking apart. `max-width`
+   keeps the span inside the row where it stacks, so a single token wider than
+   the column falls back to the page's `overflow-wrap` instead of pushing the
+   row out. */
 .member-list .member-line > .lang-variant {
   min-width: 0;
+  max-width: 100%;
   white-space: nowrap;
 }
 
@@ -951,24 +953,17 @@ a.chain-item:hover {
     align-items: flex-start;
   }
 
-  /* A stacked row has no single line to clamp against, so the type and the
-     default wrap rather than ellipsizing. Releasing the default
-     matters more than symmetry: its only recovery is the
-     `title` the emitter sets, and hover means nothing on touch — which is the
-     same reason `.type-tooltip` is switched off at the bottom of this block. A
-     22-character prose default like `No filtering on region` would otherwise be
-     ellipsized here with no way at all to read it, being under
-     INLINE_DEFAULT_BUDGET and so earning no `**Default:**` copy either. */
-  .member-list .member-type,
+  /* A stacked row has no single line to clamp against, so the default wraps
+     rather than ellipsizing. Its only recovery is the `title` the emitter sets,
+     and hover means nothing on touch — which is the same reason `.type-tooltip`
+     is switched off at the bottom of this block. A 22-character prose default
+     like `No filtering on region` would otherwise be ellipsized here with no
+     way at all to read it, being under INLINE_DEFAULT_BUDGET and so earning no
+     `**Default:**` copy either. The default has no clamp above this breakpoint;
+     `max-width: none` keeps it that way here too. */
   .member-list .member-default {
     white-space: normal;
     overflow: visible;
-  }
-
-  /* The type's clamp is `max-width: 100%`, which stops binding once the text
-     may wrap. The default has no clamp above this breakpoint; `max-width: none`
-     keeps it that way here too. */
-  .member-list .member-default {
     max-width: none;
   }
 

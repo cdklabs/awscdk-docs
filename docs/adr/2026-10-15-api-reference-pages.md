@@ -57,7 +57,9 @@ the level in order, first match wins:
    inheritance test can reach, since `Resource` is the base). Matched by
    exact FQN, never inherited, so `aws_servicecatalog.ProductStack` is not
    promoted with `Stack`.
-1. **L1** — has `cloudformationResource` metadata (generated `CfnXxx`).
+1. **L1 or L2 by tag** — has `cloudformationResource` metadata. A class
+   named `Cfn*` is the generated L1. Any other tagged class is a
+   hand-written construct that names the resource it wraps, so it is L2.
 2. **L3** — declared in a `*patterns*` submodule.
 3. **L2** — extends `aws-cdk-lib.Resource`.
 4. **L1** — is or extends `aws-cdk-lib.CfnElement` (catches hand-written
@@ -68,7 +70,9 @@ Constructs matching none (e.g. `constructs.Construct` itself, `CfnJson`) get
 no badge rather than a wrong one. The level is also a sort key: `byLevelThenName`
 (`src/docgen/ordering.ts`) ranks L3 > L2 > L1 > unleveled in sidebar leaf
 lists and type tables, so the overrides and the `CfnElement` subtree reorder
-listings too. Source links pin the assembly version tag and are omitted for
+listings too. Source links pin the assembly version tag with any prerelease
+suffix removed, so an alpha assembly, which has no tag of its own, pins the tag
+of its release version (`2.277.0-alpha.0` -> `v2.277.0`). They are omitted for
 `*.generated.ts` files (build-only, would 404). Props tables inline inherited
 properties — users care about the full passable set, not the declaration
 hierarchy.
@@ -226,6 +230,9 @@ label and one `<td>` value, and only facts that apply to the type render:
 | Source | upstream file and line | repository, or the text *Generated at build time* |
 | Type last changed | page history for the type's shape | version and release date text |
 
+A hand-written L2 that carries the `cloudformationResource` tag shows that
+tag's resource type and no L1 type row.
+
 Provenance is neither prose nor title material, so it lives here rather than in
 the H1 or the description. The block emits nothing when there are no rows (no
 empty shell), and another row needs no markup or layout change. The only
@@ -310,23 +317,34 @@ sidebar. This is the one permitted out-of-flow rule in the member-row section; a
 density test permits exactly `.member-permalink` and fails any second
 `position: absolute` there.
 
-### Property row shrink priority
+### Property type wraps inside the row
 
-A property row is one `flex-wrap: nowrap` line. When too narrow for both the
-type and the description, the **description yields first**:
-`.props-table .prop-summary` has `flex-shrink: 100` against the type box's `1`,
-so the type stays complete (it is part of the member contract and appears
-nowhere else in the collapsed row) while the description clips. No `max-width`
-cap on the type — the shrink weighting alone orders it in one declaration. The
-clamp is an inline-block on the type (making it a flex item blockifies the
-adjacent name `code` and shifts row height); the span gets `white-space: nowrap`,
-`min-width: 0`, `overflow: hidden`, and a full-type `title`. Both clamps release
-at the `max-width: 640px` breakpoint where rows stack. The language-variant
-wrapper's `nowrap` is shared by method rows, where the variant holds the whole
-signature; `.member-signature` releases it (`white-space: normal`,
-`overflow-wrap: anywhere`) so a long signature wraps inside the content column
-instead of running over the outline — a signature has no single line to clamp
-to and is never truncated.
+A property row's header line is `flex-wrap: wrap`; the summary sits in its own
+block below it, so the type competes with nothing on its line. A type too long
+for the column **wraps rather than clips**: the type is part of the member
+contract and appears nowhere else in the row, so an ellipsis hides exactly the
+part a reader came for. The language-variant wrapper is `white-space: nowrap`
+with `min-width: 0` and `max-width: 100%`, keeping the name and its type
+together and inside the row; `.member-list .member-type` releases the `nowrap`
+for the type's own text. Breaks happen at the spaces a type already has
+(`IResolvable | …`, `typing.Union[a, b]`) and, in a qualified name longer than
+the narrowest column holds whole (32 characters), after every dot, which the
+renderer follows with a `<wbr>` in the visible copy only — a nested-type name
+(`CfnRegistry.CustomMetadataSchemaConfigurationProperty`) breaks after
+`CfnRegistry.` rather than mid-word, while a short `typing.List` stays together
+because its dot would be taken before the bracket or space beside it. That
+qualification exists in the TypeScript spelling; the other languages name a
+nested type by its last segment, which takes the `overflow-wrap` fallback when
+it does not fit. A single token wider than the whole column falls back to the
+page's `overflow-wrap: break-word`; the type span carries the wrapper's
+`min-width: 0` and `max-width: 100%` itself for the single-language shape,
+where it is the row's flex item. The full spelling stays in the span's `title`
+as plain text. The wrapper's `nowrap` is shared by method rows, where the
+variant holds the whole signature;
+`.member-signature` releases it (`white-space: normal`, `overflow-wrap:
+anywhere`) so a long signature wraps inside the content column instead of
+running over the outline — a signature has no single line to clamp to and is
+never truncated.
 
 ### "Construct Props" heading with a pinned anchor
 

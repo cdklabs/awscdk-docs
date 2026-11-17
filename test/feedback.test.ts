@@ -56,15 +56,22 @@ describe('edit link generation', () => {
     expect(helper).not.toContain('tree/main/src/docgen');
   });
 
-  test('hand-written pages link to the markdown file editor', () => {
-    expect(editLinkFor('versions.md')).toBe(
-      `${REPO_URL}/edit/main/docs/versions.md`,
+  test('hand-written pages link to the markdown file editor in this site repository', () => {
+    expect(REPO_URL).toBe('https://github.com/cdklabs/awscdk-docs');
+    expect(editLinkFor('skills.md')).toBe(
+      'https://github.com/cdklabs/awscdk-docs/edit/main/docs/skills.md',
     );
-    expect(editLinkFor('index.md')).toBe(`${REPO_URL}/edit/main/docs/index.md`);
+    expect(editLinkFor('index.md')).toBe('https://github.com/cdklabs/awscdk-docs/edit/main/docs/index.md');
+  });
+
+  test('a page with editLink: false in its frontmatter gets no edit link', () => {
+    expect(editLinkFor('versions.md', undefined, false)).toBeUndefined();
+    expect(editLinkFor('index.md', S3_README, false)).toBeUndefined();
+    expect(editLinkFor('index.md', undefined, true)).toBe(`${REPO_URL}/edit/main/docs/index.md`);
   });
 
   test('a page that names its upstream file wins over any path rule', () => {
-    // The upstream URL is checked first, deliberately: a page that records
+    // The upstream URL wins over the path rule, deliberately: a page that records
     // where its prose came from knows better than a path heuristic. docgen
     // only emits the key for generated pages, so this is reachable today
     // only if a hand-written page sets it itself — in which case honoring

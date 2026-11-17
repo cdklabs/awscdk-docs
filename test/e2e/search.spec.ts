@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { LONG_TITLE_PAGE, SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 import { MAX_SEARCH_RESULTS, MODULE_HINT_CLASS } from '../../docs/.vitepress/theme/search-client.js';
-import { SEARCH_DIALOG_LEAVING_CLASS, SEARCH_DIALOG_SELECTOR, SEARCH_KEYSHORTCUTS } from '../../docs/.vitepress/theme/search-hotkeys.js';
+import {
+  SEARCH_DIALOG_LEAVING_CLASS,
+  SEARCH_DIALOG_SELECTOR,
+  SEARCH_INPUT_ID,
+  SEARCH_KEYSHORTCUTS,
+} from '../../docs/.vitepress/theme/search-hotkeys.js';
 
 // Pagefind static search (vitepress-plugin-pagefind): the navbar
 // search button opens the search dialog; querying a symbol documented in the
@@ -306,6 +311,48 @@ test.describe('pagefind search', () => {
       // Visible text and accessible name stay the plugin's own.
       await expect(button).toHaveText(/Search/);
     });
+  });
+
+  test.describe('Cmd+K and Ctrl+K and the browser default', () => {
+    // Bubble-phase window listener, added after the theme's capture-phase one, so it sees the final
+    // defaultPrevented of every k keydown.
+    type Recorded = { __k: boolean[] };
+    async function recordK(page: import('@playwright/test').Page) {
+      await page.evaluate(() => {
+        const w = window as unknown as Recorded;
+        w.__k = [];
+        window.addEventListener('keydown', (e) => {
+          if (e.key.toLowerCase() === 'k') w.__k.push(e.defaultPrevented);
+        });
+      });
+    }
+    const ks = (page: import('@playwright/test').Page) => page.evaluate(() => (window as unknown as Recorded).__k);
+
+    for (const chord of ['Meta+k', 'Control+k']) {
+      test(`${chord} is prevented and opens search`, async ({ page }) => {
+        await page.goto('/');
+        await recordK(page);
+        await page.keyboard.press(chord);
+        await expect(page.locator(`#${SEARCH_INPUT_ID}`)).toBeVisible();
+        expect(await ks(page)).toEqual([true]);
+      });
+    }
+
+    for (const chord of ['k', 'Alt+Meta+k', 'Shift+Meta+K']) {
+      test(`${chord} keeps its default`, async ({ page }) => {
+        await page.goto('/');
+        await recordK(page);
+        // Positive control: the guard is installed and records Meta+K as prevented, so the false below is the
+        // guard's decision, not a missing listener.
+        await page.keyboard.press('Meta+k');
+        await expect(page.locator(`#${SEARCH_INPUT_ID}`)).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.locator(SEARCH_DIALOG_SELECTOR)).toHaveCount(0);
+
+        await page.keyboard.press(chord);
+        expect(await ks(page)).toEqual([true, false]);
+      });
+    }
   });
 
   // Preventing Escape's default while search is open is meant to keep Firefox

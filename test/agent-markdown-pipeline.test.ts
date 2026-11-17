@@ -106,12 +106,12 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('> **Separate package**');
   });
 
-  test('the twin body is plain Markdown: content kept, chrome and non-canonical variants gone', () => {
+  test('the twin body is plain Markdown: content and every language kept, chrome gone', () => {
     const twin = readFileSync(join(agentOutDir, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
     const canonical = readFileSync(join(outDir, 'docs', 'constructs.Node.md'), 'utf-8');
     expect(twin.startsWith('# Node\n')).toBe(true);
-    expect(twin).toContain('```ts');
-    expect(twin).not.toContain('```python');
+    expect(twin).toContain('TypeScript:\n\n```ts');
+    expect(twin).toContain('Python:\n\n```python');
     expect(twin).not.toContain('agentMarkdown');
     for (const marker of [
       '<LanguageTabs', 'lang-variant', '<Badge', 'data-pagefind', '<nav', '<table', '<td', 'v-pre', '---\n',
@@ -158,6 +158,21 @@ describe('agent-oriented Markdown twins', () => {
       expect(emittedPages.has(path)).toBe(true);
     }
     expect(links.some((link) => link.startsWith('https://') && !link.startsWith(siteUrl))).toBe(true);
+  });
+
+  test('a build with one language emits one copy and no language labels', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agent-md-ts-'));
+    try {
+      const out = join(dir, 'docs');
+      const agent = join(dir, 'agent');
+      generateDocs({ modules: ['constructs'] }, { outDir: out, agentOutDir: agent, packageRoot: ROOT, languages: ['ts'] });
+      const twin = readFileSync(join(agent, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
+      expect(twin).toContain('```ts');
+      expect(twin).not.toContain('TypeScript:');
+      expect(twin).not.toContain('```python');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test('without agentOutDir nothing changes: no key, no twins', () => {
@@ -269,6 +284,39 @@ describe('the page advertises its twin only when one exists', () => {
     const guarded = config.indexOf('if (typeof twin === "string")');
     expect(config.indexOf('type: "text/plain"')).toBeLessThan(guarded);
   });
+});
+
+describe('agent-oriented Markdown twins with every site language', () => {
+  // The Initializer signature block comes from docgen's own translators, not rosetta, so its five copies do not
+  // depend on which snippets a library's tablet happens to translate.
+  test('the Node twin carries the Initializer in all five languages, in site order, and members stay canonical', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agent-md-all-'));
+    try {
+      const out = join(dir, 'docs');
+      const agent = join(dir, 'agent');
+      generateDocs(
+        { modules: ['constructs'] },
+        { outDir: out, agentOutDir: agent, packageRoot: ROOT, languages: ['ts', 'python', 'java', 'dotnet', 'go'] },
+      );
+      const twin = readFileSync(join(agent, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
+      const section = twin.indexOf('\n## Initializer\n');
+      expect(section).toBeGreaterThan(-1);
+      const end = twin.indexOf('\n## ', section + 1);
+      expect(end).toBeGreaterThan(section);
+      const initializer = twin.slice(section, end);
+      const labels = [
+        'TypeScript:\n\n```ts', 'Python:\n\n```python', 'Java:\n\n```java', 'C# / .NET:\n\n```csharp', 'Golang:\n\n```go',
+      ];
+      const at = labels.map((label) => initializer.indexOf(label));
+      expect(at.every((i) => i >= 0)).toBe(true);
+      expect([...at].sort((x, y) => x - y)).toEqual(at);
+      // Members keep the canonical (TypeScript) name only; no member bullet is spelled in snake case.
+      expect(twin).toMatch(/^- `addr`: string — /m);
+      expect(twin).not.toMatch(/^\s*- `[a-z]+_[a-z_]+/m);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 120_000);
 });
 
 describe('copyMarkdownFrom', () => {

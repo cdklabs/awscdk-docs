@@ -3,6 +3,7 @@ import {
   isDialogOpen,
   isEditableTarget,
   isGuardedEscape,
+  isOpenSearchShortcut,
   isSearchHotkey,
   SEARCH_KEYSHORTCUTS,
 } from '../docs/.vitepress/theme/search-hotkeys.js';
@@ -68,6 +69,19 @@ describe('search hotkeys', () => {
     expect(isGuardedEscape({ key: 'Escape' }, false)).toBe(false);
     expect(isGuardedEscape({ key: 'a' }, true)).toBe(false);
     expect(isGuardedEscape({ key: 'Escape', isComposing: true }, true)).toBe(false);
+  });
+
+  test('Cmd+K and Ctrl+K have their default prevented; other k chords are left alone', () => {
+    const k = (mods: Partial<HotkeyEvent>) => keydown({ key: 'k', ...mods });
+    expect(isOpenSearchShortcut(k({ metaKey: true }))).toBe(true);
+    expect(isOpenSearchShortcut(k({ ctrlKey: true }))).toBe(true);
+    expect(isOpenSearchShortcut(k({}))).toBe(false);
+    expect(isOpenSearchShortcut(k({ metaKey: true, altKey: true }))).toBe(false);
+    expect(isOpenSearchShortcut(k({ ctrlKey: true, shiftKey: true }))).toBe(false);
+    expect(isOpenSearchShortcut(keydown({ key: 'K', metaKey: true, shiftKey: true }))).toBe(false);
+    // Caps Lock: an uppercase key without Shift is still the shortcut.
+    expect(isOpenSearchShortcut(keydown({ key: 'K', metaKey: true }))).toBe(true);
+    expect(isOpenSearchShortcut(keydown({ key: 'j', metaKey: true }))).toBe(false);
   });
 
   test('a dialog in its leave transition counts as closed', () => {
