@@ -36,6 +36,8 @@ const label = computed(() =>
 
 async function copy(): Promise<void> {
   if (!markdownUrl.value) return;
+  // A pointer press on this button is inside `root`, so the outside-press handler leaves an open menu alone.
+  if (menuOpen.value) closeMenu(false);
   const mine = ++generation;
   const outcome = await copyMarkdownFrom(markdownUrl.value, {
     fetch: (url) => fetch(url),

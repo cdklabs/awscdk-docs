@@ -16,7 +16,7 @@ test.describe('Copy Markdown control', () => {
     await page.locator('.copy-markdown[data-ready]').waitFor();
   };
 
-  test('copies the page Markdown and shows Copied for two seconds', async ({ page, request }) => {
+  test('copies the page Markdown and shows Copied, then restores the label', async ({ page, request }) => {
     await open(page);
     const expected = await (await request.get(twin)).text();
 
@@ -224,6 +224,17 @@ test.describe('Copy Markdown control', () => {
     // A raw mouse click at the page corner: Playwright's element click refuses the nav, which the content overlaps.
     await page.mouse.click(2, 2);
     await expect(item).toBeHidden();
+  });
+
+  test('clicking Copy Markdown closes an open menu', async ({ page }) => {
+    await open(page);
+    await page.getByRole('button', { name: 'More Markdown options' }).click();
+    const item = page.getByRole('menuitem', { name: 'View as Markdown' });
+    await expect(item).toBeVisible();
+
+    await page.locator('.copy-markdown-main').click();
+    await expect(item).toBeHidden();
+    await expect(page.getByRole('button', { name: 'More Markdown options' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('the menu item opens the Markdown file in a new tab against the e2e server', async ({ page }) => {
