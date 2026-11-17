@@ -159,7 +159,8 @@ are sorted by owner FQN then member, each once; the row carries the
 `obtainable-from` id and shares the budget and disclosure below. The whole
 entry is rendered as inline language variants, translated per enabled language
 like the member rows (the multi-language ADR's canonical identity, translated
-display): the member name through the member-name translators and the
+display): the member name through the member-name translators (a `const`
+keeps its UPPER_SNAKE name in Python, as the member rows do) and the
 separator `_` for Go, where a static is the package-level `Owner_Member`. The
 anchor stays on the canonical jsii name and the width budget uses the widest
 translation; the block is wrapped in `<LanguageTabs>` only when this row is

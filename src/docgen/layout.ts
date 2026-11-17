@@ -178,7 +178,7 @@ export interface MemberRef {
   readonly ownerFqn: string;
   readonly memberName: string;
   readonly kind: 'method' | 'property';
-  /** A `const` static property: jsii's Python bindings keep its UPPER_SNAKE name, so it is not re-cased. */
+  /** A `const` static property: `translatePropertyName` keeps its UPPER_SNAKE name in Python, as jsii does. */
   readonly constant?: boolean;
 }
 
@@ -230,9 +230,9 @@ function memberRelationRow(
 ): string {
   return relationRowOf(label, refs.map((ref) => {
     const owner = shortName(ref.ownerFqn);
-    const translate = ref.kind === 'method' ? translateMethodName
-      : ref.constant ? (name: string, lang: Language) => (lang === 'python' ? name : translatePropertyName(name, lang))
-        : translatePropertyName;
+    const translate = ref.kind === 'method'
+      ? translateMethodName
+      : (name: string, lang: Language) => translatePropertyName(name, lang, ref.constant);
     const entry = (lang: Language) => ({ sep: lang === 'go' ? '_' : '.', member: translate(ref.memberName, lang) });
     const text = (languages.length > 0 ? languages : [DEFAULT_LANGUAGE])
       .map((lang) => `${owner}${entry(lang).sep}${entry(lang).member}`)
@@ -297,7 +297,8 @@ function relationRowOf(label: string, items: readonly RelationItem[], id?: strin
  * ancestor linked to its page (`Construct › Resource › Bucket`), followed by the interfaces the type implements:
  * `Construct › Resource › Bucket · implements IBucket`. Interfaces declared by ancestor classes are included
  * (deduplicated, own declarations first) — `Bucket` implements `IBucket` via `BucketBase`. Emitted whenever the
- * type has a base class or implemented interfaces.
+ * type has a base class, implemented interfaces, subclasses, or static members that produce it; the `obtainable
+ * from` row comes last.
  */
 export function renderInheritanceChain(
   type: spec.ClassType,
@@ -351,7 +352,8 @@ function hierarchyBlock(nav: string, languages: readonly Language[]): string[] {
 /**
  * Hierarchy bar for interface-like types (interfaces, structs, mixins): `IBucket · extends IResource`, each parent
  * linked to its page — the same presentation as the class inheritance chain. A struct's `used as props by` row lists
- * the classes whose initializer takes it as props. Nothing is emitted for a type with no relation to show.
+ * the classes whose initializer takes it as props; the `obtainable from` row, the static members that produce the
+ * type, comes last. Nothing is emitted for a type with no relation to show.
  */
 export function renderExtendsBar(
   type: spec.InterfaceType,
@@ -599,7 +601,7 @@ function propRowHtml(
   // Name and type are language-variant: one span per enabled language; the trailing markers and summary are
   // neutral, single-copy.
   const nameAndType = languageVariantSpans(languages, (lang) => {
-    const name = escHtml(translatePropertyName(prop.name, lang));
+    const name = escHtml(translatePropertyName(prop.name, lang, prop.const));
     // Every language links its types, not just TypeScript. The link resolves from the jsii reference while the text
     // stays the language's own spelling of the type.
     const type = lang === 'ts'

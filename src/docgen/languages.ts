@@ -95,15 +95,16 @@ export function translateMethodName(name: string, lang: Language): string {
 
 /**
  * Translate a property name to the target language.
- * Same rules as method names.
+ * Same rules as method names, except that a `const` property keeps its name in Python: jsii's Python bindings
+ * leave an UPPER_SNAKE constant as written (`JsonNull.INSTANCE`), where `camelToSnake` would lowercase it.
  */
-export function translatePropertyName(name: string, lang: Language): string {
+export function translatePropertyName(name: string, lang: Language, constant = false): string {
   switch (lang) {
     case 'ts':
     case 'java':
       return name;
     case 'python':
-      return camelToSnake(name);
+      return constant ? name : camelToSnake(name);
     case 'dotnet':
     case 'go':
       return camelToPascal(name);

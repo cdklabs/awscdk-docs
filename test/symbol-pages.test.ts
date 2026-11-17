@@ -6,7 +6,7 @@ import { toAgentMarkdown } from '../src/docgen/agent-markdown.js';
 import { buildTypeIndex, TypeIndex } from '../src/docgen/constructs.js';
 import { generateDocs, loadAssembly as loadCachedAssembly } from '../src/docgen/index.js';
 import { renderExtendsBar } from '../src/docgen/layout.js';
-import { buildUsageIndex, classMethods, classProperties, renderInterfacePage, renderStructPage, UsageIndex } from '../src/docgen/symbols.js';
+import { buildUsageIndex, classMethods, classProperties, renderClassPage, renderInterfacePage, renderStructPage, UsageIndex } from '../src/docgen/symbols.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -303,7 +303,8 @@ describe('symbol page generation', () => {
 
   test('interface pages list the static factories that return the type, linked to the member', () => {
     // IBucket is produced by four Bucket statics; the row lists them sorted by owner, then member name, each
-    // linking the owner page at the member's row anchor. Four entries overflow the two-line budget, so the last two fold.
+    // linking the owner page at the member's row anchor.
+    // Four entries overflow the two-line budget, so the last two fold.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
     const row = page.match(/<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from<\/span> (.*?)<\/div>/);
     expect(row).not.toBeNull();
@@ -394,6 +395,20 @@ describe('symbol page generation', () => {
       + '<span class="lang-variant" data-lang="go" v-pre>Other_<wbr>OfThing</span></span>',
     );
     expect(third).not.toContain('<a ');
+  });
+
+  test('a const static keeps its name in the Python member row, matching the obtainable-from entry', () => {
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const index = buildTypeIndex([assembly]);
+    const usage = buildUsageIndex(index);
+    const jsonNull = index.get('aws-cdk-lib.JsonNull')!.type as spec.ClassType;
+    const page = renderClassPage({ type: jsonNull, assembly, index, usage, linkFor, languages: ['ts', 'python'], emitExamples: false });
+    // The property row and the hierarchy entry agree: both read INSTANCE in Python, as jsii's bindings spell it.
+    expect(page).toMatch(/<div class="member-row" id="instance"[\s\S]*?data-lang="python"[^>]*><code class="member-name">INSTANCE<\/code>/);
+    expect(page).toMatch(/id="obtainable-from"[\s\S]*?data-lang="python"[^>]*>JsonNull\.<wbr>INSTANCE<\/span>/);
+    // A non-const property still snake-cases: creationStack -> creation_stack.
+    expect(page).toMatch(/data-lang="python"[^>]*><code class="member-name">creation_stack<\/code>/);
   });
 
   test('a struct page lists the static factory that returns it', () => {
