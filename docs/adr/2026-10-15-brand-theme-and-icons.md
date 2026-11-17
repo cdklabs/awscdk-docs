@@ -162,8 +162,8 @@ Adding a card is one token plus one pin entry.
 
 ### Monochrome UI glyphs as CSS masks
 
-The ten first-party stroke glyphs in `docs/.vitepress/theme/icons/`
-(`sun`, `moon`, `monitor`, `code`, `link`, `gear`, `clear`, `enter`, `locate`,
+The nine first-party stroke glyphs in `docs/.vitepress/theme/icons/`
+(`sun`, `moon`, `monitor`, `code`, `link`, `gear`, `clear`, `locate`,
 `top`) render as CSS `mask-image`, not inline SVG. An empty `aria-hidden` span
 with class `.glyph .glyph-<name>` carries the mask; `background-color:
 currentColor` paints it, so each glyph follows the theme. `glyphs.css` declares

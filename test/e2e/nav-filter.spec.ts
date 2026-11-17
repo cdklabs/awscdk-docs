@@ -437,6 +437,29 @@ test.describe('in-sidebar symbol filter', () => {
     await expect(input).toBeFocused();
   });
 
+  test('focus stays in the page, on the input, while the activated hint button unmounts', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+
+    // Hold the page chunk back so the navigation is still pending when focus is read. If the pattern matches nothing
+    // the delay is simply absent and the final focus check below still runs.
+    await page.route('**/assets/**Queue*.js', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.continue();
+    });
+
+    const input = filterInput(page);
+    await input.fill('Queue');
+    const button = page.locator('.nav-filter-hint').getByRole('button');
+    await expect(button).toBeVisible();
+    await button.focus();
+    await page.keyboard.press('Space');
+
+    await expect(input).toBeFocused();
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
+    await expect(input).toBeFocused();
+  });
+
   test('Tab reaches the hint button after the input and Space activates it', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await waitForSidebar(page);
