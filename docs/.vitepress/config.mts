@@ -110,8 +110,8 @@ async function makeHighlight() {
 // Clean accessible permalink labels for multi-language member headings and type-page titles. VitePress derives
 // each anchor's `aria-label` from the heading token's raw `content`, which for a docgen member heading is
 // variant-span markup plus the `{#…}` pin. Rewriting `content` to the canonical (first-span, TypeScript) member
-// name before markdown-it-anchor runs restores a clean label. Safe here because rendering, outline, and slug derivation all
-// read the token's `children`; the raw `content` string's only remaining consumer is the aria-label.
+// name before markdown-it-anchor runs restores a clean label. Safe here because rendering, outline, and slug
+// derivation all read the token's `children`; the raw `content` string's only remaining consumer is the aria-label.
 const LANG_VARIANT_SPAN = /^<span class="lang-variant"[^>]*>(.*?)<\/span>/;
 // A type page's H1 source is the weighted name span (with `<wbr>` break points), the kind `<Badge>` and the
 // `{#…}` pin; its label is the plain type name.
@@ -264,8 +264,8 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
     // READMEs to `$$…$$` display blocks; this flag typesets them into static SVG at build time — SSR-safe,
     // no client runtime, no per-page JS growth.
     math: true,
-    // Runs before markdown-it-anchor's core rule so its permalink renderAttrs sees the clean canonical member
-    // name instead of variant-span markup (see cleanHeadingLabel above). `ruler.before("anchor", …)`
+    // Runs before markdown-it-anchor's core rule so its permalink renderAttrs sees the clean type or member name
+    // instead of title or variant-span markup (see cleanHeadingLabel above). `ruler.before("anchor", …)`
     // positions the rule ahead of anchor's regardless of registration order.
     config: (md) => {
       md.core.ruler.before("anchor", "clean_heading_label", (state) => {
