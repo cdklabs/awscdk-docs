@@ -74,15 +74,17 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
   });
 
   test('the stock tier values the overrides depend on are still what VitePress ships', () => {
-    // A VitePress bump that moves its tiers should fail here, not silently
-    // leave the override pointing at a different geometry.
+    // A VitePress bump that moves a cap to another tier or changes its value
+    // should fail here, not silently leave the override pointing at a
+    // different geometry, so each tiered cap is read from its own media block.
     const doc = readFileSync(resolve(VITEPRESS, 'components/VPDoc.vue'), 'utf-8');
     const vars = readFileSync(resolve(VITEPRESS, 'styles/vars.css'), 'utf-8');
     expect(vars).toMatch(/--vp-layout-max-width:\s*1440px/);
-    expect(doc).toMatch(/\.VPDoc:not\(\.has-sidebar\) \.container\s*{\s*max-width:\s*1104px/);
-    expect(doc).toMatch(/\.VPDoc:not\(\.has-sidebar\) \.content\s*{\s*max-width:\s*784px/);
+    expect(declarations(doc, '(min-width: 1440px)', '.VPDoc:not(.has-sidebar) .container')).toContain('max-width: 1104px');
+    expect(declarations(doc, '(min-width: 1440px)', '.VPDoc:not(.has-sidebar) .content')).toContain('max-width: 784px');
+    expect(declarations(doc, '(min-width: 960px)', '.VPDoc:not(.has-sidebar) .container')).toContain('max-width: 992px');
+    // The column cap sits outside any media query.
     expect(doc).toMatch(/\.VPDoc\.has-aside \.content-container\s*{\s*max-width:\s*688px/);
-    expect(doc).toMatch(/\.VPDoc:not\(\.has-sidebar\) \.container\s*{\s*display:\s*flex;\s*justify-content:\s*center;\s*max-width:\s*992px/);
   });
 
   test('the prose cap is scoped to the page body, never to member rows', () => {
