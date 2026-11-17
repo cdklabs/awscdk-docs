@@ -39,8 +39,10 @@ and user agent. The URL/body construction lives in a pure, Jest-testable module
 
 The edit link resolves from `editLinkFor(filePath, upstreamEditUrl)`:
 
-- **Hand-written pages** link to their own markdown:
-  `https://github.com/aws/aws-cdk/edit/main/docs/<filePath>`.
+- **Hand-written pages** link to their own markdown — superseded in
+  [edit link on hand-written pages](./2026-11-17-hand-written-page-edit-link.md),
+  which moves the target to this site's repository and lets a page opt out;
+  before it they linked `https://github.com/aws/aws-cdk/edit/main/docs/<filePath>`.
 - **Generated overview pages** link to the upstream `README.md` the prose came
   from, not to this repo's `src/docgen`. Docgen emits `upstreamEditUrl` into the
   page frontmatter; the pure helper takes it as an argument and it wins

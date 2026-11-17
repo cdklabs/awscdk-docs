@@ -17,7 +17,11 @@ const { page, theme } = useData();
 // page's declaring source file) or gets no link, so the template renders the
 // anchor conditionally.
 const editUrl = computed(() =>
-  editLinkFor(page.value.filePath, page.value.frontmatter?.upstreamEditUrl),
+  editLinkFor(
+    page.value.filePath,
+    page.value.frontmatter?.upstreamEditUrl,
+    page.value.frontmatter?.editLink,
+  ),
 );
 
 // When the page was last revised: the later of the site-wide revision date and the page's own recorded change,
