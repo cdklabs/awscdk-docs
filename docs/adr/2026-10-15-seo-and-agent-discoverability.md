@@ -107,7 +107,10 @@ repeated. Without TypeScript, one fallback copy stands in at the position of
 the first language using it, labeled `TypeScript (shown for Python):`. A
 language docgen leaves out of a group, such as a type example with no
 translation, is not listed; the page shows it the first embedded language's
-example (TypeScript when it is enabled). Member
+example (TypeScript when it is enabled). A README fence with no translation, a
+fence inside a list item, and a type example translated into no other language
+are not variant groups: they appear once, unlabeled, as the `ts` fence the page
+shows. Member
 names, types and inline signatures (member bullets, names in tables and
 parameter lists) keep the canonical spelling only: TypeScript when it is enabled, and otherwise the
 first enabled language. Prose, tables and links appear once. The languages are
@@ -210,7 +213,8 @@ run, including failures.
 - Bumping `CONTENT_REVISED_DATE` re-dates every page without a later release of
   its own, in both the JSON-LD and the footer.
 - The twin keeps every enabled language's type-page and README examples and
-  initializer signatures (labeled), member `@example` blocks once in TypeScript,
+  initializer signatures (labeled, where the page has a variant per language),
+  member `@example` blocks once in TypeScript,
   and member names, member tables, warnings and cross-links once in
   the canonical language; it drops badges, breadcrumb
   and search plumbing. Widening what it keeps is a change to one transform. The
