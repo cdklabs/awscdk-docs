@@ -8,25 +8,32 @@ const VITEPRESS = resolve(ROOT, 'node_modules/vitepress/dist/client/theme-defaul
 /** Split a selector list on the commas between selectors, not the ones inside `:is(...)`. */
 const splitSelectors = (list: string) => list.split(/,(?![^(]*\))/).map((s) => s.trim().replace(/\s+/g, ' '));
 
-/** Declarations of every rule whose selector list contains `selector`, inside the given media query only. */
-function declarations(css: string, query: string, selector: string): string[] {
-  const start = css.indexOf(`@media ${query}`);
-  if (start < 0) throw new Error(`media query not found: ${query}`);
-  const open = css.indexOf('{', start);
-  let depth = 0;
-  let end = -1;
-  for (let i = open; i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    if (css[i] === '}' && --depth === 0) {
-      end = i;
-      break;
+/** The body of EVERY `@media <query>` block in the stylesheet, brace-matched, comments stripped. */
+function mediaBlocks(css: string, query: string): string[] {
+  const blocks: string[] = [];
+  const marker = `@media ${query}`;
+  for (let start = css.indexOf(marker); start >= 0; start = css.indexOf(marker, start + 1)) {
+    const open = css.indexOf('{', start);
+    let depth = 0;
+    for (let i = open; i < css.length; i++) {
+      if (css[i] === '{') depth++;
+      if (css[i] === '}' && --depth === 0) {
+        blocks.push(css.slice(open + 1, i).replace(/\/\*[\s\S]*?\*\//g, ''));
+        break;
+      }
     }
   }
-  const block = css.slice(open + 1, end).replace(/\/\*[\s\S]*?\*\//g, '');
+  return blocks;
+}
+
+/** Declarations of every rule whose selector list contains `selector`, across all blocks of the media query. */
+function declarations(css: string, query: string, selector: string): string[] {
   const found: string[] = [];
-  for (const [, selectors, body] of block.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    if (splitSelectors(selectors).includes(selector)) {
-      found.push(...body.split(';').map((d) => d.trim().replace(/\s+/g, ' ')).filter(Boolean));
+  for (const block of mediaBlocks(css, query)) {
+    for (const [, selectors, body] of block.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (splitSelectors(selectors).includes(selector)) {
+        found.push(...body.split(';').map((d) => d.trim().replace(/\s+/g, ' ')).filter(Boolean));
+      }
     }
   }
   return found;
@@ -39,6 +46,7 @@ function declarations(css: string, query: string, selector: string): string[] {
 describe('wide-screen layout tier (wide-layout.css)', () => {
   const css = readFileSync(resolve(THEME_DIR, 'wide-layout.css'), 'utf-8');
   const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const TIER = '(min-width: 1920px)';
 
   test('the stylesheet is imported by the theme entry, after the stock theme', () => {
     const entry = readFileSync(resolve(THEME_DIR, 'index.ts'), 'utf-8');
@@ -47,18 +55,17 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
   });
 
   test('the tier starts at 1920px and raises the layout max width to 1920px', () => {
-    expect(declarations(stripped, '(min-width: 1920px)', ':root')).toEqual(['--vp-layout-max-width: 1920px']);
+    expect(declarations(stripped, TIER, ':root')).toEqual(['--vp-layout-max-width: 1920px']);
     // No other breakpoint touches the variable, so below 1920px the stock 1440px holds.
     expect(stripped.match(/--vp-layout-max-width:/g)).toHaveLength(1);
   });
 
   test('the caps are the three widths already in the code: 1440, 992 and 784', () => {
-    const tier = '(min-width: 1920px)';
-    expect(declarations(stripped, tier, '.VPDoc:not(.has-sidebar) .container')).toEqual(['max-width: 1440px !important']);
-    expect(declarations(stripped, tier, '.VPDoc.has-aside .content-container')).toEqual(['max-width: 992px !important']);
+    expect(declarations(stripped, TIER, '.VPDoc:not(.has-sidebar) .container')).toEqual(['max-width: 1440px !important']);
+    expect(declarations(stripped, TIER, '.VPDoc.has-aside .content-container')).toEqual(['max-width: 992px !important']);
     // The no-sidebar column cap is derived: 992px plus the column's own 2 x 32px padding.
-    expect(declarations(stripped, tier, '.VPDoc:not(.has-sidebar) .content')).toEqual(['max-width: 1056px !important']);
-    expect(declarations(stripped, tier, '.vp-doc > [data-pagefind-body] > :is(p, ul, ol, blockquote)')).toEqual([
+    expect(declarations(stripped, TIER, '.VPDoc:not(.has-sidebar) .content')).toEqual(['max-width: 1056px !important']);
+    expect(declarations(stripped, TIER, '.vp-doc > [data-pagefind-body] > :is(p, ul, ol, blockquote)')).toEqual([
       'max-width: 784px',
     ]);
   });
@@ -78,7 +85,7 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
   test('the prose cap is scoped to the page body, never to member rows', () => {
     // Direct children of `.vp-doc` or of its `[data-pagefind-body]` wrapper
     // only; a descendant selector would also cap the remarks inside member
-    // rows, which the issue leaves at the full column.
+    // rows, which keep the full column width.
     const prose = [...stripped.matchAll(/([^{}]+)\{[^{}]*max-width: 784px[^{}]*\}/g)].map((m) => m[1].trim());
     expect(prose).toHaveLength(1);
     for (const selector of splitSelectors(prose[0])) {
@@ -86,18 +93,30 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
     }
   });
 
-  test('the sidebar width and the centering rules are left to the stock theme', () => {
-    // Raising the variable IS the 1920px tier for every rule that reads it
-    // (VPContent, VPSidebar, VPNavBar, the nav mirror, the footer offset).
-    // Nothing here redefines the sidebar or copies that math into the tier.
+  test('the tier redefines neither the sidebar width nor any centering rule', () => {
+    // Every rule that centers on the layout width reads the variable, so the
+    // tier must not carry its own copy of that math.
     expect(stripped).not.toMatch(/--vp-sidebar-width:/);
-    const tier = stripped.slice(stripped.indexOf('@media (min-width: 1920px)'), stripped.indexOf('@media (min-width: 960px)'));
-    expect(tier).not.toMatch(/VPSidebar|VPNavBar|site-footer|VPContent/);
+    const tiers = mediaBlocks(stripped, TIER);
+    expect(tiers.length).toBeGreaterThan(0);
+    for (const block of tiers) {
+      expect(block).not.toMatch(/VPSidebar|VPNavBar|site-footer|VPContent/);
+    }
   });
 
-  test('the /versions centering mirrors VPContent.has-sidebar in both stock tiers', () => {
+  test('the versions page is hooked through its pageClass frontmatter', () => {
+    const page = readFileSync(resolve(ROOT, 'docs/versions.md'), 'utf-8');
+    expect(page).toMatch(/^---\n(?:.*\n)*?pageClass: versions-page\n(?:.*\n)*?---\n/);
+    // VitePress puts `pageClass` on the Layout root, so the class reaches both the content and the footer.
+    const layout = readFileSync(resolve(VITEPRESS, 'Layout.vue'), 'utf-8');
+    expect(layout).toMatch(/class="Layout" :class="frontmatter\.pageClass"/);
+    expect(stripped).toContain('.Layout.versions-page .VPContent:not(.has-sidebar)');
+    expect(stripped).toContain('.Layout.versions-page .site-footer');
+  });
+
+  test('the versions content offset mirrors VPContent.has-sidebar in both stock tiers', () => {
     const content = readFileSync(resolve(VITEPRESS, 'components/VPContent.vue'), 'utf-8');
-    const hook = '.VPContent:not(.has-sidebar):has(.vp-doc._versions)';
+    const hook = '.Layout.versions-page .VPContent:not(.has-sidebar)';
     const stock = (query: string) => declarations(content, query, '.VPContent.has-sidebar');
     expect(declarations(stripped, '(min-width: 960px)', hook)).toEqual(
       stock('(min-width: 960px)').filter((d) => d.startsWith('padding-left')),
@@ -105,16 +124,14 @@ describe('wide-screen layout tier (wide-layout.css)', () => {
     expect(declarations(stripped, '(min-width: 1440px)', hook)).toEqual(stock('(min-width: 1440px)'));
   });
 
-  test('the versions hook is the page class VitePress derives from the route', () => {
-    // VPDoc puts `route.path.replace(/[./]+/g, '_').replace(/_html$/, '')` on
-    // `.vp-doc`; `/versions.html` and `/versions` both become `_versions`.
-    const doc = readFileSync(resolve(VITEPRESS, 'components/VPDoc.vue'), 'utf-8');
-    const derivation = /route\.path\.replace\(\/\[\.\/\]\+\/g, '_'\)\.replace\(\/_html\$\/, ''\)/;
-    expect(doc).toMatch(derivation);
-    const pageName = (path: string) => path.replace(/[./]+/g, '_').replace(/_html$/, '');
-    expect(pageName('/versions.html')).toBe('_versions');
-    expect(pageName('/versions')).toBe('_versions');
-    expect(stripped).toContain('.vp-doc._versions');
+  test('the versions footer offset mirrors the site footer has-sidebar rules in both stock tiers', () => {
+    const footer = readFileSync(resolve(THEME_DIR, 'SiteFooter.vue'), 'utf-8');
+    const hook = '.Layout.versions-page .site-footer';
+    for (const query of ['(min-width: 960px)', '(min-width: 1440px)']) {
+      const stock = declarations(footer, query, '.site-footer.has-sidebar');
+      expect(stock.length).toBeGreaterThan(0);
+      expect(declarations(stripped, query, hook)).toEqual(stock);
+    }
   });
 
   test('sets no raw colors -- layout-only rules work in both themes', () => {

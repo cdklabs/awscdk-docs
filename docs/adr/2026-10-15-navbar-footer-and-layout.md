@@ -312,11 +312,13 @@ One more tier, `@media (min-width: 1920px)` in
 padding) so the column it holds can reach 992px. Inside the tier, running prose
 (the `p`, `ul`, `ol` and `blockquote` children of the page body) keeps a 784px
 maximum width, so line length stays at the 1440px tier's; tables, signatures,
-code blocks and docgen member rows use the full column. The breakpoint is the
-most common large-monitor width, and every width is one already in the code:
-1440px is the stock layout max, 992px the stock no-sidebar container at 960px,
-784px the stock no-sidebar content at 1440px. Not a full-width layout and not a
-settings option: one more breakpoint, decided on the issue.
+code blocks and docgen member rows use the full column. One more breakpoint
+rather than a full-width layout or a settings option: a fixed tier keeps prose
+line length and the sidebar width constant, and adds no control to the Settings
+menu for a layout most readers never see. 1920px is the most common
+large-monitor width and the first common width above the stock tier. Every width
+is one the theme already uses: 1440px is the stock layout max, 992px the stock
+no-sidebar container at 960px, 784px the stock no-sidebar content at 1440px.
 
 The sidebar keeps `--vp-sidebar-width` (320px) and the outline its 256px. Every
 rule that centers on the layout width — the stock `VPContent`, `VPSidebar`,
@@ -328,23 +330,28 @@ second copy of the footer math would be one more place to drift. The three width
 caps carry `!important` for the same reason the divider rules do: the stock
 declarations are component-scoped at (0,4,0).
 
-The same stylesheet centers `/versions`, the one hand-written page the issue
-named, in the lane right of the sidebar. The page has no sidebar, so the stock
-theme centered its container in the full viewport while the nav bar above it
-carries the sidebar-lane inset from the geometry section; the sheet mirrors
-`VPContent.has-sidebar`'s padding onto
-`.VPContent:not(.has-sidebar):has(.vp-doc._versions)` in both stock tiers. The
-hook is the page class VitePress derives from the route (`/versions.html` →
-`_versions`), pinned against the installed `VPDoc.vue` by
-`test/wide-layout.test.ts`. The other hand-written pages (`/skills`,
-`/stability`, `/aws-construct-library`) keep the stock full-viewport centering.
+The same stylesheet places `/versions` in the lane right of the sidebar. The
+page has no sidebar, so the stock theme centered its container in the full
+viewport while the nav bar above it carries the sidebar-lane inset from the
+geometry section, so the page read as off-center. `/versions` is the one
+no-sidebar page reached from the nav bar whose content sits directly under those
+inset controls, so it is the one page re-centered; `/skills`, `/stability` and
+`/aws-construct-library` keep the stock full-viewport centering until they are
+aligned as a group. The sheet mirrors `VPContent.has-sidebar`'s padding onto the
+page's content and `SiteFooter`'s `has-sidebar` offset onto its footer, in both
+stock tiers (960px and 1440px), so content, nav and footer share one lane there
+too. The hook is `pageClass: versions-page` in the page's frontmatter, which
+VitePress puts on the `.Layout` root, an ancestor of both the content and the
+footer; `test/wide-layout.test.ts` pins the frontmatter, the `Layout.vue`
+binding and the mirrored declarations against the installed sources.
 
-`test/e2e/wide-layout.spec.ts` measures the result at 1280, 1440, 1920 and
+`test/e2e/wide-layout.spec.ts` measures the result at 960, 1280, 1440, 1920 and
 2560px: the column grows from 688px to 992px, prose stays at or under 784px,
 member-row remarks are uncapped, the content, nav and footer start on one lane,
-below 1920px every width is the stock one, and `/versions` is centered within
-2px of the sidebar pages' lane. `test/e2e/nav-controls.spec.ts` runs its
-page-independence check at 1920 and 2560px as well.
+below 1920px every width is the stock one, and `/versions` content and footer
+sit within 2px of the sidebar pages' lane with no horizontal overflow.
+`test/e2e/nav-controls.spec.ts` runs its page-independence check at 1920 and
+2560px as well.
 
 ## Consequences
 

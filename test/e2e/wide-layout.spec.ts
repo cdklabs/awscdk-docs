@@ -94,8 +94,8 @@ test.describe('wide-screen layout tier', () => {
     });
   }
 
-  for (const width of [1440, ...WIDE] as const) {
-    test(`/versions is centered in the lane right of the sidebar at ${width}px`, async ({ page }) => {
+  for (const width of [960, 1280, 1440, ...WIDE] as const) {
+    test(`/versions content and footer sit in the lane right of the sidebar at ${width}px`, async ({ page }) => {
       // The lane is the area the sidebar pages' content uses at this width:
       // right of the 320px sidebar, inside the centered layout.
       await at(page, width, TOPIC_PAGE);
@@ -111,7 +111,15 @@ test.describe('wide-screen layout tier', () => {
       expect(Math.abs(containerCenter - laneCenter), `center offset at ${width}px`).toBeLessThanOrEqual(2);
       // And it really is the lane right of the sidebar, not the full viewport.
       expect(container.x).toBeGreaterThanOrEqual(SIDEBAR_WIDTH);
-      expect(container.width).toBe(Math.min(width >= 1920 ? 1440 : 1104, lane.right - lane.left - 64));
+      const cap = width >= 1920 ? 1440 : width >= 1440 ? 1104 : 992;
+      expect(container.width).toBe(Math.min(cap, lane.right - lane.left - 64));
+      // The footer moves with the content (its 24px is the footer's own padding).
+      const footer = await innerLane(page, '.site-footer');
+      expect(Math.abs(footer.left - (lane.left + 24)), `footer vs content at ${width}px`).toBeLessThanOrEqual(1);
+      // The versions table stays inside the viewport in the narrowest lane.
+      const table = (await page.locator('.vp-doc table').first().boundingBox())!;
+      expect(table.x + table.width).toBeLessThanOrEqual(width);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
     });
   }
 });
