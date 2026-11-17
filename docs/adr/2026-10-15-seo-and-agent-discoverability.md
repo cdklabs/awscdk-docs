@@ -96,7 +96,8 @@ The twin keeps code examples and signature blocks in every enabled language
 assistant working in Python, Java, C# or Go gets their own code. An example
 group becomes one fenced block per language, in the site's language order, each
 after a plain label line naming the language (`Python:`). A copy in another
-language whose first fence is tagged `ts` (or `typescript`) is the TypeScript source docgen fills
+language whose first fence is tagged `ts` (docgen's `fenceFor(…, 'ts')`; `typescript` is also accepted,
+though nothing emits it today) is the TypeScript source docgen fills
 in for a snippet that was not translated, and it is never labeled as that
 language; the TypeScript copy itself is never one, whatever its fences. With
 TypeScript enabled, the TypeScript copy's label names the languages that fall

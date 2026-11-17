@@ -145,8 +145,9 @@ function unwrapContainers(s: string): string {
 
 const classes = (el: Element): Set<string> => new Set((el.attribs.class ?? '').split(/\s+/).filter(Boolean));
 
-// The fence tags that mark a TypeScript fallback copy. `renderReadmeBody` in index.ts stamps the fallback with
-// `fenceFor(…, 'ts')`, which resolves to `FENCE_LANG.ts`; `typescript` is the other spelling a README author uses.
+// The fence tags that mark a TypeScript fallback copy. `renderReadmeBody` in index.ts fills an untranslated language
+// with the TypeScript source via `fenceFor(…, 'ts')`, which resolves to `FENCE_LANG.ts`. No producer emits
+// `typescript` today; it is accepted only so a producer that re-fenced with the long spelling would still be caught.
 const TS_FENCE_TAGS = new Set([FENCE_LANG[DEFAULT_LANGUAGE], 'typescript']);
 const LANGUAGE_LABEL = new Map<string, string>(LANGUAGES.map((l) => [l.id, l.label]));
 const isVariant = (n: Node): n is Element => isElement(n) && classes(n).has('lang-variant');
