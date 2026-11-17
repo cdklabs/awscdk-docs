@@ -97,6 +97,13 @@ function onMenuKeydown(event: KeyboardEvent): void {
   }
 }
 
+// Focus moving to an element outside the control closes the menu. A null relatedTarget (a window or tab switch)
+// is ignored. This covers focus that moves by script or by a screen reader, which sends no pointer press.
+function onFocusOut(event: FocusEvent): void {
+  const next = event.relatedTarget as Node | null;
+  if (menuOpen.value && next && root.value && !root.value.contains(next)) closeMenu(false);
+}
+
 function onDocumentPointerDown(event: Event): void {
   if (menuOpen.value && root.value && !root.value.contains(event.target as Node)) {
     closeMenu(false);
@@ -130,6 +137,7 @@ onUnmounted(() => {
     v-if="markdownUrl"
     ref="root"
     class="copy-markdown"
+    @focusout="onFocusOut"
     aria-label="Page Markdown"
     :data-ready="ready ? '' : undefined"
     data-pagefind-ignore

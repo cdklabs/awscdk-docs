@@ -274,6 +274,25 @@ test.describe('Copy Markdown control', () => {
     await expect(page.getByRole('button', { name: 'More Markdown options' })).toHaveAttribute('aria-expanded', 'false');
   });
 
+  test('moving focus outside the control closes the open menu', async ({ page }) => {
+    await open(page);
+    const options = page.getByRole('button', { name: 'More Markdown options' });
+    await options.click();
+    await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeVisible();
+
+    // Script moves focus, as a screen reader or the search hotkey would, with no pointer press.
+    await page.evaluate(() => {
+      const link = document.createElement('a');
+      link.href = '#';
+      link.id = 'focus-target';
+      document.body.appendChild(link);
+      link.focus();
+    });
+    await expect(page.locator('#focus-target')).toBeFocused();
+    await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeHidden();
+    await expect(options).toHaveAttribute('aria-expanded', 'false');
+  });
+
   test('the menu item opens the Markdown file in a new tab against the e2e server', async ({ page }) => {
     await open(page);
     await page.getByRole('button', { name: 'More Markdown options' }).click();

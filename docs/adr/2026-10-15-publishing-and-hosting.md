@@ -110,13 +110,12 @@ Adding another stream later is one more instantiation.
   opens each `.md` twin in a new tab, which works only if the host serves `.md`
   as `text/markdown` or `text/plain` without `Content-Disposition: attachment`.
   This repository ships the zip and does not set object metadata; the system
-  that extracts and serves it must. The local e2e server maps `.md` itself, so
-  no test here proves the production headers. A `HEAD` request on 2026-11-17 for
-  an existing twin (`/cdk/api/v2/docs/aws-cdk-lib.aws_sns.Topic.md` on
-  `docs.aws.amazon.com`) returned `Content-Type: text/markdown; charset=utf-8`
-  and no `Content-Disposition`. This is a single dated observation and nothing
-  here re-checks it. The system that extracts and serves the zip owns the `.md`
-  mapping; if it stops mapping `.md`, the link falls back to a download.
+  that extracts and serves it owns the `.md` to `text/markdown` mapping. If it
+  stops mapping `.md`, the link falls back to a download. The local e2e server
+  maps `.md` itself, so no test here proves the production headers. (Observed on
+  2026-11-17 with a `HEAD` request for `/cdk/api/v2/docs/aws-cdk-lib.aws_sns.Topic.md`
+  on `docs.aws.amazon.com`: `Content-Type: text/markdown; charset=utf-8` and no
+  `Content-Disposition`. Nothing re-checks this.)
 - **The `latest-awscdk-docs` marker is a v2 manifest:**
 
   ```
