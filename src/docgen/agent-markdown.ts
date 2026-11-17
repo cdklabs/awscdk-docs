@@ -139,7 +139,10 @@ function inline(el: Element): string {
   return children(el).replace(/\s+/g, ' ').trim();
 }
 
-/** Make a root-relative site target absolute against DOCS_SITE_URL (pages get their .html route); return anything else unchanged. */
+/**
+ * Make a root-relative site target absolute against DOCS_SITE_URL (pages get their .html route);
+ * return anything else unchanged.
+ */
 function publishedPageHref(href: string): string {
   const [, path, suffix = ''] = /^([^?#]*)(.*)$/.exec(href)!;
   const base = siteBase();

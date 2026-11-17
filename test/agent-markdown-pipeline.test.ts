@@ -27,7 +27,7 @@ function walk(dir: string, rel = ''): string[] {
 function markdownLinks(markdown: string): string[] {
   const links: string[] = [];
   mapProse(markdown, (prose) => {
-    const target = /(?:\]\(\s*|^\s{0,3}\[(?:\\.|[^\]\n])+\]:\s*)<?([^\s)>]+)>?/gm;
+    const target = /(?:\]\(\s*|^\s{0,3}\[(?:\\.|[^\\\]\n])+\]:\s*)<?([^\s)>]+)>?/gm;
     links.push(...[...prose.matchAll(target)].map((match) => match[1]));
     return prose;
   });

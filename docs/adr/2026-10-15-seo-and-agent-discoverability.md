@@ -89,8 +89,11 @@ external target. Site page links use `pageHref()` for the `.html` route, then
 than another twin, so the same link works when the Markdown is fetched, saved or
 pasted without a site origin. Other root-relative targets, such as `/llms.txt`,
 are joined onto `DOCS_SITE_URL` unchanged. Image sources, and targets containing
-whitespace or a backslash, stay as authored. The pipeline test checks that every
-twin site link is the `pageUrl()` of a page the site serves.
+whitespace or a backslash, stay as authored. Only single-line, untitled inline
+links within one text run are rewritten; reference definitions and titled links
+pass through, and the pipeline test fails if one with a root-relative target
+appears. The pipeline test also checks that every twin site link is the
+`pageUrl()` of a page the site serves.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the
