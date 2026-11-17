@@ -73,8 +73,7 @@ export function isConstruct(fqn: string, index: TypeIndex): boolean {
 
 /**
  * Levels no inheritance test can derive, by exact FQN. `Resource` is the L2 base itself and the other four sit
- * beside it, and one alpha construct extends `Construct` directly. Never inherited, so
- * `aws_servicecatalog.ProductStack` stays unleveled.
+ * beside it. Never inherited, so `aws_servicecatalog.ProductStack` stays unleveled.
  */
 const LEVEL_OVERRIDES: ReadonlyMap<string, ConstructLevel> = new Map<string, ConstructLevel>([
   ['aws-cdk-lib.Stage', 'L2'],
@@ -82,15 +81,12 @@ const LEVEL_OVERRIDES: ReadonlyMap<string, ConstructLevel> = new Map<string, Con
   ['aws-cdk-lib.Stack', 'L2'],
   ['aws-cdk-lib.NestedStack', 'L2'],
   [RESOURCE_BASE_FQN, 'L2'],
-  // Hand-written and tagged with `cloudformationResource`, but it extends `Construct` directly, so no inheritance
-  // test reaches it. Without the entry it would carry no badge.
-  ['@aws-cdk/aws-bedrock-alpha.PromptVersion', 'L2'],
 ]);
 
 /**
  * Classify a construct, in order: an explicit {@link LEVEL_OVERRIDES} entry wins outright; then L1 has jsii
- * `cloudformationResource` metadata and extends aws-cdk-lib.CfnElement (see {@link isTaggedL1}), L3 lives in a
- * `*patterns*` submodule, L2 extends aws-cdk-lib.Resource, and finally aws-cdk-lib.CfnElement and its descendants
+ * `cloudformationResource` metadata and a `Cfn` name, while a tagged class with any other name is L2, L3 lives in
+ * a `*patterns*` submodule, L2 extends aws-cdk-lib.Resource, and finally aws-cdk-lib.CfnElement and its descendants
  * are L1. Constructs matching none of these (e.g. constructs.Construct itself) get no level.
  */
 export function constructLevel(type: spec.ClassType, index: TypeIndex): ConstructLevel | undefined {
@@ -99,8 +95,10 @@ export function constructLevel(type: spec.ClassType, index: TypeIndex): Construc
   if (override) {
     return override;
   }
-  if (isTaggedL1(type, index)) {
-    return 'L1';
+  // The tag names a CloudFormation resource. A generated `Cfn*` class is that resource; a hand-written construct
+  // that names the resource it wraps (the alpha packages do this) is an L2.
+  if (type.docs?.custom?.cloudformationResource) {
+    return type.name.startsWith('Cfn') ? 'L1' : 'L2';
   }
   if (/(?:^|[._])patterns$/.test(type.namespace ?? '')) {
     return 'L3';
@@ -108,38 +106,12 @@ export function constructLevel(type: spec.ClassType, index: TypeIndex): Construc
   if (extendsFqn(type.fqn, RESOURCE_BASE_FQN, index)) {
     return 'L2';
   }
-  // Only the GENERATED subtree members carry `cloudformationResource` metadata as an L1 marker, so the rest need the
-  // inheritance test. The self-check is required because `extendsFqn` excludes self-matches.
+  // Only the GENERATED subtree members carry `cloudformationResource` metadata, so the rest need the inheritance
+  // test. The self-check is required because `extendsFqn` excludes self-matches.
   if (type.fqn === CFN_ELEMENT_BASE_FQN || extendsFqn(type.fqn, CFN_ELEMENT_BASE_FQN, index)) {
     return 'L1';
   }
   return undefined;
-}
-
-/**
- * Whether a type is an L1 by its `cloudformationResource` doc tag. The generated `CfnXxx` classes carry the tag, but
- * so do some hand-written alpha constructs, where it only names the resource they wrap. So the tag counts only on a
- * class that also extends aws-cdk-lib.CfnElement. Every use of the tag as an L1 marker goes through here, so the
- * level, the metadata block and the L1 lookup cannot disagree.
- */
-function isTaggedL1(type: spec.Type, index: TypeIndex): boolean {
-  if (!type.docs?.custom?.cloudformationResource) {
-    return false;
-  }
-  if (!spec.isClassType(type)) {
-    return true;
-  }
-  // Walk from the type's own base, not from an index lookup of its FQN, so a type that is not itself in the index
-  // is judged by the chain it declares.
-  let current = type.base;
-  while (current) {
-    if (current === CFN_ELEMENT_BASE_FQN) {
-      return true;
-    }
-    const entry = index.get(current);
-    current = entry && spec.isClassType(entry.type) ? entry.type.base : undefined;
-  }
-  return type.fqn === CFN_ELEMENT_BASE_FQN;
 }
 
 function extendsFqn(fqn: string, baseFqn: string, index: TypeIndex): boolean {
@@ -187,13 +159,14 @@ export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | un
 
 /**
  * Whether a type's source is build-generated rather than a file in the repository — the L1 `Cfn*` types emitted
- * into `*.generated.*`, plus any L1 carrying `cloudformationResource`. Distinguishes "no link because the file
+ * into `*.generated.*`, plus any type carrying `cloudformationResource`. Distinguishes "no link because the file
  * does not exist" from "no location information at all", so the metadata block can say `Generated at build time` in the
  * first case and omit the row entirely in the second.
  */
-export function isGeneratedSource(type: spec.Type, index: TypeIndex): boolean {
+export function isGeneratedSource(type: spec.Type): boolean {
   const loc = type.locationInModule;
-  return (loc !== undefined && /\.generated\./.test(loc.filename)) || isTaggedL1(type, index);
+  return (loc !== undefined && /\.generated\./.test(loc.filename))
+    || type.docs?.custom?.cloudformationResource !== undefined;
 }
 
 /**
@@ -203,15 +176,14 @@ export function isGeneratedSource(type: spec.Type, index: TypeIndex): boolean {
  * - an L1 names its own resource (`docs.custom.cloudformationResource`) and has no L1 counterpart to point at — the
  *   page is the L1;
  * - an L2/L3 resolves its backing resource through {@link cfnResourceRef}, whose `undefined`-for-L1 contract is
- *   pinned by the construct-page tests and is not widened here. That includes a hand-written L2 whose tag names the
- *   resource it wraps.
+ *   pinned by the construct-page tests and is not widened here.
  *
  * Returns `undefined` for every type with no CloudFormation data at all: every struct, interface, enum, mixin and
  * plain class.
  */
 export function cfnMetadata(type: spec.Type, index: TypeIndex): CfnResourceRef | undefined {
   const own = type.docs?.custom?.cloudformationResource;
-  if (own && isTaggedL1(type, index)) {
+  if (own) {
     return { resourceType: own, docsUrl: cfnDocsUrl(own, type) };
   }
   return spec.isClassType(type) ? cfnResourceRef(type, index) : undefined;
@@ -274,7 +246,7 @@ export function typeMetadataRows(
       value: `<a class="type-metadata-source" ${PAGEFIND_IGNORE} href="${escapeAttr(source.url)}"`
         + ` ${EXTERNAL_LINK_ATTRS}><code>${escapeVueText(source.label)}</code></a>`,
     });
-  } else if (isGeneratedSource(type, index)) {
+  } else if (isGeneratedSource(type)) {
     rows.push({
       label: 'Source',
       value: `<span class="type-metadata-generated" ${PAGEFIND_IGNORE}>Generated at build time</span>`,
@@ -399,7 +371,7 @@ function l1ByResourceType(index: TypeIndex): Map<string, IndexedType> {
     map = new Map();
     for (const entry of index.values()) {
       const resource = entry.type.docs?.custom?.cloudformationResource;
-      if (resource && !map.has(resource) && isTaggedL1(entry.type, index)) {
+      if (resource && !map.has(resource)) {
         map.set(resource, entry);
       }
     }
@@ -457,14 +429,13 @@ function cfnDocsUrl(resourceType: string, l1?: spec.Type): string {
  * Resolve the CloudFormation resource type backing an L2/L3 construct, from assembly metadata rather than
  * class-name munging:
  *
- * 1. The CDK's `@resource` doc tag (`docs.custom.resource`), or a hand-written
- *    L2's own `cloudformationResource` tag, names the
+ * 1. The CDK's `@resource` doc tag (`docs.custom.resource`) names the
  *    resource type directly; the L1 page is found via the reverse map
  *    (handles L2s whose L1 lives under a different name or submodule,
  *    e.g. `Vpc` -> `CfnVPC`, `apigatewayv2.HttpApi` -> `CfnApi`).
  * 2. Otherwise the conventional same-submodule `Cfn<Name>` counterpart
- *    is looked up in the index and used only when it is an L1 by
- *    {@link isTaggedL1} — the resource type string still
+ *    is looked up in the index and used only when it actually carries
+ *    `cloudformationResource` metadata — the resource type string still
  *    comes from the assembly, never from the class name itself.
  *
  * Returns `undefined` for L1 types themselves (the page already *is*
@@ -472,10 +443,10 @@ function cfnDocsUrl(resourceType: string, l1?: spec.Type): string {
  * (base classes, pure logical constructs, most L3 patterns).
  */
 export function cfnResourceRef(type: spec.ClassType, index: TypeIndex): CfnResourceRef | undefined {
-  if (isTaggedL1(type, index)) {
+  if (type.docs?.custom?.cloudformationResource) {
     return undefined;
   }
-  const tagged = type.docs?.custom?.resource ?? type.docs?.custom?.cloudformationResource;
+  const tagged = type.docs?.custom?.resource;
   if (tagged) {
     const l1 = l1ByResourceType(index).get(tagged);
     return { resourceType: tagged, l1Fqn: l1?.type.fqn, docsUrl: cfnDocsUrl(tagged, l1?.type) };
@@ -483,7 +454,7 @@ export function cfnResourceRef(type: spec.ClassType, index: TypeIndex): CfnResou
   const prefix = type.namespace ? `${type.assembly}.${type.namespace}` : type.assembly;
   const counterpart = index.get(`${prefix}.Cfn${type.name}`);
   const resourceType = counterpart?.type.docs?.custom?.cloudformationResource;
-  if (counterpart && resourceType && isTaggedL1(counterpart.type, index)) {
+  if (counterpart && resourceType) {
     return { resourceType, l1Fqn: counterpart.type.fqn, docsUrl: cfnDocsUrl(resourceType, counterpart.type) };
   }
   return undefined;

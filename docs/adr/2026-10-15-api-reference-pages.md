@@ -54,15 +54,12 @@ the level in order, first match wins:
 
 0. **Explicit FQN override** — carries `Stage`, `App`, `Stack`,
    `NestedStack`, and `Resource` as **L2** (curated abstractions no
-   inheritance test can reach, since `Resource` is the base), and the
-   hand-written alpha `PromptVersion`, which extends `Construct` directly
-   (see
-   [Construct Level and the CloudFormation Tag](./2026-11-17-construct-level-and-the-cloudformation-tag.md)). Matched by
+   inheritance test can reach, since `Resource` is the base). Matched by
    exact FQN, never inherited, so `aws_servicecatalog.ProductStack` is not
    promoted with `Stack`.
-1. **L1** — has `cloudformationResource` metadata **and is or extends
-   `CfnElement`** (generated `CfnXxx`); see
-   [Construct Level and the CloudFormation Tag](./2026-11-17-construct-level-and-the-cloudformation-tag.md).
+1. **L1 or L2 by tag** — has `cloudformationResource` metadata. A class
+   named `Cfn*` is the generated L1. Any other tagged class is a
+   hand-written construct that names the resource it wraps, so it is L2.
 2. **L3** — declared in a `*patterns*` submodule.
 3. **L2** — extends `aws-cdk-lib.Resource`.
 4. **L1** — is or extends `aws-cdk-lib.CfnElement` (catches hand-written

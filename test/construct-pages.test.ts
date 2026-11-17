@@ -4,11 +4,9 @@ import { join, resolve } from 'path';
 import * as spec from '@jsii/spec';
 import {
   buildTypeIndex,
-  cfnMetadata,
   cfnResourceRef,
   constructLevel,
   isConstruct,
-  isGeneratedSource,
   normalizeCfnSee,
   renderConstructPage,
   typeMetadataRows,
@@ -167,108 +165,38 @@ describe('construct detection and classification', () => {
     expect(constructLevel(resourceInSubtree, withSynthetics)).toBe('L2');
   });
 
-  describe('a hand-written construct that names its CloudFormation resource in a doc tag', () => {
-    // The alpha packages tag hand-written constructs with `@cloudformationResource`. The tag documents the wrapped
-    // resource, so it must not make an L1 of a type outside the CfnElement subtree. The shapes mirror
-    // `aws-bedrock-alpha.Agent` (an L2 through `Resource`) and `aws-bedrock-alpha.PromptVersion` (extends `Construct`).
-    let withAlpha: TypeIndex;
-    const classType = (fqn: string, base: string, docs?: spec.Docs, namespace?: string): spec.ClassType => {
+  test('a tagged class is L1 only when its name starts with Cfn', () => {
+    // The alpha packages tag hand-written constructs with `@cloudformationResource` to name the resource they wrap.
+    // Those are L2. The shapes mirror `aws-bedrock-alpha.Agent` (extends Resource through a base) and
+    // `aws-bedrock-alpha.PromptVersion` (extends Construct directly).
+    const withAlpha: TypeIndex = new Map(index);
+    const classType = (fqn: string, base: string, docs?: spec.Docs): spec.ClassType => {
       const type: spec.ClassType = {
         kind: spec.TypeKind.Class,
         fqn,
         name: fqn.split('.').pop()!,
-        assembly: fqn.split('.')[0],
+        assembly: 'aws-bedrock-alpha',
         base,
         ...(docs ? { docs } : {}),
-        ...(namespace ? { namespace } : {}),
       };
       withAlpha.set(fqn, { type, assembly: cdk });
       return type;
     };
-    const tag = (resource: string): spec.Docs => ({ custom: { cloudformationResource: resource } });
+    const tag = (cloudformationResource: string): spec.Docs => ({ custom: { cloudformationResource } });
 
-    beforeEach(() => {
-      withAlpha = new Map(index);
-    });
+    const agentBase = classType('aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
+    const agent = classType('aws-bedrock-alpha.Agent', agentBase.fqn, tag('AWS::Bedrock::Agent'));
+    expect(constructLevel(agent, withAlpha)).toBe('L2');
+    const promptVersion = classType(
+      'aws-bedrock-alpha.PromptVersion', 'constructs.Construct', tag('AWS::Bedrock::PromptVersion'),
+    );
+    expect(constructLevel(promptVersion, withAlpha)).toBe('L2');
 
-    test('an L2 through Resource stays L2', () => {
-      const agentBase = classType('@aws-cdk/aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
-      const agent = classType('@aws-cdk/aws-bedrock-alpha.Agent', agentBase.fqn, tag('AWS::Bedrock::Agent'));
-      expect(constructLevel(agent, withAlpha)).toBe('L2');
-    });
-
-    test('a tagged type in the CfnElement subtree is still L1', () => {
-      const cfn = classType('aws-cdk-lib.aws_fake.CfnThing', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Thing'));
-      expect(constructLevel(cfn, withAlpha)).toBe('L1');
-    });
-
-    test('a tagged type that extends Construct gets no level unless it is listed', () => {
-      const other = classType('@aws-cdk/aws-fake-alpha.Other', 'constructs.Construct', tag('AWS::Fake::Other'));
-      expect(constructLevel(other, withAlpha)).toBeUndefined();
-      // The one real case is listed by FQN.
-      const promptVersion = classType(
-        '@aws-cdk/aws-bedrock-alpha.PromptVersion', 'constructs.Construct', tag('AWS::Bedrock::PromptVersion'),
-      );
-      expect(constructLevel(promptVersion, withAlpha)).toBe('L2');
-    });
-
-    test('a tagged Resource subtype in a patterns namespace is L3', () => {
-      const pattern = classType(
-        'aws-cdk-lib.aws_fake_patterns.Tagged', 'aws-cdk-lib.Resource', tag('AWS::Fake::Tagged'), 'aws_fake_patterns',
-      );
-      expect(constructLevel(pattern, withAlpha)).toBe('L3');
-    });
-
-    test('the metadata block treats the tagged L2 as an L2: L1 type row, no generated-source marker', () => {
-      // The L2 is registered first, so a lookup without the L1 test would pick it for its own resource type.
-      const agentBase = classType('@aws-cdk/aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
-      const agent = classType('@aws-cdk/aws-bedrock-alpha.Agent', agentBase.fqn, tag('AWS::Bedrock::Agent'));
-      const cfnAgent = classType(
-        'aws-cdk-lib.aws_bedrock.CfnAgent', 'aws-cdk-lib.CfnResource', tag('AWS::Bedrock::Agent'),
-      );
-
-      expect(isGeneratedSource(agent, withAlpha)).toBe(false);
-      expect(isGeneratedSource(cfnAgent, withAlpha)).toBe(true);
-      // The L1 is found through the tag and the L2 is not mistaken for it.
-      expect(cfnMetadata(agent, withAlpha)).toMatchObject({ resourceType: 'AWS::Bedrock::Agent', l1Fqn: cfnAgent.fqn });
-      // An L1 still names its own resource and has no counterpart to point at.
-      expect(cfnResourceRef(cfnAgent, withAlpha)).toBeUndefined();
-      expect(cfnMetadata(cfnAgent, withAlpha)).toMatchObject({ resourceType: 'AWS::Bedrock::Agent' });
-      expect(cfnMetadata(cfnAgent, withAlpha)?.l1Fqn).toBeUndefined();
-
-      // The rendered rows carry the L1 type link and no generated-source marker.
-      const rows = typeMetadataRows(agent, cdk, withAlpha, (fqn) => `/api/${fqn}`);
-      expect(rows.map((row) => row.label)).toEqual(expect.arrayContaining(['CloudFormation', 'L1 type']));
-      expect(rows.find((row) => row.label === 'L1 type')!.value).toContain('CfnAgent');
-      expect(rows.some((row) => row.value.includes('Generated at build time'))).toBe(false);
-    });
-
-    test('a tagged L2 with no L1 in the index gets no L1 type link', () => {
-      // No L1 carries this resource type, so the L2 must not be offered as its own L1.
-      const solo = classType('@aws-cdk/aws-fake-alpha.Solo', 'aws-cdk-lib.Resource', tag('AWS::Fake::Solo'));
-      expect(cfnResourceRef(solo, withAlpha)?.l1Fqn).toBeUndefined();
-      expect(cfnMetadata(solo, withAlpha)).toMatchObject({ resourceType: 'AWS::Fake::Solo' });
-    });
-
-    test('a same-submodule Cfn counterpart counts only when it is an L1', () => {
-      const foo = classType('aws-fake.Foo', 'aws-cdk-lib.Resource');
-      // Tagged, named like the counterpart, but hand-written: it is not the L1 of `Foo`.
-      classType('aws-fake.CfnFoo', 'constructs.Construct', tag('AWS::Fake::Foo'));
-      expect(cfnResourceRef(foo, withAlpha)).toBeUndefined();
-
-      // The same counterpart, now a real L1, is found.
-      const bar = classType('aws-fake.Bar', 'aws-cdk-lib.Resource');
-      const cfnBar = classType('aws-fake.CfnBar', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Bar'));
-      expect(cfnResourceRef(bar, withAlpha)).toMatchObject({ resourceType: 'AWS::Fake::Bar', l1Fqn: cfnBar.fqn });
-    });
-
-    test('a tag on a CfnElement subclass beats the patterns rule: it stays L1', () => {
-      const cfn = classType(
-        'aws-cdk-lib.aws_fake_patterns.CfnTagged', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Tagged'),
-        'aws_fake_patterns',
-      );
-      expect(constructLevel(cfn, withAlpha)).toBe('L1');
-    });
+    // A tagged `Cfn` class is still the L1, wherever its base chain leads.
+    const cfn = classType('aws-cdk-lib.aws_fake.CfnThing', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Thing'));
+    expect(constructLevel(cfn, withAlpha)).toBe('L1');
+    const orphan = classType('aws-fake.CfnOrphan', 'aws-fake.Missing', tag('AWS::Fake::Orphan'));
+    expect(constructLevel(orphan, withAlpha)).toBe('L1');
   });
 
   test('builds version-pinned GitHub source URLs', () => {
@@ -362,15 +290,11 @@ describe('construct detection and classification', () => {
       fqn: 'aws-cdk-lib.aws_s3.CfnHostile',
       name: 'CfnHostile',
       assembly: 'aws-cdk-lib',
-      base: 'aws-cdk-lib.CfnResource',
       docs: {
         see: 'javascript:alert(1)',
         custom: { cloudformationResource: 'AWS::S3::Bucket' },
       },
     };
-    // The fixture is itself an L1, so its own `@see` reaches the guard. Going through the reverse map would check
-    // `CfnBucket`'s safe `@see` instead and the test would pass for the wrong reason.
-    expect(cfnMetadata(hostile, index)?.l1Fqn).toBeUndefined();
     const rows = typeMetadataRows(hostile, cdk, index, () => undefined);
     const cfn = rows.find((r) => r.label === 'CloudFormation')!;
     expect(cfn.value).not.toContain('javascript:');
@@ -391,10 +315,8 @@ describe('construct detection and classification', () => {
       fqn: 'aws-cdk-lib.aws_s3.CfnProbe',
       name: 'CfnProbe',
       assembly: 'aws-cdk-lib',
-      base: 'aws-cdk-lib.CfnResource',
       docs: { see, custom: { cloudformationResource: 'AWS::S3::Bucket' } },
     };
-    expect(cfnMetadata(l1, index)?.l1Fqn).toBeUndefined();
     const cfn = typeMetadataRows(l1, cdk, index, () => undefined)
       .find((r) => r.label === 'CloudFormation')!;
     expect(cfn.value).toContain('TemplateReference/aws-resource-s3-bucket.html');
@@ -573,16 +495,16 @@ describe('construct page generation', () => {
     // no such page is in the e2e fixture, so this is L3's only pin. Rendering
     // one page directly keeps it deterministic and independent of which
     // pattern constructs the shipped assembly happens to carry.
-    // The tagged fixture is an L1, so it extends CfnResource as a generated L1 does. A tagged type that extended
-    // Resource is an L2, which the classification test above covers.
+    // The tagged fixture is an L1, so it carries a `Cfn` name as a generated L1 does. A tagged class with any other
+    // name is an L2, which the classification test above covers.
     const level = (namespace: string, cloudformationResource?: string) => {
       const type: spec.ClassType = {
         kind: spec.TypeKind.Class,
-        fqn: `aws-cdk-lib.${namespace}.Widget`,
-        name: 'Widget',
+        fqn: `aws-cdk-lib.${namespace}.${cloudformationResource ? 'CfnWidget' : 'Widget'}`,
+        name: cloudformationResource ? 'CfnWidget' : 'Widget',
         assembly: 'aws-cdk-lib',
         namespace,
-        base: cloudformationResource ? 'aws-cdk-lib.CfnResource' : 'aws-cdk-lib.Resource',
+        base: 'aws-cdk-lib.Resource',
         ...(cloudformationResource ? { docs: { custom: { cloudformationResource } } } : {}),
       };
       const index: TypeIndex = new Map(fixtureIndex);
