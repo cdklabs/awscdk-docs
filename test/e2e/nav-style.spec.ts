@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
+import { apiSidebarAssetPath, chunkBase, CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
+import { buildPackageSidebar, decodePackageModules } from '../../docs/.vitepress/theme/api-sidebar-package.js';
+import type { ApiSidebarNode } from '../../docs/.vitepress/theme/api-sidebar.js';
+import { API_ROOT } from '../../src/site-routes.js';
 
 // Selectable navigation style (docs/adr/2026-10-23-sidebar-navigation-styles.md):
 // the Settings menu offers By service (the default) and By package; the choice
@@ -49,13 +52,38 @@ test.describe('navigation style', () => {
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)));
   }
 
-  /** Every chunk the skeleton names: what a regression into loading the whole tree would fetch. */
-  async function allChunkCount(page: Page): Promise<number> {
-    const path = (await page.evaluate(() =>
-      performance.getEntriesByType('resource').map((entry) => entry.name).find((url) => /\/api-sidebar\/sidebar\./.test(url))))!;
-    const skeleton = await (await page.request.get(path)).json();
-    return skeleton.flatMap((root: { items?: { chunk?: string }[] }) => root.items ?? []).filter((s: { chunk?: string }) => s.chunk).length;
+  /**
+   * Chunks named by the closed package headings in view and by those out of view, from the same
+   * package tree the sidebar builds. A chunk named by both counts as in view.
+   */
+  async function packageChunksByView(page: Page): Promise<{ inView: Set<string>; outOfView: Set<string> }> {
+    const skeleton: ApiSidebarNode[] = await (await page.request.get(apiSidebarAssetPath('sidebar'))).json();
+    const modules = decodePackageModules(skeleton[0].packageModules!, skeleton, API_ROOT);
+    const tree = buildPackageSidebar(modules, skeleton, new Map(), API_ROOT);
+    const chunksOf = new Map(tree.map((node) => [node.text, (node.chunks ?? []).map(chunkBase)]));
+    const seen = await page.evaluate(() => {
+      const scroller = document.querySelector('.VPSidebar')!;
+      const box = scroller.getBoundingClientRect();
+      const header = scroller.querySelector('.sidebar-header')?.getBoundingClientRect();
+      const top = Math.max(0, box.top, header?.bottom ?? 0);
+      const bottom = Math.min(window.innerHeight, box.bottom);
+      return Array.from(document.querySelectorAll<HTMLElement>('.api-sidebar-group[aria-expanded="false"]')).map((button) => {
+        const rect = button.getBoundingClientRect();
+        return {
+          text: button.querySelector('.api-sidebar-text')?.textContent ?? '',
+          inView: rect.bottom > top && rect.top < bottom && rect.height > 0,
+        };
+      });
+    });
+    const inView = new Set(seen.filter((h) => h.inView).flatMap((h) => chunksOf.get(h.text) ?? []));
+    const outOfView = new Set(
+      seen.filter((h) => !h.inView).flatMap((h) => chunksOf.get(h.text) ?? []).filter((name) => !inView.has(name)),
+    );
+    return { inView, outOfView };
   }
+
+  /** Chunk base name of a tracked `chunks/<name>.<hash>.js` request. */
+  const requestChunk = (name: string) => chunkBase(name.replace(/^chunks\//, ''));
 
   /** Names of the api-sidebar assets fetched so far, in order. */
   function trackSidebarRequests(page: Page): string[] {
@@ -113,13 +141,14 @@ test.describe('navigation style', () => {
     await expect(active).toHaveCount(1);
     await expect(active).toHaveAttribute('href', /aws-cdk-lib\.aws_sqs\.Queue/);
     await expect(active).toBeInViewport();
-    // The only new requests are chunks of package headings now in view, each fetched once: a small
-    // fraction of the tree, not a switch that loads everything.
+    // The only new requests are chunks the closed package headings in view name, each fetched once.
     await settled(page);
     const added = requests.slice(before.length);
     expect(added.every((name) => name.startsWith('chunks/'))).toBe(true);
     expect(new Set(requests).size).toBe(requests.length);
-    expect(added.length).toBeLessThan((await allChunkCount(page)) / 4);
+    const { inView, outOfView } = await packageChunksByView(page);
+    expect(outOfView.size).toBeGreaterThan(0);
+    expect(added.map(requestChunk).filter((name) => !inView.has(name))).toEqual([]);
     // Same page, same URL.
     expect(page.url()).toContain('aws-cdk-lib.aws_sqs.Queue');
   });
@@ -144,9 +173,12 @@ test.describe('navigation style', () => {
     // row near the bottom of the list, or the click can land on a neighbour.
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
     await settled(page);
-    // Load fetched the package headings in view, a small fraction of the tree.
+    // Load fetched the active page's chunk and those the closed package headings in view name, and
+    // nothing named only by headings out of view.
     expect(new Set(chunkRequests()).size).toBe(chunkRequests().length);
-    expect(chunkRequests().length).toBeLessThan((await allChunkCount(page)) / 4);
+    const { inView, outOfView } = await packageChunksByView(page);
+    expect(outOfView.size).toBeGreaterThan(0);
+    expect(chunkRequests().map(requestChunk).filter((name) => name !== 'sqs' && !inView.has(name))).toEqual([]);
 
     await page.unroute('**/api-sidebar/chunks/sns.*');
     const sns = topGroup(page, 'aws-cdk-lib.aws_sns');

@@ -436,18 +436,25 @@ function armHeading(el: Element, delay: number) {
       armHeading(el, PRELOAD_DELAY_MS - still);
       return;
     }
+    // The observer reports a scroll one frame late and cannot see the sticky header painted over the
+    // scroller, so check the heading is visible now. A heading under the header is checked again
+    // later; one that has left the scroller is dropped when the observer reports it.
+    if (!headingInView(el)) {
+      armHeading(el, PRELOAD_DELAY_MS);
+      return;
+    }
     headingTimers.delete(el);
-    // The observer reports a scroll one frame late, so check the heading is still in view now.
-    if (!headingInView(el)) return;
     const key = headingKeys.get(el);
     if (key !== undefined) preload(key);
   }, delay));
 }
 function headingInView(el: Element): boolean {
   const box = el.getBoundingClientRect();
-  const scroller = el.closest(".VPSidebar")?.getBoundingClientRect();
-  const top = Math.max(0, scroller?.top ?? 0);
-  const bottom = Math.min(window.innerHeight, scroller?.bottom ?? window.innerHeight);
+  const scroller = el.closest(".VPSidebar");
+  const scrollerBox = scroller?.getBoundingClientRect();
+  const header = scroller?.querySelector<HTMLElement>(".sidebar-header")?.getBoundingClientRect();
+  const top = Math.max(0, scrollerBox?.top ?? 0, header?.bottom ?? 0);
+  const bottom = Math.min(window.innerHeight, scrollerBox?.bottom ?? window.innerHeight);
   return box.height > 0 && box.bottom > top && box.top < bottom;
 }
 function onHeadingsSeen(entries: IntersectionObserverEntry[]) {

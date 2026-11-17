@@ -37,11 +37,14 @@ test.describe('per-section sidebar chunks', () => {
       skeleton.flatMap((root: { items: { text: string; chunk?: string }[] }) =>
         root.items.filter((s) => s.chunk).map((s) => [s.text, s.chunk!])),
     );
-    // The sidebar scroller clips its rows, so "in view" is inside its box as well as the window.
+    // The sidebar scroller clips its rows, so "in view" is inside its box, below its header, and in the window.
     const seen = await page.evaluate(() => {
-      const scroller = document.querySelector('.VPSidebar')!.getBoundingClientRect();
-      const top = Math.max(0, scroller.top);
-      const bottom = Math.min(window.innerHeight, scroller.bottom);
+      const scroller = document.querySelector('.VPSidebar')!;
+      const area = scroller.getBoundingClientRect();
+      // The sticky header paints over the top of the scroller.
+      const header = scroller.querySelector('.sidebar-header')?.getBoundingClientRect();
+      const top = Math.max(0, area.top, header?.bottom ?? 0);
+      const bottom = Math.min(window.innerHeight, area.bottom);
       return Array.from(document.querySelectorAll<HTMLElement>('.api-sidebar-group[aria-expanded="false"]')).map((button) => {
         const box = button.getBoundingClientRect();
         return {
