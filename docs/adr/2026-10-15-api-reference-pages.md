@@ -100,6 +100,8 @@ after an acronym of two or more capitals that precedes a capitalized word
 (`IBucket`, `OAuth<wbr>Scope`), so no line ends in a lone `I` or `O`. The
 weighted span still encloses the whole name, and `<wbr>` adds no text to page
 titles, search results, copied names, sidebars, outlines, or Markdown twins.
+Soft hyphens (`&shy;`) are not used: they add a character to the title's text,
+which would reach the search index, the inferred page title and copied names.
 
 ### Breadcrumb that copies as an FQN
 

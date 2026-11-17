@@ -197,6 +197,25 @@ test.describe('pagefind search', () => {
 
   test('a long type title stays plain in the search index', async ({ page }) => {
     await page.goto('/');
+    const title = await page.evaluate(async (url) => {
+      const preload = document.querySelector<HTMLLinkElement>(
+        'link[rel="modulepreload"][href$="pagefind/pagefind.js"]',
+      );
+      if (!preload) return undefined;
+      const pagefind = await import(/* @vite-ignore */ preload.href);
+      await pagefind.init?.();
+      const search = await pagefind.search('CfnQueueInlinePolicyProps');
+      const data = await Promise.all(search.results.map(
+        (result: { data(): Promise<{ url: string; meta: { title: string } }> }) => result.data(),
+      ));
+      return data.find((entry) => entry.url === url)?.meta.title;
+    }, LONG_TITLE_PAGE);
+    // Pagefind's own title for a weighted type page also carries an internal
+    // weight marker and the kind badge after the name, so check the name
+    // token: no space, `<wbr>` or soft hyphen inside it.
+    expect(title?.split(' ')[0]).toBe('CfnQueueInlinePolicyProps');
+
+    // The dialog row shows the same plain name.
     await page.locator('.blog-search button').click();
     await page.locator('#search-input').fill('CfnQueueInlinePolicyProps');
 
@@ -204,7 +223,6 @@ test.describe('pagefind search', () => {
       .filter({ hasText: 'CfnQueueInlinePolicyProps' }).first();
     await expect(result).toBeVisible({ timeout: 15_000 });
     await expect(result).toContainText('CfnQueueInlinePolicyProps');
-    await expect(result).not.toContainText('wbr');
     expect((await result.getAttribute('data-value'))?.split('#')[0]).toBe(LONG_TITLE_PAGE);
   });
 
