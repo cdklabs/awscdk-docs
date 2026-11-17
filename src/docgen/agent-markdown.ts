@@ -68,9 +68,10 @@ export function toAgentMarkdown(page: string): AgentMarkdown {
 function withLanguageLegend(out: string, nodes: Node[]): string {
   const variants = DomUtils.findAll(isVariant, nodes);
   if (new Set(variants.map((v) => v.attribs['data-lang'])).size < 2) return out;
-  const legend = `> Names, types and signatures are shown in ${languageLabel(variants[0])}; another language's `
-    + 'spelling follows, labeled, only where it differs. Code examples are labeled by language; an unlabeled '
-    + '`ts` example has no translation.';
+  const legend = `> Member names, types and signatures are shown in ${languageLabel(variants[0])}; another language's `
+    + 'spelling follows, labeled, only where it differs. Names in descriptions and README text, and default values, '
+    + 'are TypeScript and are not translated. Code examples are labeled by language; an unlabeled `ts` example has no '
+    + 'translation.';
   // The first H1 anywhere: an experimental banner can sit above it. Code is still a placeholder at this point, so
   // a `# ` comment in a fence cannot match.
   return out.replace(/^# [^\n]*$/m, (title) => `${title}\n\n${legend}`);
@@ -151,8 +152,9 @@ const languageLabel = (variant: Element): string =>
   LANGUAGE_LABEL.get(variant.attribs['data-lang']) ?? variant.attribs['data-lang'] ?? '';
 
 /**
- * The run of sibling `.lang-variant` elements that starts at `el`: docgen emits one per enabled language, in the
- * site's language order, side by side. Whitespace between them is skipped. A language seen twice starts the next run.
+ * The group of sibling `.lang-variant` elements that starts at `el`: docgen emits one per enabled language, in the
+ * site's language order, side by side. Whitespace between them is skipped. A language seen twice starts the next
+ * group.
  */
 function variantGroup(el: Element): Element[] {
   const siblings = el.parent?.children ?? [el];
@@ -170,12 +172,12 @@ function variantGroup(el: Element): Element[] {
 }
 
 /**
- * Whether `el` opens its run of variants: the first variant docgen emits is the canonical one, TypeScript when it is
- * enabled and otherwise the first enabled language.
+ * Whether `el` is the first variant of its group: the first variant docgen emits is the canonical one, TypeScript
+ * when it is enabled and otherwise the first enabled language.
  */
 function startsVariantGroup(el: Element): boolean {
   const siblings = el.parent?.children ?? [el];
-  // Walk back to the first variant of the contiguous run, then step through its groups.
+  // Walk back to the first variant of the contiguous run, which can hold several groups, then step through them.
   let start = siblings.indexOf(el);
   for (let i = start - 1; i >= 0; i--) {
     const n = siblings[i];

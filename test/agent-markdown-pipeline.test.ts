@@ -270,7 +270,7 @@ describe('agent-oriented Markdown twins with every site language', () => {
       // A member whose name reads differently in Python gets its sub-bullet from docgen's real markup.
       expect(twin).toMatch(/^- `bucketArn`: string.*\n\n {2}- Python: `bucket_arn`: `str`$/m);
       // The legend sits right under the real page title.
-      expect(twin).toMatch(/^# [^\n]*Bucket[^\n]*\n\n> Names, types and signatures are shown in TypeScript;/);
+      expect(twin).toMatch(/^# [^\n]*Bucket[^\n]*\n\n> Member names, types and signatures are shown in TypeScript;/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

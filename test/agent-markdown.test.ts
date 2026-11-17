@@ -395,10 +395,17 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     ].join('\n'));
   });
 
+  test('identical spellings that contain a placeholder are grouped as one', () => {
+    const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}">${text}</span>`;
+    const page = `See ${v('ts', '`string[]`')}${v('java', '`List<String>`')}${v('dotnet', '`List<String>`')}.\n`;
+    expect(toAgentMarkdown(page).markdown).toBe('See `string[]` (Java, C# / .NET: `List<String>`).\n');
+  });
+
   describe('the language legend under the title', () => {
-    const legend = (lang: string) => `> Names, types and signatures are shown in ${lang}; another language's `
-      + 'spelling follows, labeled, only where it differs. Code examples are labeled by language; an unlabeled '
-      + '`ts` example has no translation.';
+    const legend = (lang: string) => `> Member names, types and signatures are shown in ${lang}; another language's `
+      + 'spelling follows, labeled, only where it differs. Names in descriptions and README text, and default values, '
+      + 'are TypeScript and are not translated. Code examples are labeled by language; an unlabeled `ts` example has no '
+      + 'translation.';
     const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
 
     test('names the canonical language on a page with two or more', () => {

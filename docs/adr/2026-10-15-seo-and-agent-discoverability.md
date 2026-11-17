@@ -114,9 +114,11 @@ read as a tag (a head line links its type only when TypeScript is the canonical
 language). Flags and the default stay on the head: the default is the jsii
 `@default` text,
 written in TypeScript. A page with variants in two or more languages gets one
-blockquote line under its title naming the language of the unlabeled spellings,
-so an agent can tell a shared spelling from a missing one, and saying that an
-unlabeled `ts` example has no translation. The languages are
+blockquote line under its title naming the language of the unlabeled member
+names, types and signatures, so an agent can tell a shared spelling from a
+missing one. The same line says that names in descriptions, README text and
+default values are TypeScript and not translated, and that an unlabeled `ts`
+example has no translation. The languages are
 the ones the page was built with, so a one-language build emits one copy, no
 labels and no legend.
 
