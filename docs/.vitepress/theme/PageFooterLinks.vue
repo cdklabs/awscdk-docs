@@ -11,13 +11,17 @@ import { stampVersion } from "../../../src/site-stamp";
 
 const { page, theme } = useData();
 
-// The edit target depends only on the page's file path and the upstream file
-// docgen recorded in frontmatter, so it is safe to compute during SSR. A
+// The edit target depends only on the page's file path and its frontmatter
+// (`upstreamEditUrl`, `editLink`), so it is safe to compute during SSR. A
 // generated page either links that upstream file (an overview's README, a type
 // page's declaring source file) or gets no link, so the template renders the
 // anchor conditionally.
 const editUrl = computed(() =>
-  editLinkFor(page.value.filePath, page.value.frontmatter?.upstreamEditUrl),
+  editLinkFor(
+    page.value.filePath,
+    page.value.frontmatter?.upstreamEditUrl,
+    page.value.frontmatter?.editLink,
+  ),
 );
 
 // When the page was last revised: the later of the site-wide revision date and the page's own recorded change,
