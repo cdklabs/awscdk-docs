@@ -375,8 +375,10 @@ function isValueDefault(text: string): boolean {
  * mistake.
  */
 function memberPermalink(anchorId: string, label: string): string {
+  // Kept out of the search index: a `#` in every excerpt is noise.
+  // The attribute goes last: outline-members.ts reads the href and aria-label as one adjacent pair.
   return `<a class="member-permalink" href="#${anchorId}"`
-    + ` aria-label="${escapeAttr(`Permalink to ${label}`)}">#</a>`;
+    + ` aria-label="${escapeAttr(`Permalink to ${label}`)}" ${PAGEFIND_IGNORE}>#</a>`;
 }
 
 /**
@@ -408,9 +410,10 @@ function memberRow(
   const paramsAttr = params === undefined ? '' : ` data-params="${params}"`;
   const lines = [`<div class="member-row" id="${anchorId}"${optionalAttr}${paramsAttr}>`];
   lines.push(
+    // A space between the parts, so the search excerpt reads `name static deprecated` rather than one run-together
+    // word. The line is a flex row, so the spaces between its items take no room on screen.
     '<div class="member-line">'
-    + headerParts.join('')
-    + memberPermalink(anchorId, label)
+    + [...headerParts, memberPermalink(anchorId, label)].join(' ')
     + '</div>',
   );
   const bodyIndexing = indexBody ? '' : ` ${PAGEFIND_IGNORE}`;
