@@ -100,8 +100,9 @@ describe('toAgentMarkdown', () => {
     expect(markdown.indexOf('TypeScript:')).toBeLessThan(markdown.indexOf('Python:'));
   });
 
-  test('an inline name adds the other spellings once, and prose and tables appear once', () => {
-    expect(markdown).toContain('| bucketArn (Python: bucket_arn) | `string` |');
+  test('an inline name keeps the canonical spelling, and prose and tables appear once', () => {
+    expect(markdown).toContain('| bucketArn | `string` |');
+    expect(markdown).not.toContain('bucket_arn');
     expect(markdown.match(/An S3 bucket with helpers\./g)).toHaveLength(1);
     expect(markdown.match(/\| Name \| Type \|/g)).toHaveLength(1);
   });
@@ -249,21 +250,9 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     '',
   ].join('\n');
 
-  test('a member whose name reads differently in another language gets a sub-bullet with only its name and type', () => {
+  test('a member row keeps the canonical name and type only, with the flags and default', () => {
     const page = variantRow('<code class="member-name">bucket_name</code>'
       + '<span class="member-type" data-pagefind-ignore title="str">str</span>');
-    // The flags and the TypeScript default stay on the head; the sub-bullet carries no TypeScript value.
-    expect(toAgentMarkdown(page).markdown).toBe([
-      '- `bucketName`: string (required) (static) = "x" — Physical name of this bucket.',
-      '',
-      '  - Python: `bucket_name`: `str`',
-      '',
-    ].join('\n'));
-  });
-
-  test('a member that reads the same in every language gets no sub-bullet', () => {
-    const page = variantRow('<code class="member-name">bucketName</code>'
-      + '<span class="member-type" data-pagefind-ignore title="string">string</span>');
     expect(toAgentMarkdown(page).markdown)
       .toBe('- `bucketName`: string (required) (static) = "x" — Physical name of this bucket.\n');
   });
@@ -345,15 +334,6 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  test('languages that spell a member the same way share one sub-bullet', () => {
-    const v = (lang: string, name: string, type: string) => `<span class="lang-variant" data-lang="${lang}">`
-      + `<code class="member-name">${name}</code><span class="member-type" title="${type}">${type}</span></span>`;
-    const page = '<div class="member-row" id="bucket"><div class="member-line">'
-      + `${v('ts', 'bucket', 'IBucket')}${v('python', 'bucket', 'IBucket')}${v('dotnet', 'Bucket', 'IBucket')}`
-      + `${v('go', 'Bucket', 'IBucket')}</div></div>\n`;
-    expect(toAgentMarkdown(page).markdown).toBe('- `bucket`: IBucket\n\n  - C# / .NET, Golang: `Bucket`: `IBucket`\n');
-  });
-
   test('a TypeScript copy that leads with a shell fence is kept, and so is a copy whose shell fence is its own', () => {
     const page = exampleGroup([
       ['ts', 'sh', 'npm install aws-cdk-lib'],
@@ -364,7 +344,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect(markdown).toContain('Python:\n\n```sh\npip install aws-cdk-lib');
   });
 
-  test('without TypeScript, the head type is a code span, so a generic does not read as a tag', () => {
+  test('without TypeScript, the head is the first language, its type a code span so a generic does not read as a tag', () => {
     const page = [
       '<div class="member-row" id="tags"><div class="member-line">'
       + '<span class="lang-variant" data-lang="java"><code class="member-name">tags</code>'
@@ -374,118 +354,17 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       + '</div></div>',
       '',
     ].join('\n');
-    expect(toAgentMarkdown(page).markdown).toBe('- `tags`: `List<String>`\n\n  - Golang: `Tags`: `*[]*string`\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `tags`: `List<String>`\n');
   });
 
-  test('a parameter list inside a member body keeps every language', () => {
+  test('a method row and its parameter list keep the canonical spelling only', () => {
     const p = (lang: string, n: string) => `<span class="lang-variant" data-lang="${lang}">\`${n}\`</span>`;
     const page = '<div class="member-row" id="addrule"><div class="member-line">'
       + '<span class="lang-variant" data-lang="ts"><code class="member-signature">addRule(ruleName)</code></span>'
       + '<span class="lang-variant" data-lang="python"><code class="member-signature">add_rule(rule_name)</code></span>'
       + '</div><details class="member-disclosure"><summary>1 parameter</summary><div class="member-details">\n\n'
       + `- ${p('ts', 'ruleName')}${p('python', 'rule_name')} — The rule.\n\n</div></details></div>\n`;
-    // The whole row: the method's own Python signature is a sub-bullet, and the parameter list keeps both spellings.
-    expect(toAgentMarkdown(page).markdown).toBe([
-      '- `addRule(ruleName)`',
-      '',
-      '  - Python: `add_rule(rule_name)`',
-      '',
-      '  - `ruleName` (Python: `rule_name`) — The rule.',
-      '',
-    ].join('\n'));
-  });
-
-  test('identical spellings that contain a placeholder are grouped as one', () => {
-    const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}">${text}</span>`;
-    const page = `See ${v('ts', '`string[]`')}${v('java', '`List<String>`')}${v('dotnet', '`List<String>`')}.\n`;
-    expect(toAgentMarkdown(page).markdown).toBe('See `string[]` (Java, C# / .NET: `List<String>`).\n');
-  });
-
-  describe('the language legend under the title', () => {
-    const legend = (lang: string) => `> Member names, types and signatures are shown in ${lang}; another language's `
-      + 'spelling follows, labeled, only where it differs. Names in descriptions and README text, and default values, '
-      + 'are TypeScript and are not translated. Code examples are labeled by language; an unlabeled `ts` example has no '
-      + 'translation.';
-    const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
-
-    test('names the canonical language on a page with two or more', () => {
-      const page = `# Bucket\n\nSee ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}.\n`;
-      expect(toAgentMarkdown(page).markdown)
-        .toBe(`# Bucket\n\n${legend('TypeScript')}\n\nSee \`bucketArn\` (Python: \`bucket_arn\`).\n`);
-    });
-
-    test('names the first language in a build without TypeScript', () => {
-      const page = `# Bucket\n\nSee ${v('python', 'bucket_arn')}${v('java', 'bucketArn')}.\n`;
-      expect(toAgentMarkdown(page).markdown)
-        .toBe(`# Bucket\n\n${legend('Python')}\n\nSee \`bucket_arn\` (Java: \`bucketArn\`).\n`);
-    });
-
-    test('is left out of a one-language page', () => {
-      const page = `# Bucket\n\nSee ${v('ts', 'bucketArn')}.\n`;
-      expect(toAgentMarkdown(page).markdown).toBe('# Bucket\n\nSee `bucketArn`.\n');
-    });
-
-    test('an untranslated example stays a bare TypeScript fence under the legend', () => {
-      const group = '<div class="lang-variant" data-lang="ts">\n\n```ts\nconst a = 1;\n```\n\n</div>'
-        + '<div class="lang-variant" data-lang="python" data-pagefind-ignore>\n\n```python\na = 1\n```\n\n</div>';
-      const page = `# Bucket\n\n\`\`\`ts\nnew Bucket(this, "B");\n\`\`\`\n\n${group}\n`;
-      expect(toAgentMarkdown(page).markdown).toBe([
-        '# Bucket', '', '> Code examples are labeled by language; an unlabeled `ts` example has no translation.', '',
-        '```ts', 'new Bucket(this, "B");', '```', '',
-        'TypeScript:', '', '```ts', 'const a = 1;', '```', '',
-        'Python:', '', '```python', 'a = 1', '```', '',
-      ].join('\n'));
-    });
-
-    test('goes under the title even when an experimental banner sits above it', () => {
-      const page = `::: warning Experimental\nAlpha.\n:::\n\n# Bucket\n\nSee ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}.\n`;
-      expect(toAgentMarkdown(page).markdown).toContain(`# Bucket\n\n${legend('TypeScript')}`);
-    });
-
-    test('goes under the title only, never after a `# ` comment in code', () => {
-      const page = `\`\`\`python\n# a comment\n\`\`\`\n\n# Bucket\n\nSee ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}.\n`;
-      expect(toAgentMarkdown(page).markdown).toBe([
-        '```python', '# a comment', '```', '',
-        '# Bucket', '', legend('TypeScript'), '',
-        'See `bucketArn` (Python: `bucket_arn`).', '',
-      ].join('\n'));
-    });
-
-    test('names the canonical language even when a later language comes first on the page', () => {
-      const page = `# Bucket\n\nSee ${v('java', 'x')}.\n\nThen ${v('python', 'bucket_arn')}${v('java', 'bucketArn')}.\n`;
-      expect(toAgentMarkdown(page).markdown).toContain(`# Bucket\n\n${legend('Python')}`);
-    });
-
-    test('on a page with only example groups, covers the examples alone', () => {
-      const group = '<div class="lang-variant" data-lang="ts">\n\n```ts\nconst a = 1;\n```\n\n</div>'
-        + '<div class="lang-variant" data-lang="python" data-pagefind-ignore>\n\n```python\na = 1\n```\n\n</div>';
-      expect(toAgentMarkdown(`# aws-s3\n\n${group}\n`).markdown).toBe([
-        '# aws-s3', '',
-        '> Code examples are labeled by language; an unlabeled `ts` example has no translation.', '',
-        'TypeScript:', '', '```ts', 'const a = 1;', '```', '',
-        'Python:', '', '```python', 'a = 1', '```', '',
-      ].join('\n'));
-    });
-  });
-
-  test('a sub-bullet type is a code span, so a generic does not read as a tag', () => {
-    const page = [
-      '<div class="member-row" id="tags"><div class="member-line">'
-      + '<span class="lang-variant" data-lang="ts"><code class="member-name">tags</code>'
-      + '<span class="member-type" data-pagefind-ignore title="string[]">string[]</span></span>'
-      + '<span class="lang-variant" data-lang="java" data-pagefind-ignore><code class="member-name">tags</code>'
-      + '<span class="member-type" data-pagefind-ignore title="List&lt;String&gt;">List&lt;String&gt;</span></span>'
-      + '</div></div>',
-      '',
-    ].join('\n');
-    expect(toAgentMarkdown(page).markdown).toBe('- `tags`: string[]\n\n  - Java: `tags`: `List<String>`\n');
-  });
-
-  test('languages that share an inline spelling are listed together', () => {
-    const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
-    const page = `See ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}${v('dotnet', 'BucketArn')}${v('go', 'BucketArn')}.\n`;
-    expect(toAgentMarkdown(page).markdown)
-      .toBe('See `bucketArn` (Python: `bucket_arn`; C# / .NET, Golang: `BucketArn`).\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `addRule(ruleName)`\n\n  - `ruleName` — The rule.\n');
   });
 
   test('without TypeScript the first language is the head line', () => {
@@ -496,10 +375,10 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       + '</div></div>',
       '',
     ].join('\n');
-    expect(toAgentMarkdown(page).markdown).toBe('- `bucket_name`\n\n  - Java: `bucketName`\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `bucket_name`\n');
   });
 
-  test('without TypeScript an example and an inline name still keep every language', () => {
+  test('without TypeScript an example keeps every language and an inline name keeps the first', () => {
     const page = [
       'Call <span class="lang-variant" data-lang="python"><code>add_rule</code></span>'
       + '<span class="lang-variant" data-lang="java" data-pagefind-ignore><code>addRule</code></span>.',
@@ -520,14 +399,14 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       '',
     ].join('\n');
     const { markdown } = toAgentMarkdown(page);
-    expect(markdown).toContain('Call `add_rule` (Java: `addRule`).');
+    expect(markdown).toContain('Call `add_rule`.');
     expect(markdown).toContain('Python:\n\n```python\nx = 1\n```');
     expect(markdown).toContain('Java:\n\n```java\nint x = 1;\n```');
   });
 
-  test('two variant groups side by side each render once', () => {
+  test('an inline name keeps the canonical spelling only, and two groups side by side each render once', () => {
     const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
-    const page = `${v('ts', 'a')}${v('python', 'a_py')}${v('ts', 'b')}${v('python', 'b_py')}\n`;
-    expect(toAgentMarkdown(page).markdown).toBe('`a` (Python: `a_py`)`b` (Python: `b_py`)\n');
+    const page = `See ${v('ts', 'a')}${v('python', 'a_py')}${v('ts', 'b')}${v('python', 'b_py')}.\n`;
+    expect(toAgentMarkdown(page).markdown).toBe('See `a``b`.\n');
   });
 });

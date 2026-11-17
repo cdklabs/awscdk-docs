@@ -4,10 +4,10 @@
  * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
  * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
- * consume: every enabled language's variant — block copies after a language label (a copy docgen filled with the
- * TypeScript source is named on the TypeScript label, not repeated), inline
- * spellings in parentheses where they differ; headings, prose, fenced code, tables and links once; member lists
- * rewritten as bullet lists; everything that exists for the browser dropped.
+ * consume: code examples in every enabled language, each copy after a language label (a copy docgen filled with
+ * the TypeScript source is named on the TypeScript label, not repeated); names and signatures in the canonical
+ * language only; headings, prose, fenced code, tables and links once; member lists rewritten as bullet lists;
+ * everything that exists for the browser dropped.
  *
  * It is a transform over the finished page rather than a second renderer so there is one source of truth for the
  * documentation content itself. The HTML is walked with a real parser: the member markup nests spans several deep
@@ -16,8 +16,6 @@
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
-import type { Language } from './languages.js';
-import { canonicalLanguage } from './variants.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -52,38 +50,12 @@ export function toAgentMarkdown(page: string): AgentMarkdown {
     lowerCaseAttributeNames: false,
   });
   let out = doc.children.map((n) => render(n)).join('');
-  // Before the restore, while every fence is still a placeholder, so a `# ` comment in code cannot match the title.
-  out = withLanguageLegend(out, doc.children);
   out = restore(out);
   out = unwrapContainers(out);
   // Explicit heading anchors (`## Title {#id}`) are markdown-it-attrs syntax, not Markdown.
   out = out.replace(/^(#{1,6} .*?) \{#[^}\n]*\}$/gm, '$1');
   out = out.replace(/[ \t]+$/gm, '');
   return { markdown: `${collapseBlankLines(out).trim()}\n` };
-}
-
-/**
- * Under the page title, one line saying which language the unlabeled names are in. The canonical spelling carries no
- * label, and a language that spells a name the same way is not repeated, so without the line an agent could not
- * tell "same spelling" from "not documented". Only a page with variants in two or more languages gets it.
- */
-function withLanguageLegend(out: string, nodes: Node[]): string {
-  const variants = DomUtils.findAll(isVariant, nodes);
-  const present = new Set(variants.map((v) => v.attribs['data-lang']));
-  if (present.size < 2) return out;
-  // The canonical language by docgen's own rule, so the legend names the language the twin leaves unlabeled.
-  const name = LANGUAGE_LABEL.get(canonicalLanguage([...present] as Language[]));
-  const examples = 'Code examples are labeled by language; an unlabeled `ts` example has no translation.';
-  // A page whose only variants are example blocks (a module overview) has no member names to describe.
-  const names = variants.some((v) => v.name.toLowerCase() !== 'div')
-    ? `Member names, types and signatures are shown in ${name}; another language's spelling follows, labeled, only `
-      + 'where it differs. Names in descriptions and README text, and default values, are TypeScript and are not '
-      + 'translated. '
-    : '';
-  const legend = `> ${names}${examples}`;
-  // The first H1 anywhere: an experimental banner can sit above it. Code is still a placeholder at this point, so
-  // a `# ` comment in a fence cannot match.
-  return out.replace(/^# [^\n]*$/m, (title) => `${title}\n\n${legend}`);
 }
 
 /**
@@ -206,31 +178,16 @@ function startsVariantGroup(el: Element): boolean {
 /**
  * One group of language variants. A block variant (an example) is repeated once per language, each copy after a
  * plain label line naming its language (see `renderBlockGroup`). An inline variant (a name in prose or a parameter
- * list) keeps the canonical text and adds, in parentheses, the other spellings where they differ, with the
- * languages that share a spelling listed together.
+ * list) keeps the canonical spelling only: the first variant, TypeScript when it is enabled.
  */
 function renderVariantGroup(group: Element[]): string {
-  if (group.length === 1) return children(group[0]);
-  // Each copy is rendered once. Protected code is a placeholder per occurrence, so copies are compared, and fences
-  // read, only once restored.
+  if (group.length === 1 || group[0].name.toLowerCase() !== 'div') return children(group[0]);
+  // Each copy is rendered once. Protected code is a placeholder per occurrence, so fences are read only once restored.
   const copies = new Map(group.map((v) => {
     const raw = children(v).trim();
     return [v, { raw, text: restoreProtected(raw) }] as const;
   }));
-  if (group[0].name.toLowerCase() === 'div') {
-    return renderBlockGroup(group, copies);
-  }
-  const first = copies.get(group[0])!;
-  const byText = new Map<string, { raw: string; labels: string[] }>();
-  for (const v of group.slice(1)) {
-    const { raw, text } = copies.get(v)!;
-    if (text === first.text) continue;
-    const entry = byText.get(text) ?? { raw, labels: [] };
-    entry.labels.push(languageLabel(v));
-    byText.set(text, entry);
-  }
-  const others = [...byText.values()].map(({ raw, labels }) => `${labels.join(', ')}: ${raw}`);
-  return others.length ? `${first.raw} (${others.join('; ')})` : first.raw;
+  return renderBlockGroup(group, copies);
 }
 
 function children(el: Element): string {
@@ -422,44 +379,16 @@ function renderMemberRow(el: Element): string {
   const summary = DomUtils.findOne((n) => classes(n).has('member-summary'), el.children);
   const rest = el.children.filter((n) => n !== line && n !== summary);
 
-  // The bullet carries the canonical name and type; each other language whose name or type reads differently
-  // gets one labeled sub-bullet under it, with that language's name and type only. Flags and the default stay on the
-  // head: the default is the jsii `@default` text, written in TypeScript. The canonical spelling is the first
-  // variant, as docgen emits it: that is TypeScript when it is enabled, and otherwise the first enabled language, so a
-  // build without TypeScript reads the same way.
+  // The bullet carries the canonical name and type only: the first variant, as docgen emits it. That is TypeScript
+  // when it is enabled, and otherwise the first enabled language, so a build without TypeScript still has a head.
   const variants = line ? DomUtils.findAll(isVariant, line.children) : [];
-  const canonical = variants[0];
-  const head = line ? renderMemberLine(line, canonical) : '';
-  const headIdentity = canonical ? renderMemberIdentity(canonical) : '';
-  // Languages that spell the member the same way share one sub-bullet, as inline spellings do.
-  const byIdentity = new Map<string, string[]>();
-  for (const v of variants.slice(1)) {
-    const text = renderMemberIdentity(v);
-    if (!text || text === headIdentity) continue;
-    byIdentity.set(text, [...(byIdentity.get(text) ?? []), languageLabel(v)]);
-  }
-  const spellings = [...byIdentity].map(([text, labels]) => `- ${labels.join(', ')}: ${text}`);
+  const head = line ? renderMemberLine(line, variants[0]) : '';
   const summaryText = summary ? inline(summary) : '';
   // Restore fences before indenting so every line of a block — content and closer, not just the opener — sits
   // under the bullet; an opener indented alone would leave the closer starting a fence of its own.
-  const body = [spellings.join('\n'), restoreProtected(rest.map((n) => render(n)).join('')).trim()]
-    .filter(Boolean)
-    .join('\n\n');
+  const body = restoreProtected(rest.map((n) => render(n)).join('')).trim();
   const indented = body ? `\n${body.split('\n').map((l) => (l ? `  ${l}` : '')).join('\n')}\n` : '';
   return `- ${head}${summaryText ? ` — ${summaryText}` : ''}\n${indented}`;
-}
-
-/**
- * One language's name and type (or signature) of a member, from that language's variant alone. The type is plain
- * code, so a generic such as `List<String>` does not read as a tag; only a TypeScript head line links its type.
- */
-function renderMemberIdentity(variant: Element): string {
-  const find = (cls: string) => DomUtils.findOne((n) => classes(n).has(cls), variant.children);
-  const signature = find('member-signature');
-  if (signature) return `\`${textOf(signature)}\``;
-  const name = find('member-name');
-  const type = find('member-type');
-  return name ? `\`${textOf(name)}\`${type ? `: \`${textOf(type)}\`` : ''}` : '';
 }
 
 /**

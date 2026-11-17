@@ -85,43 +85,25 @@ components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `Extends:`/`Implements:` lines, `:::` containers become titled blockquotes.
 Headings, prose, fenced code, tables and links pass through.
 
-The twin keeps every enabled language (superseding the earlier rule that it
-dropped every non-canonical variant), so a reader or assistant working in
-Python, Java, C# or Go gets their own code. Only content that differs by
-language is repeated; prose, tables and links appear once. An example group
-becomes one fenced block per language, in the site's language order, each
+The twin keeps code examples in every enabled language (superseding the
+earlier rule that it dropped every non-canonical variant), so a reader or
+assistant working in Python, Java, C# or Go gets their own code. An example
+group becomes one fenced block per language, in the site's language order, each
 after a plain label line naming the language (`Python:`). A copy in another
 language whose first fence is tagged `ts` is the TypeScript source docgen fills
 in for a snippet that was not translated, and it is never labeled as that
 language; the TypeScript copy itself is never one, whatever its fences. With
-TypeScript enabled, the
-TypeScript copy's label names the languages that fall back on it
-(`TypeScript (also shown for Python):`) and the fallbacks are not repeated.
-Without TypeScript, one fallback copy stands in at the position of the first
-language using it, labeled `TypeScript (shown for Python):`. A language docgen
-leaves out of a group, such as a
-type example with no translation, is not listed; the page shows it the
-TypeScript example. A per-language name
-inline (a property in a table, a parameter in a list) keeps the canonical
-spelling and adds the others in parentheses where they differ, listing
-languages that share a spelling together
-(`` `bucketArn` (Python: `bucket_arn`; C# / .NET, Golang: `BucketArn`) ``). A member
-bullet keeps the canonical name, type, flags and default, with one labeled
-sub-bullet per spelling of the name and type that differs from it; languages
-that share a spelling share the sub-bullet. A sub-bullet carries that name and
-type only, the type as plain code so a generic such as `List<String>` does not
-read as a tag (a head line links its type only when TypeScript is the canonical
-language). Flags and the default stay on the head: the default is the jsii
-`@default` text,
-written in TypeScript. A page with variants in two or more languages gets one
-blockquote line under its title naming the language of the unlabeled member
-names, types and signatures, so an agent can tell a shared spelling from a
-missing one. The same line says that names in descriptions, README text and
-default values are TypeScript and not translated, and that an unlabeled `ts`
-example has no translation. A page whose only variants are example blocks, such
-as a module overview, gets the example sentence alone. The languages are
-the ones the page was built with, so a one-language build emits one copy, no
-labels and no legend.
+TypeScript enabled, the TypeScript copy's label names the languages that fall
+back on it (`TypeScript (also shown for Python):`) and the fallbacks are not
+repeated. Without TypeScript, one fallback copy stands in at the position of
+the first language using it, labeled `TypeScript (shown for Python):`. A
+language docgen leaves out of a group, such as a type example with no
+translation, is not listed; the page shows it the TypeScript example. Names,
+types and signatures (member bullets, names in tables and parameter lists) keep
+the canonical spelling only: TypeScript when it is enabled, and otherwise the
+first enabled language. Prose, tables and links appear once. The languages are
+the ones the page was built with, so a one-language build emits one copy and no
+labels.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the
@@ -211,8 +193,9 @@ run, including failures.
   a preview deploy gets a sitemap and canonicals rooted at its host.
 - Bumping `CONTENT_REVISED_DATE` re-dates every page without a later release of
   its own, in both the JSON-LD and the footer.
-- The twin keeps every enabled language's signatures and examples (labeled),
-  and member tables, warnings and cross-links once; it drops badges, breadcrumb
+- The twin keeps every enabled language's examples and signature blocks
+  (labeled), and member names, member tables, warnings and cross-links once in
+  the canonical language; it drops badges, breadcrumb
   and search plumbing. Widening what it keeps is a change to one transform. The
   merge step has one non-shard input, and a missing twin tree or module index
   fails the build.
