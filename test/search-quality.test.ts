@@ -41,8 +41,22 @@ describe('search markup helpers', () => {
     expect(block[block.length - 2]).toBe('</div>');
   });
 
-  test('weightedTitle boosts the symbol name above default h1 weight', () => {
+  test('weightedTitle boosts the symbol name and adds word boundaries', () => {
     expect(weightedTitle('Bucket')).toBe('<span data-pagefind-weight="10">Bucket</span>');
+    expect(weightedTitle('ApplicationVersionLifecycleConfigProperty')).toBe(
+      '<span data-pagefind-weight="10">Application<wbr>Version<wbr>Lifecycle<wbr>Config<wbr>Property</span>',
+    );
+    expect(weightedTitle('HTTPServer')).toBe('<span data-pagefind-weight="10">HTTP<wbr>Server</span>');
+    expect(weightedTitle('CfnVPCPeeringConnection')).toBe(
+      '<span data-pagefind-weight="10">Cfn<wbr>VPC<wbr>Peering<wbr>Connection</span>',
+    );
+  });
+
+  test('weightedTitle keeps a single leading capital attached', () => {
+    // A lone leading capital never ends a line.
+    expect(weightedTitle('OAuthScope')).toBe('<span data-pagefind-weight="10">OAuth<wbr>Scope</span>');
+    expect(weightedTitle('IBucket')).toBe('<span data-pagefind-weight="10">IBucket</span>');
+    expect(weightedTitle('IPv6Address')).toBe('<span data-pagefind-weight="10">IPv6<wbr>Address</span>');
   });
 
   test('searchKind collapses construct levels to a small vocabulary', () => {
@@ -125,7 +139,7 @@ describe('generated pages carry search relevance markup', () => {
       usage,
       linkFor: () => undefined,
     });
-    expect(page).toContain('# <span data-pagefind-weight="10">BucketProps</span>');
+    expect(page).toContain('# <span data-pagefind-weight="10">Bucket<wbr>Props</span>');
     expect(page).toMatch(/<nav class="inheritance-chain"[^>]*data-pagefind-ignore>[^\n]*id="used-as-props-by"/);
   });
 });

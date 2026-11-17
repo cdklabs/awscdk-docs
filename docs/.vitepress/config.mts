@@ -108,16 +108,20 @@ async function makeHighlight() {
   };
 }
 
-// Clean accessible permalink labels for multi-language member headings. VitePress derives each anchor's
-// `aria-label` from the heading token's raw `content`, which for a docgen member heading is variant-span markup
-// plus the `{#…}` pin. Rewriting `content` to the canonical (first-span, TypeScript) member name before
-// markdown-it-anchor runs restores a clean label. Safe here because rendering, outline, and slug derivation all
-// read the token's `children`; the raw `content` string's only remaining consumer is the aria-label.
+// Clean accessible permalink labels for multi-language member headings and type-page titles. VitePress derives
+// each anchor's `aria-label` from the heading token's raw `content`, which for a docgen member heading is
+// variant-span markup plus the `{#…}` pin. Rewriting `content` to the canonical (first-span, TypeScript) member
+// name before markdown-it-anchor runs restores a clean label. Safe here because rendering, outline, and slug
+// derivation all read the token's `children`; the raw `content` string's only remaining consumer is the aria-label.
 const LANG_VARIANT_SPAN = /^<span class="lang-variant"[^>]*>(.*?)<\/span>/;
-function cleanMemberHeadingLabel(source: string): string | undefined {
-  const canonical = LANG_VARIANT_SPAN.exec(source)?.[1];
+// A type page's H1 source is the weighted name span (with `<wbr>` break points), the kind `<Badge>` and the
+// `{#…}` pin; its label is the plain type name. Any weight matches, so retuning it in weightedTitle() keeps working.
+const WEIGHTED_TITLE_SPAN = /^<span data-pagefind-weight="[\d.]+">(.*?)<\/span>/;
+function cleanHeadingLabel(source: string): string | undefined {
+  const title = WEIGHTED_TITLE_SPAN.exec(source)?.[1];
+  const canonical = title?.replace(/<wbr>/g, "") ?? LANG_VARIANT_SPAN.exec(source)?.[1];
   if (canonical === undefined) {
-    return undefined; // not a docgen variant heading — leave untouched
+    return undefined; // not a docgen title or variant heading — leave untouched
   }
   // Drop any trailing markup after the spans (e.g. a static `<Badge>`)
   // and the `{#…}` pin; unescape docgen's escapeHtml entities.
@@ -259,17 +263,17 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
     // READMEs to `$$…$$` display blocks; this flag typesets them into static SVG at build time — SSR-safe,
     // no client runtime, no per-page JS growth.
     math: true,
-    // Runs before markdown-it-anchor's core rule so its permalink renderAttrs sees the clean canonical member
-    // name instead of variant-span markup (see cleanMemberHeadingLabel above). `ruler.before("anchor", …)`
+    // Runs before markdown-it-anchor's core rule so its permalink renderAttrs sees the clean type or member name
+    // instead of title or variant-span markup (see cleanHeadingLabel above). `ruler.before("anchor", …)`
     // positions the rule ahead of anchor's regardless of registration order.
     config: (md) => {
-      md.core.ruler.before("anchor", "clean_member_heading_label", (state) => {
+      md.core.ruler.before("anchor", "clean_heading_label", (state) => {
         for (let i = 0; i < state.tokens.length; i++) {
           const token = state.tokens[i];
           if (token.type !== "inline" || state.tokens[i - 1]?.type !== "heading_open") {
             continue;
           }
-          const clean = cleanMemberHeadingLabel(token.content);
+          const clean = cleanHeadingLabel(token.content);
           if (clean !== undefined) {
             token.content = clean;
           }

@@ -326,6 +326,23 @@ function loadOpenPackageChunks() {
   }
 }
 
+// Load what the open groups of the service style need. A group the reader
+// opened before a reload comes back open from the stored choices, but only the
+// active page's chunk is fetched on load, so without this its child list
+// would render empty under an open caret.
+function loadOpenServiceChunks() {
+  for (const key of expandedByStyle.value.service) {
+    const chunk = unloadedChunkForKey(serviceTree.value, key);
+    if (chunk) loadChunk(chunk).catch(() => undefined);
+  }
+}
+
+// The open groups of the active style fetch any chunk they still miss.
+function loadOpenChunks() {
+  if (navStyle.value === "package") loadOpenPackageChunks();
+  else loadOpenServiceChunks();
+}
+
 // The groups a style opens before any reader choice: the generated tree's
 // pre-opened roots (Framework, Services) for the service style; the API
 // Reference entry for the package style, where every package starts
@@ -376,7 +393,7 @@ function ensureLoaded() {
       // A query typed while the skeleton was in flight is already filtering.
       if (filtering.value) loadAllChunks();
       syncActive();
-      if (navStyle.value === "package") loadOpenPackageChunks();
+      loadOpenChunks();
       revealOnLoad();
     })
     .catch(() => {
@@ -421,7 +438,7 @@ watch(navStyle, () => {
   if (navStyle.value === "package") ensurePackageTree();
   initStyle(navStyle.value);
   syncActive();
-  if (navStyle.value === "package") loadOpenPackageChunks();
+  loadOpenChunks();
   nextTick(() => {
     const container = findScrollContainer();
     if (container) scrollActiveIntoView(container);

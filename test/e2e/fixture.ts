@@ -24,6 +24,8 @@ export const QUEUE_GRANTS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueGrants.html'
  * `stringFilter`): the only fixture type whose `obtainable from` row overflows its two-line budget.
  */
 export const SUBSCRIPTION_FILTER_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.SubscriptionFilter.html';
+// A long CamelCase title that wraps on a phone-sized viewport.
+export const LONG_TITLE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueueInlinePolicyProps.html';
 export const API_OVERVIEW = '/v2/';
 // The hand-written agent-skills page. It is the OTHER page with no resolved
 // sidebar besides the home page — themeConfig.sidebar is keyed only on

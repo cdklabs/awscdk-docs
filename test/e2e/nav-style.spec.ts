@@ -1,12 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
+import { CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // Selectable navigation style (docs/adr/2026-10-23-sidebar-navigation-styles.md):
 // the Settings menu offers By service (the default) and By package; the choice
 // is stored under `cdk-docs-nav-style`; the sidebar regroups the data it
-// already fetched, reveals the active page in the new tree, and keeps collapse
-// and scroll memory apart per style. A reader who never opens the picker sees
-// the service tree and makes no extra request.
+// already holds, fetches only the chunks of groups the new style has open,
+// reveals the active page in the new tree, and keeps collapse and scroll memory
+// apart per style. A reader with nothing stored open sees the service tree and
+// makes no extra request.
 test.describe('navigation style', () => {
   // The Settings dropdown and the sidebar are desktop surfaces.
   test.use({ viewport: { width: 1440, height: 900 } });
@@ -183,5 +184,24 @@ test.describe('navigation style', () => {
     await expect(page.locator('.api-sidebar-nav > .api-sidebar-list > li > p.api-sidebar-section-title')).toHaveText(['Framework', 'Services']);
     const group = await openSettings(page);
     await expect(group.getByRole('button', { name: 'By service' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('a service section stored open shows its items after switching back from By package', async ({ page }) => {
+    // A service section the reader left open is reopened from stored choices
+    // when the service style is first shown, and shows its items, not an
+    // empty list under an open caret.
+    await page.goto(CFN_QUEUE_PAGE);
+    await waitForSidebar(page);
+    // Let the load-time reveal finish scrolling the sidebar before clicking, or the click can land on a neighbor.
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
+    await page.getByRole('button', { name: 'Custom Resources', exact: true }).click();
+    await page.evaluate((key) => window.localStorage.setItem(key, 'package'), NAV_KEY);
+    await page.reload();
+    await waitForSidebar(page);
+
+    await (await openSettings(page)).getByRole('button', { name: 'By service' }).click();
+    const group = page.getByRole('button', { name: 'Custom Resources', exact: true });
+    await expect(group).toHaveAttribute('aria-expanded', 'true');
+    await expect(group.locator('xpath=..').locator(':scope > ul.api-sidebar-list > li').first()).toBeVisible();
   });
 });

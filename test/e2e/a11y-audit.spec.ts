@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { FAILING_IMPACTS, REPRESENTATIVE_PAGES } from './fixture.js';
+import { FAILING_IMPACTS, REPRESENTATIVE_PAGES, TOPIC_PAGE } from './fixture.js';
 
 // Automated accessibility gate.
 //
@@ -23,6 +23,50 @@ async function isCodeToken(page: Page, target: readonly unknown[]): Promise<bool
   const selector = String(target[target.length - 1] ?? '');
   if (!selector) return false;
   return page.evaluate((sel) => !!document.querySelector(sel)?.closest('pre code'), selector);
+}
+
+// Runs axe on the page as it currently is and fails on gating violations. Shared by every scan below, so each one
+// gets the same exemptions and the same rules.
+async function audit(page: Page, label: string): Promise<void> {
+  // `label-content-name-mismatch` (WCAG 2.5.3) ships disabled in axe's
+  // default set as experimental; Lighthouse runs it and it caught real
+  // defects here, so it is switched on alongside the defaults.
+  const results = await new AxeBuilder({ page })
+    .options({ rules: { 'label-content-name-mismatch': { enabled: true } } })
+    .analyze();
+
+  const advisory = results.violations.filter((v) => !isFailing(v.impact));
+
+  // Drop only the exempt NODES, not the whole violation: a failure that
+  // hits both a code token and something else must still fail on the
+  // something else.
+  const failing: typeof results.violations = [];
+  for (const violation of results.violations.filter((v) => isFailing(v.impact))) {
+    const nodes = [];
+    for (const node of violation.nodes) {
+      if (violation.id === 'color-contrast' && (await isCodeToken(page, node.target))) continue;
+      nodes.push(node);
+    }
+    if (nodes.length) failing.push({ ...violation, nodes });
+  }
+
+  if (advisory.length) {
+    console.log(
+      `${label}: ${advisory.length} non-gating violation(s): ` +
+        advisory.map((v) => `${v.id} (${v.impact})`).join(', '),
+    );
+  }
+
+  // Name the rule, its impact and one offending selector per violation:
+  // a bare count tells whoever sees this in CI nothing about what broke.
+  const detail = failing
+    .map((v) => {
+      const where = v.nodes[0]?.target?.join(' ') ?? 'unknown target';
+      return `${v.id} (${v.impact}) — ${v.help} — first at: ${where}`;
+    })
+    .join('\n');
+
+  expect(detail, `axe-core found gating violations on ${label}:\n${detail}`).toBe('');
 }
 
 // The `@a11y` tag is what separates this gate from the browser e2e suite:
@@ -51,45 +95,20 @@ test.describe('accessibility audit (axe-core) @a11y', () => {
         await expect(apiSidebar.locator('.api-sidebar-nav')).toBeVisible();
       }
 
-      // `label-content-name-mismatch` (WCAG 2.5.3) ships disabled in axe's
-      // default set as experimental; Lighthouse runs it and it caught real
-      // defects here, so it is switched on alongside the defaults.
-      const results = await new AxeBuilder({ page })
-        .options({ rules: { 'label-content-name-mismatch': { enabled: true } } })
-        .analyze();
-
-      const advisory = results.violations.filter((v) => !isFailing(v.impact));
-
-      // Drop only the exempt NODES, not the whole violation: a failure that
-      // hits both a code token and something else must still fail on the
-      // something else.
-      const failing: typeof results.violations = [];
-      for (const violation of results.violations.filter((v) => isFailing(v.impact))) {
-        const nodes = [];
-        for (const node of violation.nodes) {
-          if (violation.id === 'color-contrast' && (await isCodeToken(page, node.target))) continue;
-          nodes.push(node);
-        }
-        if (nodes.length) failing.push({ ...violation, nodes });
-      }
-
-      if (advisory.length) {
-        console.log(
-          `${pagePath}: ${advisory.length} non-gating violation(s): ` +
-            advisory.map((v) => `${v.id} (${v.impact})`).join(', '),
-        );
-      }
-
-      // Name the rule, its impact and one offending selector per violation:
-      // a bare count tells whoever sees this in CI nothing about what broke.
-      const detail = failing
-        .map((v) => {
-          const where = v.nodes[0]?.target?.join(' ') ?? 'unknown target';
-          return `${v.id} (${v.impact}) — ${v.help} — first at: ${where}`;
-        })
-        .join('\n');
-
-      expect(detail, `axe-core found gating violations on ${pagePath}:\n${detail}`).toBe('');
+      await audit(page, pagePath);
     });
   }
+
+  test('the Copy Markdown control passes with its menu open', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await expect(page.locator('.VPNav')).toBeVisible();
+    const apiSidebar = page.locator('.api-sidebar');
+    if (await apiSidebar.count()) {
+      await expect(apiSidebar.locator('.api-sidebar-nav')).toBeVisible();
+    }
+    await page.locator('.copy-markdown[data-ready]').waitFor();
+    await page.getByRole('button', { name: 'More Markdown options' }).click();
+    await expect(page.getByRole('menuitem', { name: 'View as Markdown' })).toBeVisible();
+    await audit(page, `${TOPIC_PAGE} with the Copy Markdown menu open`);
+  });
 });

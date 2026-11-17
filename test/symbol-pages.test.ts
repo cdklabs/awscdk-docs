@@ -159,7 +159,7 @@ describe('symbol page generation', () => {
 
   test('structs get a page with breadcrumb, expandable props, and props-users list', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">BucketProps</span> <Badge type="info" class="api-badge api-badge-struct" text="Struct" />');
+    expect(page).toContain('# <span data-pagefind-weight="10">Bucket<wbr>Props</span> <Badge type="info" class="api-badge api-badge-struct" text="Struct" />');
     // No metadata table: the breadcrumb carries Module/FQN and the H1 badge
     // carries the Kind.
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>BucketProps</strong>');
@@ -178,7 +178,7 @@ describe('symbol page generation', () => {
 
   test('enums get a page with a members table and referencing properties', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketEncryption.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">BucketEncryption</span> <Badge type="info" class="api-badge api-badge-enum" text="Enum" />');
+    expect(page).toContain('# <span data-pagefind-weight="10">Bucket<wbr>Encryption</span> <Badge type="info" class="api-badge api-badge-enum" text="Enum" />');
     expect(page).toContain('| Member | Description |');
     expect(page).toContain('| <span id="kms"></span>`KMS` |');
     expect(page).toContain('## Referenced by');
@@ -252,7 +252,7 @@ describe('symbol page generation', () => {
   test('behavioral interfaces without implementors still get a page', () => {
     // ILocalBundling declares tryBundle() but no class in the assemblies implements it
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ILocalBundling.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">ILocalBundling</span> <Badge type="info" class="api-badge api-badge-interface" text="Interface" />');
+    expect(page).toContain('# <span data-pagefind-weight="10">ILocal<wbr>Bundling</span> <Badge type="info" class="api-badge api-badge-interface" text="Interface" />');
     expect(page).not.toContain('| **Kind** |');
     expect(page).toContain('<div class="member-row" id="trybundle" data-params="outputDir,options">');
   });

@@ -9,10 +9,9 @@ test.describe('doc footer contribution links', () => {
   test('renders both contribution links below the content', async ({ page }) => {
     await page.goto(SQS_OVERVIEW_PAGE);
 
-    // Edit, report, and the Markdown twin every generated page carries.
     const footer = page.locator('.page-footer-links');
     await expect(footer).toBeVisible();
-    await expect(footer.locator('.footer-link')).toHaveCount(3);
+    await expect(footer.locator('.footer-link')).toHaveCount(2);
   });
 
   test('renders one contentinfo landmark and names the page actions navigation', async ({ page }) => {
@@ -44,11 +43,11 @@ test.describe('doc footer contribution links', () => {
     await page.goto(TOPIC_PAGE);
 
     // A class page is rendered from the jsii docstrings in its declaring
-    // source file, so that file is the edit target — next to the report link
-    // and the Markdown twin, never this repo's generated page.
+    // source file, so that file is the edit target — next to the report link,
+    // never this repo's generated page.
     const footer = page.locator('.page-footer-links');
     await expect(footer).toBeVisible();
-    await expect(footer.locator('.footer-link')).toHaveCount(3);
+    await expect(footer.locator('.footer-link')).toHaveCount(2);
     const editLink = footer.locator('.footer-link', { hasText: 'Edit this page' });
     await expect(editLink).toHaveAttribute(
       'href',
@@ -63,10 +62,10 @@ test.describe('doc footer contribution links', () => {
     await page.goto(CFN_QUEUE_PAGE);
 
     // An L1 page is built from generated code that is not in the upstream
-    // repository; the footer keeps the report link and the Markdown twin.
+    // repository; the footer keeps the report link.
     const footer = page.locator('.page-footer-links');
     await expect(footer).toBeVisible();
-    await expect(footer.locator('.footer-link')).toHaveCount(2);
+    await expect(footer.locator('.footer-link')).toHaveCount(1);
     await expect(footer).not.toContainText('Edit this page');
   });
 
