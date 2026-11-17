@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { REPRESENTATIVE_PAGES } from './fixture.js';
+import { REPRESENTATIVE_PAGES, TOPIC_PAGE } from './fixture.js';
 
 // Gates WCAG 2.5.8 target size (minimum) across the audited page set.
 //
@@ -41,4 +41,27 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
       expect(detail, `target-size violations on ${pagePath}:\n${detail}`).toBe('');
     });
   }
+
+  // The sidebar filter's hint button exists only while a query is active and the symbol index has loaded, so the
+  // scans above (empty filter) never evaluate it.
+  test('the filter hint button meets the 24px floor while a query is active', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await expect(page.locator('.VPNav')).toBeVisible();
+    await expect(page.locator('.api-sidebar .api-sidebar-nav')).toBeVisible();
+
+    await page.getByRole('textbox', { name: 'Filter navigation in the sidebar' }).fill('Queue');
+    await expect(page.locator('.nav-filter-hint').getByRole('button')).toBeVisible();
+
+    const results = await new AxeBuilder({ page })
+      .options({ rules: { 'target-size': { enabled: true } } })
+      .withRules(['target-size'])
+      .analyze();
+
+    const detail = results.violations
+      .flatMap((violation) => violation.nodes)
+      .map((node) => `${node.target.join(' ')} — ${node.failureSummary ?? ''}`)
+      .join('\n');
+
+    expect(detail, `target-size violations with the filter hint shown:\n${detail}`).toBe('');
+  });
 });

@@ -454,6 +454,8 @@ test.describe('in-sidebar symbol filter', () => {
     await page.keyboard.press('Space');
 
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue/);
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
   });
 
   // Folding while filtering. Surviving groups start open, the reader can fold
