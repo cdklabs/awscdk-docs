@@ -155,6 +155,17 @@ describe('createFlashOnce', () => {
     expect(flashed).toEqual(['#a', '#a']);
   });
 
+  test('a hash whose row does not exist yet flashes once the row appears', () => {
+    // The dev server: the route hook runs before the rows are rendered, the
+    // mount call after. No row the first time, the new row the second.
+    const ids: Record<string, FlashElement> = {};
+    const { once, flashed } = harness(ids);
+    once('#a');
+    ids.a = element(true);
+    once('#a');
+    expect(flashed).toEqual(['#a', '#a']);
+  });
+
   test('a different hash always flashes', () => {
     const { once, flashed } = harness({ a: element(true), b: element(true) });
     once('#a');

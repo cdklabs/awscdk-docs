@@ -1050,19 +1050,23 @@ describe('API page layout', () => {
           .toBeGreaterThanOrEqual(4.5);
       });
 
-      test.each(['light', 'dark'] as const)('%s mode: text on a flashed row keeps AA at the start of the fade', (scheme) => {
-        // The flash starts at its darkest; a landed row can carry body text, a
-        // type link and a brand-colored link in its summary or hovered type.
+      test.each(['light', 'dark'] as const)('%s mode: the theme\'s own text tokens keep AA on the flash color', (scheme) => {
+        // The flash starts at its darkest and, under reduced motion, stays. The
+        // tokens this theme declares are checked here; text-2 comes from
+        // VitePress and is measured as a rendered color in the e2e spec.
         const layout = split(css())[scheme];
         const surface = split(theme())[scheme];
+        const signatures = split(readFileSync(join(THEME_DIR, 'signatures.css'), 'utf-8'))[scheme];
         const flash = hex(layout, '--api-c-flash');
-        // Most of a row's text is text-2, which the theme does not override, so it is read from VitePress itself.
-        expect(surface).not.toMatch(/--vp-c-text-2:/);
-        const vpVars = readFileSync(resolve(ROOT, 'node_modules/vitepress/dist/client/theme-default/styles/vars.css'), 'utf-8');
-        // The text tokens are one `:root` / `.dark` pair in VitePress's file; slice from the pair's opener.
-        const textBlock = vpVars.slice(vpVars.lastIndexOf(':root {', vpVars.indexOf('--vp-c-text-2')));
-        const text2 = hex(split(textBlock)[scheme], '--vp-c-text-2');
-        for (const text of [hex(surface, '--vp-c-text-1'), text2, hex(surface, '--vp-c-brand-1'), hex(surface, '--vp-c-brand-2'), hex(layout, '--api-c-type')]) {
+        const texts = [
+          hex(surface, '--vp-c-text-1'),
+          hex(surface, '--vp-c-brand-1'),
+          hex(surface, '--vp-c-brand-2'),
+          hex(layout, '--api-c-type'),
+          hex(layout, '--api-c-deprecated'),
+          hex(signatures, '--sig-c-type-param'),
+        ];
+        for (const text of texts) {
           expect([scheme, text, contrast(text, flash) >= 4.5]).toEqual([scheme, text, true]);
         }
       });

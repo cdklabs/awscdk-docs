@@ -14,14 +14,14 @@ const OUTLINE_LINK = (hash: string) => `.VPDocAsideOutline a.outline-link[href="
 /** Count every start of the flash animation, from before hydration so a load with a hash is counted too. */
 async function countFlashStarts(page: import('@playwright/test').Page): Promise<void> {
   await page.addInitScript(() => {
-    const w = window as unknown as { flashStarts: number; flashPages: string[] };
+    const w = window as unknown as { flashStarts: number; flashTargets: Element[] };
     w.flashStarts = 0;
-    w.flashPages = [];
+    w.flashTargets = [];
     addEventListener('animationstart', (e) => {
       if ((e as AnimationEvent).animationName === 'member-row-flash') {
         w.flashStarts += 1;
-        // Which page's row faded: a row on an outgoing page would record that page's path.
-        w.flashPages.push(location.pathname);
+        // The row that faded: one on an outgoing page is detached once that page is gone.
+        w.flashTargets.push(e.target as Element);
       }
     }, true);
   });
@@ -85,6 +85,50 @@ test.describe('a jump to a member row flashes it', () => {
     expect(colors.end).toBe(colors.resting);
     await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`));
   });
+
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`${scheme}: every text color on a flashed row keeps AA at the start of the fade`, async ({ page }) => {
+      await page.addInitScript((theme) => window.localStorage.setItem('vitepress-theme-appearance', theme), scheme);
+      await page.goto(QUEUE_PAGE);
+      await expect(page.locator('html')).toHaveClass(scheme === 'dark' ? /\bdark\b/ : /^(?!.*\bdark\b)/);
+      // The row renders text-1 (name), text-2 (summary), the type link, a brand link and a type parameter in a
+      // signature when it has one; every distinct computed color in the member list is measured, so an element
+      // the fixture lacks is covered by any row that has it.
+      const pairs = await page.evaluate(() => {
+        const list = document.querySelector('.member-list')!;
+        const flash = getComputedStyle(document.documentElement).getPropertyValue('--api-c-flash').trim();
+        const probe = document.createElement('div');
+        probe.style.backgroundColor = flash;
+        document.body.append(probe);
+        const flashRgb = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        const colors = new Set<string>();
+        for (const el of list.querySelectorAll<HTMLElement>('.member-line *, .member-summary, .member-summary *')) {
+          if (el.getBoundingClientRect().width > 0 && (el.textContent ?? '').trim()) {
+            colors.add(getComputedStyle(el).color);
+          }
+        }
+        return { flashRgb, colors: [...colors] };
+      });
+      const channels = (rgb: string) => rgb.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+      const luminance = (rgb: string) => {
+        const [r, g, b] = channels(rgb).map((c) => {
+          const v = c / 255;
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      // The token must resolve to an opaque color; an undefined one probes as transparent and proves nothing.
+      expect(pairs.flashRgb).toMatch(/^rgb\(/);
+      const bg = luminance(pairs.flashRgb);
+      expect(pairs.colors.length).toBeGreaterThanOrEqual(3);
+      for (const color of pairs.colors) {
+        const fg = luminance(color);
+        const ratio = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+        expect([scheme, color, ratio >= 4.5]).toEqual([scheme, color, true]);
+      }
+    });
+  }
 
   test('a second jump during the fade moves the mark to the new row', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
@@ -187,12 +231,13 @@ test.describe('a jump to a member row flashes it', () => {
     await expect(page).toHaveURL(new RegExp(`Queue\\.html${SHARED}$`));
     await expect(page.locator(`.member-row${SHARED}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await page.waitForTimeout(400);
-    // One fade, and it ran on the returning page's row.
+    // One fade, and it ran on a row still in the page: the outgoing page's row,
+    // like the first load's, is detached by now.
     expect(await flashStarts(page)).toBe(2);
-    expect(await page.evaluate(() => (window as unknown as { flashPages: string[] }).flashPages)).toEqual([
-      '/v2/docs/aws-cdk-lib.aws_sqs.Queue.html',
-      '/v2/docs/aws-cdk-lib.aws_sqs.Queue.html',
-    ]);
+    expect(await page.evaluate(() => {
+      const targets = (window as unknown as { flashTargets: Element[] }).flashTargets;
+      return targets[targets.length - 1].isConnected;
+    })).toBe(true);
   });
 
   test('a modified click or a link that opens elsewhere does not flash', async ({ page }) => {

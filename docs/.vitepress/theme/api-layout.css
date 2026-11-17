@@ -9,7 +9,7 @@
      The strikethrough on the identifier carries the deprecation
      independently, so nothing depends on this color alone. */
   --api-c-deprecated: #9a2c2c;
-  /* Start of the member-row flash; text-1, text-2, brand-1, brand-2 and the type color stay at AA on it. */
+  /* Start of the member-row flash; every text color a row carries stays at AA on it (pinned in tests). */
   --api-c-flash: #fdf3e3;
 }
 
