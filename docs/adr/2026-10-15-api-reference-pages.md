@@ -328,8 +328,9 @@ where it is the row's flex item. The span carries no `title`: nothing is
 hidden, so one would only repeat the text. A wrapped type's continuation lines
 hang `2ch` in from the name column (`padding-left: 2ch; text-indent: -2ch` on
 the variant wrapper holding a type, or on the type itself with one language),
-so a reader scanning for names does not meet type text at the same edge; an
-unwrapped row is unchanged. The wrapper's `nowrap` is shared by
+so a reader scanning for names does not meet type text at the same edge, in
+the stacked layout as much as beside the name; an unwrapped row is unchanged.
+The wrapper's `nowrap` is shared by
 method rows, where the variant holds the whole signature;
 `.member-signature` releases it (`white-space: normal`, `overflow-wrap:
 anywhere`) so a long signature wraps inside the content column instead of

@@ -570,11 +570,12 @@ function withoutAnchorTooltips(html: string): string {
 }
 
 /**
- * Longest qualified name the narrowest content column holds whole: about 36 monospace characters at 375px and the
- * largest density. A shorter name never has to break, so it gets no break point and the line breaks at a space
- * instead of inside the name.
+ * Longest qualified name that gets no break point. The narrowest content column holds about 36 monospace
+ * characters at 375px and the largest density; less the 2ch continuation hang and a 2-character margin, a name
+ * within this budget always fits whole, so it gets no break point and the line breaks at a space instead of inside
+ * the name.
  */
-const TYPE_NAME_BREAK_BUDGET = 32;
+const TYPE_NAME_BREAK_BUDGET = 36 - 2 - 2;
 
 /**
  * Follow every dot in an over-budget qualified name with a `<wbr>`, so a name wider than its row

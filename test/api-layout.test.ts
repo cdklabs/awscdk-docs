@@ -1233,10 +1233,9 @@ describe('API page layout', () => {
       expect(summary).not.toContain('text-overflow: ellipsis');
     });
 
-    test('every clamp is released where the row stacks', () => {
-      // A stacked row has no single line to clamp to, so a clamp left on
-      // would ellipsize a value that has a whole line to itself. The wrapper
-      // needs releasing too, or its own nowrap and clip survive the stack.
+    test('the nowrap boxes are released where the row stacks', () => {
+      // A stacked row has no single line to keep, so the default and the
+      // variant wrapper may wrap there; neither carries a clamp to release.
       const media = withoutComments(css().slice(css().indexOf('@media (max-width: 640px)')));
 
       // The union of every DECLARATION BLOCK whose selector list mentions this
@@ -1250,14 +1249,8 @@ describe('API page layout', () => {
         return bodies.join('\n');
       };
 
-      const block = blockFor('.member-list .member-default');
-      expect(block).toContain('white-space: normal');
-      expect(block).toContain('overflow: visible');
-      // The default's clamp is a `ch` measure, so it keeps truncating even once
-      // the text may wrap — and below this breakpoint its `title` recovery is
-      // unusable, because the same media block switches hover tooltips off for
-      // touch.
-      expect(block).toContain('max-width: none');
+      expect(blockFor('.member-list .member-default')).toContain('white-space: normal');
+      // Hover tooltips mean nothing on touch.
       expect(blockFor('.type-tooltip')).toContain('display: none');
 
       expect(blockFor('.member-list .member-line > .lang-variant'))

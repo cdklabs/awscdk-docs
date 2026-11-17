@@ -110,43 +110,50 @@ test.describe('long property types', () => {
     expect(wide!.hasTitle).toBe(false);
   });
 
-  test('a wrapped type hangs its continuation lines in from the name column', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await openVariant(page, CFN_TOPIC_PAGE, 'python');
+  // The hang applies in both row shapes: beside the name at 1280px, and in
+  // the stacked layout at 375px, where the type sits on its own line.
+  for (const width of [375, 1280]) {
+    test(`a wrapped type hangs its continuation lines in from the name column at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await openVariant(page, CFN_TOPIC_PAGE, 'python');
 
-    const rows = await page.evaluate((wideText) => {
-      const out = [];
-      for (const line of Array.from(document.querySelectorAll('.props-table .member-line'))) {
-        const name = Array.from(line.querySelectorAll('.member-name'))
-          .find((el) => el.getBoundingClientRect().width > 0);
-        const type = Array.from(line.querySelectorAll('.member-type'))
-          .find((el) => el.getBoundingClientRect().width > 0);
-        if (!name || !type) {
-          continue;
+      const rows = await page.evaluate((wideText) => {
+        const out = [];
+        for (const line of Array.from(document.querySelectorAll('.props-table .member-line'))) {
+          const name = Array.from(line.querySelectorAll('.member-name'))
+            .find((el) => el.getBoundingClientRect().width > 0);
+          const type = Array.from(line.querySelectorAll('.member-type'))
+            .find((el) => el.getBoundingClientRect().width > 0);
+          if (!name || !type) {
+            continue;
+          }
+          const rects = Array.from(type.getClientRects());
+          const firstTop = Math.round(rects[0].top);
+          const continuation = rects.filter((r) => Math.round(r.top) !== firstTop);
+          out.push({
+            wide: (type.textContent ?? '').replace(/\s+/g, ' ').trim() === wideText,
+            nameLeft: name.getBoundingClientRect().left,
+            lineLeft: line.getBoundingClientRect().left,
+            typeLeft: Math.min(...rects.map((r) => r.left)),
+            continuationLeft: continuation.length ? Math.min(...continuation.map((r) => r.left)) : null,
+          });
         }
-        const rects = Array.from(type.getClientRects());
-        const firstTop = Math.round(rects[0].top);
-        const continuation = rects.filter((r) => Math.round(r.top) !== firstTop);
-        out.push({
-          wide: (type.textContent ?? '').replace(/\s+/g, ' ').trim() === wideText,
-          nameLeft: name.getBoundingClientRect().left,
-          lineLeft: line.getBoundingClientRect().left,
-          continuationLeft: continuation.length ? Math.min(...continuation.map((r) => r.left)) : null,
-        });
+        return out;
+      }, WIDE_PYTHON_TYPE);
+      const wide = rows.find((row) => row.wide);
+      expect(wide?.continuationLeft, 'the wide type did not wrap').not.toBeNull();
+      // The second line starts about two characters in, so a reader scanning
+      // the name column does not meet type text at the same edge.
+      expect(wide!.continuationLeft! - wide!.lineLeft).toBeGreaterThanOrEqual(12);
+      expect(wide!.continuationLeft! - wide!.lineLeft).toBeLessThanOrEqual(24);
+      for (const row of rows) {
+        // The first line is unchanged: every name still starts at the row's edge.
+        expect(row.nameLeft).toBeCloseTo(row.lineLeft, 0);
+        // The negative indent never pushes a first line into the gutter.
+        expect(row.typeLeft).toBeGreaterThanOrEqual(row.lineLeft - 1);
       }
-      return out;
-    }, WIDE_PYTHON_TYPE);
-    const wide = rows.find((row) => row.wide);
-    expect(wide?.continuationLeft, 'the wide type did not wrap').not.toBeNull();
-    // The second line starts about two characters in, so a reader scanning the
-    // name column does not meet type text at the same edge.
-    expect(wide!.continuationLeft! - wide!.lineLeft).toBeGreaterThanOrEqual(12);
-    expect(wide!.continuationLeft! - wide!.lineLeft).toBeLessThanOrEqual(24);
-    // The first line is unchanged: every name still starts at the row's edge.
-    for (const row of rows) {
-      expect(row.nameLeft).toBeCloseTo(row.lineLeft, 0);
-    }
-  });
+    });
+  }
 
   test('a qualified name wider than the row breaks after its dot, not inside a word', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 900 });

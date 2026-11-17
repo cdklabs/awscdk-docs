@@ -613,7 +613,8 @@ a.chain-item:hover {
    reader scanning for property names does not meet type text at the same
    edge. The indent sits on the box the row lays out — the variant wrapper, or
    the type itself with a single language — and the negative `text-indent`
-   restores the first line, so an unwrapped row is unchanged. Scoped to rows
+   restores the first line, so an unwrapped row is unchanged. It applies in the
+   stacked layout too, where the type sits on its own line. Scoped to rows
    with a type: a signature wraps on its own terms. */
 .member-list .member-line > .lang-variant:has(> .member-type),
 .member-list .member-line > .member-type {
@@ -965,18 +966,10 @@ a.chain-item:hover {
     align-items: flex-start;
   }
 
-  /* A stacked row has no single line to clamp against, so the default wraps
-     rather than ellipsizing. Its only recovery is the `title` the emitter sets,
-     and hover means nothing on touch — which is the same reason `.type-tooltip`
-     is switched off at the bottom of this block. A 22-character prose default
-     like `No filtering on region` would otherwise be ellipsized here with no
-     way at all to read it, being under INLINE_DEFAULT_BUDGET and so earning no
-     `**Default:**` copy either. The default has no clamp above this breakpoint;
-     `max-width: none` keeps it that way here too. */
+  /* A stacked row has no single line to keep, so a value default may wrap. It
+     has no clamp at any width. */
   .member-list .member-default {
     white-space: normal;
-    overflow: visible;
-    max-width: none;
   }
 
   .member-list .member-line > .lang-variant {
