@@ -298,6 +298,77 @@ Ease-out cubic (not ease-in-out) so a navigation aid reads as immediate.
 Rejected: CSS `scroll-behavior: smooth` — same UA animator, and it would also
 capture anchor and search-result jumps that never asked for animation.
 
+### Wide-screen tier
+
+The default theme stops growing at its 1440px tier: `--vp-layout-max-width` is
+1440px, a page without a sidebar caps its doc container at 1104px and its
+content at 784px, and the column beside the outline (`.content-container`) caps
+at 688px on every page. Above 1440px nothing grows, so a 2560px monitor shows
+the docs in a narrow column with empty space on both sides.
+
+One more tier, `@media (min-width: 1920px)` in
+`docs/.vitepress/theme/wide-layout.css`, raises `--vp-layout-max-width` to
+1920px, the no-sidebar container cap to 1440px and the content column cap to
+992px; the no-sidebar `.content` cap becomes 1056px (992px plus its own 2 x 32px
+padding) so the column it holds can reach 992px. Inside the tier, running prose
+(the `p`, `ul`, `ol` and `blockquote` children of the page body) is capped at
+784px, a little over the 688px it has beside the outline and the 720px it has
+on a no-sidebar page at the 1440px tier; tables, signatures, code blocks and
+docgen member rows use the full column, including the remarks prose inside a
+member row, which stays at the row's width so a row reads as one unit. One more
+breakpoint rather than a full-width layout or a settings option: a fixed tier
+keeps prose line length near its current value and the sidebar width constant,
+and adds no control to the Settings menu for a layout most readers never see.
+The tier starts at 1920px because that is the first width at which a 1920px
+layout fits with no centering offset, so the wide tier begins exactly where its
+layout fits. Breakpoints are in CSS pixels, so the tier depends on display
+scaling: a 2560px monitor reaches it at 100% or 125% (2048 CSS px) but not at
+150% (1707 CSS px), and a 1920px monitor reaches it only at 100%. Every cap is a
+stock width or derived from one: 1440px is the stock layout max, 992px the stock
+no-sidebar container at 960px, 784px the stock no-sidebar content at 1440px, and
+1056px is 992px plus the column's own padding.
+
+The sidebar keeps `--vp-sidebar-width` (320px) and the outline its 256px. Every
+rule that centers on the layout width — the stock `VPContent`, `VPSidebar`,
+`VPNavBar` and `VPLocalNav` 1440px tiers, the nav mirror above and the footer
+offset — reads `var(--vp-layout-max-width)`, so raising the variable **is**
+their 1920px tier. They are deliberately not duplicated into the new tier: the
+nav mirror is pinned to the stock tiers by `test/nav-controls.test.ts`, and a
+second copy of the footer math would be one more place to drift. The three width
+caps carry `!important` for the same reason the divider rules do: the stock
+declarations are component-scoped at (0,4,0).
+
+The same stylesheet places `/versions` in the lane right of the sidebar. The
+page has no sidebar, so the stock theme centered its container in the full
+viewport while the nav bar above it carries the sidebar-lane inset from the
+geometry section, so the page read as off-center. `/versions` is aligned first
+because the offset is most visible there: its one wide table sits directly
+under the inset nav controls with nothing else on the page. The other no-sidebar
+pages (`/skills`, also linked from the nav bar, `/stability` and
+`/aws-construct-library`) keep the stock full-viewport centering until they are
+aligned as a group by widening the `.Layout.versions-page` selector; nothing
+about them makes the stock centering wrong, so that is a separate decision. The
+sheet mirrors
+`VPContent.has-sidebar`'s padding onto the page's content and `SiteFooter`'s
+`has-sidebar` offset onto its footer, from the
+tightest desktop tier (1280px) and in the 1440px tier, so content, nav and
+footer share one lane there too. Between 960 and 1279px, where a zoomed-in large
+monitor lands (1920px at 200% is 960 CSS px), the page keeps its full
+viewport-centered width: the alignment would cost a third of it. The hook is `pageClass: versions-page` in the page's frontmatter, which
+VitePress puts on the `.Layout` root, an ancestor of both the content and the
+footer; `test/wide-layout.test.ts` pins the frontmatter, the `Layout.vue`
+binding and the mirrored declarations against the installed sources.
+
+`test/e2e/wide-layout.spec.ts` measures the result at 960, 1280, 1440, 1920 and
+2560px: the column grows from 688px to 992px, prose stays at or under 784px,
+member-row remarks are uncapped, the content, nav and footer start on one lane,
+below 1920px every width on the sidebar pages is the stock one, `/versions`
+content and footer sit within 2px of the sidebar pages' lane from 1280px with no
+scroll inside the versions table or on the document, and at 960px `/versions`
+keeps its stock 896px container.
+`test/e2e/nav-controls.spec.ts` runs its page-independence check at 1920 and
+2560px as well.
+
 ## Consequences
 
 - One consistent footer appears on home, versions, and every `/api/**` page;
@@ -328,3 +399,11 @@ capture anchor and search-result jumps that never asked for animation.
   declaration-by-declaration rather than hard-coding mirrored values, so an
   upstream geometry or height change fails at the test instead of letting the
   page types silently diverge.
+- `/versions` trades width for alignment from 1280px up: its container is 896px
+  at 1280px and 1056px at 1440px, against the stock 992px and 1104px; below
+  1280px it keeps the stock width and the nav-lane misalignment.
+- Above 1920px the layout is 1920px wide and the content column 992px; a
+  VitePress bump that moves the 1440px tier or its three caps fails
+  `test/wide-layout.test.ts`, which reads them from the installed sources. Any
+  rule that ever hard-codes 1440px instead of reading `--vp-layout-max-width`
+  will drift at 1920px; the e2e lane assertions are the mitigation.

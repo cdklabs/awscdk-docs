@@ -1,3 +1,7 @@
+---
+pageClass: versions-page
+---
+
 # AWS CDK Versions
 
 Current releases of the AWS CDK packages with links to release notes, docs and

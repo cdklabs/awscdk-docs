@@ -377,9 +377,10 @@ test.describe('navbar layout', () => {
 // which is exactly why none of them could see this.
 test.describe('navbar geometry is page-independent', () => {
   // Every desktop width the split occurs at: 1280px is the tightest desktop
-  // width, 1440px is where VitePress switches to its centered tier, and
-  // 1600px is past it. Below 960px both page types are already identical.
-  const WIDTHS = [1280, 1440, 1600];
+  // width, 1440px is where VitePress switches to its centered tier, 1600px is
+  // past it, and 1920px and 2560px are in the wide tier (wide-layout.css),
+  // where the layout max width changes under both page types at once.
+  const WIDTHS = [1280, 1440, 1600, 1920, 2560];
   const PAGES = ['/', SKILLS_PAGE, TOPIC_PAGE];
 
   // Read the x of each control the row's inset can move. The gear is
