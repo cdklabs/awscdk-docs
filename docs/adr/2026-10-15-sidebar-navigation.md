@@ -189,8 +189,17 @@ VitePress sidebar shell:
   page (matched against `modules` stems on a whole-stem boundary — `<stem>.`
   or `<stem>-readme`, longest stem wins, so `aws_s3` cannot claim
   `aws_s3_deployment`); on section open; when a stored choice reopens its
-  section on load or on a style switch; and **every** chunk when the
-  in-sidebar symbol filter activates (it prunes the whole corpus). Fetches
+  section on load or on a style switch; once a closed section's heading
+  has stayed in view, with the sidebar not scrolling, for 100 ms; and
+  **every** chunk when the in-sidebar symbol filter activates (it prunes
+  the whole corpus). Loading the headings in view lets a tap, click or
+  Enter on any heading the reader can see usually find its items already
+  there, with no wait on the network while the caret turns. It costs one
+  chunk per closed heading that rests in view, about a screenful of
+  sections on each load and after each scroll that stops (14 chunks,
+  ~14 KB gzip, on the SNS Topic page at 1440×900, measured as below), and never more than
+  the whole tree (~472 KB) per session; headings that
+  only pass by during a scroll fetch nothing. Fetches
   go through one memoized retry-on-failure loader; a failed chunk leaves the
   skeleton usable. Internal links are native `<a>`, so the VitePress router
   preserves SPA navigation; active-state and auto-expansion derive from
@@ -206,9 +215,13 @@ VitePress sidebar shell:
 
 Framework-free logic (path normalization, active-branch computation, fetch
 memoization) lives in `docs/.vitepress/theme/api-sidebar.ts` and is unit
-tested. A cold load of a construct page fetches ~7.5 KB gzip of sidebar data
-(skeleton + that section) instead of ~275 KB for the whole tree; the largest
-single chunk is ~26 KB gzip. Server-rendered page content and its inline
+tested. Measured on the e2e fixture build (`npx projen docs:e2e`: the full
+skeleton and all 322 chunks; sizes are each served file gzipped at Node's
+default level), a cold load of the SNS Topic page at 1440×900 fetches ~27 KB
+gzip of sidebar data in 16 requests: ~13 KB for the skeleton and that
+section, and the rest for the 14 closed sections fully visible below the
+sticky header. The whole tree is ~472 KB, the upper bound per session,
+and the largest single chunk is ~29 KB gzip. Server-rendered page content and its inline
 cross-links are unaffected, so the crawlable link graph and Pagefind
 indexing ([search and filter](./2026-10-15-search-and-filter.md)) still work.
 

@@ -122,6 +122,7 @@ const scrollMemories = {
 };
 const scrollMemory = computed(() => scrollMemories[navStyle.value]);
 let scrollContainer: HTMLElement | null = null;
+let lastSidebarScroll = 0; // performance.now() of the last sidebar scroll
 let traversal = false; // set by popstate, consumed by the route watcher
 const recordScroll = createThrottledScrollSaver(
   (path, top) => scrollMemory.value.save(path, top),
@@ -150,6 +151,8 @@ const sticky = new StickyHeadings();
 // read here and handed over as values: reading either when the frame
 // runs would file it under the incoming route.
 function onSidebarScroll() {
+  lastSidebarScroll = performance.now();
+  rearmCoveredHeadings();
   if (!scrollContainer || !isApi.value) return;
   recordScroll(activePath.value, scrollContainer.scrollTop);
 }
@@ -273,6 +276,8 @@ function flashActive(active: HTMLElement) {
 // active style's tree, so a style switch reveals the page in the new tree.
 function syncActive() {
   if (status.value !== "ready") return;
+  // A preload may have left the package tree stale; the active page's leaf must be in it.
+  if (navStyle.value === "package") ensurePackageTree();
   const ancestors = activeAncestorKeys(tree.value, activePath.value, base.value);
   if (ancestors.size === 0) return;
   const next = new Set(expanded.value);
@@ -283,15 +288,20 @@ function syncActive() {
 // Generated page links live under `<API root>docs/`.
 const DOCS_PREFIX = `${API_SECTION}/docs/`;
 
-function loadChunk(name: string): Promise<void> {
+function loadChunk(name: string, preloading = false): Promise<void> {
   if (chunkItems.has(name)) return Promise.resolve();
   return loadApiSidebar(withBase(chunkAsset(name)), `chunk:${name}`).then((items) => {
-    if (chunkItems.has(name)) return;
-    chunkItems.set(name, items);
-    // Both styles read from here: the service tree takes the items in
-    // place, and the package tree is regrouped from the loaded chunks.
-    serviceTree.value = withChunk(serviceTree.value, name, items);
-    schedulePackageRebuild();
+    if (!chunkItems.has(name)) {
+      chunkItems.set(name, items);
+      // Both styles read from here: the service tree takes the items in
+      // place, and the package tree is regrouped from the loaded chunks.
+      serviceTree.value = withChunk(serviceTree.value, name, items);
+    }
+    // A preload lands in closed groups the reader cannot see into, so the package tree is only
+    // marked stale and rebuilt when next read: on open, navigation, Locate current page or a style
+    // switch. Any other load, including an open that joined a preload in flight, regroups at once.
+    if (preloading) packageStale = true;
+    else schedulePackageRebuild();
   });
 }
 
@@ -309,12 +319,20 @@ function loadAllChunks() {
   }
 }
 
-// The chunk files an open package entry needs but does not have yet. A
-// package is a top-level entry, so its key is its text.
-function unloadedPackageChunks(key: string): string[] {
-  ensurePackageTree();
+// The chunk files a package entry needs but does not have yet. A
+// package is a top-level entry, so its key is its text. `rebuild` refreshes a
+// stale package tree first; a preload skips it, since that would bypass the throttle.
+function unloadedPackageChunks(key: string, rebuild = true): string[] {
+  if (rebuild) ensurePackageTree();
   const entry = packageTree.value.find((node) => node.text === key);
   return (entry?.chunks ?? []).filter((name) => !chunkItems.has(name));
+}
+
+// The chunk files a group in the showing style needs but does not have yet.
+function unloadedChunks(key: string, rebuild: boolean): string[] {
+  if (navStyle.value === "package") return unloadedPackageChunks(key, rebuild);
+  const chunk = unloadedChunkForKey(serviceTree.value, key);
+  return chunk ? [chunk] : [];
 }
 
 // Load what the open entries of the package style need: the packages the
@@ -327,9 +345,9 @@ function loadOpenPackageChunks() {
 }
 
 // Load what the open groups of the service style need. A group the reader
-// opened before a reload comes back open from the stored choices, but only the
-// active page's chunk is fetched on load, so without this its child list
-// would render empty under an open caret.
+// opened before a reload comes back open from the stored choices, and only
+// closed headings are preloaded, so without this its child list would render
+// empty under an open caret.
 function loadOpenServiceChunks() {
   for (const key of expandedByStyle.value.service) {
     const chunk = unloadedChunkForKey(serviceTree.value, key);
@@ -401,6 +419,92 @@ function ensureLoaded() {
     });
 }
 
+// Start fetching a closed group's chunk once its heading has stayed in view, with
+// the sidebar not scrolling, for PRELOAD_DELAY_MS, so a tap, click or Enter on any
+// heading the reader can see usually finds its items loaded. Headings that only
+// pass by during a scroll, the reader's or the load-time reveal, fetch nothing.
+function preload(key: string) {
+  if (filtering.value || status.value !== "ready") return;
+  for (const name of unloadedChunks(key, false)) loadChunk(name, true).catch(() => undefined);
+}
+// Whether a heading's group still misses a chunk. Before the sidebar is ready nothing is known, so it counts.
+// The service style checks its own node in the item, so only a package entry is looked up here.
+function needsChunks(key: string): boolean {
+  if (status.value !== "ready" || filtering.value || navStyle.value !== "package") return true;
+  return unloadedPackageChunks(key, false).length > 0;
+}
+
+const PRELOAD_DELAY_MS = 100;
+const headingKeys = new Map<Element, string>();
+const headingTimers = new Map<Element, ReturnType<typeof setTimeout>>();
+// Headings in the scroller but under its sticky header: only a scroll or a header resize can uncover them.
+const coveredHeadings = new Set<Element>();
+let headingObserver: IntersectionObserver | undefined;
+let headerObserver: ResizeObserver | undefined;
+function clearHeadingTimer(el: Element) {
+  const timer = headingTimers.get(el);
+  if (timer !== undefined) clearTimeout(timer);
+  headingTimers.delete(el);
+  coveredHeadings.delete(el);
+}
+function armHeading(el: Element, delay: number) {
+  coveredHeadings.delete(el);
+  headingTimers.set(el, setTimeout(() => {
+    const still = performance.now() - lastSidebarScroll;
+    if (still < PRELOAD_DELAY_MS) {
+      armHeading(el, PRELOAD_DELAY_MS - still);
+      return;
+    }
+    headingTimers.delete(el);
+    // The observer reports a scroll one frame late and cannot see the sticky header painted over the
+    // scroller, so check the heading is visible now. One that has left the scroller is dropped when
+    // the observer reports it; one under the header waits for a scroll or a header resize.
+    if (!headingInView(el)) {
+      coveredHeadings.add(el);
+      return;
+    }
+    const key = headingKeys.get(el);
+    if (key !== undefined) preload(key);
+    // Nothing is left to fetch for it; a group closed again registers anew.
+    unwatchHeading(el);
+  }, delay));
+}
+function rearmCoveredHeadings() {
+  for (const el of [...coveredHeadings]) armHeading(el, PRELOAD_DELAY_MS);
+}
+function headingInView(el: Element): boolean {
+  const box = el.getBoundingClientRect();
+  const scroller = el.closest(".VPSidebar");
+  const scrollerBox = scroller?.getBoundingClientRect();
+  const header = scroller?.querySelector<HTMLElement>(".sidebar-header")?.getBoundingClientRect();
+  const top = Math.max(0, scrollerBox?.top ?? 0, header?.bottom ?? 0);
+  const bottom = Math.min(window.innerHeight, scrollerBox?.bottom ?? window.innerHeight);
+  return box.height > 0 && box.bottom > top && box.top < bottom;
+}
+function onHeadingsSeen(entries: IntersectionObserverEntry[]) {
+  for (const entry of entries) {
+    const el = entry.target;
+    if (!entry.isIntersecting) clearHeadingTimer(el);
+    else if (!headingTimers.has(el)) armHeading(el, PRELOAD_DELAY_MS);
+  }
+}
+function watchHeading(el: Element, key: string) {
+  if (typeof IntersectionObserver === "undefined" || !needsChunks(key)) return;
+  headingObserver ??= new IntersectionObserver(onHeadingsSeen);
+  const header = el.closest(".VPSidebar")?.querySelector(".sidebar-header");
+  if (!headerObserver && header && typeof ResizeObserver !== "undefined") {
+    headerObserver = new ResizeObserver(rearmCoveredHeadings);
+    headerObserver.observe(header);
+  }
+  headingKeys.set(el, key);
+  headingObserver.observe(el);
+}
+function unwatchHeading(el: Element) {
+  headingObserver?.unobserve(el);
+  headingKeys.delete(el);
+  clearHeadingTimer(el);
+}
+
 function toggle(key: string) {
   // While filtering, a toggle folds or unfolds the group for this filter
   // session only. Every chunk is already loaded for the filter, so nothing
@@ -419,12 +523,7 @@ function toggle(key: string) {
   // ancestor chain open for good.
   collapseMemory.value.set(key, open);
   if (!open) return;
-  if (navStyle.value === "package") {
-    for (const name of unloadedPackageChunks(key)) loadChunk(name).catch(() => undefined);
-  } else {
-    const chunk = unloadedChunkForKey(serviceTree.value, key);
-    if (chunk) loadChunk(chunk).catch(() => undefined);
-  }
+  for (const name of unloadedChunks(key, true)) loadChunk(name).catch(() => undefined);
 }
 
 // A style switch regroups the data already here: no new skeleton, no new
@@ -453,6 +552,8 @@ provide("apiSidebar", {
   activePath,
   base,
   toggle,
+  watchHeading,
+  unwatchHeading,
   filtering,
   filterCollapsed,
   displayLang: activeLanguage,
@@ -474,6 +575,12 @@ onUnmounted(() => {
   window.removeEventListener("popstate", onPopState);
   sticky.detach();
   if (packageCooldown !== undefined) clearTimeout(packageCooldown);
+  headingObserver?.disconnect();
+  headerObserver?.disconnect();
+  coveredHeadings.clear();
+  for (const timer of headingTimers.values()) clearTimeout(timer);
+  headingTimers.clear();
+  headingKeys.clear();
 });
 // Client-side navigation keeps this component mounted, so react to route
 // changes: load on first entry into /api/, and re-open the active branch.
