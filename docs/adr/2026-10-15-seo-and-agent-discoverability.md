@@ -91,9 +91,11 @@ containers become titled blockquotes. The type-metadata table is the only
 `<table>` the transform parses; every other table-shaped text passes through
 literally. Headings, prose, fenced code, tables and links pass through.
 
-The twin keeps code examples and signature blocks in every enabled language
+The twin keeps type-page `## Example` sections, README examples and initializer
+signatures in every enabled language
 (superseding the earlier rule that it dropped every non-canonical variant), so a reader or
-assistant working in Python, Java, C# or Go gets their own code. An example
+assistant working in Python, Java, C# or Go gets their own code. Member `@example`
+blocks are authored in TypeScript and appear once as a `ts` fence, as on the page. An example
 group becomes one fenced block per language, in the site's language order, each
 after a plain label line naming the language (`Python:`). A copy in another
 language whose first fence is tagged `ts` (docgen's `fenceFor(…, 'ts')`) is the TypeScript source docgen fills
@@ -207,8 +209,9 @@ run, including failures.
   a preview deploy gets a sitemap and canonicals rooted at its host.
 - Bumping `CONTENT_REVISED_DATE` re-dates every page without a later release of
   its own, in both the JSON-LD and the footer.
-- The twin keeps every enabled language's examples and signature blocks
-  (labeled), and member names, member tables, warnings and cross-links once in
+- The twin keeps every enabled language's type-page and README examples and
+  initializer signatures (labeled), member `@example` blocks once in TypeScript,
+  and member names, member tables, warnings and cross-links once in
   the canonical language; it drops badges, breadcrumb
   and search plumbing. Widening what it keeps is a change to one transform. The
   merge step has one non-shard input, and a missing twin tree or module index

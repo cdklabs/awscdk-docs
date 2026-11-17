@@ -4,8 +4,9 @@
  * The canonical pages are VitePress-flavored — frontmatter, a breadcrumb `<nav>`, `<Badge>` components, Pagefind
  * markers, `:::` containers, one `.lang-variant` copy of every signature per enabled language, and member lists
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
- * consume: code examples and signature blocks in every enabled language, each copy after a language label (a copy
- * docgen filled with the TypeScript source is named on the TypeScript label, not repeated); member names, types and
+ * consume: type-page and README examples and initializer signatures in every enabled language, each copy after a
+ * language label (a copy docgen filled with the TypeScript source is named on the TypeScript label, not repeated);
+ * member `@example` blocks once, in TypeScript, as on the page; member names, types and
  * inline signatures in the canonical language only; headings, prose, fenced code, tables and links once; member
  * lists rewritten as bullet lists; everything that exists for the browser dropped.
  *
@@ -154,9 +155,9 @@ const languageLabel = (variant: Element): string =>
   LANGUAGE_LABEL.get(variant.attribs['data-lang']) ?? variant.attribs['data-lang'] ?? '';
 
 /**
- * The group of sibling `.lang-variant` elements that starts at `el`: docgen emits one per enabled language, in the
- * site's language order, side by side. Whitespace between them is skipped. A language seen twice starts the next
- * group.
+ * The group of sibling `.lang-variant` elements that starts at `el`: one per language docgen embedded (every enabled
+ * language, or fewer for a type example with an untranslated language), in the site's language order, side by side.
+ * Whitespace between them is skipped. A language seen twice starts the next group.
  */
 function variantGroup(el: Element): Element[] {
   const siblings = el.parent?.children ?? [el];
