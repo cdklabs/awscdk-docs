@@ -1,9 +1,10 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
+import * as spec from '@jsii/spec';
 import { toAgentMarkdown } from '../src/docgen/agent-markdown.js';
 import { withoutLiteralsAndComments } from '../src/docgen/examples.js';
-import { generateDocs } from '../src/docgen/index.js';
+import { generateDocs, renderApiOverviewPage, renderOverviewPage } from '../src/docgen/index.js';
 import { importBindings, importModules, linkPackageReferences, readmeTypeLinksAttr } from '../src/docgen/readme-links.js';
 import { importStatements } from '../src/docgen/rosetta.js';
 
@@ -193,6 +194,20 @@ describe('README package references', () => {
     ]) {
       expect(linkPackageReferences(html, documented)).toBe(html);
     }
+  });
+});
+
+describe('README package references on the rendered overview pages', () => {
+  const span = '> <span class="package-reference">@aws-cdk/aws-amplify-alpha</span>';
+  const onSite = '> [`@aws-cdk/aws-amplify-alpha`](/v2/docs/@aws-cdk_aws-amplify-alpha-readme)';
+  const documented = new Set(['@aws-cdk/aws-amplify-alpha']);
+
+  test('the API overview and a module overview link a package reference on-site when given the documented set', () => {
+    const assembly = { name: 'x', readme: { markdown: `# T\n\n${span}\n` } } as unknown as spec.Assembly;
+    expect(renderApiOverviewPage(assembly, undefined, documented)).toContain(onSite);
+    expect(renderOverviewPage({ title: 'x', types: [], readme: `# T\n\n${span}\n`, packages: documented })).toContain(
+      onSite,
+    );
   });
 });
 

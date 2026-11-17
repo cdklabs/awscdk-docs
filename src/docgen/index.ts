@@ -1473,8 +1473,10 @@ function splitReadmeExamples(body: string, options?: ReadmeExampleOptions): Read
 
 /**
  * Prepare a jsii submodule README for embedding in a VitePress page:
- * outside code, strip HTML comments and neutralize repo-relative
- * image/link targets, then escape Vue-hostile characters fence-aware.
+ * outside code, strip HTML comments, neutralize repo-relative image/link
+ * targets and link package references (to this site's readme page for a
+ * package in `packages`, npm otherwise), then escape Vue-hostile characters
+ * fence-aware.
  * Returns '' for effectively-empty READMEs so callers can fall back to
  * the table-only layout.
  *
