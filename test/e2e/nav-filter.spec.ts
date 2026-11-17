@@ -444,6 +444,8 @@ test.describe('in-sidebar symbol filter', () => {
       await page.setViewportSize({ width: 375, height: 800 });
       await page.goto(TOPIC_PAGE);
       await page.locator('.VPLocalNav button.menu').click();
+      // Positive control: a click lost before hydration must fail here, not pass the closed-drawer check below.
+      await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
       const input = filterInput(page);
       await input.fill('Queue');
       const button = page.locator('.nav-filter-hint').getByRole('button');

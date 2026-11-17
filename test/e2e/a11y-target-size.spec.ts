@@ -44,7 +44,7 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
 
   // The sidebar filter's hint button exists only while a query is active and the symbol index has loaded, so the
   // scans above (empty filter) never evaluate it.
-  test('the filter hint button meets the 24px floor while a query is active', async ({ page }) => {
+  test('the filter hint button meets target size and contrast while a query is active', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.VPNav')).toBeVisible();
     await expect(page.locator('.api-sidebar .api-sidebar-nav')).toBeVisible();
@@ -82,6 +82,6 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
       .filter(Boolean)
       .join('\n');
 
-    expect(detail, `target-size violations with the filter hint shown:\n${detail}`).toBe('');
+    expect(detail, `axe violations on the filter hint:\n${detail}`).toBe('');
   });
 });
