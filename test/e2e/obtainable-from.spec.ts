@@ -81,25 +81,19 @@ test.describe('obtainable from row', () => {
     await expect(hidden).toBeHidden();
   });
 
-  test('the row is at most two lines at desktop width', async ({ page }) => {
+  test('the budget folds member entries on their widest translation', async ({ page }) => {
     // The 70-character budget is measured on the widest translation of each
     // entry. SubscriptionFilter's first two entries total 72 characters that
-    // way, so exactly one entry is visible and the other three fold; pin that
-    // input, then measure the line count the same way subclasses.spec.ts does
-    // on the Construct page.
+    // way, so exactly one entry is visible and the other three fold. The
+    // two-line geometry itself is guarded by subclasses.spec.ts on type rows:
+    // member entries use the same mono text, and the `<wbr>` and the hidden
+    // language variants add no width.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(SUBSCRIPTION_FILTER_PAGE);
 
     const row = page.locator('.inheritance-chain .chain-row#obtainable-from');
     await expect(row.locator(':scope > ul > li > a.chain-item')).toHaveCount(1);
     await expect(row.locator('.chain-more summary')).toHaveText('3 more');
-    const lines = await row.evaluate((el) => {
-      const cs = getComputedStyle(el);
-      const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
-      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-      return (el.getBoundingClientRect().height - pad) / lh;
-    });
-    expect(lines).toBeLessThanOrEqual(2);
   });
 
   for (const width of [375, 320]) {

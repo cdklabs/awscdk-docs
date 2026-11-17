@@ -417,9 +417,21 @@ describe('symbol page generation', () => {
     expect(page).toMatch(/<div class="chain-row" id="obtainable-from">.*href="\/v2\/docs\/aws-cdk-lib\.Arn\.html#split">Arn\.<wbr>split<\/a>/);
   });
 
-  test('the agent Markdown twin drops the <wbr> and lists the row as plain text', () => {
-    const twin = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.JsonNull.md'), 'utf-8')).markdown;
-    expect(twin).toContain('Obtainable from: JsonNull.INSTANCE');
+  test('the agent Markdown twin keeps cross-page links in the row, drops the <wbr> and non-TypeScript variants', () => {
+    // A same-page `#instance` link renders as text, like every other same-page link in the twin.
+    const jsonNull = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.JsonNull.md'), 'utf-8')).markdown;
+    expect(jsonNull).toContain('Obtainable from: JsonNull.INSTANCE');
+    expect(jsonNull).not.toContain('<wbr>');
+    // A cross-page entry keeps its deep link to the factory, and only the TypeScript variant appears.
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const index = buildTypeIndex([assembly, loadAssembly('constructs')]);
+    const usage = buildUsageIndex(index);
+    const ibucket = index.get('aws-cdk-lib.aws_s3.IBucket')!.type as spec.InterfaceType;
+    const page = renderInterfacePage({ type: ibucket, assembly, index, usage, linkFor, languages: ['ts', 'python'], emitExamples: false });
+    const twin = toAgentMarkdown(page).markdown;
+    expect(twin).toContain('Obtainable from: [Bucket.fromBucketArn](/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn), ');
+    expect(twin).not.toContain('from_bucket_arn');
     expect(twin).not.toContain('<wbr>');
   });
 

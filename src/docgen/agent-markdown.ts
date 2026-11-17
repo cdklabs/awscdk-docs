@@ -247,13 +247,15 @@ function renderInheritance(el: Element): string {
   for (const child of el.children) {
     if (!isElement(child)) continue;
     const cls = classes(child);
+    // Each item goes through the normal renderer so a linked item keeps its cross-page link, as the SEO ADR's
+    // agent-twins section promises; a same-page `#…` link renders as text like everywhere else in the twin.
+    const items = () => DomUtils.findAll((n) => classes(n).has('chain-item'), child.children)
+      .map((n) => render(n).replace(/\s+/g, ' ').trim());
     if (cls.has('chain-line')) {
-      const items = DomUtils.findAll((n) => classes(n).has('chain-item'), child.children).map((n) => inline(n));
-      lines.push(`Extends: ${items.join(' › ')}`);
+      lines.push(`Extends: ${items().join(' › ')}`);
     } else if (cls.has('chain-row')) {
       const label = DomUtils.findOne((n) => classes(n).has('chain-label'), child.children);
-      const items = DomUtils.findAll((n) => classes(n).has('chain-item'), child.children).map((n) => inline(n));
-      lines.push(`${label ? `${capitalize(textOf(label))}: ` : ''}${items.join(', ')}`);
+      lines.push(`${label ? `${capitalize(textOf(label))}: ` : ''}${items().join(', ')}`);
     }
   }
   return `\n${lines.join('  \n')}\n`;
