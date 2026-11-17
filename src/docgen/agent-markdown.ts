@@ -190,6 +190,11 @@ function publishedPageHref(href: string): string {
   return `${new URL(relative, publishedSiteUrl).href}${suffix}`;
 }
 
+/** Escape what would end a Markdown link destination early (parentheses) or split a table cell (a pipe). */
+function escapeDestination(url: string): string {
+  return url.replace(/[()|]/g, '\\$&');
+}
+
 /** Undo CommonMark punctuation escapes in a Markdown link destination. */
 function unescapeMarkdownHref(href: string): string {
   return href.replace(/\\([!-/:-@[-`{-~])/g, '$1');
@@ -199,15 +204,14 @@ function unescapeMarkdownHref(href: string): string {
 function rewriteMarkdownLinks(text: string): string {
   // A code span may wrap lines but never crosses a blank line, so a stray backtick cannot pair with a code span
   // paragraphs later and hide the links in between.
-  const linkOrCode = /(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)|\[((?:\\.|[^\\\]\n])+)\]\(([^\s)]+)\)/g;
+  const linkOrCode = /(?<![`\\])(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)|\[((?:\\.|[^\\\]\n])+)\]\(([^\s)]+)\)/g;
   return text.replace(linkOrCode, (match, delimiter: string, label: string, href: string) => {
     if (delimiter) {
       return match;
     }
     const unescaped = unescapeMarkdownHref(href);
     const published = publishedPageHref(unescaped);
-    // Parentheses would end the destination early and a pipe splits a table cell, so both are escaped again.
-    return published === unescaped ? match : `[${label}](${published.replace(/[()|]/g, '\\$&')})`;
+    return published === unescaped ? match : `[${label}](${escapeDestination(published)})`;
   });
 }
 
@@ -255,7 +259,7 @@ function render(node: Node): string {
     case 'a': {
       const text = inline(el);
       const href = el.attribs.href;
-      return href && !href.startsWith('#') ? `[${text}](${publishedPageHref(href)})` : text;
+      return href && !href.startsWith('#') ? `[${text}](${escapeDestination(publishedPageHref(href))})` : text;
     }
     case 'code':
       return `\`${textOf(el)}\``;

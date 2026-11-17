@@ -129,6 +129,7 @@ describe('toAgentMarkdown', () => {
         'Keep [cdn](//cdn.example.com/x), see ![img](/v2/docs/x.png),',
         'and see [index](/llms.txt).',
         '<a href="/v2/docs/a b">spaced</a>',
+        '<a href="/v2/docs/a|b">piped</a>',
         'Keep [wiki](https://en.wikipedia.org/wiki/Foo_\\(bar\\)) and [pipe](https://example.com/a\\|b).',
         'Keep `[code](/v2/docs/Code)` unchanged; [escaped](/v2/docs/a\\_b) resolves too.',
         'See [s](/stability.md), [paren](/v2/docs/a\\(b), [bar](/v2/docs/a\\|b) and [shot](/img/Foo.PNG).',
@@ -149,6 +150,7 @@ describe('toAgentMarkdown', () => {
         'Keep [cdn](//cdn.example.com/x), see ![img](https://docs.example.com/cdk/api/v2/docs/x.png),',
         'and see [index](https://docs.example.com/cdk/api/llms.txt).',
         '[spaced](/v2/docs/a b)',
+        '[piped](https://docs.example.com/cdk/api/v2/docs/a\\|b.html)',
         'Keep [wiki](https://en.wikipedia.org/wiki/Foo_\\(bar\\)) and [pipe](https://example.com/a\\|b).',
         'Keep `[code](/v2/docs/Code)` unchanged; [escaped](https://docs.example.com/cdk/api/v2/docs/a_b.html) resolves too.',
         'See [s](https://docs.example.com/cdk/api/stability.html), [paren](https://docs.example.com/cdk/api/v2/docs/a\\(b.html), [bar](https://docs.example.com/cdk/api/v2/docs/a\\|b.html) and [shot](https://docs.example.com/cdk/api/img/Foo.PNG).',
@@ -175,6 +177,13 @@ describe('toAgentMarkdown', () => {
     const page = 'Press the ` key.\n\nSee [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket) and `Foo`.\n';
     expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
       'Press the ` key.\n\nSee [Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html) and `Foo`.\n',
+    );
+  });
+
+  test('an escaped backtick does not open a code span', () => {
+    const page = 'Use \\` here, see [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket) and `Foo`.\n';
+    expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
+      'Use \\` here, see [Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html) and `Foo`.\n',
     );
   });
 
