@@ -265,7 +265,7 @@ function onKeydown(e: KeyboardEvent) {
   min-width: 0;
   /* The 24px button overhangs the 18px row by 3px each side, so the header keeps its height. */
   margin-block: -3px;
-  padding: 0 12px;
+  padding: 0 9px;
   overflow: hidden;
   color: var(--vp-c-text-3);
   font-size: 12px;
@@ -279,7 +279,8 @@ function onKeydown(e: KeyboardEvent) {
   min-width: 24px;
   max-width: 100%;
   min-height: 24px;
-  padding: 0;
+  /* 3px each side gives the inset focus ring room that is not the chip's border or the name. */
+  padding: 0 3px;
   overflow: hidden;
   color: inherit;
   font: inherit;
