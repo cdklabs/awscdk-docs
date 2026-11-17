@@ -80,9 +80,6 @@ async function onEnter() {
   }
   const target = filterSymbols(symbols.value, pressed, 1)[0];
   if (target) {
-    // Activated from the hint button, the focused element is about to be removed with the hint:
-    // move focus to the input first so it never falls to <body>.
-    inputEl.value?.focus();
     clear();
     await router.go(withBase(target.link));
     inputEl.value?.focus();
