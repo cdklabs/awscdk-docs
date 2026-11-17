@@ -50,8 +50,9 @@ search index do not change.
 
 ## Consequences
 
-- Each service shows one `Overview`, and its preview package reads as
-  `Developer Preview`.
+- Each service shows at most one `Overview`, which is its primary module's
+  readme, and the service's own experimental single-token alpha package reads
+  as `Developer Preview`.
 - A new readme with its own page title, like the IoT actions one, needs an
   entry in `FIXED_README_LABELS`; otherwise it is named by its module.
 - A section whose readmes have no primary `aws-cdk-lib` module, and that holds

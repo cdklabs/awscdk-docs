@@ -554,7 +554,8 @@ function displayToken(token: string): string {
  * `constructs` base library is a group of its own; Framework headings are the package-qualified module names sorted
  * by {@link frameworkSectionCompare}, while Services stay alphabetical.
  *
- * Every section starts with direct `Overview` link(s) to its (sub)module page(s), then Core and `constructs` keep a
+ * Every section starts with direct readme link(s) to its (sub)module page(s) (see `overviewItems` for their labels),
+ * then Core and `constructs` keep a
  * flat kind grouping; every other section groups by resource (derived from construct names). Inside a resource,
  * construct types are listed directly (no "Constructs" heading) and the remaining kind groups start collapsed.
  * Sections and resource groups are collapsible. This is a nav-grouping change only: page URLs and cross-reference

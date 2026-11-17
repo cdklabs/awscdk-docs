@@ -1435,14 +1435,43 @@ describe('buildServiceSidebar', () => {
           moduleLabels: {
             ts: 'aws-cdk-lib/aws_s3_deployment',
             python: 'aws_cdk.aws_s3_deployment',
+            java: 'software.amazon.awscdk.services.s3.deployment',
             go: 'github.com/aws/aws-cdk-go/awscdk/v2/awss3deployment',
           },
         }),
-      ], ['ts', 'python', 'go']);
+      ], ['ts', 'python', 'java', 'go']);
       const overviews = sidebar[0].items!.slice(0, 2);
       expect(overviews[0]).toEqual({ text: 'Overview', link: '/api/modules/aws-cdk-lib/aws-s3' });
       expect(overviews[1].text).toBe('aws_s3_deployment');
-      expect(overviews[1].labels).toEqual({ python: 'aws_cdk.aws_s3_deployment', go: 'awss3deployment' });
+      // Python and Java show the package name readers import; only Go, whose label would be a URL path, is shortened.
+      expect(overviews[1].labels).toEqual({
+        python: 'aws_cdk.aws_s3_deployment',
+        java: 'software.amazon.awscdk.services.s3.deployment',
+        go: 'awss3deployment',
+      });
+    });
+
+    test('only the alpha package root readme is Developer Preview, not a submodule of the same package', () => {
+      const sidebar = sidebarSections([
+        entry({
+          name: 'CfnApp',
+          kind: 'Construct (L1)',
+          submodule: 'aws_amplify',
+          link: '/cfn-app',
+          indexLink: '/v2/docs/aws-cdk-lib.aws_amplify-readme',
+        }),
+        alphaRoot('@aws-cdk/aws-amplify-alpha', 'App', 'awscdkamplifyalpha'),
+        {
+          ...alphaRoot('@aws-cdk/aws-amplify-alpha', 'Branch', 'awscdkamplifyalpha'),
+          submodule: 'aws_amplify_extra',
+          indexLink: '/v2/docs/@aws-cdk_aws-amplify-alpha.aws_amplify_extra-readme',
+        },
+      ]);
+      expect(sidebar[0].items!.slice(0, 3).map((i) => i.text)).toEqual([
+        'Overview',
+        'Developer Preview',
+        'aws_amplify_extra',
+      ]);
     });
 
     test('a single-submodule Overview stays language-neutral with no labels', () => {
