@@ -655,10 +655,22 @@ a.chain-item:hover {
 }
 
 /* With 2+ languages the row's flex child is the variant span, not the name or
-   type inside it: `nowrap` keeps the pair from breaking apart. */
+   type inside it: `nowrap` keeps the pair from breaking apart. The span is a
+   flex container of its own so the type can shrink beside its name: an
+   inline-block type's `max-width: 100%` is the whole span, so after the name
+   it would run past the column. */
 .member-list .member-line > .lang-variant {
+  display: inline-flex;
+  align-items: flex-end;
   min-width: 0;
   white-space: nowrap;
+}
+
+/* As flex items the name and the signature are blocks, so the stock inline-code
+   padding would add to the row's height. */
+.member-list .member-line > .lang-variant > .member-name,
+.member-list .member-line > .lang-variant > .member-signature {
+  padding: 0;
 }
 
 /* A method row's variant span holds the whole signature, and the `nowrap`
@@ -965,6 +977,15 @@ a.chain-item:hover {
     overflow: visible;
   }
 
+  /* A single token wider than the column (a 60-character attribute name, a nested `Owner.Property`
+     type, Python's `typing.List[typing.Union[IResolvable,`) has no break opportunity; `anywhere`
+     adds them and, unlike the inherited `break-word`, shrinks the stacked line's fit-content width
+     so the token wraps instead of widening the page. */
+  .member-list .member-name,
+  .member-list .member-type {
+    overflow-wrap: anywhere;
+  }
+
   /* The type's clamp is `max-width: 100%`, which stops binding once the text
      may wrap. The default has no clamp above this breakpoint; `max-width: none`
      keeps it that way here too. */
@@ -974,6 +995,7 @@ a.chain-item:hover {
 
   .member-list .member-line > .lang-variant {
     white-space: normal;
+    flex-wrap: wrap;
   }
 
   .inheritance-chain {

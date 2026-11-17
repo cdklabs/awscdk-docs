@@ -30,8 +30,10 @@ add one stylesheet, `docs/.vitepress/theme/responsive.css`, that patches only
 our custom layer:
 
 - a horizontal overflow guard (`min-width: 0` on the doc containers,
-  `overflow-wrap` on content) so any wide element degrades into local scrolling
-  instead of page-level overflow;
+  `overflow-wrap` on content, `overflow-x: auto` on every `pre`, since an
+  indented code block in a jsii remark renders as a bare `<pre>` with no
+  `language-` wrapper to scroll it) so any wide element degrades into local
+  scrolling instead of page-level overflow;
 - mobile sizing for docgen `pre.signature` blocks (momentum scrolling, tighter
   padding below 768px; generated initializer signatures wrap rather than scroll);
 - heading/badge wrapping so title badges never widen the page;

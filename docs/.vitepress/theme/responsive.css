@@ -40,6 +40,12 @@
   overflow-wrap: break-word;
 }
 
+/* An indented code block in a jsii remark renders as a bare <pre>, with no
+   `language-` wrapper to give it the stock horizontal scroll. */
+.vp-doc pre {
+  overflow-x: auto;
+}
+
 /* ------------------------------------------------------------------ *
  * Docgen signature blocks
  *

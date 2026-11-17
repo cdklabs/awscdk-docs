@@ -1107,17 +1107,25 @@ describe('API page layout', () => {
       // The row grew in the multi-language shape because the line BROKE
       // between the name and the type — measured with the type at the same x
       // as the name, one line below it — not because the type wrapped
-      // internally. `min-width: 0` then lets the span shrink past its content
-      // so the type has a width to clamp to. No clip is needed here: without a
-      // right-hand control there is no gutter to protect.
+      // internally. `min-width: 0` then lets the span shrink past its content.
       const wrapper = declarations(css(), '.member-list .member-line > .lang-variant');
       expect(wrapper).toContain('white-space: nowrap');
       expect(wrapper).toContain('min-width: 0');
-      // It must NOT become a flex container: that blockifies the name `code`
-      // beside it, whose height then comes from line-height rather than the
-      // font, growing every row by 4px and pushing the disclosure control off
-      // center against the tolerance the member-row e2e spec asserts.
-      expect(wrapper).not.toMatch(/display: (inline-)?flex/);
+      // The span is a flex container so the type can shrink beside its name:
+      // as an inline-block its `max-width: 100%` is the whole span, so after
+      // the name it ran past the column. Blockifying the name and the
+      // signature exposes the stock inline-code padding as height, which the
+      // reset below removes; end alignment keeps the type's bottom on the
+      // name's, as `vertical-align: bottom` did. Row heights are measured by
+      // the member-row and member-type-clamp e2e specs.
+      expect(wrapper).toContain('display: inline-flex');
+      expect(wrapper).toContain('align-items: flex-end');
+      for (const selector of [
+        '.member-list .member-line > .lang-variant > .member-name',
+        '.member-list .member-line > .lang-variant > .member-signature',
+      ]) {
+        expect(declarations(css(), selector)).toContain('padding: 0');
+      }
     });
 
     test('the signature releases the wrapper nowrap so a long one wraps', () => {
