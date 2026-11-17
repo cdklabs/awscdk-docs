@@ -96,9 +96,10 @@ produced. A "Copy Markdown" split button at the top of the page, rendered in the
 The main button fetches the twin from the same origin and copies its text; a
 menu next to it holds a "View as Markdown" link that opens the file in a new
 tab. That relies on the host serving `.md` as `text/markdown` or `text/plain`
-(without `Content-Disposition: attachment`): the publishing pipeline must set
-that Content-Type on upload, as the local e2e server does. The footer no longer carries a Markdown link, and a page without a twin
-shows no button.
+without `Content-Disposition: attachment`; this repository does not set that
+metadata (see [publishing and hosting](./2026-10-15-publishing-and-hosting.md)).
+The footer no longer carries a Markdown link, and a page without a twin shows
+no button.
 `merge-shards.cjs` overlays the tree once, after the shards and before the page
 count, behind an explicit `--agent-markdown <dir>` flag; a missing tree fails
 the merge. The hand-written homepage is the one exception: it declares

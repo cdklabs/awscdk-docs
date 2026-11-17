@@ -285,6 +285,16 @@ describe('copyMarkdownFrom', () => {
     expect(written).toEqual(['# X']);
   });
 
+  test('falls back to writeText when the browser has write but no ClipboardItem', async () => {
+    const board = clipboard();
+    const result = await copyMarkdownFrom('/x.md', {
+      fetch: async () => ({ ok: true, text: async () => '# X' }),
+      clipboard: { ...board, write: async () => { throw new Error('write must not be used without item'); } },
+    });
+    expect(result).toBe('copied');
+    expect(board.written).toEqual(['# X']);
+  });
+
   test('reports failure from the write path when the file cannot be fetched', async () => {
     const result = await copyMarkdownFrom('/x.md', {
       fetch: async () => ({ ok: false, text: async () => 'no' }),

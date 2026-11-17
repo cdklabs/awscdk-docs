@@ -33,6 +33,32 @@ test.describe('Copy Markdown control', () => {
     await expect(page.locator('.copy-markdown [role="status"]')).toHaveText('');
   });
 
+  test('a second copy within two seconds re-announces: the live region empties, then fills again', async ({ page }) => {
+    await open(page);
+    const status = page.locator('.copy-markdown [role="status"]');
+    const copy = page.locator('.copy-markdown-main');
+    await copy.click();
+    await expect(status).toHaveText('Copied');
+
+    // Record every text the live region takes from here on, so an empty state that is only visible for a moment
+    // still counts.
+    await page.evaluate(() => {
+      const node = document.querySelector('.copy-markdown [role="status"]')!;
+      const seen: string[] = [];
+      (window as unknown as { __statusSeen: string[] }).__statusSeen = seen;
+      new MutationObserver(() => seen.push(node.textContent ?? '')).observe(node, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    });
+    await copy.click();
+    await expect(status).toHaveText('Copied');
+    const seen = await page.evaluate(() => (window as unknown as { __statusSeen: string[] }).__statusSeen);
+    expect(seen).toContain('');
+    expect(seen[seen.length - 1]).toBe('Copied');
+  });
+
   test('shows Copy failed when the file cannot be fetched and the menu stays usable', async ({ page }) => {
     await page.route(`**${twin}`, (route) => route.fulfill({ status: 404, body: 'missing' }));
     await open(page);

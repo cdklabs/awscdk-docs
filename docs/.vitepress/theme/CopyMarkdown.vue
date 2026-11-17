@@ -1,5 +1,5 @@
-<!-- "Copy Markdown" split button (a labelled region, so landmark navigation reaches it) rendered from the doc-before slot, at the top of the page above the breadcrumb
-     bar (the favorite star teleports into the breadcrumb bar on API pages). The main button copies the page's
+<!-- "Copy Markdown" split button (a labeled region, so landmark navigation reaches it), rendered from the
+     doc-before slot at the top of the page, above the breadcrumb bar. The main button copies the page's
      Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page without a
      twin (no `agentMarkdown` frontmatter) renders nothing. -->
 <script setup lang="ts">
@@ -16,6 +16,7 @@ const markdownUrl = computed(() => {
 });
 
 const RESULT_MS = 2000;
+const REANNOUNCE_MS = 100;
 const result = ref<CopyResult | undefined>(undefined);
 const menuOpen = ref(false);
 // Set once hydration has run, so a test (or any script) can tell a live button from the server-rendered shell.
@@ -43,10 +44,12 @@ async function copy(): Promise<void> {
         : (text) =>
             new ClipboardItem({ "text/plain": text.then((value) => new Blob([value], { type: "text/plain" })) }),
   });
-  // A repeat of the same result must still change the live region, or screen readers stay silent: clear it for a
-  // tick first. The clipboard write has already started by now, so the click's user activation is not at stake.
+  // A repeat of the same result must still change the live region, or screen readers stay silent: clear it and
+  // wait long enough for the empty state to render before setting it again. A single tick is not enough, since
+  // both updates would land before the browser paints. The clipboard write has already started, so the click's
+  // user activation is not at stake.
   result.value = undefined;
-  await nextTick();
+  await new Promise((resolve) => setTimeout(resolve, REANNOUNCE_MS));
   result.value = outcome;
   clearTimeout(resetTimer);
   resetTimer = setTimeout(() => (result.value = undefined), RESULT_MS);
