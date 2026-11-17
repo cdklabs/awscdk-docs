@@ -238,24 +238,25 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
   });
 
   // A member line with one variant span per language, and the flags and default outside them, as docgen emits it.
-  const variantRow = (python: string, extra = '') => [
+  const variantRow = (python: string) => [
     '<div class="member-row" id="bucketname"><div class="member-line">'
     + '<span class="lang-variant" data-lang="ts"><code class="member-name">bucketName</code>'
     + '<span class="member-type" data-pagefind-ignore title="string">string</span></span>'
     + `<span class="lang-variant" data-lang="python" data-pagefind-ignore>${python}</span>`
-    + `${extra}<span class="member-required">required</span>`
+    + '<span class="member-required">required</span><span class="member-static">static</span>'
     + '<span class="member-default" data-pagefind-ignore>= "x"</span></div>',
     '<div class="member-summary">Physical name of this bucket.</div></div>',
     '',
   ].join('\n');
 
-  test('a member whose name reads differently in another language gets one labeled sub-bullet', () => {
+  test('a member whose name reads differently in another language gets a sub-bullet with only its name and type', () => {
     const page = variantRow('<code class="member-name">bucket_name</code>'
       + '<span class="member-type" data-pagefind-ignore title="str">str</span>');
+    // The flags and the TypeScript default stay on the head; the sub-bullet carries no TypeScript value.
     expect(toAgentMarkdown(page).markdown).toBe([
-      '- `bucketName`: string (required) = "x" — Physical name of this bucket.',
+      '- `bucketName`: string (required) (static) = "x" — Physical name of this bucket.',
       '',
-      '  - Python: `bucket_name`: str (required) = "x"',
+      '  - Python: `bucket_name`: str',
       '',
     ].join('\n'));
   });
@@ -263,7 +264,26 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
   test('a member that reads the same in every language gets no sub-bullet', () => {
     const page = variantRow('<code class="member-name">bucketName</code>'
       + '<span class="member-type" data-pagefind-ignore title="string">string</span>');
-    expect(toAgentMarkdown(page).markdown).toBe('- `bucketName`: string (required) = "x" — Physical name of this bucket.\n');
+    expect(toAgentMarkdown(page).markdown)
+      .toBe('- `bucketName`: string (required) (static) = "x" — Physical name of this bucket.\n');
+  });
+
+  test('an example copy identical to the first is dropped, not labeled as another language', () => {
+    const fence = ['', '```ts', 'new Bucket(this, "B");', '```', ''];
+    const page = [
+      '<div class="lang-variant" data-lang="ts">', ...fence,
+      '</div><div class="lang-variant" data-lang="python" data-pagefind-ignore>', ...fence,
+      '</div>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe('```ts\nnew Bucket(this, "B");\n```\n');
+  });
+
+  test('languages that share an inline spelling are listed together', () => {
+    const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
+    const page = `See ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}${v('dotnet', 'BucketArn')}${v('go', 'BucketArn')}.\n`;
+    expect(toAgentMarkdown(page).markdown)
+      .toBe('See `bucketArn` (Python: `bucket_arn`; C# / .NET, Golang: `BucketArn`).\n');
   });
 
   test('without TypeScript the first language is the head line', () => {

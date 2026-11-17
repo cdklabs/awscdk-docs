@@ -175,20 +175,32 @@ function startsVariantGroup(el: Element): boolean {
 
 /**
  * One group of language variants. A block variant (an example) is repeated once per language, each copy after a
- * plain label line naming its language. An inline variant (a name in prose or a parameter list) keeps the
- * canonical text and adds, in parentheses, the other languages' spellings where they differ.
+ * plain label line naming its language; a copy identical to the first (an untranslated snippet docgen fills with the
+ * TypeScript source) is dropped rather than labeled as another language. An inline variant (a name in prose or a
+ * parameter list) keeps the canonical text and adds, in parentheses, the other spellings where they differ, with the
+ * languages that share a spelling listed together.
  */
 function renderVariantGroup(group: Element[]): string {
   if (group.length === 1) return children(group[0]);
+  // Protected code is a placeholder per occurrence, so copies compare equal only once restored.
+  const restored = (v: Element) => restoreProtected(children(v)).trim();
+  const first = restored(group[0]);
   if (group[0].name.toLowerCase() === 'div') {
-    return group.map((v) => `\n${languageLabel(v)}:\n\n${children(v).trim()}\n`).join('\n');
+    const kept = group.filter((v, i) => i === 0 || restored(v) !== first);
+    if (kept.length === 1) return children(group[0]);
+    return kept.map((v) => `\n${languageLabel(v)}:\n\n${children(v).trim()}\n`).join('\n');
   }
   const canonical = children(group[0]).trim();
-  const others = group
-    .slice(1)
-    .map((v) => [languageLabel(v), children(v).trim()] as const)
-    .filter(([, text]) => text !== canonical);
-  return others.length ? `${canonical} (${others.map(([label, text]) => `${label}: ${text}`).join('; ')})` : canonical;
+  const byText = new Map<string, { text: string; labels: string[] }>();
+  for (const v of group.slice(1)) {
+    const key = restored(v);
+    if (key === first) continue;
+    const entry = byText.get(key) ?? { text: children(v).trim(), labels: [] };
+    entry.labels.push(languageLabel(v));
+    byText.set(key, entry);
+  }
+  const others = [...byText.values()].map(({ text, labels }) => `${labels.join(', ')}: ${text}`);
+  return others.length ? `${canonical} (${others.join('; ')})` : canonical;
 }
 
 function children(el: Element): string {
@@ -347,16 +359,18 @@ function renderMemberRow(el: Element): string {
   const rest = el.children.filter((n) => n !== line && n !== summary);
 
   // The bullet carries the canonical name and type; each other language whose name or type reads differently
-  // gets one labeled sub-bullet under it. The canonical spelling is the first variant, as docgen emits it: that is
-  // TypeScript when it is enabled, and otherwise the first enabled language, so a build without TypeScript reads the
-  // same way.
+  // gets one labeled sub-bullet under it, with that language's name and type only. Flags and the default stay on the
+  // head: the default is the jsii `@default` text, written in TypeScript. The canonical spelling is the first
+  // variant, as docgen emits it: that is TypeScript when it is enabled, and otherwise the first enabled language, so a
+  // build without TypeScript reads the same way.
   const variants = line ? DomUtils.findAll(isVariant, line.children) : [];
   const canonical = variants[0];
   const head = line ? renderMemberLine(line, canonical) : '';
+  const headIdentity = canonical ? renderMemberIdentity(canonical) : '';
   const spellings = variants
     .filter((v) => v !== canonical)
-    .map((v) => [languageLabel(v), renderMemberLine(line!, v)] as const)
-    .filter(([, text]) => text !== head)
+    .map((v) => [languageLabel(v), renderMemberIdentity(v)] as const)
+    .filter(([, text]) => text && text !== headIdentity)
     .map(([label, text]) => `- ${label}: ${text}`);
   const summaryText = summary ? inline(summary) : '';
   // Restore fences before indenting so every line of a block — content and closer, not just the opener — sits
@@ -366,6 +380,16 @@ function renderMemberRow(el: Element): string {
     .join('\n\n');
   const indented = body ? `\n${body.split('\n').map((l) => (l ? `  ${l}` : '')).join('\n')}\n` : '';
   return `- ${head}${summaryText ? ` — ${summaryText}` : ''}\n${indented}`;
+}
+
+/** One language's name and type (or signature) of a member, from that language's variant alone. */
+function renderMemberIdentity(variant: Element): string {
+  const find = (cls: string) => DomUtils.findOne((n) => classes(n).has(cls), variant.children);
+  const signature = find('member-signature');
+  if (signature) return `\`${textOf(signature)}\``;
+  const name = find('member-name');
+  const type = find('member-type');
+  return name ? `\`${textOf(name)}\`${type ? `: ${inline(type)}` : ''}` : '';
 }
 
 /**
