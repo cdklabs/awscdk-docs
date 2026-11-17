@@ -111,8 +111,11 @@ sub-bullet per spelling of the name and type that differs from it; languages
 that share a spelling share the sub-bullet. A sub-bullet
 carries that name and type only, the type as plain code (the head already
 links it): the default is the jsii `@default` text,
-written in TypeScript. The languages are the ones the page was built with, so a
-one-language build emits one copy and no labels.
+written in TypeScript. A page with variants in two or more languages gets one
+blockquote line under its title naming the language of the unlabeled spellings,
+so an agent can tell a shared spelling from a missing one. The languages are
+the ones the page was built with, so a one-language build emits one copy, no
+labels and no legend.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the
@@ -129,10 +132,12 @@ transforms its finished Markdown into the root twin during the same overlay
 step, keeping the advertised file and its producer together. The compressed
 corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
 `docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 29 MB with
-this change, up from about 12 MB at `f18f6ea` when the twin kept TypeScript
-only. The deployed `docs-site` zip, which `package-site.sh` checks against its
-900 MiB `MAX_ZIP_MB` gate, grows from 661 MiB at `f36e864` to 684 MiB with
-this change. The tree is overlaid once, with no per-shard cost.
+every enabled language (labeled copies and member sub-bullets), up from about
+12 MB at `f18f6ea` when the twin kept TypeScript only. The deployed
+`docs-site` zip (the same five-language `aws-cdk-lib` 2.277.0 build), which
+`package-site.sh` checks against its 900 MiB `MAX_ZIP_MB` gate, grows from 661
+MiB at `f36e864` to 684 MiB with every-language twins. The tree is overlaid
+once, with no per-shard cost.
 
 ### llms.txt index
 

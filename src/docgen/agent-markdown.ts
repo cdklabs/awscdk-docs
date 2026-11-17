@@ -54,8 +54,22 @@ export function toAgentMarkdown(page: string): AgentMarkdown {
   out = unwrapContainers(out);
   // Explicit heading anchors (`## Title {#id}`) are markdown-it-attrs syntax, not Markdown.
   out = out.replace(/^(#{1,6} .*?) \{#[^}\n]*\}$/gm, '$1');
+  out = withLanguageLegend(out, doc.children);
   out = out.replace(/[ \t]+$/gm, '');
   return { markdown: `${collapseBlankLines(out).trim()}\n` };
+}
+
+/**
+ * Under the page title, one line saying which language the unlabeled names are in. The canonical spelling carries no
+ * label, and a language that spells a name the same way is not repeated, so without the line an agent could not
+ * tell "same spelling" from "not documented". Only a page with variants in two or more languages gets it.
+ */
+function withLanguageLegend(out: string, nodes: Node[]): string {
+  const variants = DomUtils.findAll(isVariant, nodes);
+  if (new Set(variants.map((v) => v.attribs['data-lang'])).size < 2) return out;
+  const legend = `> Names, types and signatures are shown in ${languageLabel(variants[0])}; another language's `
+    + 'spelling follows, labeled, only where it differs.';
+  return out.replace(/^# .*$/m, (title) => `${title}\n\n${legend}`);
 }
 
 /**

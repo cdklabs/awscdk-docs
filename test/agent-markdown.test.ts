@@ -377,6 +377,39 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect(toAgentMarkdown(page).markdown).toBe('- `tags`: `List<String>`\n\n  - Golang: `Tags`: `*[]*string`\n');
   });
 
+  test('a parameter list inside a member body keeps every language', () => {
+    const p = (lang: string, n: string) => `<span class="lang-variant" data-lang="${lang}">\`${n}\`</span>`;
+    const page = '<div class="member-row" id="addrule"><div class="member-line">'
+      + '<span class="lang-variant" data-lang="ts"><code class="member-signature">addRule(ruleName)</code></span>'
+      + '<span class="lang-variant" data-lang="python"><code class="member-signature">add_rule(rule_name)</code></span>'
+      + '</div><details class="member-disclosure"><summary>1 parameter</summary><div class="member-details">\n\n'
+      + `- ${p('ts', 'ruleName')}${p('python', 'rule_name')} — The rule.\n\n</div></details></div>\n`;
+    expect(toAgentMarkdown(page).markdown).toContain('  - `ruleName` (Python: `rule_name`) — The rule.');
+  });
+
+  describe('the language legend under the title', () => {
+    const legend = (lang: string) => `> Names, types and signatures are shown in ${lang}; another language's `
+      + 'spelling follows, labeled, only where it differs.';
+    const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
+
+    test('names the canonical language on a page with two or more', () => {
+      const page = `# Bucket\n\nSee ${v('ts', 'bucketArn')}${v('python', 'bucket_arn')}.\n`;
+      expect(toAgentMarkdown(page).markdown)
+        .toBe(`# Bucket\n\n${legend('TypeScript')}\n\nSee \`bucketArn\` (Python: \`bucket_arn\`).\n`);
+    });
+
+    test('names the first language in a build without TypeScript', () => {
+      const page = `# Bucket\n\nSee ${v('python', 'bucket_arn')}${v('java', 'bucketArn')}.\n`;
+      expect(toAgentMarkdown(page).markdown)
+        .toBe(`# Bucket\n\n${legend('Python')}\n\nSee \`bucket_arn\` (Java: \`bucketArn\`).\n`);
+    });
+
+    test('is left out of a one-language page', () => {
+      const page = `# Bucket\n\nSee ${v('ts', 'bucketArn')}.\n`;
+      expect(toAgentMarkdown(page).markdown).toBe('# Bucket\n\nSee `bucketArn`.\n');
+    });
+  });
+
   test('a sub-bullet type is a code span, so a generic does not read as a tag', () => {
     const page = [
       '<div class="member-row" id="tags"><div class="member-line">'
