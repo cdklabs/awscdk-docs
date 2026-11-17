@@ -93,13 +93,28 @@ test.describe('Copy Markdown control', () => {
     }, SQS_OVERVIEW_PAGE);
     await expect(page).toHaveURL(new RegExp(`${SQS_OVERVIEW_PAGE}$`));
 
+    // Log every text the button and the live region take from here on. A retrying assertion would miss a stale
+    // "Copied" that the 2 s reset clears inside its 5 s window, but the log keeps it.
+    await page.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { __textSeen: string[] }).__textSeen = seen;
+      const read = () => {
+        seen.push(document.querySelector('.copy-markdown-main')?.textContent ?? '');
+        seen.push(document.querySelector('.copy-markdown [role="status"]')?.textContent ?? '');
+      };
+      read();
+      new MutationObserver(read).observe(document.body, { childList: true, characterData: true, subtree: true });
+    });
+
     const done = page.waitForResponse((response) => response.url().endsWith(twin));
     release();
     await done;
-    // Past the 100 ms re-announce delay, so a stale result would be on screen by now.
+    // Past the 100 ms re-announce delay, so a stale result would have been logged by now.
     await page.waitForTimeout(300);
-    await expect(copy).toHaveText('Copy Markdown');
-    await expect(page.locator('.copy-markdown [role="status"]')).toHaveText('');
+    const seen = await page.evaluate(() => (window as unknown as { __textSeen: string[] }).__textSeen);
+    expect(seen).not.toContain('Copied');
+    expect(seen).not.toContain('Copy failed');
+    expect(await copy.textContent()).toBe('Copy Markdown');
   });
 
   test('a slow first copy that fails does not overwrite a second copy that succeeded', async ({ page }) => {
@@ -107,8 +122,14 @@ test.describe('Copy Markdown control', () => {
     // Stub the clipboard so Chromium's own write queue cannot decide the outcome. Each write still waits for its
     // blob, so a failed fetch rejects that write. The real clipboard round trip is covered by the first test.
     await page.addInitScript(() => {
+      const win = window as unknown as { __settled: number };
+      win.__settled = 0;
       navigator.clipboard.write = async (items) => {
-        await items[0].getType('text/plain');
+        try {
+          await items[0].getType('text/plain');
+        } finally {
+          win.__settled += 1;
+        }
       };
     });
     let release!: () => void;
@@ -129,11 +150,11 @@ test.describe('Copy Markdown control', () => {
     await copy.click();
     await expect(copy).toHaveText('Copied');
 
-    const done = page.waitForResponse((response) => response.url().endsWith(twin) && response.status() === 404);
     release();
-    await done;
-    await page.waitForTimeout(300);
-    await expect(copy).toHaveText('Copied');
+    // Both writes have settled: the page has handled the 404, so a stale "Copy failed" would be on its way.
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __settled: number }).__settled)).toBe(2);
+    await page.waitForTimeout(150); // past the 100 ms re-announce delay
+    expect(await copy.textContent()).toBe('Copied');
   });
 
   test('shows Copy failed when the file cannot be fetched and the menu stays usable', async ({ page }) => {
@@ -264,7 +285,7 @@ test.describe('Copy Markdown control', () => {
 
     // Clicking is what proves it: the browser must show the file, not save it.
     const downloads: unknown[] = [];
-    page.on('download', (d) => downloads.push(d));
+    page.context().on('page', (opened) => opened.on('download', (d) => downloads.push(d)));
     const [tab] = await Promise.all([page.context().waitForEvent('page'), item.click()]);
     await tab.waitForLoadState();
     expect(await tab.locator('body').innerText()).toMatch(/^# /);

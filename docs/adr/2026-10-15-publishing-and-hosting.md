@@ -114,7 +114,9 @@ Adding another stream later is one more instantiation.
   no test here proves the production headers. A `HEAD` request on 2026-11-17 for
   an existing twin (`/cdk/api/v2/docs/aws-cdk-lib.aws_sns.Topic.md` on
   `docs.aws.amazon.com`) returned `Content-Type: text/markdown; charset=utf-8`
-  and no `Content-Disposition`, so the link opens the file there today.
+  and no `Content-Disposition`. This is a single dated observation and nothing
+  here re-checks it. The system that extracts and serves the zip owns the `.md`
+  mapping; if it stops mapping `.md`, the link falls back to a download.
 - **The `latest-awscdk-docs` marker is a v2 manifest:**
 
   ```
