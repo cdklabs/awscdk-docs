@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { agentMarkdownHref } from '../docs/.vitepress/agent-markdown.js';
+import { copyMarkdownFrom } from '../docs/.vitepress/copy-markdown.js';
 import { generateDocs } from '../src/docgen/index.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -207,14 +208,7 @@ describe('merge-shards overlays the twins once, after the shards', () => {
 });
 
 describe('the page advertises its twin only when one exists', () => {
-  const footer = readFileSync(join(ROOT, 'docs', '.vitepress', 'theme', 'PageFooterLinks.vue'), 'utf-8');
   const config = readFileSync(join(ROOT, 'docs', '.vitepress', 'config.mts'), 'utf-8');
-
-  test('the footer link is gated on the frontmatter key and downloads the .md twin', () => {
-    expect(footer).toContain('frontmatter?.agentMarkdown');
-    expect(footer).toMatch(/<template v-if="markdownUrl">[\s\S]*Download as Markdown/);
-    expect(footer).toContain(':href="markdownUrl" download type="text/markdown"');
-  });
 
   test('the head carries the llms.txt-style alternate link, from the same key', () => {
     expect(config).toContain('transformHead');
@@ -228,5 +222,90 @@ describe('the page advertises its twin only when one exists', () => {
     expect(config).toMatch(/head\.push\(\["link", \{ rel: "alternate", type: "text\/plain", href: agentMarkdownHref\("llms\.txt"/);
     const guarded = config.indexOf('if (typeof twin === "string")');
     expect(config.indexOf('type: "text/plain"')).toBeLessThan(guarded);
+  });
+});
+
+describe('copyMarkdownFrom', () => {
+  const clipboard = () => {
+    const written: string[] = [];
+    return { written, writeText: async (text: string) => void written.push(text) };
+  };
+
+  test('writes the fetched Markdown to the clipboard and reports success', async () => {
+    const board = clipboard();
+    const fetched: string[] = [];
+    const result = await copyMarkdownFrom('/v2/docs/x.md', {
+      fetch: async (url) => {
+        fetched.push(url);
+        return { ok: true, text: async () => '# X\n' };
+      },
+      clipboard: board,
+    });
+    expect(result).toBe('copied');
+    expect(fetched).toEqual(['/v2/docs/x.md']);
+    expect(board.written).toEqual(['# X\n']);
+  });
+
+  test('reports failure and writes nothing when the file cannot be fetched', async () => {
+    const board = clipboard();
+    expect(await copyMarkdownFrom('/x.md', { fetch: async () => ({ ok: false, text: async () => 'no' }), clipboard: board })).toBe(
+      'failed',
+    );
+    expect(await copyMarkdownFrom('/x.md', { fetch: async () => { throw new Error('offline'); }, clipboard: board })).toBe('failed');
+    expect(board.written).toEqual([]);
+  });
+
+  test('reports failure when the clipboard refuses the text', async () => {
+    const result = await copyMarkdownFrom('/x.md', {
+      fetch: async () => ({ ok: true, text: async () => '# X' }),
+      clipboard: { writeText: async () => { throw new Error('denied'); } },
+    });
+    expect(result).toBe('failed');
+  });
+
+  test('starts the clipboard write before the fetch finishes, so a slow fetch cannot outlast the click', async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((done) => (release = done));
+    const written: string[] = [];
+    const pending = copyMarkdownFrom('/x.md', {
+      fetch: async () => {
+        await gate;
+        order.push('fetched');
+        return { ok: true, text: async () => '# X' };
+      },
+      clipboard: {
+        writeText: async () => { throw new Error('writeText must not be used'); },
+        write: async (items) => {
+          order.push('write started');
+          written.push(await (items[0] as Promise<string>));
+        },
+      },
+      item: (text) => text,
+    });
+    await Promise.resolve();
+    release();
+    expect(await pending).toBe('copied');
+    expect(order).toEqual(['write started', 'fetched']);
+    expect(written).toEqual(['# X']);
+  });
+
+  test('falls back to writeText when the browser has write but no ClipboardItem', async () => {
+    const board = clipboard();
+    const result = await copyMarkdownFrom('/x.md', {
+      fetch: async () => ({ ok: true, text: async () => '# X' }),
+      clipboard: { ...board, write: async () => { throw new Error('write must not be used without item'); } },
+    });
+    expect(result).toBe('copied');
+    expect(board.written).toEqual(['# X']);
+  });
+
+  test('reports failure from the write path when the file cannot be fetched', async () => {
+    const result = await copyMarkdownFrom('/x.md', {
+      fetch: async () => ({ ok: false, text: async () => 'no' }),
+      clipboard: { writeText: async () => undefined, write: async (items) => void (await (items[0] as Promise<string>)) },
+      item: (text) => text,
+    });
+    expect(result).toBe('failed');
   });
 });

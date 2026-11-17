@@ -248,7 +248,7 @@ describe('favorite pages', () => {
     const entry = readFileSync(resolve(THEME_DIR, 'index.ts'), 'utf-8');
 
     test('star toggle renders through the doc-before layout slot', () => {
-      expect(entry).toContain('"doc-before": () => h(FavoriteStar)');
+      expect(entry).toMatch(/"doc-before":[^\n]*h\(FavoriteStar\)/);
     });
 
     test('favorites section renders through the sidebar-nav-before slot', () => {
