@@ -133,20 +133,26 @@ test.describe('a jump to a member row flashes it', () => {
       });
       // Both the properties and the methods list are on the Queue page.
       expect(pairs.lists).toBeGreaterThanOrEqual(2);
-      const channels = (rgb: string) => rgb.match(/[\d.]+/g)!.slice(0, 3).map(Number);
-      const luminance = (rgb: string) => {
-        const [r, g, b] = channels(rgb).map((c) => {
+      const channels = (rgb: string) => rgb.match(/[\d.]+/g)!.map(Number);
+      const luminance = ([r, g, b]: number[]) => {
+        const [lr, lg, lb] = [r, g, b].map((c) => {
           const v = c / 255;
           return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
         });
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
       };
       // The token must resolve to an opaque color; an undefined one probes as transparent and proves nothing.
       expect(pairs.flashRgb).toMatch(/^rgb\(/);
-      const bg = luminance(pairs.flashRgb);
+      const flash = channels(pairs.flashRgb);
+      // A translucent text color is seen over the flash color, so it is blended before it is measured.
+      const over = (color: string) => {
+        const [r, g, b, a = 1] = channels(color);
+        return [r, g, b].map((c, i) => c * a + flash[i] * (1 - a));
+      };
+      const bg = luminance(flash);
       expect(pairs.colors.length).toBeGreaterThanOrEqual(3);
       for (const color of pairs.colors) {
-        const fg = luminance(color);
+        const fg = luminance(over(color));
         const ratio = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
         expect([scheme, color, ratio >= 4.5]).toEqual([scheme, color, true]);
       }
