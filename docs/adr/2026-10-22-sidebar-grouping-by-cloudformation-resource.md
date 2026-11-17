@@ -28,7 +28,8 @@ comparing them has no cue that they are alternatives.
 Docgen already knows the backing resource. `cfnMetadata()` in
 `src/docgen/constructs.ts` resolves a construct's CloudFormation resource
 type from assembly metadata — the L1's `cloudformationResource` tag, an
-L2/L3's `@resource` tag, or the conventional same-submodule `Cfn<Name>`
+L2/L3's `@resource` tag (or, for a hand-written L2, its own
+`cloudformationResource` tag), or the conventional same-submodule `Cfn<Name>`
 counterpart — and the type pages use it for the *CloudFormation resource*
 metadata row. The sidebar simply never received it.
 

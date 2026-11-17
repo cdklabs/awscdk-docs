@@ -220,20 +220,42 @@ describe('construct detection and classification', () => {
     });
 
     test('the metadata block treats the tagged L2 as an L2: L1 type row, no generated-source marker', () => {
+      // The L2 is registered first, so a lookup without the L1 test would pick it for its own resource type.
+      const agentBase = classType('@aws-cdk/aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
+      const agent = classType('@aws-cdk/aws-bedrock-alpha.Agent', agentBase.fqn, tag('AWS::Bedrock::Agent'));
       const cfnAgent = classType(
         'aws-cdk-lib.aws_bedrock.CfnAgent', 'aws-cdk-lib.CfnResource', tag('AWS::Bedrock::Agent'),
       );
-      const agentBase = classType('@aws-cdk/aws-bedrock-alpha.AgentBase', 'aws-cdk-lib.Resource');
-      const agent = classType('@aws-cdk/aws-bedrock-alpha.Agent', agentBase.fqn, tag('AWS::Bedrock::Agent'));
 
       expect(isGeneratedSource(agent, withAlpha)).toBe(false);
       expect(isGeneratedSource(cfnAgent, withAlpha)).toBe(true);
-      // The L1 is found through its own tag, and the L2 is not mistaken for it.
-      expect(cfnMetadata(agent, withAlpha)).toMatchObject({ resourceType: 'AWS::Bedrock::Agent' });
-      expect(cfnResourceRef(agent, withAlpha)).toMatchObject({ l1Fqn: cfnAgent.fqn });
+      // The L1 is found through the tag and the L2 is not mistaken for it.
+      expect(cfnMetadata(agent, withAlpha)).toMatchObject({ resourceType: 'AWS::Bedrock::Agent', l1Fqn: cfnAgent.fqn });
       // An L1 still names its own resource and has no counterpart to point at.
       expect(cfnResourceRef(cfnAgent, withAlpha)).toBeUndefined();
       expect(cfnMetadata(cfnAgent, withAlpha)).toMatchObject({ resourceType: 'AWS::Bedrock::Agent' });
+      expect(cfnMetadata(cfnAgent, withAlpha)?.l1Fqn).toBeUndefined();
+
+      // The rendered rows carry the L1 type link and no generated-source marker.
+      const rows = typeMetadataRows(agent, cdk, withAlpha, (fqn) => `/api/${fqn}`);
+      expect(rows.map((row) => row.label)).toEqual(expect.arrayContaining(['CloudFormation', 'L1 type']));
+      expect(rows.find((row) => row.label === 'L1 type')!.value).toContain('CfnAgent');
+      expect(rows.some((row) => row.value.includes('Generated at build time'))).toBe(false);
+    });
+
+    test('a tagged L2 with no L1 in the index gets no L1 type link', () => {
+      // No L1 carries this resource type, so the L2 must not be offered as its own L1.
+      const solo = classType('@aws-cdk/aws-fake-alpha.Solo', 'aws-cdk-lib.Resource', tag('AWS::Fake::Solo'));
+      expect(cfnResourceRef(solo, withAlpha)?.l1Fqn).toBeUndefined();
+      expect(cfnMetadata(solo, withAlpha)).toMatchObject({ resourceType: 'AWS::Fake::Solo' });
+    });
+
+    test('a tag on a CfnElement subclass beats the patterns rule: it stays L1', () => {
+      const cfn = classType(
+        'aws-cdk-lib.aws_fake_patterns.CfnTagged', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Tagged'),
+        'aws_fake_patterns',
+      );
+      expect(constructLevel(cfn, withAlpha)).toBe('L1');
     });
   });
 

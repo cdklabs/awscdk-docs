@@ -4,11 +4,12 @@
 
 Accepted
 
-Extends the construct level rules in [API reference pages](./2026-10-15-api-reference-pages.md), which stays Accepted.
-Only rule 1 changes: the `cloudformationResource` tag makes an L1 only on a class that also extends
-`aws-cdk-lib.CfnElement`. The override, L3, L2 and `CfnElement` rules and their order stand. One consequence of the
-order: a tagged `Resource` subtype in a `*patterns*` namespace is now classified L3, where it was L1 before. No type
-in the assemblies installed at the time of the change is affected.
+Extends the construct level rules in [API reference pages](./2026-10-15-api-reference-pages.md), which stays Accepted
+and now states rule 1 as changed here, as do the sidebar ADRs that repeat it. Only rule 1 changes: the
+`cloudformationResource` tag makes an L1 only on a class that also extends `aws-cdk-lib.CfnElement`. The override, L3,
+L2 and `CfnElement` rules and their order stand, and a tagged `CfnElement` subclass is still L1 ahead of the L3 rule.
+One consequence of the order: a tagged `Resource` subtype in a `*patterns*` namespace is now classified L3, where it
+was L1 before. No type in the assemblies installed at the time of the change is affected.
 
 ## Context
 
@@ -33,8 +34,9 @@ construct.
 - **`aws-bedrock-alpha.PromptVersion` is listed by FQN as L2.** It is tagged and hand-written but extends `Construct`
   directly, so no inheritance test reaches it, and without an entry it would show no badge. It joins the other exact
   FQN entries.
-- **The rule is fixed, not the page.** Across the `aws-cdk-lib` and alpha assemblies installed at the time of the
-  change, exactly six tagged classes are outside the `CfnElement` subtree. These six are all of them.
+- **The rule is fixed, not the page.** In the assemblies installed at `aws-cdk-lib` 2.277.0, six tagged classes were
+  outside the `CfnElement` subtree: the five that extend `Resource` and `PromptVersion`. Any later tagged `Resource`
+  subclass is right without a table entry. A later tagged construct that does not extend `Resource` needs an entry.
 
 ## Consequences
 
