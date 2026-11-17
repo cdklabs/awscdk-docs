@@ -437,9 +437,18 @@ function armHeading(el: Element, delay: number) {
       return;
     }
     headingTimers.delete(el);
+    // The observer reports a scroll one frame late, so check the heading is still in view now.
+    if (!headingInView(el)) return;
     const key = headingKeys.get(el);
     if (key !== undefined) preload(key);
   }, delay));
+}
+function headingInView(el: Element): boolean {
+  const box = el.getBoundingClientRect();
+  const scroller = el.closest(".VPSidebar")?.getBoundingClientRect();
+  const top = Math.max(0, scroller?.top ?? 0);
+  const bottom = Math.min(window.innerHeight, scroller?.bottom ?? window.innerHeight);
+  return box.height > 0 && box.bottom > top && box.top < bottom;
 }
 function onHeadingsSeen(entries: IntersectionObserverEntry[]) {
   for (const entry of entries) {

@@ -36,6 +36,27 @@ test.describe('navigation style', () => {
     topLevel(page).filter({ has: page.locator(`:scope > button.api-sidebar-group:has-text("${name}")`) }).first();
   const topButton = (page: Page, name: string) => topGroup(page, name).locator(':scope > button.api-sidebar-group');
 
+  /** Resolves once the sidebar has stopped scrolling and any in-view preloads have had time to start. */
+  async function settled(page: Page) {
+    const top = () => page.evaluate(() => document.querySelector('.VPSidebar')?.scrollTop ?? 0);
+    let last = -1;
+    await expect.poll(async () => {
+      const now = await top();
+      const still = now === last;
+      last = now;
+      return still;
+    }, { intervals: [150] }).toBe(true);
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)));
+  }
+
+  /** Every chunk the skeleton names: what a regression into loading the whole tree would fetch. */
+  async function allChunkCount(page: Page): Promise<number> {
+    const path = (await page.evaluate(() =>
+      performance.getEntriesByType('resource').map((entry) => entry.name).find((url) => /\/api-sidebar\/sidebar\./.test(url))))!;
+    const skeleton = await (await page.request.get(path)).json();
+    return skeleton.flatMap((root: { items?: { chunk?: string }[] }) => root.items ?? []).filter((s: { chunk?: string }) => s.chunk).length;
+  }
+
   /** Names of the api-sidebar assets fetched so far, in order. */
   function trackSidebarRequests(page: Page): string[] {
     const names: string[] = [];
@@ -92,34 +113,48 @@ test.describe('navigation style', () => {
     await expect(active).toHaveCount(1);
     await expect(active).toHaveAttribute('href', /aws-cdk-lib\.aws_sqs\.Queue/);
     await expect(active).toBeInViewport();
-    // The only new requests are chunks of package headings now in view, each fetched once.
-    expect(requests.slice(before.length).every((name) => name.startsWith('chunks/'))).toBe(true);
+    // The only new requests are chunks of package headings now in view, each fetched once: a small
+    // fraction of the tree, not a switch that loads everything.
+    await settled(page);
+    const added = requests.slice(before.length);
+    expect(added.every((name) => name.startsWith('chunks/'))).toBe(true);
     expect(new Set(requests).size).toBe(requests.length);
+    expect(added.length).toBeLessThan((await allChunkCount(page)) / 4);
     // Same page, same URL.
     expect(page.url()).toContain('aws-cdk-lib.aws_sqs.Queue');
   });
 
-  test('a stored package choice applies on load, and opening a package fetches its chunk once', async ({ page }) => {
+  test('a stored package choice applies on load, and opening a package fetches its chunk', async ({ page }) => {
     await page.addInitScript((key) => {
       window.localStorage.setItem(key, 'package');
     }, NAV_KEY);
     const requests = trackSidebarRequests(page);
+    // The in-view load of the SNS package fails, so the package is still unloaded when it is opened.
+    await page.route('**/api-sidebar/chunks/sns.*', (route) => route.abort());
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
     await expect(topButton(page, 'API Reference')).toHaveAttribute('aria-expanded', 'true');
     await expect(topButton(page, 'aws-cdk-lib.aws_sqs')).toHaveAttribute('aria-expanded', 'true');
     // The active page's chunk comes first, as in a service-style load.
-    expect(requests.filter((name) => name.startsWith('chunks/'))[0]).toMatch(/^chunks\/sqs\./);
-
+    const chunkRequests = () => requests.filter((name) => name.startsWith('chunks/'));
+    expect(chunkRequests()[0]).toMatch(/^chunks\/sqs\./);
+    const snsChunks = () => requests.filter((name) => /^chunks\/sns\./.test(name));
+    await expect.poll(snsChunks).toHaveLength(1);
     // Let the load-time reveal finish scrolling the sidebar before clicking a
     // row near the bottom of the list, or the click can land on a neighbour.
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
+    await settled(page);
+    // Load fetched the package headings in view, a small fraction of the tree.
+    expect(new Set(chunkRequests()).size).toBe(chunkRequests().length);
+    expect(chunkRequests().length).toBeLessThan((await allChunkCount(page)) / 4);
+
+    await page.unroute('**/api-sidebar/chunks/sns.*');
     const sns = topGroup(page, 'aws-cdk-lib.aws_sns');
     await page.getByRole('button', { name: 'aws-cdk-lib.aws_sns', exact: true }).click();
     await expect(page.getByRole('button', { name: 'aws-cdk-lib.aws_sns', exact: true })).toHaveAttribute('aria-expanded', 'true');
     await expect(sns.locator('.api-sidebar-section-title').first()).toHaveText('Constructs');
     await expect(sns.locator('a.api-sidebar-link', { hasText: 'Topic' }).first()).toBeVisible();
-    expect(requests.filter((name) => /^chunks\/sns\./.test(name))).toHaveLength(1);
+    expect(snsChunks()).toHaveLength(2);
   });
 
   test('in the package style, a closed package heading in view loads before the click', async ({ page }) => {

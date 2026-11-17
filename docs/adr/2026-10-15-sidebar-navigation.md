@@ -196,7 +196,9 @@ VitePress sidebar shell:
   Enter on any heading the reader can see usually find its items already
   there, with no wait on the network while the caret turns. It costs one
   chunk per closed heading that rests in view, about a screenful of
-  sections on each load and after each scroll that stops; headings that
+  sections on each load and after each scroll that stops (16 chunks,
+  ~18 KB gzip, on the SNS Topic page at 1440×900), and never more than
+  the whole tree (~472 KB) per session; headings that
   only pass by during a scroll fetch nothing. Fetches
   go through one memoized retry-on-failure loader; a failed chunk leaves the
   skeleton usable. Internal links are native `<a>`, so the VitePress router
@@ -213,9 +215,12 @@ VitePress sidebar shell:
 
 Framework-free logic (path normalization, active-branch computation, fetch
 memoization) lives in `docs/.vitepress/theme/api-sidebar.ts` and is unit
-tested. A cold load of a construct page fetches ~7.5 KB gzip of sidebar data
-(skeleton + that section) instead of ~275 KB for the whole tree; the largest
-single chunk is ~26 KB gzip. Server-rendered page content and its inline
+tested. Measured on the e2e fixture build (the full skeleton and all 322
+chunks, gzip at the default level), a cold load of the SNS Topic page at
+1440×900 fetches ~31 KB gzip of sidebar data in 18 requests: ~13 KB for
+the skeleton and that section, and the rest for the 16 closed sections
+resting in view. The whole tree is ~472 KB, the upper bound per session,
+and the largest single chunk is ~29 KB gzip. Server-rendered page content and its inline
 cross-links are unaffected, so the crawlable link graph and Pagefind
 indexing ([search and filter](./2026-10-15-search-and-filter.md)) still work.
 
