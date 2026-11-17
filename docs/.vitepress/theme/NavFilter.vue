@@ -67,6 +67,15 @@ function onClear() {
 // load, then rank. If the user kept typing while the index loaded, the captured
 // query is stale — drop the navigation rather than jump somewhere wrong.
 //
+// Below 960px the sidebar is a drawer that VitePress closes on navigation, but it stays in the tab order (opacity and
+// transform only), so refocusing the input there would land focus on a control the reader cannot see.
+function focusInput() {
+  if (window.matchMedia?.("(min-width: 960px)").matches === false) {
+    return;
+  }
+  inputEl.value?.focus();
+}
+
 // The jump clears the box and, after the navigation, returns focus to it so
 // the next query can be typed straight away.
 async function onEnter() {
@@ -82,10 +91,10 @@ async function onEnter() {
   if (target) {
     // Activated from the hint button, the focused element unmounts with the hint: move focus to the input first
     // so it does not fall to <body> while the page loads. Focus is set again after the navigation.
-    inputEl.value?.focus();
+    focusInput();
     clear();
     await router.go(withBase(target.link));
-    inputEl.value?.focus();
+    focusInput();
   }
 }
 
@@ -284,7 +293,7 @@ function onKeydown(e: KeyboardEvent) {
   /* 3px each side gives the inset focus ring room that is not the chip's border or the name. */
   padding: 0 3px;
   overflow: hidden;
-  color: inherit;
+  color: var(--vp-c-text-2);
   font: inherit;
   line-height: 18px;
   background: none;

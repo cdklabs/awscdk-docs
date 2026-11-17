@@ -62,15 +62,24 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
 
     // Scoped to the hint. With a query active the tree pins group headings under the header, and a tree link scrolled
     // under them is reported as obscured. The check above shows the hint does not cause that.
-    const results = await new AxeBuilder({ page })
-      .include('.nav-filter-hint')
-      .options({ rules: { 'target-size': { enabled: true } } })
-      .withRules(['target-size'])
-      .analyze();
+    // The hint's label sits on a muted token, so contrast is checked in both themes.
+    const scan = async () => {
+      const results = await new AxeBuilder({ page })
+        .include('.nav-filter-hint')
+        .options({ rules: { 'target-size': { enabled: true } } })
+        .withRules(['target-size', 'color-contrast'])
+        .analyze();
+      return results.violations
+        .flatMap((violation) => violation.nodes)
+        .map((node) => `${node.target.join(' ')} — ${node.failureSummary ?? ''}`)
+        .join('\n');
+    };
 
-    const detail = results.violations
-      .flatMap((violation) => violation.nodes)
-      .map((node) => `${node.target.join(' ')} — ${node.failureSummary ?? ''}`)
+    const lightDetail = await scan();
+    await page.evaluate(() => document.documentElement.classList.add('dark'));
+    const darkDetail = await scan();
+    const detail = [lightDetail && `light:\n${lightDetail}`, darkDetail && `dark:\n${darkDetail}`]
+      .filter(Boolean)
       .join('\n');
 
     expect(detail, `target-size violations with the filter hint shown:\n${detail}`).toBe('');
