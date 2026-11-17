@@ -39,6 +39,7 @@ const isElement = (n: Node): n is Element => n.type === ElementType.Tag;
  * line indented. Set per transform; the renderer is synchronous.
  */
 let restoreProtected: (s: string) => string = (s) => s;
+/** Site URL the current transform joins links onto; set per transform, like restoreProtected. */
 let publishedSiteUrl = '';
 
 /** Result of transforming one page. */
