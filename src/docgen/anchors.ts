@@ -16,6 +16,7 @@ export const SECTION_ANCHORS = {
   members: 'members',
   referencedBy: 'referenced-by',
   usedAsPropsBy: 'used-as-props-by',
+  obtainableFrom: 'obtainable-from',
   // Module overview sections sit below README prose, whose own headings (a README `## Types`) take the plain slugs.
   submodules: 'module-submodules',
   types: 'module-types',

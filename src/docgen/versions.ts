@@ -4,6 +4,7 @@ import * as path from 'path';
 import { VERSIONS_JSON_PATH } from '../site-routes.js';
 import { CDK_DIST_DIR_ENV, distDirFromEnv, readBuildJson } from './dist.js';
 import { moduleReadmeLink } from './links.js';
+import { CLOUD_ASSEMBLY_SCHEMA_REPO } from './provenance.js';
 import { assertValidVersion, VERSION_PARSE_PATTERN } from './version-format.js';
 
 /**
@@ -81,7 +82,7 @@ export const TRACKED_PACKAGES: TrackedPackage[] = [
   {
     name: '@aws-cdk/cloud-assembly-schema',
     label: 'Cloud Assembly Schema',
-    repo: 'aws/aws-cdk-cli',
+    repo: CLOUD_ASSEMBLY_SCHEMA_REPO,
     releaseTag: (version) => `@aws-cdk/cloud-assembly-schema@v${version}`,
     majorOnly: true,
     // No dedicated docs site — the npm package page (README) is the

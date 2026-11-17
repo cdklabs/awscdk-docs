@@ -356,8 +356,12 @@ describe('multi-language page generation', () => {
 
   test('non-canonical variants stay out of the Pagefind index', () => {
     for (const name of ['constructs.Node.md', 'constructs.Construct.md']) {
-      const page = readFileSync(join(outDir, 'docs', name), 'utf-8');
-      // Every non-canonical variant element carries the ignore attribute…
+      const whole = readFileSync(join(outDir, 'docs', name), 'utf-8');
+      // The hierarchy block is ignored as a whole (`<nav … data-pagefind-ignore>`), so the variants inside it do
+      // not repeat the attribute; they are out of the index by the enclosing region.
+      expect(whole).toMatch(/<nav class="inheritance-chain"[^>]*data-pagefind-ignore>/);
+      const page = whole.replace(/<nav class="inheritance-chain"[^>]*data-pagefind-ignore>.*?<\/nav>/g, '');
+      // Every other non-canonical variant element carries the ignore attribute…
       const variants = page.match(/<(?:div|span) class="lang-variant"[^>]*>/g) ?? [];
       expect(variants.length).toBeGreaterThan(0);
       for (const tag of variants) {

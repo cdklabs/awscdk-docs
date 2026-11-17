@@ -73,8 +73,9 @@ test('the API root serves the construct overview without a static rail item', as
   // The first section sits directly below the pinned header, so its offset
   // tracks the header's height. The header carries 8px of top padding on
   // desktop (so the focused filter ring clears the navbar border), which adds
-  // 8 to this offset — 60 without the padding, 68 with it.
-  expect(noFavoritesOffset).toBe(68);
+  // 8 to this offset — 66 without the padding, 74 with it. The filter status
+  // row is reserved at 24px so its 24px controls never overhang the header.
+  expect(noFavoritesOffset).toBe(74);
 });
 
 test('favorites use the measured collapsed and expanded spacing budgets', async ({ page }) => {
@@ -94,7 +95,7 @@ test('favorites use the measured collapsed and expanded spacing budgets', async 
   await expect(page.locator('.favorites-section')).toBeVisible();
   // +8 over the no-favorites/no-padding baselines: the header's 8px desktop
   // top padding (filter ring vs navbar border) lifts everything below it.
-  expect(await offset()).toBe(119);
+  expect(await offset()).toBe(125);
   await page.getByRole('button', { name: /Favorites/ }).click();
-  expect(await offset()).toBe(150);
+  expect(await offset()).toBe(156);
 });

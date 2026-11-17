@@ -19,6 +19,8 @@ const cdkLib = load('aws-cdk-lib');
 const alpha = load('@aws-cdk/aws-bedrock-alpha');
 
 const CDK_LIB_PREFIX = 'https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib';
+const CLOUD_ASSEMBLY_SCHEMA_FILE =
+  'https://github.com/aws/aws-cdk-cli/blob/HEAD/packages/@aws-cdk/cloud-assembly-schema/lib/cloud-assembly/artifact-schema.ts';
 
 describe('submodule source directory from symbolId', () => {
   test('strips the symbol and the declaring file', () => {
@@ -161,6 +163,33 @@ describe('upstream source URL for a type page', () => {
     const bucket = type(cdkLib, 'aws-cdk-lib.aws_s3.Bucket');
     for (const filename of ['../../evil.ts', 'aws-s3/./lib/bucket.ts', 'a\\b.ts', 'a#b.ts', 'a b.ts', 'a?x=1.ts']) {
       expect(upstreamSourceUrl({ ...bucket, locationInModule: { filename, line: 1 } }, cdkLib)).toBeUndefined();
+    }
+  });
+
+  test('a cloud-assembly-schema type links to its source file in the aws-cdk-cli repository', () => {
+    const featureFlag = type(cdkLib, 'aws-cdk-lib.cloud_assembly_schema.FeatureFlag');
+    expect(featureFlag.locationInModule!.filename).toMatch(/^node_modules\/@aws-cdk\/cloud-assembly-schema\//);
+    expect(upstreamSourceUrl(featureFlag, cdkLib)).toBe(CLOUD_ASSEMBLY_SCHEMA_FILE);
+  });
+
+  test('a generated or non-TypeScript file in a mapped package gets no link', () => {
+    const featureFlag = type(cdkLib, 'aws-cdk-lib.cloud_assembly_schema.FeatureFlag');
+    for (const filename of [
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/x.generated.d.ts',
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/schema.json',
+      'node_modules/@aws-cdk/cloud-assembly-schema/lib/../x.d.ts',
+    ]) {
+      expect(upstreamSourceUrl({ ...featureFlag, locationInModule: { filename, line: 1 } }, cdkLib)).toBeUndefined();
+    }
+  });
+
+  test('no type gets a link into node_modules or to a declaration file', () => {
+    const bucket = type(cdkLib, 'aws-cdk-lib.aws_s3.Bucket');
+    for (const filename of ['node_modules/other-package/lib/thing.ts', 'aws-s3/lib/bucket.d.ts', 'node_modules/other-package/lib/thing.d.ts']) {
+      expect(upstreamSourceUrl({ ...bucket, locationInModule: { filename, line: 1 } }, cdkLib)).toBeUndefined();
+    }
+    for (const t of Object.values(cdkLib.types!)) {
+      expect(upstreamSourceUrl(t, cdkLib) ?? '').not.toMatch(/node_modules|\.d\.ts/);
     }
   });
 

@@ -279,6 +279,10 @@
   display: block;
   padding-left: 10px;
   border-left: 2px solid var(--vp-c-divider);
+  /* Lets a single long entry in any relation row (an `Owner.member` token, a
+     long type name) break inside the name rather than widen the page at
+     320-375px (WCAG 1.4.10 Reflow). */
+  overflow-wrap: anywhere;
 }
 
 /* A row's names are a real list, so assistive tech announces the item

@@ -48,7 +48,7 @@ bucket. Docgen counters this:
 - Wrap generated boilerplate in `data-pagefind-ignore` (via `ignoreBlock`):
   property type cells, facts/metadata tables, signatures, the type-hierarchy
   block (including a struct's "used as props by" row), and cross-reference lists
-  ("Referenced by"). Property names stay indexable inside their existing
+  ("Referenced by"), and each member row's `#` permalink. Property names stay indexable inside their existing
   type-page entry, matching method names without creating per-member results;
   property types and descriptions stay ignored so they cannot add incidental
   matches. Symbol *lookup* is the type-ahead filter's job. This also shrinks the
@@ -223,8 +223,14 @@ floating listbox:
   restores the exact pre-filter sidebar.
 - **Enter-to-jump** navigates to the best-ranked `filterSymbols` match from the
   lazily fetched index, with an inline `aria-live` hint naming the target while
-  typing; Escape clears. On non-`/api/` pages the sidebar does not render but
-  Enter-to-jump still works, so the input is not dead weight.
+  typing; Escape clears. The hint is a `<button>` whose name is its visible
+  text, so a click does what Enter does. At 960px and wider focus returns to
+  the input after the jump. In the narrow drawer it is left where VitePress
+  puts it on route change (a jump to the current page keeps focus on the
+  input and the drawer open), because the closed drawer stays in the tab order
+  (it is only transparent and translated off-screen). On non-`/api/` pages the
+  sidebar does not render but Enter-to-jump still works, so the input is not
+  dead weight.
 - The input is a plain labeled text field plus a polite live region — no
   `role="combobox"`/`role="listbox"` overlay. Colors use VitePress theme
   variables so the brand theme applies in both modes.

@@ -41,10 +41,8 @@ test.describe('site footer', () => {
       );
       await expect(community.locator('a').first()).toHaveText('GitHub');
       await expect(page.locator('.VPNavBar .VPSocialLinks')).toHaveCount(0);
-      await expect(community.locator('a', { hasText: 'Slack' })).toHaveAttribute(
-        'href',
-        'https://cdk.dev/',
-      );
+      const slack = community.locator('a[href="https://cdk.dev/"]');
+      await expect(slack).toHaveText('Community Slack @ cdk.dev');
       await expect(
         community.locator('a', { hasText: 'Stack Overflow' }),
       ).toHaveAttribute(

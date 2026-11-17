@@ -107,25 +107,27 @@ test.describe('sidebar locate-current-page control', () => {
     expect(layout.buttonTop).toBeLessThanOrEqual(layout.treeTop + 1);
   });
 
-  test('the control carries a 24px hit area without taking 24px of the row', async ({ page }) => {
+  test('the control carries a 24px hit area that fits the 24px status row', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
 
     // The button's own box is the target a pointer has to hit; the row it
-    // occupies is what the header's height is built from. They differ here by
-    // the negative block margin, so both are measured.
+    // occupies is what the header's height is built from. The row is reserved
+    // at 24px, so the button's footprint must not exceed it.
     const measured = await page.evaluate(() => {
       const el = document.querySelector('button.sidebar-jump-current') as HTMLElement;
       const box = el.getBoundingClientRect();
       const style = getComputedStyle(el);
       const margin = parseFloat(style.marginTop) + parseFloat(style.marginBottom);
-      return { width: box.width, height: box.height, footprint: box.height + margin };
+      const row = document.querySelector('.nav-filter-status')!.getBoundingClientRect().height;
+      return { width: box.width, height: box.height, footprint: box.height + margin, row };
     });
 
     expect(measured.height).toBeGreaterThanOrEqual(24);
     expect(measured.width).toBeGreaterThanOrEqual(24);
-    expect(measured.footprint).toBeLessThanOrEqual(18);
+    expect(measured.footprint).toBeLessThanOrEqual(measured.row);
+    expect(measured.row).toBe(24);
   });
 
   test('jump un-occludes an entry parked behind the pinned header', async ({ page }) => {
