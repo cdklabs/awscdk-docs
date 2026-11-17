@@ -318,12 +318,14 @@ member row, which stays at the row's width so a row reads as one unit. One more
 breakpoint rather than a full-width layout or a settings option: a fixed tier
 keeps prose line length near its current value and the sidebar width constant,
 and adds no control to the Settings menu for a layout most readers never see.
-1920px is the most common large-monitor width. Breakpoints are in CSS pixels, so
-the tier depends on display scaling: a 2560px monitor reaches it at 100% or 125%
-(2048 CSS px) but not at 150% (1707 CSS px), and a 1920px monitor reaches it only
-at 100%. Every cap is a stock width or derived from one: 1440px is the stock
-layout max, 992px the stock no-sidebar container at 960px, 784px the stock
-no-sidebar content at 1440px, and 1056px is 992px plus the column's own padding.
+The tier starts at 1920px because that is the first width at which a 1920px
+layout fits with no centering offset, so the wide tier begins exactly where its
+layout fits. Breakpoints are in CSS pixels, so the tier depends on display
+scaling: a 2560px monitor reaches it at 100% or 125% (2048 CSS px) but not at
+150% (1707 CSS px), and a 1920px monitor reaches it only at 100%. Every cap is a
+stock width or derived from one: 1440px is the stock layout max, 992px the stock
+no-sidebar container at 960px, 784px the stock no-sidebar content at 1440px, and
+1056px is 992px plus the column's own padding.
 
 The sidebar keeps `--vp-sidebar-width` (320px) and the outline its 256px. Every
 rule that centers on the layout width — the stock `VPContent`, `VPSidebar`,
@@ -338,10 +340,14 @@ declarations are component-scoped at (0,4,0).
 The same stylesheet places `/versions` in the lane right of the sidebar. The
 page has no sidebar, so the stock theme centered its container in the full
 viewport while the nav bar above it carries the sidebar-lane inset from the
-geometry section, so the page read as off-center. `/versions` is the page whose
-re-centering was asked for; the other no-sidebar pages (`/skills`, also linked
-from the nav bar, `/stability` and `/aws-construct-library`) keep the stock
-full-viewport centering until they are aligned as a group. The sheet mirrors
+geometry section, so the page read as off-center. `/versions` is aligned first
+because the offset is most visible there: its one wide table sits directly
+under the inset nav controls with nothing else on the page. The other no-sidebar
+pages (`/skills`, also linked from the nav bar, `/stability` and
+`/aws-construct-library`) keep the stock full-viewport centering until they are
+aligned as a group by widening the `.Layout.versions-page` selector; nothing
+about them makes the stock centering wrong, so that is a separate decision. The
+sheet mirrors
 `VPContent.has-sidebar`'s padding onto the page's content and `SiteFooter`'s
 `has-sidebar` offset onto its footer, from the
 tightest desktop tier (1280px) and in the 1440px tier, so content, nav and
