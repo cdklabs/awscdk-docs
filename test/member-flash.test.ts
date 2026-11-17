@@ -13,6 +13,7 @@ import {
   SAME_JUMP_MS,
   clearFlash,
   createFlashOnce,
+  leaveToRouteHook,
   flashRow,
   rowForHash,
 } from '../docs/.vitepress/theme/member-flash.js';
@@ -175,6 +176,18 @@ describe('createFlashOnce', () => {
   });
 });
 
+describe('leaveToRouteHook', () => {
+  test('a native hashchange onto an entry with router state is the route hook\'s to flash', () => {
+    expect(leaveToRouteHook(true, {})).toBe(true);
+  });
+
+  test('an in-page link (a synthetic hashchange) and a plain hash assignment (no state) flash here', () => {
+    expect(leaveToRouteHook(false, {})).toBe(false);
+    expect(leaveToRouteHook(true, null)).toBe(false);
+    expect(leaveToRouteHook(true, undefined)).toBe(false);
+  });
+});
+
 describe('stylesheet', () => {
   const css = () => readFileSync(resolve(import.meta.dirname, '../docs/.vitepress/theme/api-layout.css'), 'utf-8');
 
@@ -184,12 +197,16 @@ describe('stylesheet', () => {
     expect(at).toBeGreaterThan(-1);
     const keyframes = sheet.slice(at, sheet.indexOf('\n}', at));
     expect(keyframes).toMatch(/from \{[^}]*background-color: var\(--api-c-flash\)/);
+    // The outline fades with the background: the pale flash color alone is a small step from the page.
+    expect(keyframes).toMatch(/from \{[^}]*outline-color: var\(--vp-c-brand-1\)/);
     // No `to` frame: the fade ends at whatever the row's own background is, so
     // nothing snaps when the class is removed.
     expect(keyframes).not.toContain('to {');
-    expect(sheet).toMatch(
-      new RegExp(`\\.member-list \\.member-row\\.${FLASH_CLASS} \\{[^}]*animation: member-row-flash ${FLASH_DURATION_MS}ms ease-out;`),
-    );
+    const at2 = sheet.indexOf(`.member-list .member-row.${FLASH_CLASS} {`);
+    const rule = sheet.slice(at2, sheet.indexOf('}', at2));
+    expect(rule).toContain(`animation: member-row-flash ${FLASH_DURATION_MS}ms ease-out;`);
+    expect(rule).toContain('outline: 2px dashed transparent');
+    expect(rule).toContain('outline-offset: 2px');
     expect(FLASH_DURATION_MS).toBe(1500);
   });
 
@@ -209,9 +226,8 @@ describe('stylesheet', () => {
     const body = rule.slice(rule.indexOf('{'), rule.indexOf('}'));
     expect(body).toContain('animation: none');
     expect(body).toContain('background-color: var(--api-c-flash)');
-    expect(body).toContain('outline: 2px dashed var(--vp-c-brand-1)');
-    // Outside the row: text starts at the row's edge, and an inset line would cover it.
-    expect(body).toContain('outline-offset: 2px');
+    // The dashed 2px outline, offset outside the row, comes from the base rule; only its color is set here.
+    expect(body).toContain('outline-color: var(--vp-c-brand-1)');
   });
 
   test('forced colors draw the mark as a system-highlight outline, with motion allowed too', () => {
@@ -219,7 +235,7 @@ describe('stylesheet', () => {
     const forced = sheet.slice(sheet.indexOf('@media (forced-colors: active)'));
     const rule = forced.slice(forced.indexOf(`.member-row.${FLASH_CLASS}`));
     const body = rule.slice(rule.indexOf('{'), rule.indexOf('}'));
-    expect(body).toContain('outline: 2px dashed Highlight');
-    expect(body).toContain('outline-offset: 2px');
+    // `!important`: the animation sets `outline-color` too, and would otherwise win.
+    expect(body).toContain('outline-color: Highlight !important');
   });
 });

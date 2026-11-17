@@ -68,21 +68,36 @@ test.describe('a jump to a member row flashes it', () => {
       document.body.append(probe);
       const flashRgb = getComputedStyle(probe).backgroundColor;
       probe.remove();
-      const resting = getComputedStyle(el).backgroundColor;
+      probe.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--vp-c-brand-1').trim();
+      document.body.append(probe);
+      const brandRgb = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      const resting = getComputedStyle(el);
+      const restingBg = resting.backgroundColor;
+      const restingOutline = resting.outlineStyle;
       el.classList.add('member-row-flash');
       const anim = el.getAnimations()[0];
       anim.pause();
       anim.currentTime = 0;
-      const start = getComputedStyle(el).backgroundColor;
+      const atStart = getComputedStyle(el);
+      const start = { bg: atStart.backgroundColor, outline: atStart.outlineColor, style: atStart.outlineStyle, offset: atStart.outlineOffset };
       anim.currentTime = 1500;
-      const end = getComputedStyle(el).backgroundColor;
+      const atEnd = getComputedStyle(el);
+      const end = { bg: atEnd.backgroundColor, outline: atEnd.outlineColor };
       anim.cancel();
       el.classList.remove('member-row-flash');
-      return { flashRgb, resting, start, end };
+      return { flashRgb, brandRgb, restingBg, restingOutline, start, end };
     }, FIFO);
-    expect(colors.start).toBe(colors.flashRgb);
-    // Ending at the row's own background means nothing snaps when the class goes.
-    expect(colors.end).toBe(colors.resting);
+    expect(colors.start.bg).toBe(colors.flashRgb);
+    // The background alone is pale, so a dashed brand outline fades with it: the
+    // cue a reader with low contrast sensitivity can tell from the page.
+    expect(colors.start.outline).toBe(colors.brandRgb);
+    expect(colors.start.style).toBe('dashed');
+    expect(colors.start.offset).toBe('2px');
+    expect(colors.restingOutline).toBe('none');
+    // Ending at the row's own background and a transparent outline means nothing snaps when the class goes.
+    expect(colors.end.bg).toBe(colors.restingBg);
+    expect(colors.end.outline).toBe('rgba(0, 0, 0, 0)');
     await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`));
   });
 
@@ -176,7 +191,7 @@ test.describe('a jump to a member row flashes it', () => {
     await page.locator(OUTLINE_LINK(RETENTION)).click();
     await expect(page.locator(`.member-row${RETENTION}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await expect.poll(() => flashStarts(page)).toBe(2);
-    // Back/forward: the native hashchange is left to the route hook, which runs once the route has reloaded.
+    // Back/forward lands on an entry with router state: its hashchange is left to the route hook.
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
     await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
@@ -270,6 +285,17 @@ test.describe('a jump to a member row flashes it', () => {
     await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`));
   });
 
+  test('a hash set by script, with no router state, flashes from the hashchange', async ({ page }) => {
+    await countFlashStarts(page);
+    await page.goto(QUEUE_PAGE);
+    await page.evaluate((hash) => {
+      location.hash = hash;
+    }, RETENTION);
+    await expect(page.locator(`.member-row${RETENTION}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    await page.waitForTimeout(400);
+    expect(await flashStarts(page)).toBe(1);
+  });
+
   test('a jump to a heading marks nothing', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     await page.locator(OUTLINE_LINK(FIFO)).click();
@@ -305,9 +331,19 @@ test.describe('under forced colors', () => {
     await page.locator(OUTLINE_LINK(FIFO)).click();
     const row = page.locator(`.member-row${FIFO}`);
     await expect(row).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
-    // Author backgrounds are dropped; the outline carries the mark.
+    // Author backgrounds are dropped; the outline carries the mark, in the system
+    // highlight color for the whole fade rather than the animated brand color.
     await expect(row).toHaveCSS('outline-style', 'dashed');
     await expect(row).toHaveCSS('outline-width', '2px');
+    const highlight = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.outline = '2px solid Highlight';
+      document.body.append(probe);
+      const rgb = getComputedStyle(probe).outlineColor;
+      probe.remove();
+      return rgb;
+    });
+    await expect(row).toHaveCSS('outline-color', highlight);
     await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`), { timeout: 3000 });
     await expect(row).toHaveCSS('outline-style', 'none');
   });

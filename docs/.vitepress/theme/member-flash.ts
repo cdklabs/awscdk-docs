@@ -116,6 +116,17 @@ export function createFlashOnce(
 }
 
 /**
+ * Whether a `hashchange` belongs to a traversal VitePress will reload the route
+ * for, so the route hook marks the row instead. Such a traversal is native
+ * (VitePress's own synthetic event for an in-page link is not trusted) and
+ * lands on an entry carrying the state its `pushState` set; a plain hash
+ * assignment has no state, and VitePress's `popstate` handler ignores it too.
+ */
+export function leaveToRouteHook(trusted: boolean, state: unknown): boolean {
+  return trusted && state !== null && state !== undefined;
+}
+
+/**
  * Wire the flash to the hash events: VitePress's synthetic `hashchange` for
  * in-page links (outline, permalinks, prose links) and the browser's own for
  * back/forward between hashes. A click on a link to the hash the page is
@@ -128,15 +139,19 @@ export function createFlashOnce(
  * The paths overlap. One click raises `hashchange` and then reaches the click
  * listener, and a load with a hash reaches the hook and then the mount;
  * `createFlashOnce` drops whichever arrival for the row last flashed comes
- * second. A history traversal VitePress handles (its `popstate` handler sees
- * the state its `pushState` set) raises the native `hashchange` first and then
- * reloads the route, which renders new rows, so that `hashchange` is skipped
- * and the hook marks the row once the page has rendered. A `hashchange` that
- * changes the path is skipped on the same grounds. So each jump starts exactly
- * one fade.
+ * second. A history traversal lands on an entry whose state VitePress's
+ * `pushState` set, and its `popstate` handler then reloads the route and ends
+ * in the hook; the native `hashchange` of such a traversal fires before that
+ * reload, so it is left to the hook (`leaveToRouteHook`), which marks the row
+ * once the page has rendered. So each jump starts exactly one fade.
  */
 export function installMemberFlash(): (hash: string) => void {
-  const g = globalThis as { document?: Document; addEventListener?: Window['addEventListener']; location?: Location };
+  const g = globalThis as {
+    document?: Document;
+    addEventListener?: Window['addEventListener'];
+    location?: Location;
+    history?: History;
+  };
   if (!g.document || !g.addEventListener) {
     return () => {};
   }
@@ -160,19 +175,10 @@ export function installMemberFlash(): (hash: string) => void {
     }
   };
   const flashOnce = createFlashOnce(doc, flash);
-  // Set by a traversal VitePress will reload the route for; the hashchange that
-  // follows it, and any that changes the path, is left to the route hook.
-  let traversal = false;
-  g.addEventListener('popstate', (e) => {
-    traversal = e.state !== null;
-  });
   g.addEventListener('hashchange', (e) => {
-    const samePage = new URL(e.oldURL).pathname === new URL(e.newURL).pathname;
-    if (traversal || !samePage) {
-      traversal = false;
-      return;
+    if (!leaveToRouteHook(e.isTrusted, g.history?.state)) {
+      flashOnce(g.location?.hash ?? '');
     }
-    flashOnce(g.location?.hash ?? '');
   });
   g.addEventListener('click', (e) => {
     // Like VitePress's link handler, skip a modified or secondary click, or a
@@ -190,9 +196,5 @@ export function installMemberFlash(): (hash: string) => void {
     }
   });
   g.document.documentElement.classList.add(READY_CLASS);
-  return (hash) => {
-    // The route hook: every traversal VitePress handles ends here.
-    traversal = false;
-    flashOnce(hash);
-  };
+  return (hash) => flashOnce(hash);
 }
