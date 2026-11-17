@@ -251,7 +251,6 @@ describe('README type links in the built pages', () => {
   test('a package reference links the documented package readme, or npm for a package not documented here', () => {
     const amplify = readFileSync(join(docs, 'aws-cdk-lib.aws_amplify-readme.md'), 'utf-8');
     expect(amplify).toContain('> [`@aws-cdk/aws-amplify-alpha`](/v2/docs/@aws-cdk_aws-amplify-alpha-readme)');
-    expect(existsSync(join(docs, '@aws-cdk_aws-amplify-alpha-readme.md'))).toBe(true);
     const apprunner = readFileSync(join(docs, 'aws-cdk-lib.aws_apprunner-readme.md'), 'utf-8');
     expect(apprunner).toContain(
       '> [`@aws-cdk/aws-apprunner-alpha`](https://www.npmjs.com/package/@aws-cdk/aws-apprunner-alpha)',
@@ -274,7 +273,7 @@ describe('README type links in the built pages', () => {
           targets.add(pair.slice(pair.indexOf(':') + 1).replace(/\.html$/, ''));
         }
       }
-      for (const [, link] of page.matchAll(/\[`[A-Za-z0-9_]+`\]\((\/v2\/docs\/[^)]+)\)/g)) {
+      for (const [, link] of page.matchAll(/\[`[^`\]]+`\]\((\/v2\/docs\/[^)]+)\)/g)) {
         targets.add(link);
       }
     }
