@@ -180,7 +180,7 @@ function unescapeMarkdownHref(href: string): string {
 function rewriteMarkdownLinks(text: string): string {
   // A code span may wrap lines but never crosses a blank line, so a stray backtick cannot pair with a code span
   // paragraphs later and hide the links in between.
-  const linkOrCode = /(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)|(?<!!)\[((?:\\.|[^\\\]\n])+)\]\(([^\s)]+)\)/g;
+  const linkOrCode = /(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)|\[((?:\\.|[^\\\]\n])+)\]\(([^\s)]+)\)/g;
   return text.replace(linkOrCode, (match, delimiter: string, label: string, href: string) => {
     if (delimiter) {
       return match;
