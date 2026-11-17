@@ -109,7 +109,7 @@ describe('toAgentMarkdown', () => {
     expect(markdown).toContain('See [BucketProps](/v2/docs/aws-cdk-lib.aws_s3.BucketProps).');
   });
 
-  test('drops title word-break markup from the Markdown twin', () => {
+  test('the twin\'s title has no word-break markup', () => {
     const page = '# <span data-pagefind-weight="10">Application<wbr>Version<wbr>Lifecycle<wbr>Config<wbr>Property</span>\n';
     expect(toAgentMarkdown(page).markdown).toBe('# ApplicationVersionLifecycleConfigProperty\n');
   });
