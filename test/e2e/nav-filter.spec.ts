@@ -437,6 +437,29 @@ test.describe('in-sidebar symbol filter', () => {
     await expect(input).toBeFocused();
   });
 
+  for (const how of ['click', 'Enter'] as const) {
+    test(`below the sidebar breakpoint, ${how} on the hint leaves focus outside the closed drawer`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      await page.locator('.VPLocalNav button.menu').click();
+      const input = filterInput(page);
+      await input.fill('Queue');
+      const button = page.locator('.nav-filter-hint').getByRole('button');
+      await expect(button).toBeVisible();
+      if (how === 'click') {
+        await button.click();
+      } else {
+        await input.press('Enter');
+      }
+
+      await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
+      await expect(page.locator('.VPSidebar')).not.toHaveClass(/\bopen\b/);
+      expect(await page.evaluate(() => !!document.activeElement?.closest('.VPSidebar'))).toBe(false);
+    });
+  }
+
   test('focus moves to the input before the activated hint button unmounts', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await waitForSidebar(page);

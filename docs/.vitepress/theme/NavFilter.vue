@@ -62,11 +62,6 @@ function onClear() {
   inputEl.value?.focus();
 }
 
-// Enter jumps to the best-ranked symbol for the query as typed at press time:
-// capture the query synchronously, await the (possibly still in-flight) index
-// load, then rank. If the user kept typing while the index loaded, the captured
-// query is stale — drop the navigation rather than jump somewhere wrong.
-//
 // Below 960px the sidebar is a drawer that VitePress closes on navigation, but it stays in the tab order (opacity and
 // transform only), so refocusing the input there would land focus on a control the reader cannot see.
 function focusInput() {
@@ -76,8 +71,13 @@ function focusInput() {
   inputEl.value?.focus();
 }
 
-// The jump clears the box and, after the navigation, returns focus to it so
-// the next query can be typed straight away.
+// Enter jumps to the best-ranked symbol for the query as typed at press time:
+// capture the query synchronously, await the (possibly still in-flight) index
+// load, then rank. If the user kept typing while the index loaded, the captured
+// query is stale — drop the navigation rather than jump somewhere wrong.
+//
+// The jump clears the box and, where the sidebar is a fixed rail (960px and wider), returns focus to it so the next
+// query can be typed straight away. In the narrow drawer focus is left alone.
 async function onEnter() {
   const pressed = query.value;
   if (!isFilterActive(pressed)) {
