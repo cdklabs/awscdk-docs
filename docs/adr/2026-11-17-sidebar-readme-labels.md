@@ -25,22 +25,25 @@ In a Services section with more than one readme, `overviewItems()` in
 1. **The primary `aws-cdk-lib` service module is `Overview`.** It is the
    `aws_<service>` or `alexa_<service>` module that already sorts first. A
    section with a single readme keeps its plain `Overview`.
-2. **The service's own alpha package is `Developer Preview`.** That is the
+2. **A few readmes carry a fixed label.** `@aws-cdk/aws-iot-actions-alpha` is
+   `Actions for AWS IoT Rule`, its page title.
+3. **The service's own alpha package is `Developer Preview`.** That is the
    root readme of `@aws-cdk/aws-<service>-alpha`, with no further suffix after
-   the service name. Other alpha packages in the section, such as
+   the service name, whose jsii assembly is `experimental`. The stability
+   comes from the assembly; the name only picks out the service's own package.
+   Other alpha packages in the section, such as
    `@aws-cdk/aws-lambda-python-alpha`, fall through to rule 4, so Lambda does
    not show the same label several times.
-3. **A few readmes carry a fixed label.** `@aws-cdk/aws-iot-actions-alpha` is
-   `Actions for AWS IoT Rule`, its page title.
 4. **Every other readme is labeled by its module name in the reader's
    language,** with no `Overview (…)` wrapper. In TypeScript that is the
    submodule or package name (`aws_s3_deployment`,
    `@aws-cdk/aws-lambda-python-alpha`). Python, Java and .NET use their module
-   label (`aws_cdk.aws_s3_deployment`). Go uses the package name, the last
-   import path segment that is not a major version (`awss3deployment`,
-   `awscdklambdapythonalpha`), so no label is a Go import path. When two
-   packages give one section the same module name, the label is qualified as
-   `<package>/<module>`.
+   label (`aws_cdk.aws_s3_deployment`), which already names the package. Go
+   uses the package name, the last import path segment that is not a major
+   version (`awss3deployment`, `awscdklambdapythonalpha`), so no label is a Go
+   import path. When two packages give one section the same module name, the
+   TypeScript label is qualified as `<package>/<module>` and the Go label as
+   `<go module>/<package>` (`awscdkcfnpropertymixins/awss3`).
 
 The order of entries does not change. Links, page URLs, page titles and the
 search index do not change.

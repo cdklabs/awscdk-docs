@@ -1296,6 +1296,28 @@ describe('buildServiceSidebar', () => {
   });
 
   describe('submodule Overview links', () => {
+    test('a Framework section folding several readmes keeps its Overview (<module>) labels', () => {
+      const core = (overrides: Partial<SidebarEntry>) => entry({
+        assemblyName: 'aws-cdk-lib',
+        submodule: '',
+        indexLink: '/v2/docs/aws-cdk-lib-readme',
+        ...overrides,
+      });
+      const sidebar = buildServiceSidebar([
+        core({ name: 'Stack', kind: 'Construct', link: '/stack', moduleLabels: { python: 'aws_cdk' } }),
+        core({
+          name: 'Asset',
+          submodule: 'assets',
+          link: '/asset',
+          indexLink: '/v2/docs/aws-cdk-lib.assets-readme',
+          moduleLabels: { python: 'aws_cdk.assets' },
+        }),
+      ], ['ts', 'python']);
+      const framework = sidebar.find((s) => s.text === FRAMEWORK_SECTION)!.items![0];
+      const overviews = framework.items!.filter((i) => i.text.startsWith('Overview'));
+      expect(overviews.map((i) => i.text)).toEqual(['Overview (aws-cdk-lib)', 'Overview (assets)']);
+      expect(overviews[1].labels).toEqual({ python: 'Overview (aws_cdk.assets)' });
+    });
     test('every section leads with an Overview link to its submodule page', () => {
       const sidebar = sidebarSections([
         entry({ name: 'Bucket', kind: 'Construct (L2)', link: '/api/modules/aws-cdk-lib/aws-s3/bucket' }),
@@ -1456,6 +1478,51 @@ describe('buildServiceSidebar', () => {
       link: `/${name}`,
       indexLink: `/v2/docs/${assemblyName.replace('/', '_')}-readme`,
       moduleLabels: { go: `github.com/aws/aws-cdk-go/${owner}/v2` },
+      experimental: true,
+    });
+
+    test('a package named like the service alpha but not experimental is named by its package', () => {
+      const sidebar = sidebarSections([
+        entry({
+          name: 'CfnApp',
+          kind: 'Construct (L1)',
+          submodule: 'aws_amplify',
+          link: '/cfn-app',
+          indexLink: '/v2/docs/aws-cdk-lib.aws_amplify-readme',
+        }),
+        { ...alphaRoot('@aws-cdk/aws-amplify-alpha', 'App', 'awscdkamplifyalpha'), experimental: false },
+      ]);
+      expect(sidebar[0].items![1]).toEqual({
+        text: '@aws-cdk/aws-amplify-alpha',
+        link: '/v2/docs/@aws-cdk_aws-amplify-alpha-readme',
+      });
+    });
+
+    test('two readmes sharing a module name are qualified in Go too', () => {
+      const sidebar = sidebarSections([
+        entry({
+          name: 'Bucket',
+          kind: 'Construct (L2)',
+          link: '/bucket',
+          moduleLabels: { go: 'github.com/aws/aws-cdk-go/awscdk/v2/awss3' },
+        }),
+        entry({
+          name: 'FancyBucket',
+          kind: 'Construct (L3)',
+          assemblyName: '@aws-cdk/cfn-property-mixins',
+          link: '/fancy-bucket',
+          indexLink: '/v2/docs/@aws-cdk_cfn-property-mixins.aws_s3-readme',
+          moduleLabels: { go: 'github.com/aws/aws-cdk-go/awscdkcfnpropertymixins/v2/awss3' },
+        }),
+      ], ['ts', 'go']);
+      expect(sidebar[0].items!.slice(0, 2)).toEqual([
+        { text: 'Overview', link: '/api/modules/aws-cdk-lib/aws-s3' },
+        {
+          text: '@aws-cdk/cfn-property-mixins/aws_s3',
+          labels: { go: 'awscdkcfnpropertymixins/awss3' },
+          link: '/v2/docs/@aws-cdk_cfn-property-mixins.aws_s3-readme',
+        },
+      ]);
     });
 
     test('the service\'s own alpha readme is Developer Preview', () => {

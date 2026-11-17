@@ -826,13 +826,26 @@ function goPackageName(importPath: string): string {
   return segments.filter((s) => !/^v\d+$/.test(s)).pop() ?? importPath;
 }
 
+/**
+ * The Go package name qualified by its module, for two readmes that share a package name in one section:
+ * `github.com/aws/aws-cdk-go/awscdkcfnpropertymixins/v2/awss3` is `awscdkcfnpropertymixins/awss3`. A module root
+ * whose package is the module itself stays unqualified.
+ */
+function goQualifiedName(importPath: string): string {
+  const segments = importPath.split('/').filter((s) => !/^v\d+$/.test(s));
+  const last = segments[segments.length - 1];
+  const at = segments.indexOf('aws-cdk-go');
+  const root = at === -1 ? undefined : segments[at + 1];
+  return root && root !== last ? `${root}/${last}` : last;
+}
+
 /** The fixed label of a non-primary readme in a Services section, or undefined when it is named by its module. */
 function fixedReadmeLabel(e: SidebarEntry): string | undefined {
   if (e.submodule !== '') {
     return undefined;
   }
   return FIXED_README_LABELS.get(e.assemblyName)
-    ?? (SERVICE_ALPHA_PACKAGE.test(e.assemblyName) ? 'Developer Preview' : undefined);
+    ?? (e.experimental && SERVICE_ALPHA_PACKAGE.test(e.assemblyName) ? 'Developer Preview' : undefined);
 }
 
 /**
@@ -844,11 +857,11 @@ function fixedReadmeLabel(e: SidebarEntry): string | undefined {
  * disambiguates each, mirroring the `Type index (...)` convention. Structural submodules (`interfaces.*`, `*.mixins`)
  * never surface an overview of their own — they are internal assembly layout, not navigation.
  *
- * In a Services section folding several readmes, only the primary `aws-cdk-lib` service module is `Overview`. The
- * service's own `@aws-cdk/aws-<service>-alpha` readme is `Developer Preview`, a few readmes carry a fixed label
- * ({@link FIXED_README_LABELS}), and every other readme is labeled by its module name in the reader's language: the
- * short submodule or package name in TypeScript, and the last import path segment in Go. Framework sections keep
- * `Overview (<module>)`.
+ * In a Services section folding several readmes, only the primary `aws-cdk-lib` service module is `Overview`. A few
+ * readmes carry a fixed label ({@link FIXED_README_LABELS}), the service's own experimental
+ * `@aws-cdk/aws-<service>-alpha` readme is `Developer Preview`, and every other readme is labeled by its module name
+ * in the reader's language: the short submodule or package name in TypeScript, and the Go package name in Go,
+ * qualified by its module when two readmes share it. Framework sections keep `Overview (<module>)`.
  */
 function overviewItems(entries: SidebarEntry[], languages: readonly Language[], service: boolean): SidebarItem[] {
   const byLink = new Map<string, SidebarEntry>();
@@ -896,7 +909,10 @@ function overviewItems(entries: SidebarEntry[], languages: readonly Language[], 
         if (moduleLabel === undefined) {
           return undefined;
         }
-        return lang === 'go' ? goPackageName(moduleLabel) : moduleLabel;
+        if (lang !== 'go') {
+          return moduleLabel;
+        }
+        return collides ? goQualifiedName(moduleLabel) : goPackageName(moduleLabel);
       });
       return { text, ...(labels ? { labels } : {}), link };
     });
