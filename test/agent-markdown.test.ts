@@ -296,6 +296,50 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect(markdown.match(/```ts/g)).toHaveLength(1);
   });
 
+  // An example group as docgen emits it: one `div` per language, each holding a fence.
+  const exampleGroup = (copies: Array<[lang: string, fence: string, code: string, trailing?: string]>) => [
+    ...copies.flatMap(([lang, fence, code, trailing = ''], i) => [
+      `${i === 0 ? '' : '</div>'}<div class="lang-variant" data-lang="${lang}"${i === 0 ? '' : ' data-pagefind-ignore'}>`,
+      '', `\`\`\`${fence}`, code, `${trailing}\`\`\``, '',
+    ]),
+    '</div>',
+    '',
+  ].join('\n');
+
+  test('a fallback copy is found by its fence tag, even when its whitespace differs from the first copy', () => {
+    const page = exampleGroup([
+      ['ts', 'ts', 'new Bucket(this, "B");'],
+      ['python', 'ts', 'new Bucket(this, "B");', '\n'],
+      ['java', 'java', 'new Bucket(this, "B");'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript (also shown for Python):\n\n```ts');
+    expect(markdown).not.toMatch(/^Python:/m);
+    expect(markdown.match(/```ts/g)).toHaveLength(1);
+  });
+
+  test('without TypeScript, a TypeScript fallback is labeled TypeScript, never another language', () => {
+    const page = exampleGroup([
+      ['python', 'python', 'Bucket(self, "B")'],
+      ['java', 'ts', 'new Bucket(this, "B");'],
+      ['go', 'ts', 'new Bucket(this, "B");'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('Python:\n\n```python');
+    expect(markdown).toContain('TypeScript (shown for Java, Golang):\n\n```ts');
+    expect(markdown).not.toMatch(/^(Java|Golang):/m);
+    expect(markdown.match(/```ts/g)).toHaveLength(1);
+  });
+
+  test('languages that spell a member the same way share one sub-bullet', () => {
+    const v = (lang: string, name: string, type: string) => `<span class="lang-variant" data-lang="${lang}">`
+      + `<code class="member-name">${name}</code><span class="member-type" title="${type}">${type}</span></span>`;
+    const page = '<div class="member-row" id="bucket"><div class="member-line">'
+      + `${v('ts', 'bucket', 'IBucket')}${v('python', 'bucket', 'IBucket')}${v('dotnet', 'Bucket', 'IBucket')}`
+      + `${v('go', 'Bucket', 'IBucket')}</div></div>\n`;
+    expect(toAgentMarkdown(page).markdown).toBe('- `bucket`: IBucket\n\n  - C# / .NET, Golang: `Bucket`: `IBucket`\n');
+  });
+
   test('a sub-bullet type is a code span, so a generic does not read as a tag', () => {
     const page = [
       '<div class="member-row" id="tags"><div class="member-line">'

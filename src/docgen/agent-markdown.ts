@@ -14,7 +14,8 @@
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
-import { LANGUAGES } from './languages.js';
+import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
+import type { Language } from './languages.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -175,10 +176,10 @@ function startsVariantGroup(el: Element): boolean {
 
 /**
  * One group of language variants. A block variant (an example) is repeated once per language, each copy after a
- * plain label line naming its language; a copy identical to the first (an untranslated snippet docgen fills with the
- * TypeScript source) is dropped rather than labeled as another language. An inline variant (a name in prose or a
- * parameter list) keeps the canonical text and adds, in parentheses, the other spellings where they differ, with the
- * languages that share a spelling listed together.
+ * plain label line naming its language. A copy that is not in its own language (an untranslated snippet docgen fills
+ * with the TypeScript source) is never labeled as that language: the TypeScript copy's label names the languages
+ * that fall back on it. An inline variant (a name in prose or a parameter list) keeps the canonical text and adds,
+ * in parentheses, the other spellings where they differ, with the languages that share a spelling listed together.
  */
 function renderVariantGroup(group: Element[]): string {
   if (group.length === 1) return children(group[0]);
@@ -186,15 +187,7 @@ function renderVariantGroup(group: Element[]): string {
   const restored = (v: Element) => restoreProtected(children(v)).trim();
   const first = restored(group[0]);
   if (group[0].name.toLowerCase() === 'div') {
-    // A copy identical to the first is the TypeScript fallback for a snippet that was not translated: it is not
-    // repeated, and the first copy's label names the languages that fell back on it.
-    const same = group.slice(1).filter((v) => restored(v) === first);
-    if (same.length === group.length - 1) return children(group[0]);
-    const kept = group.filter((v) => !same.includes(v));
-    const label = (v: Element) => (v === group[0] && same.length
-      ? `${languageLabel(v)} (also shown for ${same.map(languageLabel).join(', ')})`
-      : languageLabel(v));
-    return kept.map((v) => `\n${label(v)}:\n\n${children(v).trim()}\n`).join('\n');
+    return renderBlockGroup(group, restored);
   }
   const canonical = children(group[0]).trim();
   const byText = new Map<string, { text: string; labels: string[] }>();
@@ -211,6 +204,43 @@ function renderVariantGroup(group: Element[]): string {
 
 function children(el: Element): string {
   return el.children.map((n) => render(n)).join('');
+}
+
+/**
+ * A block group (examples). A copy is a fallback when its first fence is tagged for another language than its own,
+ * or when it equals the first copy: docgen's TypeScript fill for a snippet that was not translated. Fallbacks are
+ * not repeated. When the first copy is TypeScript, its label names the languages that fall back on it; otherwise one
+ * TypeScript copy is kept, labeled with those languages, so TypeScript code never sits under another language.
+ */
+function renderBlockGroup(group: Element[], restored: (v: Element) => string): string {
+  const fenceLang = (v: Element) => /^ {0,3}(?:`{3,}|~{3,})([^\s`]*)/m.exec(restored(v))?.[1];
+  const ownFence = (v: Element) => FENCE_LANG[v.attribs['data-lang'] as Language];
+  const first = restored(group[0]);
+  const tsFirst = group[0].attribs['data-lang'] === DEFAULT_LANGUAGE;
+  const foreignFence = (v: Element) => {
+    const lang = fenceLang(v);
+    return lang !== undefined && lang !== ownFence(v);
+  };
+  const isFallback = (v: Element) => (v === group[0]
+    ? !tsFirst && foreignFence(v)
+    : (tsFirst && restored(v) === first) || foreignFence(v));
+  const fallbacks = group.filter(isFallback);
+  const kept = group.filter((v) => !isFallback(v));
+  const also = (v: Element[]) => v.map(languageLabel).join(', ');
+  const block = (label: string, v: Element) => `\n${label}:\n\n${children(v).trim()}\n`;
+  if (fallbacks.length === 0) return kept.map((v) => block(languageLabel(v), v)).join('\n');
+  if (tsFirst) {
+    if (kept.length === 1) return children(group[0]);
+    return kept
+      .map((v) => block(v === group[0] ? `${languageLabel(v)} (also shown for ${also(fallbacks)})` : languageLabel(v), v))
+      .join('\n');
+  }
+  // No TypeScript copy of its own: the first fallback stands for TypeScript, named for every language using it.
+  const typescript = LANGUAGE_LABEL.get(DEFAULT_LANGUAGE) ?? DEFAULT_LANGUAGE;
+  return [
+    ...kept.map((v) => block(languageLabel(v), v)),
+    block(`${typescript} (shown for ${also(fallbacks)})`, fallbacks[0]),
+  ].join('\n');
 }
 
 /** Plain text of a subtree, with links and code rendered as Markdown. */
@@ -373,11 +403,14 @@ function renderMemberRow(el: Element): string {
   const canonical = variants[0];
   const head = line ? renderMemberLine(line, canonical) : '';
   const headIdentity = canonical ? renderMemberIdentity(canonical) : '';
-  const spellings = variants
-    .filter((v) => v !== canonical)
-    .map((v) => [languageLabel(v), renderMemberIdentity(v)] as const)
-    .filter(([, text]) => text && text !== headIdentity)
-    .map(([label, text]) => `- ${label}: ${text}`);
+  // Languages that spell the member the same way share one sub-bullet, as inline spellings do.
+  const byIdentity = new Map<string, string[]>();
+  for (const v of variants.slice(1)) {
+    const text = renderMemberIdentity(v);
+    if (!text || text === headIdentity) continue;
+    byIdentity.set(text, [...(byIdentity.get(text) ?? []), languageLabel(v)]);
+  }
+  const spellings = [...byIdentity].map(([text, labels]) => `- ${labels.join(', ')}: ${text}`);
   const summaryText = summary ? inline(summary) : '';
   // Restore fences before indenting so every line of a block — content and closer, not just the opener — sits
   // under the bullet; an opener indented alone would leave the closer starting a fence of its own.
