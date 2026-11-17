@@ -17,8 +17,8 @@ jobs:
     steps:
       - id: auto_ba33701f
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - id: auto_eed99646
-        uses: actions/setup-node@v7.0.0
+      - id: auto_7f576795
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
           cache: npm
@@ -61,7 +61,7 @@ jobs:
       - name: Open version update PR
         id: open_version_update_pr
         if: steps.detect.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v8.1.1
+        uses: peter-evans/create-pull-request@v8.1.2
         with:
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
           branch: chore/cdk-version-bot/refresh-cdk-versions
@@ -80,8 +80,8 @@ jobs:
     steps:
       - id: auto_ba33701f
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - id: auto_eed99646
-        uses: actions/setup-node@v7.0.0
+      - id: auto_7f576795
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
           cache: npm
@@ -115,7 +115,7 @@ jobs:
       - name: Open module sync PR
         id: open_module_sync_pr
         if: steps.modules.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v8.1.1
+        uses: peter-evans/create-pull-request@v8.1.2
         with:
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
           branch: chore/cdk-version-bot/sync-modules

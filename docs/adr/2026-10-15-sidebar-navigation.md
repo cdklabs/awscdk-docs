@@ -330,8 +330,8 @@ A `JumpToCurrent.vue` control (label **Locate current page**, which is also
 its accessible name — no `aria-label` that would shadow it under WCAG 2.5.3)
 reveals the active entry. It lives in the filter's status row — `NavFilter`
 exposes a generic `status-actions` slot and knows nothing about the jump
-feature — which keeps the header height a property of the filter alone (62px
-on both the API overview root and a type page) rather than growing it when
+feature — which keeps the header height a property of the filter alone (66px,
+plus the 8px desktop top padding, on both the API overview root and a type page) rather than growing it when
 the control appears. The control communicates with the sidebar through a
 module-level monotonic counter in `sidebar-jump.ts` (a counter, not a
 boolean, so pressing it again after wandering off has a second edge to
@@ -348,8 +348,8 @@ reveal uses the shared duration-pinned scroll animation
 with distance (a long jump measured ~1,506ms against a ~300ms budget).
 Rendering is gated on `activePath.startsWith("api/")`, excluding the `/api/`
 overview root (which has no entry to reveal). The control carries a 24px box
-inside the 18px row via 3px padding offset by a `-3px` block margin
-(footprint stays 18px), meeting WCAG 2.5.8's 24px minimum; the 44px floor
+inside a status row reserved at 24px, so that neither it nor the filter hint
+button overhangs the header, meeting WCAG 2.5.8's 24px minimum; the 44px floor
 `test/responsive.test.ts` sets for drawer/nav controls cannot be honored
 here without reinstating the route-dependent height difference, and the
 control is outside that test's enumerated selectors.

@@ -279,6 +279,10 @@
   display: block;
   padding-left: 10px;
   border-left: 2px solid var(--vp-c-divider);
+  /* Lets a single long entry in any relation row (an `Owner.member` token, a
+     long type name) break inside the name rather than widen the page at
+     320-375px (WCAG 1.4.10 Reflow). */
+  overflow-wrap: anywhere;
 }
 
 /* A row's names are a real list, so assistive tech announces the item
@@ -383,57 +387,53 @@ a.chain-item:hover {
 
 /* ---------- Type metadata: provenance rows under the hierarchy bar ---------- */
 
-/* A definition list, deliberately NOT the metadata table that
-   a type page once carried: it renders only
-   the facts a type actually has, so there is no empty shell, and it carries
-   provenance the description cannot state as prose.
-
-   The grid is row-count-agnostic on purpose. A fourth metadata point is one
-   more `<dt>`/`<dd>` pair and needs no rule here, so nothing in this section
-   may key off position — no `nth-child`, no `:first-child`/`:last-child`
-   edges. Encoding "there are exactly three rows" as a position proxy is the
-   defect that once reached main.
-
-   Visually rhymes with `.inheritance-chain` above (soft surface, 8px radius,
-   mono, 0.8125rem) because the two blocks are one header region read top to
-   bottom. */
-.type-metadata {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 12px;
-  align-items: baseline;
+/* The `.vp-doc` prefix outranks VitePress's default table, row, cell and prose-code styles. */
+.vp-doc .type-metadata {
+  display: table;
+  width: auto;
   margin: 16px 0;
-  padding: 8px 14px;
+  padding: 4px 2px;
+  border-collapse: separate;
+  border-spacing: 12px 4px;
   border-radius: 8px;
   background-color: var(--vp-c-bg-soft);
-  font-family: var(--vp-font-family-mono);
+  font-family: var(--vp-font-family-base);
   font-size: 0.8125rem;
 }
 
-.type-metadata-label {
+.vp-doc .type-metadata tr,
+.vp-doc .type-metadata tr:nth-child(2n) {
+  border: 0;
+  background-color: transparent;
+}
+
+.vp-doc .type-metadata-label,
+.vp-doc .type-metadata-value {
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  font-size: inherit;
+  vertical-align: baseline;
+}
+
+.vp-doc .type-metadata-label {
   color: var(--vp-c-text-2);
   font-weight: 500;
+  text-align: left;
   white-space: nowrap;
 }
 
-.type-metadata-value {
-  margin: 0;
-  min-width: 0;
+.vp-doc .type-metadata-value {
   overflow-wrap: anywhere;
 }
 
-/* VitePress styles prose code as a padded, tinted pill through
-   `.vp-doc :not(pre,h1,h2,h3,h4,h5,h6) > code`, whose specificity (0,1,2)
-   beats a bare `.type-metadata-value code` (0,1,1), so without the prefix
-   these declarations lose and the values render as pills at 0.875em.
-   `.vp-doc` restores the class count (0,2,1) so these win. Inside the block the value IS the
-   text, so it needs no chip of its own. */
+/* Values use code markup to preserve their meaning in generated Markdown, but
+   the metadata table presents them in the body typeface without code chips. */
 .vp-doc .type-metadata-value code {
   background-color: transparent;
   padding: 0;
+  font-family: inherit;
   font-size: inherit;
-  /* A linked value takes the anchor's color rather than the prose-code
-     color, so the link affordance governs the text a reader actually sees. */
   color: inherit;
 }
 
@@ -981,10 +981,12 @@ a.chain-item:hover {
     padding: 6px 10px;
   }
 
-  /* The metadata block scales with the hierarchy bar it sits under. */
-  .type-metadata {
+  /* The metadata block scales with the hierarchy bar it sits under. The inset
+     is padding plus border-spacing, matching the bar's 6px 10px. */
+  .vp-doc .type-metadata {
     font-size: 0.75rem;
-    padding: 6px 10px;
+    padding: 2px 0;
+    border-spacing: 10px 4px;
   }
 
   /* Hover tooltips have no meaning on touch viewports */

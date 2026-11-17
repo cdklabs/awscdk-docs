@@ -2,9 +2,11 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import * as spec from '@jsii/spec';
+import { toAgentMarkdown } from '../src/docgen/agent-markdown.js';
 import { buildTypeIndex, TypeIndex } from '../src/docgen/constructs.js';
 import { generateDocs, loadAssembly as loadCachedAssembly } from '../src/docgen/index.js';
-import { buildUsageIndex, classMethods, classProperties, UsageIndex } from '../src/docgen/symbols.js';
+import { renderExtendsBar } from '../src/docgen/layout.js';
+import { buildUsageIndex, classMethods, classProperties, renderClassPage, renderInterfacePage, renderStructPage, UsageIndex } from '../src/docgen/symbols.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -34,6 +36,74 @@ describe('usage index', () => {
       ownerFqn: 'aws-cdk-lib.aws_s3.BucketProps',
       propertyName: 'encryption',
     });
+  });
+
+  test('types know which static members produce them', () => {
+    // Static methods returning the type, sorted by owner then member, each once.
+    expect(usage.obtainableFrom.get('aws-cdk-lib.aws_s3.IBucket')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketArn', kind: 'method' },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketAttributes', kind: 'method' },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketName', kind: 'method' },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromCfnBucket', kind: 'method' },
+    ]);
+    // A static constant counts; an instance member or a struct does not.
+    expect(usage.obtainableFrom.get('aws-cdk-lib.JsonNull')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.JsonNull', memberName: 'INSTANCE', kind: 'property', constant: true },
+    ]);
+    expect(usage.obtainableFrom.has('aws-cdk-lib.aws_s3.BucketProps')).toBe(false);
+    // A protected static is not callable and has no row on its owner page, so it is not a factory:
+    // BaseDeploymentConfig.fromDeploymentConfigName is `protected static` and returns IBaseDeploymentConfig.
+    const codedeploy = index.get('aws-cdk-lib.aws_codedeploy.BaseDeploymentConfig')!.type as spec.ClassType;
+    expect(codedeploy.methods?.find((m) => m.name === 'fromDeploymentConfigName')).toMatchObject({ static: true, protected: true });
+    expect(usage.obtainableFrom.get('aws-cdk-lib.aws_codedeploy.IBaseDeploymentConfig') ?? []).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'aws-cdk-lib.aws_codedeploy.BaseDeploymentConfig', memberName: 'fromDeploymentConfigName' }),
+    );
+    // Collections and unions produce something other than one instance, so they are not recorded: every
+    // recorded member's declared type is exactly the key.
+    for (const [fqn, refs] of usage.obtainableFrom) {
+      for (const ref of refs) {
+        const owner = index.get(ref.ownerFqn)!.type as spec.ClassType;
+        const member = owner.methods?.find((m) => m.name === ref.memberName)?.returns
+          ?? owner.properties?.find((p) => p.name === ref.memberName);
+        expect(member && spec.isNamedTypeReference(member.type) && member.type.fqn).toBe(fqn);
+      }
+    }
+  });
+
+  test('factories sort by owner FQN then member in code-unit order, each once', () => {
+    // Two owners listed in reverse FQN order; `VER_1` declared twice so the dedup is exercised; `of` after
+    // `VER_1` because `V` (0x56) sorts before `o` (0x6F) in code-unit order, where a locale sort would put `of`
+    // first.
+    const target: spec.ClassType = { assembly: 'lib', fqn: 'lib.Version', name: 'Version', kind: spec.TypeKind.Class };
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const owner = (fqn: string, name: string): spec.ClassType => ({
+      assembly: 'lib',
+      fqn,
+      name,
+      kind: spec.TypeKind.Class,
+      methods: [{ name: 'of', static: true, returns: { type: ref('lib.Version') } }],
+      properties: [
+        { name: 'VER_1', static: true, const: true, immutable: true, type: ref('lib.Version') },
+        { name: 'VER_1', static: true, const: true, immutable: true, type: ref('lib.Version') },
+      ],
+    });
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.Version': target, 'lib.Zeta': owner('lib.Zeta', 'Zeta'), 'lib.Alpha': owner('lib.Alpha', 'Alpha'),
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    expect(synthetic.obtainableFrom.get('lib.Version')).toEqual([
+      { ownerFqn: 'lib.Alpha', memberName: 'VER_1', kind: 'property', constant: true },
+      { ownerFqn: 'lib.Alpha', memberName: 'of', kind: 'method' },
+      { ownerFqn: 'lib.Zeta', memberName: 'VER_1', kind: 'property', constant: true },
+      { ownerFqn: 'lib.Zeta', memberName: 'of', kind: 'method' },
+    ]);
+    // The same order on the real catalog: constants first, `of` last.
+    const pev = usage.obtainableFrom.get('aws-cdk-lib.aws_rds.PostgresEngineVersion')!;
+    expect(pev[0].memberName.startsWith('VER_')).toBe(true);
+    expect(pev[pev.length - 1].memberName).toBe('of');
   });
 
   test('class member collection walks the base-class chain', () => {
@@ -195,11 +265,11 @@ describe('symbol page generation', () => {
     // source chip is in the title row. Deleting any one of these renderer
     // lines has to fail something.
     const page = readFileSync(join(outDir, 'docs', file), 'utf-8');
-    const block = /<dl class="type-metadata"[^>]*>([\s\S]*?)<\/dl>/.exec(page);
+    const block = /<table class="type-metadata"[^>]*>([\s\S]*?)<\/table>/.exec(page);
     expect(block).not.toBeNull();
     // Exactly one row, and it is Source: a non-construct has no CloudFormation
     // resource and is not its own L1.
-    expect([...block![1].matchAll(/class="type-metadata-label">([^<]*)</g)].map((m) => m[1]))
+    expect([...block![1].matchAll(/class="type-metadata-label" scope="row">([^<]*)</g)].map((m) => m[1]))
       .toEqual(['Source']);
     expect(page).not.toContain('class="header-tag"');
   });
@@ -211,8 +281,8 @@ describe('symbol page generation', () => {
     // neither the chain nor the extends bar renders on it.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ILocalBundling.md'), 'utf-8');
     expect(page).not.toContain('<nav class="inheritance-chain"');
-    expect(page).toContain('<dl class="type-metadata"');
-    expect(page).toContain('<dt class="type-metadata-label">Source</dt>');
+    expect(page).toContain('<table class="type-metadata"');
+    expect(page).toContain('<th class="type-metadata-label" scope="row">Source</th>');
   });
 
   test('interface pages show linked parent interfaces in the hierarchy bar', () => {
@@ -229,5 +299,167 @@ describe('symbol page generation', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(page).toMatch(/<span class="chain-label">implements<\/span> .*<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.aws_s3\.IBucket\.html">IBucket<\/a>/);
     expect(page).not.toContain('**Implements:**');
+  });
+
+  test('interface pages list the static factories that return the type, linked to the member', () => {
+    // IBucket is produced by four Bucket statics; the row lists them sorted by owner, then member name, each
+    // linking the owner page at the member's row anchor.
+    // Four entries overflow the two-line budget, so the last two fold.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
+    const row = page.match(/<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from<\/span> (.*?)<\/div>/);
+    expect(row).not.toBeNull();
+    // A `<wbr>` after the dot lets a long entry wrap at narrow widths; it adds nothing to the text.
+    const entries = [...row![1].matchAll(/<a class="chain-item" href="([^"]+)">([^<]+)<wbr>([^<]+)<\/a>/g)].map((m) => [m[2] + m[3], m[1]]);
+    expect(entries).toEqual([
+      ['Bucket.fromBucketArn', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn'],
+      ['Bucket.fromBucketAttributes', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketattributes'],
+      ['Bucket.fromBucketName', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketname'],
+      ['Bucket.fromCfnBucket', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket'],
+    ]);
+    expect(row![1]).toContain('<summary aria-label="Show 2 more">2 more</summary>');
+    // The row is the last one in the block, after `extends`.
+    expect(page.indexOf('<span class="chain-label">extends</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
+  });
+
+  test('class pages list a static constant of their own type, linked by fragment alone', () => {
+    // An entry the page's own type owns links `#anchor` only: a version catalog with hundreds of constants would
+    // otherwise repeat its own page path in every entry.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.JsonNull.md'), 'utf-8');
+    expect(page).toContain(
+      '<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from</span> '
+      + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="#instance">JsonNull.<wbr>INSTANCE</a></li></ul></div>',
+    );
+  });
+
+  test('entries in the row are language variants; the block is wrapped in language tabs only then', () => {
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const languages = ['ts', 'python', 'dotnet', 'go'] as const;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const index = buildTypeIndex([assembly, loadAssembly('constructs')]);
+    const usage = buildUsageIndex(index);
+    const ibucket = index.get('aws-cdk-lib.aws_s3.IBucket')!.type as spec.InterfaceType;
+    const page = renderInterfacePage({ type: ibucket, assembly, index, usage, linkFor, languages: [...languages], emitExamples: false });
+    const row = page.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
+    // The whole entry is the variant: the member name through the member-name translators, and Go's `_`
+    // separator, since jsii exposes a static there as the package-level `Owner_Member`.
+    expect(row).toContain('<span class="lang-variant" data-lang="ts">Bucket.<wbr>fromBucketArn</span>');
+    expect(row).toMatch(/data-lang="python"[^>]*>Bucket\.<wbr>from_bucket_arn<\/span>/);
+    expect(row).toMatch(/data-lang="dotnet"[^>]*>Bucket\.<wbr>FromBucketArn<\/span>/);
+    expect(row).toMatch(/data-lang="go"[^>]*>Bucket_<wbr>FromBucketArn<\/span>/);
+    // The enclosing <nav> is already ignored by Pagefind, so the spans do not repeat the attribute.
+    expect(row).not.toContain('data-pagefind-ignore');
+    // The anchor stays on the canonical slug, so the link resolves in every language.
+    expect(row).toContain('href="/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn"');
+    // The block sits inside a <LanguageTabs> group so the variants follow the page's language switch...
+    expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
+    // ...and a block without the row stays the bare <nav> it always was.
+    const props = index.get('aws-cdk-lib.aws_s3.BucketProps')!.type as spec.InterfaceType;
+    const propsPage = renderStructPage({ type: props, assembly, index, usage, linkFor, languages: [...languages], emitExamples: false });
+    expect(propsPage).not.toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
+    expect(propsPage).toContain('<nav class="inheritance-chain"');
+  });
+
+  test('a static property translates as a property, and an owner without a page renders as text', () => {
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const refs = [
+      { ownerFqn: 'x.Thing', memberName: 'DEFAULT_THING', kind: 'property' as const, constant: true },
+      { ownerFqn: 'x.Thing', memberName: 'defaultThing', kind: 'property' as const },
+      { ownerFqn: 'y.Other', memberName: 'ofThing', kind: 'method' as const },
+    ];
+    // Only `x.Thing` has a page: `y.Other` comes from an assembly the site does not document.
+    const linkFor = (fqn: string) => (fqn === 'x.Thing' ? '/v2/docs/x.Thing' : undefined);
+    const [nav] = renderExtendsBar(iface, linkFor, [], [], refs, ['ts', 'python', 'go']).filter((l) => l.includes('<nav'));
+    const row = nav.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
+    const [first, second, third] = [...row.matchAll(/<li role="listitem">(.*?)<\/li>/g)].map((m) => m[1]);
+    // A `const` static keeps its UPPER_SNAKE name in Python, as jsii's bindings do.
+    expect(first).toBe(
+      '<a class="chain-item" href="/v2/docs/x.Thing.html#default-thing">'
+      + '<span class="lang-variant" data-lang="ts">Thing.<wbr>DEFAULT_THING</span>'
+      + '<span class="lang-variant" data-lang="python" v-pre>Thing.<wbr>DEFAULT_THING</span>'
+      + '<span class="lang-variant" data-lang="go" v-pre>Thing_<wbr>DEFAULT_THING</span></a>, ',
+    );
+    // A non-const static property goes through translatePropertyName, the same translator the member rows use.
+    expect(second).toBe(
+      '<a class="chain-item" href="/v2/docs/x.Thing.html#defaultthing">'
+      + '<span class="lang-variant" data-lang="ts">Thing.<wbr>defaultThing</span>'
+      + '<span class="lang-variant" data-lang="python" v-pre>Thing.<wbr>default_thing</span>'
+      + '<span class="lang-variant" data-lang="go" v-pre>Thing_<wbr>DefaultThing</span></a>, ',
+    );
+    // No page to link: the entry is a span with the same content and no anchor.
+    expect(third).toBe(
+      '<span class="chain-item">'
+      + '<span class="lang-variant" data-lang="ts">Other.<wbr>ofThing</span>'
+      + '<span class="lang-variant" data-lang="python" v-pre>Other.<wbr>of_thing</span>'
+      + '<span class="lang-variant" data-lang="go" v-pre>Other_<wbr>OfThing</span></span>',
+    );
+    expect(third).not.toContain('<a ');
+  });
+
+  test('a const static keeps its name in the Python member row, matching the obtainable-from entry', () => {
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const index = buildTypeIndex([assembly]);
+    const usage = buildUsageIndex(index);
+    const jsonNull = index.get('aws-cdk-lib.JsonNull')!.type as spec.ClassType;
+    const page = renderClassPage({ type: jsonNull, assembly, index, usage, linkFor, languages: ['ts', 'python'], emitExamples: false });
+    // The property row and the hierarchy entry agree: both read INSTANCE in Python, as jsii's bindings spell it.
+    expect(page).toMatch(/<div class="member-row" id="instance"[\s\S]*?data-lang="python"[^>]*><code class="member-name">INSTANCE<\/code>/);
+    expect(page).toMatch(/id="obtainable-from"[\s\S]*?data-lang="python"[^>]*>JsonNull\.<wbr>INSTANCE<\/span>/);
+    // A non-const property still snake-cases: creationStack -> creation_stack.
+    expect(page).toMatch(/data-lang="python"[^>]*><code class="member-name">creation_stack<\/code>/);
+  });
+
+  test('a struct page lists the static factory that returns it', () => {
+    // Arn.split returns ArnComponents, so the struct's bar carries the row below its other relations.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ArnComponents.md'), 'utf-8');
+    expect(page).toMatch(/<div class="chain-row" id="obtainable-from">.*href="\/v2\/docs\/aws-cdk-lib\.Arn\.html#split">Arn\.<wbr>split<\/a>/);
+  });
+
+  test('the agent Markdown twin keeps cross-page links in the row, drops the <wbr> and non-TypeScript variants', () => {
+    // A same-page `#instance` link renders as text, like every other same-page link in the twin.
+    const jsonNull = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.JsonNull.md'), 'utf-8')).markdown;
+    expect(jsonNull).toContain('Obtainable from: JsonNull.INSTANCE');
+    expect(jsonNull).not.toContain('<wbr>');
+    // A cross-page entry keeps its deep link to the factory, and only the TypeScript variant appears.
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const index = buildTypeIndex([assembly, loadAssembly('constructs')]);
+    const usage = buildUsageIndex(index);
+    const ibucket = index.get('aws-cdk-lib.aws_s3.IBucket')!.type as spec.InterfaceType;
+    const page = renderInterfacePage({ type: ibucket, assembly, index, usage, linkFor, languages: ['ts', 'python'], emitExamples: false });
+    const twin = toAgentMarkdown(page).markdown;
+    expect(twin).toContain('Obtainable from: [Bucket.fromBucketArn](/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketarn), ');
+    // Factories folded behind the disclosure keep their deep link too: the URL is the point of this row.
+    expect(twin).toContain('[Bucket.fromCfnBucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket)');
+    expect(twin).not.toContain('from_bucket_arn');
+    expect(twin).not.toContain('<wbr>');
+  });
+
+  test('the agent Markdown twin links the shown entries of every hierarchy row and folds the rest as text', () => {
+    // The same renderer serves the breadcrumb and the existing rows, so their visible entries link too.
+    const bucket = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8')).markdown;
+    expect(bucket).toMatch(/^Extends: \[Construct\]\(\/v2\/docs\/constructs\.Construct\.html\) › .*Bucket$/m);
+    expect(bucket).toMatch(/^Implements: .*\[IBucket\]\(\/v2\/docs\/aws-cdk-lib\.aws_s3\.IBucket\.html\)/m);
+    // Entries folded behind the row's disclosure stay plain text: Construct has 2,332 descendants, and linking
+    // them all would quadruple its twin for entries the page itself hides.
+    const construct = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'constructs.Construct.md'), 'utf-8')).markdown;
+    const superclassOf = construct.split('\n').find((l) => l.startsWith('Superclass of: '))!;
+    const links = (superclassOf.match(/\]\(\/v2\/docs\//g) ?? []).length;
+    const entries = superclassOf.split(', ').length;
+    expect(links).toBeGreaterThan(0);
+    expect(links).toBeLessThan(10);
+    expect(entries).toBeGreaterThan(1000);
+    // A type whose block exists only for its factories has no ancestor, so no `Extends:` line claims it extends itself.
+    const duration = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8')).markdown;
+    expect(duration).not.toMatch(/^Extends: Duration$/m);
+    expect(duration).toMatch(/^Obtainable from: /m);
+  });
+
+  test('a type nothing produces has no obtainable-from row', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+    expect(page).toContain('<span class="chain-label">used as props by</span>');
+    expect(page).not.toContain('obtainable from');
   });
 });

@@ -16,6 +16,13 @@
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
+import { TYPE_METADATA_OPEN } from './layout.js';
+
+/** The whole generated metadata table, matched from the exact opening tag `renderTypeMetadata` writes. */
+const METADATA_TABLE = new RegExp(
+  `${TYPE_METADATA_OPEN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?</table>`,
+  'g',
+);
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -76,16 +83,23 @@ function stripFrontmatter(s: string): string {
 /**
  * Documentation text legitimately contains `<`: generics and placeholders in code (`add<Event>Notification`,
  * `<CloudFront distribution ID>`), CommonMark autolinks (`<https://…>`) and bare placeholders (`<Stack>`) in README
- * prose, which reaches the page verbatim. Fenced and indented code, and every angle-bracketed token that is not a
- * tag this site emits, are swapped for placeholders before the HTML parse and put back afterwards, byte for byte.
- * Fences come from the shared tokenizer every other fence-aware pass uses; a fence's info string keeps only its
- * language tag, dropping the `type-links=…` attribute that drives hover links.
+ * prose, which reaches the page verbatim. Fenced and indented code, and every angle-bracketed token that is not one
+ * of the `KNOWN_TAGS`, are swapped for placeholders before the HTML parse and put back afterwards, byte for byte. The
+ * generated `type-metadata` table is the one exception: its exact markup passes through to the parser whole, so table
+ * tags elsewhere (README tables, `<Table>` generics, `<table name>` placeholders) stay literal. Fences come from the
+ * shared tokenizer every other fence-aware pass uses; a fence's info string keeps only its language tag, dropping
+ * the `type-links=…` attribute that drives hover links.
  */
 function protectCode(s: string): { text: string; restore: (out: string) => string } {
   const slots: string[] = [];
+  const metadataTags: string[] = [];
   const keep = (literal: string): string => {
     slots.push(literal);
     return `\u0000${slots.length - 1}\u0000`;
+  };
+  const keepMetadataTag = (tag: string): string => {
+    metadataTags.push(tag);
+    return `\u0001${metadataTags.length - 1}\u0001`;
   };
   const text = tokenizeFences(s)
     .map((span) => {
@@ -96,15 +110,19 @@ function protectCode(s: string): { text: string; restore: (out: string) => strin
         return keep([fence, ...rest].join('\n'));
       }
       return span.text
+        // Only the exact generated metadata table enters the parser; table-shaped documentation stays literal.
+        .replace(METADATA_TABLE, (table) =>
+          table.replace(/<[^<>]+>/g, keepMetadataTag))
         // Indented code blocks: a run of lines indented four columns after a blank line (or the span start). Docgen
         // escapes docstring prose without recognizing this form, so the block is decoded back to what was written.
         .replace(/(^|\n\n)((?:(?: {4}|\t)[^\n]*(?:\n|$))+)/g, (_m, lead: string, block: string) =>
           lead + keep(decodeEntities(block)))
-        // Anything in angle brackets that is not a tag docgen or the theme emits is text: autolinks, placeholders,
+        // Anything in angle brackets that is not one of the `KNOWN_TAGS` is text: autolinks, placeholders,
         // generics inside code spans. Code spans themselves stay in the parse so escaped text in them is decoded.
         .replace(/<(\/?[^\s<>/][^<>]*)>/g, (m, inner: string) => (isKnownTag(inner) ? m : keep(m)));
     })
-    .join('\n');
+    .join('\n')
+    .replace(/\u0001(\d+)\u0001/g, (_m, i: string) => metadataTags[Number(i)]);
   const restore = (out: string): string => out.replace(/\u0000(\d+)\u0000/g, (_m, i: string) => slots[Number(i)]);
   return { text, restore };
 }
@@ -246,6 +264,9 @@ function render(node: Node): string {
   const el = node;
   const cls = classes(el);
   const tag = el.name.toLowerCase();
+  if (tag === 'table' && cls.has('type-metadata')) {
+    return renderMetadata(el);
+  }
   if (!KNOWN_TAGS.has(tag)) {
     return literalTag(el);
   }
@@ -265,9 +286,6 @@ function render(node: Node): string {
 
   if (cls.has('inheritance-chain')) {
     return renderInheritance(el);
-  }
-  if (cls.has('type-metadata')) {
-    return renderMetadata(el);
   }
   if (cls.has('member-row')) {
     return renderMemberRow(el);
@@ -325,16 +343,20 @@ function decodeEntities(s: string): string {
   });
 }
 
-/** True when `<inner>` opens or closes a tag docgen or the theme emits. */
+/** True when `<inner>` opens or closes one of the `KNOWN_TAGS`. */
 function isKnownTag(inner: string): boolean {
   const name = inner.replace(/^\//, '').split(/[\s/]/)[0].toLowerCase();
   return KNOWN_TAGS.has(name);
 }
 
-/** Tags docgen or the theme emit. Anything else was documentation text that happened to look like a tag. */
+/**
+ * Tags that may reach the parser from any page. Anything else was documentation text that happened to look like a
+ * tag. The generated `type-metadata` table enters through its own pass in `protectCode`; adding table tags here would
+ * expose README tables and generics to the parser.
+ */
 const KNOWN_TAGS = new Set([
   'a', 'br', 'code', 'dd', 'details', 'div', 'dl', 'dt', 'li', 'nav', 'ol', 'p', 'section', 'span', 'summary', 'ul',
-  'languagetabs', 'badge',
+  'wbr', 'languagetabs', 'badge',
 ]);
 
 /** Put an unrecognized tag back the way the author wrote it (`<REGION>`, `<CloudFront distribution ID>`). */
@@ -349,27 +371,38 @@ function renderInheritance(el: Element): string {
   for (const child of el.children) {
     if (!isElement(child)) continue;
     const cls = classes(child);
+    // Entries shown without opening the row's disclosure keep their cross-page link (a same-page `#…` link renders
+    // as text like everywhere else in the twin); entries folded inside `.chain-more` render as text, except in the
+    // `obtainable from` row, whose deep links to factories are the point of the row. Recorded in the SEO ADR.
+    const linkFolded = child.attribs.id === 'obtainable-from';
+    const folded = (n: Element): boolean => {
+      for (let p = DomUtils.getParent(n); p && p !== child; p = DomUtils.getParent(p)) {
+        if (isElement(p) && classes(p).has('chain-more')) return true;
+      }
+      return false;
+    };
+    const items = () => DomUtils.findAll((n) => classes(n).has('chain-item'), child.children)
+      .map((n) => (folded(n) && !linkFolded ? inline(n) : render(n).replace(/\s+/g, ' ').trim()));
     if (cls.has('chain-line')) {
-      const items = DomUtils.findAll((n) => classes(n).has('chain-item'), child.children).map((n) => inline(n));
-      lines.push(`Extends: ${items.join(' › ')}`);
+      // The line always holds the type itself; only a real ancestor makes it an `Extends:` relation.
+      const chain = items();
+      if (chain.length > 1) lines.push(`Extends: ${chain.join(' › ')}`);
     } else if (cls.has('chain-row')) {
       const label = DomUtils.findOne((n) => classes(n).has('chain-label'), child.children);
-      const items = DomUtils.findAll((n) => classes(n).has('chain-item'), child.children).map((n) => inline(n));
-      lines.push(`${label ? `${capitalize(textOf(label))}: ` : ''}${items.join(', ')}`);
+      lines.push(`${label ? `${capitalize(textOf(label))}: ` : ''}${items().join(', ')}`);
     }
   }
   return `\n${lines.join('  \n')}\n`;
 }
 
-/** Type metadata `<dl>`: one bullet per label/value pair. */
+/** Type metadata `<table>`: one bullet per row header/value pair. */
 function renderMetadata(el: Element): string {
-  const lines: string[] = [];
-  let label = '';
-  for (const child of el.children) {
-    if (!isElement(child)) continue;
-    if (child.name.toLowerCase() === 'dt') label = inline(child);
-    if (child.name.toLowerCase() === 'dd') lines.push(`- ${label}: ${inline(child)}`);
-  }
+  const rows = DomUtils.findAll((n) => n.name.toLowerCase() === 'tr', el.children);
+  const lines = rows.flatMap((row) => {
+    const label = DomUtils.findOne((n) => n.name.toLowerCase() === 'th', row.children);
+    const value = DomUtils.findOne((n) => n.name.toLowerCase() === 'td', row.children);
+    return label && value ? [`- ${inline(label)}: ${inline(value)}`] : [];
+  });
   return `\n${lines.join('\n')}\n`;
 }
 

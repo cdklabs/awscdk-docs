@@ -88,8 +88,9 @@ interfaces get no mixin page but still appear in type tables as `Interface`.
 ### Header: breadcrumb, merged description, hierarchy block
 
 A type page opens with a navigable breadcrumb above the H1, then an H1 of the
-type name plus its kind badge, then one prose description, then one hierarchy
-row — no metadata table, no `## Overview` heading, no package+version badge.
+type name plus its kind badge, then one prose description, one hierarchy
+block, and an optional provenance table. The page has no legacy Module/FQN
+metadata table, no `## Overview` heading, and no package+version badge.
 
 `renderDescription()` (`src/docgen/layout.ts`) folds doc summary and remarks
 into one continuous prose block, which is Pagefind-indexed (remarks read as
@@ -139,14 +140,34 @@ overview pages) the Teleport is disabled and the star keeps its standalone
 
 ### One type-hierarchy block: every relation as a row
 
-All five relationships — `implements`, `extends`, `implemented by`,
-`superclass of`, and a struct's `used as props by` — render as rows of one
-hierarchy block under the breadcrumb, emitted by a single `relationRow`
-renderer. There is no separate `## Subclasses`, `## Implemented by` or
+All six relationships — `implements`, `extends`, `implemented by`,
+`superclass of`, a struct's `used as props by`, and `obtainable from` — render
+as rows of one hierarchy block under the breadcrumb, emitted through one shared
+row renderer (`relationRowOf`): type entries via `relationRow`, member entries
+via `memberRelationRow`. There is no separate `## Subclasses`, `## Implemented by` or
 `## Used as props by` section and no inline-vs-section split by direction.
 `used as props by` lists the classes whose initializer takes the struct (from
 the reverse usage index); its row keeps the `used-as-props-by` id, so deep
-links to the former section still land on it. `implements` lists the **full transitive closure** of
+links to the former section still land on it. `obtainable from` is the last
+row on class, interface, struct and construct pages: the static methods and
+static properties (including constants) in the documented assemblies whose
+declared type is the page's type or an optional of it — arrays, maps and
+unions do not produce one instance, so they do not count. Protected statics are
+skipped, as the member tables skip them. Each entry reads `Owner.member`
+(`Bucket.fromBucketName`) and links the owner's page at the member's row
+anchor, or the fragment alone when the owner is the page's own type; entries
+are sorted by owner FQN then member, each once; the row carries the
+`obtainable-from` id and shares the budget and disclosure below. The whole
+entry is rendered as inline language variants, translated per enabled language
+like the member rows (the multi-language ADR's canonical identity, translated
+display): the member name through the member-name translators (a `const`
+keeps its UPPER_SNAKE name in Python, as the member rows do) and the
+separator `_` for Go, where a static is the package-level `Owner_Member`. The
+anchor stays on the canonical jsii name and the width budget uses the widest
+translation; the block is wrapped in `<LanguageTabs>` only when this row is
+present. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
+the agent Markdown twin drops it. `implements`
+lists the **full transitive closure** of
 interfaces reachable through class ancestors *and* interface `extends`
 (the Javadoc "All Implemented Interfaces" rule), via a memoized cycle-guarded
 resolver in `src/docgen/interfaces.ts` cached per `TypeIndex`. `superclass of`
@@ -185,22 +206,25 @@ reverse index; an interface's own `extends` already renders in its row.
 
 ### Provenance metadata block
 
-A definition list (`renderTypeMetadata`, rows from the shared
+A metadata table (`renderTypeMetadata`, rows from the shared
 `typeMetadataRows(type, assembly, index, linkFor)`) renders under the
-hierarchy block on every type page, carrying at most three rows:
+hierarchy block on every type page. Each row has one `<th scope="row">`
+label and one `<td>` value, and only facts that apply to the type render:
 
 | row | source | link |
 |---|---|---|
+| Stability | the type's stability, falling back to its assembly | stability guide; experimental types only |
 | CloudFormation | the L1's own resource type, or the L1 an L2 is backed by | AWS resource reference, `target="_blank"` |
 | L1 type | the backing L1, on non-L1 pages only | that L1's page, via `pageHref` |
 | Source | upstream file and line | repository, or the text *Generated at build time* |
+| Type last changed | page history for the type's shape | version and release date text |
 
 Provenance is neither prose nor title material, so it lives here rather than in
 the H1 or the description. The block emits nothing when there are no rows (no
-empty shell). It is a two-column grid (`max-content 1fr`) with **no**
-`nth-child`/`:first-child`/`:last-child` styling — a fourth row is a row, not a
-CSS change (a test asserts the absence). `isGeneratedSource()` is a predicate
-with no markup; the source chip no longer lives in the H1.
+empty shell), and another row needs no markup or layout change. The only
+positional selector, `tr:nth-child(2n)`, cancels VitePress's zebra stripe; it
+does not encode a row count. `isGeneratedSource()` is a predicate with no
+markup; the source chip no longer lives in the H1.
 
 Indexing is **selective**: the CloudFormation and L1-type values are indexed
 (each names exactly one page, so searching `AWS::S3::Bucket` finds `Bucket`);
@@ -324,9 +348,9 @@ HTML VitePress renders.
   The previous reference also appended its experimental/deprecated badge markup
   to the title id; that tail is not reproduced.
 - **Sections:** fixed ids `example`, `initializer`, `properties`, `methods`,
-  `members`, `referenced-by` and `used-as-props-by`. Module overview sections are
-  `module-submodules` and `module-types`, because README prose above them can
-  carry its own `## Types` heading.
+  `members`, `referenced-by`, `used-as-props-by` and `obtainable-from`. Module
+  overview sections are `module-submodules` and `module-types`, because README
+  prose above them can carry its own `## Types` heading.
 - **Members:** `memberAnchor(name)` from the canonical TypeScript name; inlined
   construct props as `props-<shortname>-<prop>` (above).
 - **Enum members:** the lowercased member name on each Members row.
@@ -433,8 +457,8 @@ outline, only overview pages suppress it.
   build output grows to the full type count (~23k pages) and VitePress build
   time scales linearly, the practical ceiling.
 - Type pages open with breadcrumb, H1 + kind badge, one prose description, one
-  hierarchy block, an optional provenance list, then members — no table, no
-  empty shells.
+  hierarchy block, an optional provenance table, then members — no legacy
+  Module/FQN table and no empty shells.
 - Markup consumers must use `member-row`/`type-breadcrumb`/`type-metadata`
   vocabularies; the old `prop-row`/`method-details` markup and markdown props
   tables are gone.
