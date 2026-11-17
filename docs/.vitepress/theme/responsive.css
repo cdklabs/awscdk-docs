@@ -127,6 +127,17 @@ pre.signature {
     min-width: 44px;
   }
 
+  /* Copy Markdown split button and its menu row, in the same top-of-page slot as the star */
+  .copy-markdown-main,
+  .copy-markdown-options {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .copy-markdown-item {
+    min-height: 44px;
+  }
+
   /* Icon-only favorite star in the breadcrumb bar */
   .favorite-star-button {
     min-height: 44px;

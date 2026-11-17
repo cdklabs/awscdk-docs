@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { CFN_QUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
+import { CFN_QUEUE_PAGE, LONG_TITLE_PAGE, QUEUE_PAGE } from './fixture.js';
 
 // Page titles. A type page's H1 carries raw HTML: the weighted name span and
 // the kind badge. VitePress infers a page title from the H1 with
@@ -36,6 +36,35 @@ test.describe('page titles', () => {
     await expect(page.locator('h1 .VPBadge')).toHaveText('L1 construct');
     await expect(page.locator('.type-metadata span.type-metadata-generated'))
       .toHaveText('Generated at build time');
+  });
+
+  test('a long title wraps only between identifier words', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto(LONG_TITLE_PAGE);
+
+    const name = page.locator('h1 span[data-pagefind-weight]');
+    await expect(name).toHaveText('CfnQueueInlinePolicyProps');
+    await expect(name.locator('wbr')).toHaveCount(4);
+    await expect(page).toHaveTitle(/^CfnQueueInlinePolicyProps \| /);
+    // The permalink names the type once, as one word, with no markup.
+    await expect(page.locator('h1 a.header-anchor'))
+      .toHaveAttribute('aria-label', 'Permalink to "CfnQueueInlinePolicyProps"');
+
+    const words = await name.evaluate((element) => [...element.childNodes]
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rects = [...range.getClientRects()];
+        return {
+          text: node.textContent,
+          lines: new Set(rects.map((rect) => Math.round(rect.top))).size,
+          top: Math.round(rects[0]?.top ?? 0),
+        };
+      }));
+    expect(words.map((word) => word.text)).toEqual(['Cfn', 'Queue', 'Inline', 'Policy', 'Props']);
+    expect(words.every((word) => word.lines === 1)).toBe(true);
+    expect(new Set(words.map((word) => word.top)).size).toBeGreaterThan(1);
   });
 
   test('a starred page is listed under its clean title', async ({ page }) => {

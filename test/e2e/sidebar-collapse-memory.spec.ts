@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { API_OVERVIEW, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
+import { API_OVERVIEW, CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // Persistent sidebar disclosure state. These specs pin the contract on the
 // BUILT, hydrated site: an explicit toggle survives SPA navigation, a full
@@ -149,5 +149,27 @@ test.describe('sidebar collapse memory', () => {
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeVisible();
+  });
+
+  test('an expanded section outside the active page comes back with its items after a reload', async ({ page }) => {
+    // A section the reader left open is reopened from stored choices on load
+    // and shows its items, not an empty list under an open caret.
+    await page.goto(CFN_QUEUE_PAGE);
+    await waitForSidebar(page);
+
+    const name = 'Custom Resources';
+    const items = (p: Page) => groupNamed(p, name).locator('xpath=..').locator(':scope > ul.api-sidebar-list > li');
+    await expect(groupNamed(page, name)).toHaveAttribute('aria-expanded', 'false');
+    // Let the load-time reveal finish scrolling the sidebar before clicking, or the click can land on a neighbor.
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
+    await groupNamed(page, name).click();
+    await expect(items(page).first()).toBeVisible();
+
+    await page.reload();
+    await waitForSidebar(page);
+    const group = groupNamed(page, name);
+    await expect(group).toHaveAttribute('aria-expanded', 'true');
+    await expect(group.locator('.api-sidebar-caret')).toHaveClass(/\bopen\b/);
+    await expect(items(page).first()).toBeVisible();
   });
 });
