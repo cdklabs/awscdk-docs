@@ -23,6 +23,7 @@ import { STABILITY_ROUTE } from '../site-routes.js';
 import { PAGEFIND_IGNORE, weightedTitle } from './search.js';
 import { LinkResolver, shortName } from './signatures.js';
 import { initializerSignatureVariants } from './variants.js';
+import { releasePartOf } from './version-bump.js';
 
 export { escapeCell, escapeProse } from './layout.js';
 export { shortName } from './signatures.js';
@@ -126,7 +127,8 @@ function extendsFqn(fqn: string, baseFqn: string, index: TypeIndex): boolean {
 
 /**
  * The link to a type's source file and the file path shown for it, resolved together so they cannot disagree.
- * A type in a repository the assembly names is pinned to the assembly's version tag, with the declaration line.
+ * A type in a repository the assembly names is pinned to the assembly's release tag, with the declaration line.
+ * The tag drops any prerelease suffix, since an alpha version has no tag of its own: `2.277.0-alpha.0` -> `v2.277.0`.
  * A type from a relocated package links to the default branch of the repository that owns the package, with no
  * line anchor, and shows its path inside that package.
  * Undefined for build-generated files (e.g. `*.generated.ts` L1 sources), which do not exist in the repository,
@@ -147,7 +149,8 @@ function resolveSource(type: spec.Type, assembly: spec.Assembly): { url: string;
   }
   const base = repo.url.replace(/^git\+/, '').replace(/\.git$/, '');
   const dir = repo.directory ? `${repo.directory}/` : '';
-  return { url: `${base}/blob/v${assembly.version}/${dir}${loc.filename}#L${loc.line}`, label: loc.filename };
+  const tag = `v${releasePartOf(assembly.version)}`;
+  return { url: `${base}/blob/${tag}/${dir}${loc.filename}#L${loc.line}`, label: loc.filename };
 }
 
 /** GitHub URL of the type's source file; see {@link resolveSource}. */

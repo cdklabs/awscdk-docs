@@ -171,6 +171,19 @@ describe('construct detection and classification', () => {
     expect(url).toMatch(/^https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+$/);
   });
 
+  test('pins an alpha type source URL to the release tag, since alpha versions have no tag of their own', () => {
+    const bedrock = loadAssembly('@aws-cdk/aws-bedrock-alpha');
+    expect(bedrock.version).toMatch(/^\d+\.\d+\.\d+-alpha\.\d+$/);
+    const release = bedrock.version.replace(/-alpha\.\d+$/, '');
+    const promptVersion = bedrock.types['@aws-cdk/aws-bedrock-alpha.PromptVersion'];
+    const url = sourceUrl(promptVersion, bedrock)!;
+    expect(url).toBe(
+      `https://github.com/aws/aws-cdk/blob/v${release}/packages/@aws-cdk/aws-bedrock-alpha/` +
+        `${promptVersion.locationInModule!.filename}#L${promptVersion.locationInModule!.line}`,
+    );
+    expect(url).not.toContain('-alpha.');
+  });
+
   test('omits source URLs for build-generated files', () => {
     const cfnBucket = index.get('aws-cdk-lib.aws_s3.CfnBucket')!.type;
     expect(cfnBucket.locationInModule!.filename).toMatch(/\.generated\./);
