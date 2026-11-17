@@ -7,6 +7,7 @@ import { resolveLucideIcon } from "./feature-icons";
 import { API_ROOT, SITE_TITLE, VERSIONS_ROUTE } from "../../src/site-routes";
 import { agentMarkdownHref } from "./agent-markdown";
 import { historyHead } from "./page-history";
+import { PAGE_REWRITES, pageSourceExcludes } from "./page-url";
 import { canonicalHead } from "./canonical";
 import { structuredDataHead } from "./structured-data";
 import { siteOverridesHead } from "./site-overrides";
@@ -242,13 +243,11 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
   // appear in the sidebar, nav, or Pagefind index. The spike proof pages (docs/spike/) are excluded on the
   // deployed shard build only (SHARD_BUILD=1); the e2e fixture build sets neither SHARD_BUILD nor DOCS_BASE
   // and still needs the page for test/e2e/language-tabs.spec.ts.
-  srcExclude: ["adr/**", ...(process.env.SHARD_BUILD ? ["spike/**"] : [])],
+  srcExclude: pageSourceExcludes(Boolean(process.env.SHARD_BUILD)),
 
   // The authored construct-library overview, which docgen also copies to the /v2/ index, is served at its
   // historical address inside the generated /v2/docs/ tree (which docgen clears on every run).
-  rewrites: {
-    "aws-construct-library.md": "v2/docs/aws-construct-library.md",
-  },
+  rewrites: PAGE_REWRITES,
 
   // Syntax highlighting runs through the `highlight` hook below, on the highlighter built above from
   // HIGHLIGHT_LANGS. No `markdown.languages` here: VitePress reads that only when building its own default

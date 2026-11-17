@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { agentMarkdownHref } from '../docs/.vitepress/agent-markdown.js';
-import { pageUrl } from '../docs/.vitepress/page-url.js';
+import { PAGE_REWRITES, pageSourceExcludes, pageUrl } from '../docs/.vitepress/page-url.js';
 import { mapProse } from '../src/docgen/fences.js';
 import { generateDocs } from '../src/docgen/index.js';
 import { docsSiteUrl } from '../src/docgen/versions.js';
@@ -123,13 +123,15 @@ describe('agent-oriented Markdown twins', () => {
 
   test('site links in twins name emitted pages and external links stay external', () => {
     const siteUrl = docsSiteUrl();
+    // The deployed shard build ships the twins, so check against the pages that build serves.
+    const excluded = ['.vitepress/', 'v2/', ...pageSourceExcludes(true).map((pattern) => pattern.replace(/\*\*$/, ''))];
     const emittedPages = new Set([
       ...walk(outDir)
         .filter((file) => file.endsWith('.md'))
         .map((file) => pageUrl(`v2/${file}`, siteUrl)),
       ...walk(join(ROOT, 'docs'))
-        .filter((file) => file.endsWith('.md') && !file.startsWith('.vitepress/') && !file.startsWith('v2/'))
-        .map((file) => pageUrl(file, siteUrl)),
+        .filter((file) => file.endsWith('.md') && !excluded.some((prefix) => file.startsWith(prefix)))
+        .map((file) => pageUrl(PAGE_REWRITES[file] ?? file, siteUrl)),
     ]);
     const links = walk(agentOutDir)
       .filter((file) => file.endsWith('.md'))

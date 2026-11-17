@@ -87,7 +87,10 @@ Headings, prose, fenced code and tables pass through. Links keep their text and
 external target. Site page links use `pageHref()` for the `.html` route, then
 `DOCS_SITE_URL` to become absolute URLs. They target the rendered page rather
 than another twin, so the same link works when the Markdown is fetched, saved or
-pasted without a site origin.
+pasted without a site origin. Other root-relative targets, such as `/llms.txt`,
+are joined onto `DOCS_SITE_URL` unchanged. Image sources, and targets containing
+whitespace or a backslash, stay as authored. The pipeline test checks that every
+twin site link is the `pageUrl()` of a page the site serves.
 
 docgen writes the twins to a sibling tree outside `docs/`,
 `dist-agent-markdown/v2/docs/<page>.md`, laid out site-root-relative, via the
@@ -166,7 +169,8 @@ run, including failures.
   the merged site unions the sitemaps and overlays the twins and index once.
 - Changing the published prefix (`DOCS_SITE_URL`) moves the canonical, sitemap,
   and JSON-LD `url` together, since all three resolve routes through `pageUrl`;
-  a preview deploy gets a sitemap and canonicals rooted at its host.
+  a preview deploy gets a sitemap and canonicals rooted at its host. The twins'
+  site links move with it too, built from `pageHref()` rather than `pageUrl`.
 - Bumping `CONTENT_REVISED_DATE` re-dates every page without a later release of
   its own, in both the JSON-LD and the footer.
 - The twin keeps TypeScript signatures, examples, member tables, warnings and
