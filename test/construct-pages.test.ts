@@ -250,6 +250,18 @@ describe('construct detection and classification', () => {
       expect(cfnMetadata(solo, withAlpha)).toMatchObject({ resourceType: 'AWS::Fake::Solo' });
     });
 
+    test('a same-submodule Cfn counterpart counts only when it is an L1', () => {
+      const foo = classType('aws-fake.Foo', 'aws-cdk-lib.Resource');
+      // Tagged, named like the counterpart, but hand-written: it is not the L1 of `Foo`.
+      classType('aws-fake.CfnFoo', 'constructs.Construct', tag('AWS::Fake::Foo'));
+      expect(cfnResourceRef(foo, withAlpha)).toBeUndefined();
+
+      // The same counterpart, now a real L1, is found.
+      const bar = classType('aws-fake.Bar', 'aws-cdk-lib.Resource');
+      const cfnBar = classType('aws-fake.CfnBar', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Bar'));
+      expect(cfnResourceRef(bar, withAlpha)).toMatchObject({ resourceType: 'AWS::Fake::Bar', l1Fqn: cfnBar.fqn });
+    });
+
     test('a tag on a CfnElement subclass beats the patterns rule: it stays L1', () => {
       const cfn = classType(
         'aws-cdk-lib.aws_fake_patterns.CfnTagged', 'aws-cdk-lib.CfnResource', tag('AWS::Fake::Tagged'),

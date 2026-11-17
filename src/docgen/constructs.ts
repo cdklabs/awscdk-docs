@@ -473,7 +473,7 @@ export function cfnResourceRef(type: spec.ClassType, index: TypeIndex): CfnResou
   const prefix = type.namespace ? `${type.assembly}.${type.namespace}` : type.assembly;
   const counterpart = index.get(`${prefix}.Cfn${type.name}`);
   const resourceType = counterpart?.type.docs?.custom?.cloudformationResource;
-  if (counterpart && resourceType) {
+  if (counterpart && resourceType && isTaggedL1(counterpart.type, index)) {
     return { resourceType, l1Fqn: counterpart.type.fqn, docsUrl: cfnDocsUrl(resourceType, counterpart.type) };
   }
   return undefined;

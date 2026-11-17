@@ -8,8 +8,6 @@ Extends the construct level rules in [API reference pages](./2026-10-15-api-refe
 and now states rule 1 as changed here, as do the sidebar ADRs that repeat it. Only rule 1 changes: the
 `cloudformationResource` tag makes an L1 only on a class that also extends `aws-cdk-lib.CfnElement`. The override, L3,
 L2 and `CfnElement` rules and their order stand, and a tagged `CfnElement` subclass is still L1 ahead of the L3 rule.
-One consequence of the order: a tagged `Resource` subtype in a `*patterns*` namespace is now classified L3, where it
-was L1 before. No type in the assemblies installed at the time of the change is affected.
 
 ## Context
 
@@ -43,3 +41,10 @@ construct.
 - The badge, the hover preview, the sidebar chip and the sidebar sort order for those six types change from L1 to L2.
 - A new tagged construct outside the `CfnElement` subtree that does not extend `Resource` gets no badge until it is
   listed or a rule reaches it. That is a missing badge, not a wrong one.
+- A tagged `Resource` subtype in a `*patterns*` namespace is now classified L3, where it was L1 before. No type in the
+  assemblies installed at the time of the change is affected.
+- A tagged class whose base chain does not resolve in the type index (a partial index or a test fixture) is no longer
+  L1 by its tag alone. It gets no badge and no generated-source marker, and no Source row unless its file is
+  `*.generated.*`. In the full index every generated L1 resolves, so this changes nothing on the site.
+- The same-submodule `Cfn<Name>` counterpart lookup also requires the counterpart to pass the L1 test, so a
+  hand-written tagged construct that happens to share the name is not offered as an L1.
