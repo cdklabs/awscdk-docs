@@ -247,36 +247,34 @@ describe('the page advertises its twin only when one exists', () => {
 });
 
 describe('agent-oriented Markdown twins with every site language', () => {
-  test('the Bucket twin carries the first example in Python, Java, C# and Go', () => {
+  // The Initializer signature block comes from docgen's own translators, not rosetta, so its five copies do not
+  // depend on which snippets a library's tablet happens to translate.
+  test('the Node twin carries the Initializer in all five languages, in site order, and members stay canonical', () => {
     const dir = mkdtempSync(join(tmpdir(), 'agent-md-all-'));
     try {
       const out = join(dir, 'docs');
       const agent = join(dir, 'agent');
       generateDocs(
-        { modules: ['aws-cdk-lib'] },
+        { modules: ['constructs'] },
         { outDir: out, agentOutDir: agent, packageRoot: ROOT, languages: ['ts', 'python', 'java', 'dotnet', 'go'] },
       );
-      const twin = readFileSync(join(agent, 'v2', 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
-      // The first example group, inside the Example section: one labeled fence per language, in the site's order.
-      const section = twin.indexOf('\n## Example\n');
+      const twin = readFileSync(join(agent, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
+      const section = twin.indexOf('\n## Initializer\n');
       expect(section).toBeGreaterThan(-1);
       const end = twin.indexOf('\n## ', section + 1);
       expect(end).toBeGreaterThan(section);
-      const example = twin.slice(section, end);
-      const start = example.indexOf('TypeScript:\n\n```ts');
-      expect(start).toBeGreaterThan(-1);
-      const labels = ['Python:\n\n```python', 'Java:\n\n```java', 'C# / .NET:\n\n```csharp', 'Golang:\n\n```go'];
-      let at = start;
-      for (const label of labels) {
-        const next = example.indexOf(label, at);
-        expect(next).toBeGreaterThan(at);
-        at = next;
-      }
-      // Members keep the TypeScript name and type only; only the examples carry other languages.
-      expect(twin).toMatch(/^- `bucketArn`: string — The ARN of the bucket\.$/m);
-      expect(twin).not.toMatch(/^\s*- `bucket_arn`/m);
+      const initializer = twin.slice(section, end);
+      const labels = [
+        'TypeScript:\n\n```ts', 'Python:\n\n```python', 'Java:\n\n```java', 'C# / .NET:\n\n```csharp', 'Golang:\n\n```go',
+      ];
+      const at = labels.map((label) => initializer.indexOf(label));
+      expect(at.every((i) => i >= 0)).toBe(true);
+      expect([...at].sort((x, y) => x - y)).toEqual(at);
+      // Members keep the canonical (TypeScript) name only; no member bullet is spelled in snake case.
+      expect(twin).toMatch(/^- `addr`: string — /m);
+      expect(twin).not.toMatch(/^\s*- `[a-z]+_[a-z_]+/m);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  }, 600_000);
+  }, 120_000);
 });

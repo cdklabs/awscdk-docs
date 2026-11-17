@@ -1,5 +1,7 @@
 import { toAgentMarkdown, withFrontmatterKey } from '../src/docgen/agent-markdown.js';
+import { renderOverviewPage } from '../src/docgen/index.js';
 import { renderTypeMetadata } from '../src/docgen/layout.js';
+import type { RosettaTablet } from '../src/docgen/rosetta.js';
 
 describe('withFrontmatterKey', () => {
   test('inserts into an existing block right after the opening fence', () => {
@@ -327,6 +329,22 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect(markdown.match(/```ts/g)).toHaveLength(1);
   });
 
+  test('a README snippet with no translation for one language, from the real overview renderer, is labeled TypeScript', () => {
+    // A tablet that translated the snippet into Python but not Java: renderReadmeBody fills Java with the TypeScript
+    // source, and the twin must name that copy TypeScript rather than Java.
+    const tablet = { translationsFor: () => ({ ts: 'new Bucket(this, "B");\n', python: 'Bucket(self, "B")\n' }) };
+    const page = renderOverviewPage({
+      title: 'm',
+      types: [],
+      readme: '# M\n\n```ts\nnew Bucket(this, "B");\n```\n',
+      examples: { moduleFqn: 'm', languages: ['ts', 'python', 'java'], tablet: tablet as unknown as RosettaTablet },
+    });
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('TypeScript (also shown for Java):\n\n```ts');
+    expect(markdown).toContain('Python:\n\n```python');
+    expect(markdown).not.toMatch(/^Java:/m);
+  });
+
   test('a fallback whose fence is tagged typescript is found too', () => {
     const page = exampleGroup([
       ['ts', 'ts', 'new Bucket(this, "B");'],
@@ -436,7 +454,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
 
   test('an inline name keeps the canonical spelling only, and two groups side by side each render once', () => {
     const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
-    const page = `See ${v('ts', 'a')}${v('python', 'a_py')}${v('ts', 'b')}${v('python', 'b_py')}.\n`;
-    expect(toAgentMarkdown(page).markdown).toBe('See `a``b`.\n');
+    const page = `See ${v('ts', 'a')}${v('python', 'a_py')} ${v('ts', 'b')}${v('python', 'b_py')}.\n`;
+    expect(toAgentMarkdown(page).markdown).toBe('See `a` `b`.\n');
   });
 });
