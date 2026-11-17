@@ -492,24 +492,38 @@ test.describe('in-sidebar symbol filter', () => {
     await input.fill('Queue');
     await expect(page.locator('.nav-filter-hint').getByRole('button')).toBeVisible();
 
-    // One read, no retry: activate the button, wait one macrotask so the filter has cleared and the button has
-    // unmounted, then record where focus is. The URL may already have changed by then, but the new page's chunk
-    // takes longer than one macrotask to load, so the old page is still rendered and the refocus after the
-    // navigation cannot hide a focus drop to <body>.
-    const seen = await page.evaluate(async () => {
-      const button = document.querySelector<HTMLButtonElement>('.nav-filter-hint button')!;
-      const heading = () => document.querySelector('.vp-doc h1')?.textContent ?? null;
-      const before = heading();
-      button.focus();
-      button.click();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      return {
-        unmounted: !document.contains(button),
-        oldPageStillRendered: heading() === before,
-        onInput: document.activeElement?.matches('.nav-filter-input') ?? false,
-      };
+    // Hold the Queue page's script chunks until the read is done, so the old page stays rendered however fast the
+    // network is (VitePress may already have prefetched them). Released in `finally` so the navigation can finish.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(/aws_sqs\.Queue[^/]*\.js(\?.*)?$/, async (route) => {
+      await held;
+      await route.continue();
     });
-    expect(seen).toEqual({ unmounted: true, oldPageStillRendered: true, onInput: true });
+
+    try {
+      // One read, no retry: activate the button, wait one macrotask so the filter has cleared and the button has
+      // unmounted, then record where focus is.
+      const seen = await page.evaluate(async () => {
+        const button = document.querySelector<HTMLButtonElement>('.nav-filter-hint button')!;
+        const heading = () => document.querySelector('.vp-doc h1')?.textContent ?? null;
+        const before = heading();
+        button.focus();
+        button.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        return {
+          before,
+          unmounted: !document.contains(button),
+          oldPageStillRendered: heading() === before,
+          onInput: document.activeElement?.matches('.nav-filter-input') ?? false,
+        };
+      });
+      // A null heading would make the "old page still rendered" check pass vacuously.
+      expect(seen.before).toContain('Topic');
+      expect(seen).toMatchObject({ unmounted: true, oldPageStillRendered: true, onInput: true });
+    } finally {
+      release();
+    }
 
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
     await expect(input).toBeFocused();
