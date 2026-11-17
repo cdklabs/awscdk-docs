@@ -2,7 +2,7 @@
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { withBase } from "vitepress";
 import type { Ref } from "vue";
-import { displayLabel, groupKey, isActiveLink, type ApiSidebarNode } from "./api-sidebar";
+import { displayLabel, groupKey, isActiveLink, isUnloadedChunk, type ApiSidebarNode } from "./api-sidebar";
 import { isOpenWhileFiltering } from "./sidebar-filter";
 import { collapseScrollDelta, isStuck, type StickyHeadings } from "./sidebar-sticky";
 
@@ -117,7 +117,7 @@ function onToggle() {
 // any chunk it still misses once the heading has been in view for a moment.
 const headingEl = ref<HTMLElement | null>(null);
 const preloadable = computed(
-  () => isGroup.value && !open.value && !!(props.node.chunk || props.node.chunks?.length),
+  () => isGroup.value && !open.value && (isUnloadedChunk(props.node) || !!props.node.chunks?.length),
 );
 watch(
   [headingEl, preloadable, key],

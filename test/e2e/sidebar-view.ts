@@ -15,7 +15,7 @@ export async function scrollSettled(page: Page) {
 
 export interface ClosedHeading {
   text: string;
-  /** `seen`: the heading's centre is painted on top; `hidden`: no part of it is; `partly`: neither. */
+  /** `seen`: the heading's center is painted on top; `hidden`: no part of it is; `partly`: neither. */
   view: 'seen' | 'hidden' | 'partly';
 }
 
@@ -33,9 +33,9 @@ export async function closedHeadings(page: Page): Promise<ClosedHeading[]> {
     return Array.from(document.querySelectorAll<HTMLElement>('.api-sidebar-group[aria-expanded="false"]')).map((button) => {
       const box = button.getBoundingClientRect();
       const x = box.left + box.width / 2;
-      const centre = painted(button, box.top + box.height / 2, x);
-      const any = centre || painted(button, box.top + 1, x) || painted(button, box.bottom - 1, x);
-      const view: 'seen' | 'hidden' | 'partly' = centre ? 'seen' : any ? 'partly' : 'hidden';
+      const center = painted(button, box.top + box.height / 2, x);
+      const any = center || painted(button, box.top + 1, x) || painted(button, box.bottom - 1, x);
+      const view: 'seen' | 'hidden' | 'partly' = center ? 'seen' : any ? 'partly' : 'hidden';
       return { text: button.querySelector('.api-sidebar-text')?.textContent ?? '', view };
     });
   });

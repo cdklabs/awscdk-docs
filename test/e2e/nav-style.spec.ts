@@ -196,6 +196,29 @@ test.describe('navigation style', () => {
     expect(snsChunks()).toHaveLength(1);
   });
 
+  test('in the package style, navigating into a preloaded package reveals the new page', async ({ page }) => {
+    await page.addInitScript((key) => {
+      window.localStorage.setItem(key, 'package');
+    }, NAV_KEY);
+    const preloaded = page.waitForResponse((response) => /\/api-sidebar\/chunks\/sns\./.test(response.url()));
+    await page.goto(QUEUE_PAGE);
+    await waitForSidebar(page);
+    await expect(topButton(page, 'aws-cdk-lib.aws_sns')).toHaveAttribute('aria-expanded', 'false');
+    await preloaded;
+    // Let the preload land in the closed package before the route changes.
+    await settled(page);
+
+    await page.evaluate((href) => {
+      const a = document.createElement('a');
+      a.href = href;
+      document.body.appendChild(a);
+      a.click();
+    }, TOPIC_PAGE);
+    await expect(page).toHaveURL(/aws-cdk-lib\.aws_sns\.Topic/);
+    await expect(topButton(page, 'aws-cdk-lib.aws_sns')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toHaveAttribute('href', /aws_sns\.Topic/);
+  });
+
   test('collapse memory is kept per style: a package toggle lands in the suffixed store and the service store stays empty', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);

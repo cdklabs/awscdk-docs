@@ -276,6 +276,8 @@ function flashActive(active: HTMLElement) {
 // active style's tree, so a style switch reveals the page in the new tree.
 function syncActive() {
   if (status.value !== "ready") return;
+  // A preload may have left the package tree stale; the active page's leaf must be in it.
+  if (navStyle.value === "package") ensurePackageTree();
   const ancestors = activeAncestorKeys(tree.value, activePath.value, base.value);
   if (ancestors.size === 0) return;
   const next = new Set(expanded.value);
@@ -296,8 +298,8 @@ function loadChunk(name: string, preloading = false): Promise<void> {
       serviceTree.value = withChunk(serviceTree.value, name, items);
     }
     // A preload lands in closed groups the reader cannot see into, so the package tree is only
-    // marked stale; opening a package rebuilds it. Any other load, including an open that joined
-    // a preload in flight, regroups at once.
+    // marked stale and rebuilt when next read: on open, navigation, Locate current page or a style
+    // switch. Any other load, including an open that joined a preload in flight, regroups at once.
     if (preloading) packageStale = true;
     else schedulePackageRebuild();
   });
@@ -426,8 +428,10 @@ function preload(key: string) {
   for (const name of unloadedChunks(key, false)) loadChunk(name, true).catch(() => undefined);
 }
 // Whether a heading's group still misses a chunk. Before the sidebar is ready nothing is known, so it counts.
+// The service style checks its own node in the item, so only a package entry is looked up here.
 function needsChunks(key: string): boolean {
-  return status.value !== "ready" || filtering.value || unloadedChunks(key, false).length > 0;
+  if (status.value !== "ready" || filtering.value || navStyle.value !== "package") return true;
+  return unloadedPackageChunks(key, false).length > 0;
 }
 
 const PRELOAD_DELAY_MS = 100;
