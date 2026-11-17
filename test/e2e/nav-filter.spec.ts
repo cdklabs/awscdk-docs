@@ -383,17 +383,171 @@ test.describe('in-sidebar symbol filter', () => {
     expect(await rowHeight()).toBe(reserved);
   });
 
-  test('the key glyph is decorative and the key name reaches assistive technology', async ({
-    page,
-  }) => {
+  test('the hint is one button whose name is its visible text', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     await waitForSidebar(page);
     await filterInput(page).fill('Queue');
 
-    // A screen reader must not announce the glyph as a stray character, so the
-    // key is named in text and the drawing is hidden.
-    await expect(page.locator('.nav-filter-key .glyph')).toHaveAttribute('aria-hidden', 'true');
-    await expect(page.locator('.nav-filter-hint')).toContainText('Enter opens');
+    const hint = page.locator('.nav-filter-hint');
+    const button = hint.getByRole('button');
+    await expect(button).toHaveCount(1);
+    await expect(button.locator('kbd')).toHaveText('Enter');
+    await expect(button.locator('.glyph')).toHaveCount(0);
+
+    // WCAG 2.5.3: the accessible name is the visible text, nothing more.
+    const visible = (await button.innerText()).replace(/\s+/g, ' ').trim();
+    expect(visible).toMatch(/^Enter opens \S+/);
+    await expect(button).toHaveAccessibleName(visible);
+
+    // The live region stays polite and wraps the button.
+    await expect(hint).toHaveAttribute('aria-live', 'polite');
+  });
+
+  test('the hint button is at least 24 by 24 CSS pixels', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+    await filterInput(page).fill('Queue');
+
+    const box = await page.locator('.nav-filter-hint').getByRole('button').boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(24);
+    expect(box!.height).toBeGreaterThanOrEqual(24);
+  });
+
+  test('no hint button renders while the filter is empty', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+    await filterInput(page).fill('Queue');
+    await expect(page.locator('.nav-filter-hint').getByRole('button')).toHaveCount(1);
+    await filterInput(page).fill('');
+    await expect(page.locator('.nav-filter-hint').getByRole('button')).toHaveCount(0);
+  });
+
+  test('clicking the hint does what Enter does: opens the best match, clears and refocuses the input', async ({
+    page,
+  }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+
+    const input = filterInput(page);
+    await input.fill('Queue');
+    await page.locator('.nav-filter-hint').getByRole('button').click();
+
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
+  });
+
+  for (const how of ['clicking the hint', 'Enter in the input'] as const) {
+    test(`below the sidebar breakpoint, ${how} leaves focus outside the closed drawer`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      await page.locator('.VPLocalNav button.menu').click();
+      // Positive control: a click lost before hydration must fail here, not pass the closed-drawer check below.
+      await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+      const input = filterInput(page);
+      await input.fill('Queue');
+      const button = page.locator('.nav-filter-hint').getByRole('button');
+      await expect(button).toBeVisible();
+      if (how === 'clicking the hint') {
+        await button.click();
+      } else {
+        await input.press('Enter');
+      }
+
+      await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
+      await expect(page.locator('.VPSidebar')).not.toHaveClass(/\bopen\b/);
+      expect(await page.evaluate(() => !!document.activeElement?.closest('.VPSidebar'))).toBe(false);
+    });
+  }
+
+  test('below the sidebar breakpoint, the hint for the current page keeps focus on the input and the drawer open', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto(TOPIC_PAGE);
+    await page.locator('.VPLocalNav button.menu').click();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+    const input = filterInput(page);
+    await input.fill('Topic');
+    const button = page.locator('.nav-filter-hint').getByRole('button');
+    await expect(button).toBeVisible();
+    // Pin the precondition: the best match is this page, so the jump stays on the same route.
+    await expect(button).toHaveAccessibleName('Enter opens Topic');
+    await button.click();
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sns\.Topic\.html$/);
+
+    // Same route, so VitePress neither closes the drawer nor moves focus: the input must still hold it.
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+  });
+
+  test('focus moves to the input before the activated hint button unmounts', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+
+    const input = filterInput(page);
+    await input.fill('Queue');
+    await expect(page.locator('.nav-filter-hint').getByRole('button')).toBeVisible();
+
+    // Hold the Queue page's script chunks until the read is done, so the old page stays rendered however fast the
+    // network is (VitePress may already have prefetched them). Released in `finally` so the navigation can finish.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(/aws_sqs\.Queue[^/]*\.js(\?.*)?$/, async (route) => {
+      await held;
+      await route.continue();
+    });
+
+    try {
+      // One read, no retry: activate the button, wait one macrotask so the filter has cleared and the button has
+      // unmounted, then record where focus is.
+      const seen = await page.evaluate(async () => {
+        const button = document.querySelector<HTMLButtonElement>('.nav-filter-hint button')!;
+        const heading = () => document.querySelector('.vp-doc h1')?.textContent ?? null;
+        const before = heading();
+        button.focus();
+        button.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        return {
+          before,
+          unmounted: !document.contains(button),
+          oldPageStillRendered: heading() === before,
+          onInput: document.activeElement?.matches('.nav-filter-input') ?? false,
+        };
+      });
+      // A null heading would make the "old page still rendered" check pass vacuously.
+      expect(seen.before).toContain('Topic');
+      expect(seen).toMatchObject({ unmounted: true, oldPageStillRendered: true, onInput: true });
+    } finally {
+      release();
+    }
+
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
+    await expect(input).toBeFocused();
+  });
+
+  test('Tab reaches the hint button after the input and Space activates it', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await waitForSidebar(page);
+
+    const input = filterInput(page);
+    await input.fill('Queue');
+    // The button renders once the symbol index has loaded: wait for it before tabbing.
+    const button = page.locator('.nav-filter-hint').getByRole('button');
+    await expect(button).toBeVisible();
+    // The clear button sits between the input and the hint.
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Clear filter' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(button).toBeFocused();
+    await page.keyboard.press('Space');
+
+    await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sqs\.Queue\.html$/);
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
   });
 
   // Folding while filtering. Surviving groups start open, the reader can fold
