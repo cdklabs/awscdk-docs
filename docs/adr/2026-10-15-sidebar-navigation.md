@@ -33,7 +33,11 @@ The optional package regrouping of this same data is recorded in
 
 - **Section per service.** A jsii submodule maps to its service via the
   first token after the `aws_` prefix, so integration submodules fold in
-  (`aws_s3` and `aws_s3_deployment` both land in *S3*). Display names use
+  (`aws_s3` and `aws_s3_deployment` both land in *S3*). EKS is the one
+  exception: `aws_eks_v2` and `aws_eks` hold different classes, so
+  `aws_eks_v2` is the service *EKS V2* and `aws_eks` is *EKS (legacy)*, and a
+  submodule or package owned by either follows it. This is a named special
+  case, not a rule for `_v2` suffixes. Display names use
   curated entries for branded, renamed, and multi-word services, with an
   acronym/title-case fallback for unchanged names. Types from different
   packages that map to the same service merge into one section.
