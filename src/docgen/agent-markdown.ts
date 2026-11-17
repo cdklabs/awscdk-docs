@@ -247,10 +247,18 @@ function renderInheritance(el: Element): string {
   for (const child of el.children) {
     if (!isElement(child)) continue;
     const cls = classes(child);
-    // Each item goes through the normal renderer so a linked item keeps its cross-page link, as the SEO ADR's
-    // agent-twins section promises; a same-page `#…` link renders as text like everywhere else in the twin.
+    // An entry the page shows without opening the row's disclosure goes through the normal renderer, so it keeps
+    // its cross-page link as the SEO ADR's agent-twins section promises (a same-page `#…` link renders as text like
+    // everywhere else in the twin). An entry folded inside `.chain-more` renders as text: `Construct` has 2,332
+    // descendants, and linking every one would quadruple its twin for entries the page itself hides.
+    const folded = (n: Element): boolean => {
+      for (let p = DomUtils.getParent(n); p && p !== child; p = DomUtils.getParent(p)) {
+        if (isElement(p) && classes(p).has('chain-more')) return true;
+      }
+      return false;
+    };
     const items = () => DomUtils.findAll((n) => classes(n).has('chain-item'), child.children)
-      .map((n) => render(n).replace(/\s+/g, ' ').trim());
+      .map((n) => (folded(n) ? inline(n) : render(n).replace(/\s+/g, ' ').trim()));
     if (cls.has('chain-line')) {
       lines.push(`Extends: ${items().join(' › ')}`);
     } else if (cls.has('chain-row')) {

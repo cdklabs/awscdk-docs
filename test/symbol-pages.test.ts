@@ -435,6 +435,22 @@ describe('symbol page generation', () => {
     expect(twin).not.toContain('<wbr>');
   });
 
+  test('the agent Markdown twin links the shown entries of every hierarchy row and folds the rest as text', () => {
+    // The same renderer serves the breadcrumb and the existing rows, so their visible entries link too.
+    const bucket = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8')).markdown;
+    expect(bucket).toMatch(/^Extends: \[Construct\]\(\/v2\/docs\/constructs\.Construct\.html\) › .*Bucket$/m);
+    expect(bucket).toMatch(/^Implements: .*\[IBucket\]\(\/v2\/docs\/aws-cdk-lib\.aws_s3\.IBucket\.html\)/m);
+    // Entries folded behind the row's disclosure stay plain text: Construct has 2,332 descendants, and linking
+    // them all would quadruple its twin for entries the page itself hides.
+    const construct = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'constructs.Construct.md'), 'utf-8')).markdown;
+    const superclassOf = construct.split('\n').find((l) => l.startsWith('Superclass of: '))!;
+    const links = (superclassOf.match(/\]\(\/v2\/docs\//g) ?? []).length;
+    const entries = superclassOf.split(', ').length;
+    expect(links).toBeGreaterThan(0);
+    expect(links).toBeLessThan(10);
+    expect(entries).toBeGreaterThan(1000);
+  });
+
   test('a type nothing produces has no obtainable-from row', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
     expect(page).toContain('<span class="chain-label">used as props by</span>');

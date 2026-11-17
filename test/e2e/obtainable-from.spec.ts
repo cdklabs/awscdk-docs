@@ -5,9 +5,9 @@ import { IQUEUE_PAGE, QUEUE_PAGE, SUBSCRIPTION_FILTER_PAGE } from './fixture.js'
 // hand out an instance of the page's type. The unit tests pin the markup; the
 // browser checks are the ones the markup cannot answer — that an entry lands
 // the reader on the factory's own row, that the overflow disclosure the row
-// shares with every other relation row opens and closes here too, and that
-// its long `Owner.member` entries keep the two-line promise at desktop width
-// and reflow at phone widths instead of widening the page.
+// shares with every other relation row opens and closes here too, that the
+// budget folds the row on its widest translation, and that its long
+// `Owner.member` entries reflow at phone widths instead of widening the page.
 test.describe('obtainable from row', () => {
   test('an entry lands on the factory member of the owner page', async ({ page }) => {
     await page.goto(IQUEUE_PAGE);

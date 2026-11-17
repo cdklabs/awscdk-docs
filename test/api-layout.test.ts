@@ -232,7 +232,7 @@ describe('API page layout', () => {
       ]);
     });
 
-    test('types with neither base class nor interfaces get no chain', () => {
+    test('types with no base class, interfaces, subclasses or producing statics get no chain', () => {
       // Arn is a plain root class implementing nothing, extended by nothing, and no static member hands one out.
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Arn.md'), 'utf-8');
       expect(page).not.toContain('inheritance-chain');
