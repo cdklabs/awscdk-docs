@@ -9,7 +9,7 @@ import { SNS_OVERVIEW_PAGE, SQS_OVERVIEW_PAGE } from './fixture.js';
 const WIDTHS = [375, 768, 1280, 1920];
 const DENSITIES = ['compact', 'balanced', 'spacious'] as const;
 
-/** A nested name far wider than a phone, modelled on `CfnCapability.EdiConfigurationProperty`. */
+/** A nested name far wider than a phone, modeled on `CfnCapability.EdiConfigurationProperty`. */
 const LONG_NAME = 'CfnVeryLongResourceNameForTesting.EnormousConfigurationPropertyWithManyWordsInItsName';
 
 async function open(page: Page, url: string, density: (typeof DENSITIES)[number], width: number): Promise<void> {

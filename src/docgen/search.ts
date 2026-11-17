@@ -47,8 +47,8 @@ export function weightedTitle(name: string): string {
 }
 
 /**
- * `<wbr>` between camelCase words and inside acronym runs (`Cfn<wbr>VPC<wbr>Peering<wbr>Connection`), the one rule
- * every place that lets a type name wrap shares. `<wbr>` adds no text.
+ * `<wbr>` between camelCase words and inside acronym runs (`Cfn<wbr>VPC<wbr>Peering<wbr>Connection`), the rule the
+ * page title and the module type list share; signatures break only at dots (`withDotBreaks`). `<wbr>` adds no text.
  */
 export function camelBreaks(name: string): string {
   return name.replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z]{2})(?=[A-Z][a-z])/g, '<wbr>');
