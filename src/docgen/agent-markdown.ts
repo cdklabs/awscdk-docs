@@ -16,6 +16,8 @@
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
+import type { Language } from './languages.js';
+import { canonicalLanguage } from './variants.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -69,11 +71,8 @@ function withLanguageLegend(out: string, nodes: Node[]): string {
   const variants = DomUtils.findAll(isVariant, nodes);
   const present = new Set(variants.map((v) => v.attribs['data-lang']));
   if (present.size < 2) return out;
-  // The canonical language as docgen picks it: TypeScript when present, otherwise the first enabled language in site
-  // order. The page's first variant can be a later language, e.g. an example its first language has no copy in.
-  const canonical = LANGUAGES.find((l) => l.id === DEFAULT_LANGUAGE && present.has(l.id))
-    ?? LANGUAGES.find((l) => present.has(l.id));
-  const name = canonical?.label ?? languageLabel(variants[0]);
+  // The canonical language by docgen's own rule, so the legend names the language the twin leaves unlabeled.
+  const name = LANGUAGE_LABEL.get(canonicalLanguage([...present] as Language[]));
   const examples = 'Code examples are labeled by language; an unlabeled `ts` example has no translation.';
   // A page whose only variants are example blocks (a module overview) has no member names to describe.
   const names = variants.some((v) => v.name.toLowerCase() !== 'div')
