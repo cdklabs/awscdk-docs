@@ -437,8 +437,8 @@ test.describe('in-sidebar symbol filter', () => {
     await expect(input).toBeFocused();
   });
 
-  for (const how of ['click', 'Enter'] as const) {
-    test(`below the sidebar breakpoint, ${how} on the hint leaves focus outside the closed drawer`, async ({
+  for (const how of ['clicking the hint', 'Enter in the input'] as const) {
+    test(`below the sidebar breakpoint, ${how} leaves focus outside the closed drawer`, async ({
       page,
     }) => {
       await page.setViewportSize({ width: 375, height: 800 });
@@ -450,7 +450,7 @@ test.describe('in-sidebar symbol filter', () => {
       await input.fill('Queue');
       const button = page.locator('.nav-filter-hint').getByRole('button');
       await expect(button).toBeVisible();
-      if (how === 'click') {
+      if (how === 'clicking the hint') {
         await button.click();
       } else {
         await input.press('Enter');

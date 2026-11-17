@@ -120,12 +120,14 @@ test.describe('sidebar locate-current-page control', () => {
       const box = el.getBoundingClientRect();
       const style = getComputedStyle(el);
       const margin = parseFloat(style.marginTop) + parseFloat(style.marginBottom);
-      return { width: box.width, height: box.height, footprint: box.height + margin };
+      const row = document.querySelector('.nav-filter-status')!.getBoundingClientRect().height;
+      return { width: box.width, height: box.height, footprint: box.height + margin, row };
     });
 
     expect(measured.height).toBeGreaterThanOrEqual(24);
     expect(measured.width).toBeGreaterThanOrEqual(24);
-    expect(measured.footprint).toBeLessThanOrEqual(24);
+    expect(measured.footprint).toBeLessThanOrEqual(measured.row);
+    expect(measured.row).toBe(24);
   });
 
   test('jump un-occludes an entry parked behind the pinned header', async ({ page }) => {
