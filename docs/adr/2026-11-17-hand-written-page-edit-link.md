@@ -8,9 +8,10 @@ which linked hand-written pages to `aws/aws-cdk`.
 
 ## Context
 
-The hand-written pages (`index.md`, `skills.md`, `stability.md`,
+The hand-written pages with a doc footer (`skills.md`, `stability.md`,
 `aws-construct-library.md`, `versions.md`) live in `docs/` of
-`cdklabs/awscdk-docs`. Their edit link pointed at
+`cdklabs/awscdk-docs`; `index.md` uses the home layout, which renders no doc
+footer. Their edit link pointed at
 `https://github.com/aws/aws-cdk/edit/main/docs/<filePath>`, a file that does
 not exist in that repository, so every one of them opened a 404.
 

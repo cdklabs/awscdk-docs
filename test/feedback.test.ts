@@ -71,7 +71,7 @@ describe('edit link generation', () => {
   });
 
   test('a page that names its upstream file wins over any path rule', () => {
-    // The upstream URL is checked first, deliberately: a page that records
+    // The upstream URL wins over the path rule, deliberately: a page that records
     // where its prose came from knows better than a path heuristic. docgen
     // only emits the key for generated pages, so this is reachable today
     // only if a hand-written page sets it itself — in which case honoring
