@@ -17,7 +17,7 @@ import {
   renderConstructPage,
   TypeIndex,
 } from './constructs.js';
-import { removeAll } from './escape.js';
+import { escapeVueText, removeAll } from './escape.js';
 import { FENCE_LANG, withoutLiteralsAndComments } from './examples.js';
 import { codeFence, mapProse, tokenizeFences } from './fences.js';
 import { injectBadges } from './freshness.js';
@@ -1627,7 +1627,7 @@ function renderTypeList(types: TypeEntry[], headingLevel = 3): string[] {
     const heading = kindPlural(kind);
     lines.push(anchoredHeading(headingLevel, heading, typeKindAnchor(heading)), '', '<div class="type-list">', '');
     for (const t of entries) {
-      const name = `<code>${breakableTypeName(t.name)}</code>`;
+      const name = `<code>${breakableTypeName(escapeVueText(t.name))}</code>`;
       const linked = t.link ? `[${name}](${t.link})` : name;
       const summary = escapeCell(t.summary);
       lines.push(`- ${linked} <span class="type-kind">${t.kind}</span>${summary ? `<br>${summary}` : ''}`);

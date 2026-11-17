@@ -70,9 +70,9 @@ describe('module type list', () => {
   });
 
   test('the list-only layout uses second-level kind headings, so the heading order stays valid', () => {
-    const tableOnly = renderOverviewPage({ title: 'fake.sub', types });
-    expect(tableOnly).toContain('## Constructs (L2) {#');
-    expect(tableOnly).not.toContain('### ');
+    const listOnly = renderOverviewPage({ title: 'fake.sub', types });
+    expect(listOnly).toContain('## Constructs (L2) {#');
+    expect(listOnly).not.toContain('### ');
   });
 });
 

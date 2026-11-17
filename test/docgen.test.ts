@@ -221,7 +221,7 @@ describe('renderOverviewPage', () => {
 
   test('list-only submodule pages still suppress the outline', () => {
     const page = renderOverviewPage({ title: 'fake.sub', types });
-    // Without a README the page is just the types table the sidebar
+    // Without a README the page is just the type list the sidebar
     // already mirrors — the outline stays off, and the frontmatter is
     // the very first thing on the page (VitePress parses it on line 1).
     expect(page.startsWith(OUTLINE_OFF + '# fake.sub')).toBe(true);
