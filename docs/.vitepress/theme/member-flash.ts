@@ -89,8 +89,8 @@ export function flashRow(
  * deliberate click on the hash the page is already at and restarts the fade
  * once `SAME_JUMP_MS` has passed; any other arrival for the row last flashed is
  * the same jump again and is dropped, however late (hydration can take longer
- * than any window). A route reload replaces the row, so a new element for the
- * same hash is a new landing. `now` is injectable for tests.
+ * than any window). A route reload re-renders the rows, so a new element for
+ * the same hash is a new landing. `now` is injectable for tests.
  */
 export function createFlashOnce(
   doc: FlashDocument,
@@ -126,10 +126,12 @@ export function createFlashOnce(
  *
  * The paths overlap: one click raises `hashchange` and then reaches the click
  * listener, a load with a hash reaches the hook and then the mount, and
- * back/forward raises `popstate` and `hashchange` and then, once the route has
- * reloaded, the hook. `createFlashOnce` drops a second arrival for the row
- * last flashed, and the hashchange of a back/forward is left to the hook, so
- * each jump starts exactly one fade.
+ * back/forward raises `hashchange` and then, once VitePress's `popstate`
+ * handler has reloaded the route, the hook. That reload re-renders the page
+ * in the same task, so the row the `hashchange` marked is detached before a
+ * frame can start its animation and the hook marks its replacement.
+ * `createFlashOnce` drops every other second arrival for the row last flashed,
+ * so each jump starts exactly one fade.
  */
 export function installMemberFlash(): (hash: string) => void {
   const g = globalThis as { document?: Document; addEventListener?: Window['addEventListener']; location?: Location };
@@ -156,24 +158,10 @@ export function installMemberFlash(): (hash: string) => void {
     }
   };
   const flashOnce = createFlashOnce(doc, flash);
-  // Back/forward: VitePress's popstate handler reloads the route, which replaces
-  // the rows, so a flash on the native hashchange that follows would land on a
-  // row about to be thrown away. The route hook marks the new row instead.
-  let reloading = false;
-  g.addEventListener('popstate', (e) => {
-    if (e.state !== null) {
-      reloading = true;
-      setTimeout(() => (reloading = false), 1000);
-    }
-  });
-  g.addEventListener('hashchange', () => {
-    if (!reloading) {
-      flashOnce(g.location?.hash ?? '');
-    }
-  });
+  g.addEventListener('hashchange', () => flashOnce(g.location?.hash ?? ''));
   g.addEventListener('click', (e) => {
-    // The same guards as VitePress's own link handler: a modified or secondary
-    // click, or a link that opens elsewhere, is not a jump on this page.
+    // Like VitePress's link handler, skip a modified or secondary click, or a
+    // link that opens elsewhere: neither is a jump on this page.
     if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
       return;
     }
@@ -187,8 +175,5 @@ export function installMemberFlash(): (hash: string) => void {
     }
   });
   g.document.documentElement.classList.add(READY_CLASS);
-  return (hash) => {
-    reloading = false;
-    flashOnce(hash);
-  };
+  return (hash) => flashOnce(hash);
 }

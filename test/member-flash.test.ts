@@ -145,7 +145,7 @@ describe('createFlashOnce', () => {
   });
 
   test('a new element for the same hash is a new landing', () => {
-    // Back/forward reloads the route and replaces the rows.
+    // Back/forward reloads the route, which re-renders the rows.
     const first = element(true);
     const ids: Record<string, FlashElement> = { a: first };
     const { once, flashed } = harness(ids);
@@ -198,7 +198,7 @@ describe('stylesheet', () => {
     const body = rule.slice(rule.indexOf('{'), rule.indexOf('}'));
     expect(body).toContain('animation: none');
     expect(body).toContain('background-color: var(--api-c-flash)');
-    expect(body).toContain('outline: 2px solid var(--vp-c-brand-1)');
+    expect(body).toContain('outline: 2px dashed var(--vp-c-brand-1)');
     // Outside the row: text starts at the row's edge, and an inset line would cover it.
     expect(body).toContain('outline-offset: 2px');
   });
@@ -208,7 +208,7 @@ describe('stylesheet', () => {
     const forced = sheet.slice(sheet.indexOf('@media (forced-colors: active)'));
     const rule = forced.slice(forced.indexOf(`.member-row.${FLASH_CLASS}`));
     const body = rule.slice(rule.indexOf('{'), rule.indexOf('}'));
-    expect(body).toContain('outline: 2px solid Highlight');
+    expect(body).toContain('outline: 2px dashed Highlight');
     expect(body).toContain('outline-offset: 2px');
   });
 });

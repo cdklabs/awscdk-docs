@@ -128,7 +128,7 @@ test.describe('a jump to a member row flashes it', () => {
     await page.locator(OUTLINE_LINK(RETENTION)).click();
     await expect(page.locator(`.member-row${RETENTION}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await expect.poll(() => flashStarts(page)).toBe(2);
-    // Back/forward arrive as a native hashchange and then, after the page reloads, the route hook.
+    // Back/forward arrive as a native hashchange and then, after the route reload re-renders the rows, the hook.
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
     await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
@@ -142,9 +142,13 @@ test.describe('a jump to a member row flashes it', () => {
   });
 
   test('a link from another page that lands on a member flashes it', async ({ page }) => {
+    await countFlashStarts(page);
     await page.goto(QUEUE_PROPS_PAGE);
-    // A client-side navigation: the new page renders, then the landed row is marked.
+    // The module is installed after VitePress's own link listener, so once its
+    // marker is on `<html>` a click is intercepted and stays client-side.
+    await expect(page.locator('html.member-flash-ready')).toHaveCount(1);
     await page.evaluate((href) => {
+      (window as unknown as { spa: boolean }).spa = true;
       const a = document.createElement('a');
       a.href = href;
       a.textContent = 'jump';
@@ -153,6 +157,61 @@ test.describe('a jump to a member row flashes it', () => {
     await page.locator('.vp-doc a', { hasText: 'jump' }).click();
     await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
     await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    // Still the same window: the route hook marked the row, not a fresh page load.
+    expect(await page.evaluate(() => (window as unknown as { spa: boolean }).spa)).toBe(true);
+    await page.waitForTimeout(400);
+    expect(await flashStarts(page)).toBe(1);
+  });
+
+  test('back to a member on another page flashes it once', async ({ page }) => {
+    await countFlashStarts(page);
+    await page.goto(`${QUEUE_PAGE}${FIFO}`);
+    await expect.poll(() => flashStarts(page)).toBe(1);
+    await page.evaluate((href) => {
+      const a = document.createElement('a');
+      a.href = href;
+      a.textContent = 'away';
+      document.querySelector('.vp-doc')!.prepend(a);
+    }, QUEUE_PROPS_PAGE);
+    await page.locator('.vp-doc a', { hasText: 'away' }).click();
+    await expect(page).toHaveURL(new RegExp('QueueProps\\.html$'));
+    // The outgoing page is still mounted when the native hashchange fires; the
+    // route hook marks the row on the page that comes back.
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
+    await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    await page.waitForTimeout(400);
+    expect(await flashStarts(page)).toBe(2);
+  });
+
+  test('a modified click or a link that opens elsewhere does not flash', async ({ page }) => {
+    await countFlashStarts(page);
+    await page.goto(QUEUE_PAGE);
+    await page.locator(OUTLINE_LINK(FIFO)).click();
+    const row = page.locator(`.member-row${FIFO}`);
+    await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`), { timeout: 3000 });
+    expect(await flashStarts(page)).toBe(1);
+    // A Ctrl/Cmd-click on the current hash opens a tab elsewhere; the row here stays quiet.
+    const popup = page.context().waitForEvent('page', { timeout: 3000 }).catch(() => null);
+    await page.locator(OUTLINE_LINK(FIFO)).click({ modifiers: ['ControlOrMeta'] });
+    await (await popup)?.close();
+    await page.waitForTimeout(400);
+    expect(await flashStarts(page)).toBe(1);
+    await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`));
+    // A same-hash link with a target opens elsewhere too.
+    await page.evaluate((hash) => {
+      const a = document.createElement('a');
+      a.href = hash;
+      a.target = '_blank';
+      a.textContent = 'elsewhere';
+      document.querySelector('.vp-doc')!.prepend(a);
+    }, FIFO);
+    const popup2 = page.context().waitForEvent('page', { timeout: 3000 }).catch(() => null);
+    await page.locator('.vp-doc a', { hasText: 'elsewhere' }).click();
+    await (await popup2)?.close();
+    await page.waitForTimeout(400);
+    expect(await flashStarts(page)).toBe(1);
+    await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`));
   });
 
   test('a jump to a heading marks nothing', async ({ page }) => {
@@ -191,7 +250,7 @@ test.describe('under forced colors', () => {
     const row = page.locator(`.member-row${FIFO}`);
     await expect(row).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     // Author backgrounds are dropped; the outline carries the mark.
-    await expect(row).toHaveCSS('outline-style', 'solid');
+    await expect(row).toHaveCSS('outline-style', 'dashed');
     await expect(row).toHaveCSS('outline-width', '2px');
     await expect(row).not.toHaveClass(new RegExp(`\\b${FLASH}\\b`), { timeout: 3000 });
     await expect(row).toHaveCSS('outline-style', 'none');
@@ -223,7 +282,7 @@ test.describe('under reduced motion', () => {
     const { flash, brand } = await marks(page);
     await expect(row).toHaveCSS('background-color', flash);
     // The outline is what a reader sees when backgrounds are faint or forced away.
-    await expect(row).toHaveCSS('outline-style', 'solid');
+    await expect(row).toHaveCSS('outline-style', 'dashed');
     await expect(row).toHaveCSS('outline-width', '2px');
     await expect(row).toHaveCSS('outline-color', brand);
     await expect(row).toHaveCSS('outline-offset', '2px');
@@ -272,7 +331,7 @@ test.describe('under reduced motion', () => {
     const row = page.locator(`.member-row${FIFO}`);
     await expect(row).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     // Author backgrounds are dropped under forced colors; the outline stays.
-    await expect(row).toHaveCSS('outline-style', 'solid');
+    await expect(row).toHaveCSS('outline-style', 'dashed');
     await expect(row).toHaveCSS('outline-width', '2px');
   });
 });

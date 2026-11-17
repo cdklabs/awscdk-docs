@@ -511,21 +511,22 @@ html:not(.member-flash-ready) .member-list .member-row:target {
 
 /* Reduced motion: no fade. The landed row keeps the flash color and a brand
    outline until the next jump. The outline is drawn just outside the row, clear
-   of text that starts at the row's edge, and affects no layout. */
+   of text that starts at the row's edge, and affects no layout; dashed, so it
+   is not mistaken for the theme's solid focus ring. */
 @media (prefers-reduced-motion: reduce) {
   .member-list .member-row.member-row-flash {
     animation: none;
     background-color: var(--api-c-flash);
-    outline: 2px solid var(--vp-c-brand-1);
+    outline: 2px dashed var(--vp-c-brand-1);
     outline-offset: 2px;
   }
 }
 
-/* Forced colors drop author backgrounds, so the mark is an outline in the
+/* Forced colors drop author backgrounds, so the mark is a dashed outline in the
    system highlight color; with motion allowed it lasts as long as the fade. */
 @media (forced-colors: active) {
   .member-list .member-row.member-row-flash {
-    outline: 2px solid Highlight;
+    outline: 2px dashed Highlight;
     outline-offset: 2px;
   }
 }
