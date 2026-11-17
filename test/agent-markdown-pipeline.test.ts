@@ -4,7 +4,10 @@ import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { agentMarkdownHref } from '../docs/.vitepress/agent-markdown.js';
 import { copyMarkdownFrom } from '../docs/.vitepress/copy-markdown.js';
+import { PAGE_REWRITES, pageSourceExcludes, pageUrl } from '../docs/.vitepress/page-url.js';
+import { mapProse } from '../src/docgen/fences.js';
 import { generateDocs } from '../src/docgen/index.js';
+import { docsSiteUrl } from '../src/docgen/versions.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -20,6 +23,16 @@ function walk(dir: string, rel = ''): string[] {
     }
   }
   return out.sort();
+}
+
+function markdownLinks(markdown: string): string[] {
+  const links: string[] = [];
+  mapProse(markdown, (prose) => {
+    const target = /(?:\]\(\s*|^\s{0,3}\[(?:\\.|[^\\\]\n])+\]:\s*)<?([^\s)>]+)>?/gm;
+    links.push(...[...prose.matchAll(target)].map((match) => match[1]));
+    return prose;
+  });
+  return links;
 }
 
 describe('agent-oriented Markdown twins', () => {
@@ -112,6 +125,39 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('addDependency');
     expect(twin.length).toBeLessThan(canonical.length);
     expect(twin.length).toBeGreaterThan(canonical.length / 10);
+  });
+
+  test('site links in twins name emitted pages and external links stay external', () => {
+    const siteUrl = docsSiteUrl();
+    // The deployed shard build ships the twins, so check against the pages that build serves.
+    const excludedPrefixes = pageSourceExcludes(true).map((pattern) => {
+      // The test matches by directory prefix, so only `dir/**` patterns are supported.
+      expect(pattern).toMatch(/^[^*?[\]{}]+\/\*\*$/);
+      return pattern.slice(0, -2);
+    });
+    const excluded = ['.vitepress/', 'v2/', ...excludedPrefixes];
+    const emittedPages = new Set([
+      ...walk(outDir)
+        .filter((file) => file.endsWith('.md'))
+        .map((file) => pageUrl(`v2/${file}`, siteUrl)),
+      ...walk(join(ROOT, 'docs'))
+        .filter((file) => file.endsWith('.md') && !excluded.some((prefix) => file.startsWith(prefix)))
+        .map((file) => pageUrl(PAGE_REWRITES[file] ?? file, siteUrl)),
+    ]);
+    const links = walk(agentOutDir)
+      .filter((file) => file.endsWith('.md'))
+      .flatMap((file) => markdownLinks(readFileSync(join(agentOutDir, file), 'utf-8')));
+    const siteLinks = links.filter((link) => link.startsWith(siteUrl));
+    const leftovers = links.filter((link) => link.startsWith('/') && !link.startsWith('//'));
+
+    expect(leftovers).toEqual([]);
+    expect(siteLinks.length).toBeGreaterThan(5);
+    for (const link of siteLinks) {
+      const path = link.split(/[?#]/, 1)[0];
+      expect(path).not.toContain('.html.html');
+      expect(emittedPages.has(path)).toBe(true);
+    }
+    expect(links.some((link) => link.startsWith('https://') && !link.startsWith(siteUrl))).toBe(true);
   });
 
   test('a build with one language emits one copy and no language labels', () => {

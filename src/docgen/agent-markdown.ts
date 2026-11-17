@@ -6,18 +6,21 @@
  * and type hierarchies written as inline HTML. This module turns that string into plain Markdown an agent can
  * consume: type-page and README examples and initializer signatures in every enabled language, each copy after a
  * language label (a copy docgen filled with the TypeScript source is named on the TypeScript label, not repeated);
- * member `@example` blocks once, in TypeScript, as on the page; member names, types and
- * inline signatures in the canonical language only; headings, prose, fenced code, tables and links once; member
- * lists rewritten as bullet lists; everything that exists for the browser dropped.
+ * member `@example` blocks once, in TypeScript, as on the page; member names, types and inline signatures in the
+ * canonical language only; headings, prose, fenced code and tables once; site links made absolute; member lists
+ * rewritten as bullet lists; everything that exists for the browser dropped.
  *
  * It is a transform over the finished page rather than a second renderer so there is one source of truth for the
  * documentation content itself. The HTML is walked with a real parser: the member markup nests spans several deep
  * and a regex cannot pair those tags reliably.
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
+import { API_ROOT } from '../site-routes.js';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
 import { TYPE_METADATA_OPEN } from './layout.js';
+import { pageHref, siteBase } from './links.js';
+import { docsSiteUrl } from './versions.js';
 
 /** The whole generated metadata table, matched from the exact opening tag `renderTypeMetadata` writes. */
 const METADATA_TABLE = new RegExp(
@@ -39,6 +42,8 @@ const isElement = (n: Node): n is Element => n.type === ElementType.Tag;
  * variant copies, whose first fence tag marks a TypeScript fallback. Set per transform; the renderer is synchronous.
  */
 let restoreProtected: (s: string) => string = (s) => s;
+/** Site URL the current transform joins links onto; set per transform, like restoreProtected. */
+let publishedSiteUrl = '';
 
 /** Result of transforming one page. */
 export interface AgentMarkdown {
@@ -46,9 +51,10 @@ export interface AgentMarkdown {
 }
 
 /** Produce the agent-oriented twin of a generated VitePress page. */
-export function toAgentMarkdown(page: string): AgentMarkdown {
+export function toAgentMarkdown(page: string, siteUrl = docsSiteUrl()): AgentMarkdown {
   const { text, restore } = protectCode(stripFrontmatter(page));
   restoreProtected = restore;
+  publishedSiteUrl = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`;
   // `<Badge … />` is a Vue component, self-closed in the source; without the flag the parser would open it and
   // swallow the rest of the page. Tag names keep their case so an unknown one can be put back verbatim.
   const doc = parseDocument(text, {
@@ -255,9 +261,75 @@ function inline(el: Element): string {
   return children(el).replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Lowercase extensions that mark a `/v2/` target as a file rather than a page. Case-sensitive, so PascalCase type
+ * IDs such as `…stepfunctions.Map` stay pages.
+ */
+const API_ASSET_EXTENSION = /\.(?:txt|json|xml|png|svg|jpe?g|gif|webp|css|js|map|ico|pdf|zip)$/;
+
+/**
+ * Make a root-relative site target absolute against the transform's site URL (DOCS_SITE_URL by default);
+ * pages get their .html route; return anything else unchanged.
+ */
+function publishedPageHref(href: string): string {
+  const [, path, suffix = ''] = /^([^?#]*)(.*)$/.exec(href)!;
+  const base = siteBase();
+  const publicBase = new URL(publishedSiteUrl).pathname;
+  const prefix = [base, publicBase]
+    .filter((candidate) => path.startsWith(candidate))
+    .sort((a, b) => b.length - a.length)[0];
+  let sitePath = prefix ? `/${path.slice(prefix.length)}` : path;
+  const isRootRelative = sitePath.startsWith('/') && !sitePath.startsWith('//');
+  if (!isRootRelative || /[\s\\]/.test(sitePath)) {
+    return href;
+  }
+
+  // A `.md` target names a page by its source file; link the rendered page, since authored routes have no twin.
+  if (sitePath.endsWith('.md')) {
+    sitePath = sitePath.slice(0, -3);
+  }
+  // Generated API pages may end in a dotted segment (`aws-cdk-lib.pipelines`, `…stepfunctions.Map`) that looks like
+  // a file extension; anywhere else any extension, in either case, marks a file rather than a page.
+  const isApiPage = sitePath.startsWith(API_ROOT) && !API_ASSET_EXTENSION.test(sitePath);
+  const isPage = isApiPage
+    || (!sitePath.endsWith('/') && !/\.[a-z0-9]+$/i.test(sitePath));
+  const relative = isPage && !sitePath.endsWith('.html')
+    ? pageHref(sitePath).slice(base.length)
+    : sitePath.replace(/^\/+/, '');
+  return `${new URL(relative, publishedSiteUrl).href}${suffix}`;
+}
+
+/**
+ * Percent-encode what would end a Markdown link destination early (parentheses) or split a table cell (a pipe).
+ * Unlike a backslash escape, the result is still a working URL when copied out of the raw Markdown.
+ */
+function escapeDestination(url: string): string {
+  return url.replace(/[()|]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+/** Undo CommonMark punctuation escapes in a Markdown link destination. */
+function unescapeMarkdownHref(href: string): string {
+  return href.replace(/\\([!-/:-@[-`{-~])/g, '$1');
+}
+
+/** Rewrite Markdown link targets while leaving standalone code spans unchanged. */
+function rewriteMarkdownLinks(text: string): string {
+  // A code span may wrap lines but never crosses a blank line, so a stray backtick cannot pair with a code span
+  // paragraphs later and hide the links in between.
+  const linkOrCode = /(?<![`\\])(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)|\[((?:\\.|[^\\\]\n])+)\]\(([^\s)]+)\)/g;
+  return text.replace(linkOrCode, (match, delimiter: string, label: string, href: string) => {
+    if (delimiter) {
+      return match;
+    }
+    const unescaped = unescapeMarkdownHref(href);
+    const published = publishedPageHref(unescaped);
+    return published === unescaped ? match : `[${label}](${escapeDestination(published)})`;
+  });
+}
+
 function render(node: Node): string {
   if (isText(node)) {
-    return node.data;
+    return rewriteMarkdownLinks(node.data);
   }
   if (!isElement(node)) {
     return '';
@@ -299,7 +371,7 @@ function render(node: Node): string {
     case 'a': {
       const text = inline(el);
       const href = el.attribs.href;
-      return href && !href.startsWith('#') ? `[${text}](${href})` : text;
+      return href && !href.startsWith('#') ? `[${text}](${escapeDestination(publishedPageHref(href))})` : text;
     }
     case 'code':
       return `\`${textOf(el)}\``;

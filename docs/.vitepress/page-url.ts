@@ -7,3 +7,20 @@ export function pageUrl(relativePath: string, siteUrl: string): string {
   const route = relativePath.replace(/(?:index)?\.md$/, (match) => (match === "index.md" ? "" : ".html"));
   return new URL(route, base).href;
 }
+
+// Which authored `docs/` sources become pages, and at which route. The VitePress config and the agent Markdown
+// pipeline test both read these, so a twin link is checked against the pages the site really serves.
+
+/**
+ * `srcExclude` patterns. ADRs never render. The spike proof pages render only outside the deployed shard build,
+ * because the e2e fixture build still needs them.
+ */
+export function pageSourceExcludes(shardBuild: boolean): string[] {
+  return ["adr/**", ...(shardBuild ? ["spike/**"] : [])];
+}
+
+/** Sources served at a different route than their file path. */
+export const PAGE_REWRITES: Record<string, string> = {
+  // The authored construct-library overview keeps its historical address inside the generated /v2/docs/ tree.
+  "aws-construct-library.md": "v2/docs/aws-construct-library.md",
+};
