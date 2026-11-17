@@ -57,7 +57,9 @@ the level in order, first match wins:
    inheritance test can reach, since `Resource` is the base). Matched by
    exact FQN, never inherited, so `aws_servicecatalog.ProductStack` is not
    promoted with `Stack`.
-1. **L1** — has `cloudformationResource` metadata (generated `CfnXxx`).
+1. **L1 or L2 by tag** — has `cloudformationResource` metadata. A class
+   named `Cfn*` is the generated L1. Any other tagged class is a
+   hand-written construct that names the resource it wraps, so it is L2.
 2. **L3** — declared in a `*patterns*` submodule.
 3. **L2** — extends `aws-cdk-lib.Resource`.
 4. **L1** — is or extends `aws-cdk-lib.CfnElement` (catches hand-written
@@ -227,6 +229,9 @@ label and one `<td>` value, and only facts that apply to the type render:
 | L1 type | the backing L1, on non-L1 pages only | that L1's page, via `pageHref` |
 | Source | upstream file and line | repository, or the text *Generated at build time* |
 | Type last changed | page history for the type's shape | version and release date text |
+
+A hand-written L2 that carries the `cloudformationResource` tag shows that
+tag's resource type and no L1 type row.
 
 Provenance is neither prose nor title material, so it lives here rather than in
 the H1 or the description. The block emits nothing when there are no rows (no

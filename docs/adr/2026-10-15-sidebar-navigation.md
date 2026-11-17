@@ -153,9 +153,9 @@ A construct's level (`L1`/`L2`/`L3`) travels as its own optional field
 `label` — `text` is the node's identity (group keys, in-sidebar filter,
 jump), so `Bucket` must not become matchable as `l2` through its text. The
 level is determined once by `constructLevel()` (L1 has jsii
-`cloudformationResource` metadata, L3 lives in a `*patterns*` submodule, L2
-extends `Resource`) and carried to three consumers. The theme renders it as
-a `aria-hidden` chip inside the leaf link, before the name, with a fixed
+`cloudformationResource` metadata and a `Cfn*` name, a tagged class with any
+other name is L2, L3 lives in a `*patterns*` submodule, L2 extends `Resource`)
+and carried to three consumers. The theme renders it as a `aria-hidden` chip inside the leaf link, before the name, with a fixed
 `min-width` so L1/L2/L3 measure identically. The level reaches assistive
 tech through the link's `aria-label`, spelled out and **appended** (`Queue
 (L2 construct)`) so the accessible name still starts with the visible label

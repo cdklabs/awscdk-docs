@@ -86,9 +86,9 @@ const LEVEL_OVERRIDES: ReadonlyMap<string, ConstructLevel> = new Map<string, Con
 
 /**
  * Classify a construct, in order: an explicit {@link LEVEL_OVERRIDES} entry wins outright; then L1 has jsii
- * `cloudformationResource` metadata, L3 lives in a `*patterns*` submodule, L2 extends aws-cdk-lib.Resource, and
- * finally aws-cdk-lib.CfnElement and its descendants are L1. Constructs matching none of these (e.g.
- * constructs.Construct itself) get no level.
+ * `cloudformationResource` metadata and a `Cfn` name, while a tagged class with any other name is L2, L3 lives in
+ * a `*patterns*` submodule, L2 extends aws-cdk-lib.Resource, and finally aws-cdk-lib.CfnElement and its descendants
+ * are L1. Constructs matching none of these (e.g. constructs.Construct itself) get no level.
  */
 export function constructLevel(type: spec.ClassType, index: TypeIndex): ConstructLevel | undefined {
   // First, so an explicit level always beats every derived one.
@@ -96,8 +96,10 @@ export function constructLevel(type: spec.ClassType, index: TypeIndex): Construc
   if (override) {
     return override;
   }
+  // The tag names a CloudFormation resource. A generated `Cfn*` class is that resource; a hand-written construct
+  // that names the resource it wraps (the alpha packages do this) is an L2.
   if (type.docs?.custom?.cloudformationResource) {
-    return 'L1';
+    return type.name.startsWith('Cfn') ? 'L1' : 'L2';
   }
   if (/(?:^|[._])patterns$/.test(type.namespace ?? '')) {
     return 'L3';
@@ -105,8 +107,9 @@ export function constructLevel(type: spec.ClassType, index: TypeIndex): Construc
   if (extendsFqn(type.fqn, RESOURCE_BASE_FQN, index)) {
     return 'L2';
   }
-  // Only the GENERATED subtree members carry `cloudformationResource` metadata, so the rest need the inheritance
-  // test. The self-check is required because `extendsFqn` excludes self-matches.
+  // Generated `Cfn*` classes carry `cloudformationResource`; hand-written CfnElement subclasses (CfnOutput,
+  // CfnParameter) don't, so they need the inheritance test. The self-check is required because `extendsFqn`
+  // excludes self-matches.
   if (type.fqn === CFN_ELEMENT_BASE_FQN || extendsFqn(type.fqn, CFN_ELEMENT_BASE_FQN, index)) {
     return 'L1';
   }
@@ -174,10 +177,10 @@ export function isGeneratedSource(type: spec.Type): boolean {
  * CloudFormation provenance for the type-metadata block, in both directions and as the single caller of
  * {@link cfnDocsUrl}:
  *
- * - an L1 names its own resource (`docs.custom.cloudformationResource`) and has no L1 counterpart to point at — the
- *   page is the L1;
- * - an L2/L3 resolves its backing resource through {@link cfnResourceRef}, whose `undefined`-for-L1 contract is
- *   pinned by the construct-page tests and is not widened here.
+ * - a type tagged `cloudformationResource` names its own resource and gets no L1 counterpart row: a generated `Cfn*`
+ *   L1, or a hand-written (alpha) L2 that names the resource it wraps;
+ * - an L2/L3 without the tag resolves its backing resource through {@link cfnResourceRef}, whose `undefined`-for-tagged
+ *   contract is pinned by the construct-page tests and is not widened here.
  *
  * Returns `undefined` for every type with no CloudFormation data at all: every struct, interface, enum, mixin and
  * plain class.
@@ -439,8 +442,8 @@ function cfnDocsUrl(resourceType: string, l1?: spec.Type): string {
  *    `cloudformationResource` metadata — the resource type string still
  *    comes from the assembly, never from the class name itself.
  *
- * Returns `undefined` for L1 types themselves (the page already *is*
- * the resource) and for constructs with no backing CFN resource
+ * Returns `undefined` for any type tagged `cloudformationResource` (the
+ * tag already names its resource) and for constructs with no backing CFN resource
  * (base classes, pure logical constructs, most L3 patterns).
  */
 export function cfnResourceRef(type: spec.ClassType, index: TypeIndex): CfnResourceRef | undefined {
