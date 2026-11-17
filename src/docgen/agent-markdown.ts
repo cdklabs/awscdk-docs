@@ -176,30 +176,32 @@ function startsVariantGroup(el: Element): boolean {
 
 /**
  * One group of language variants. A block variant (an example) is repeated once per language, each copy after a
- * plain label line naming its language. A copy that is not in its own language (an untranslated snippet docgen fills
- * with the TypeScript source) is never labeled as that language: the TypeScript copy's label names the languages
- * that fall back on it. An inline variant (a name in prose or a parameter list) keeps the canonical text and adds,
- * in parentheses, the other spellings where they differ, with the languages that share a spelling listed together.
+ * plain label line naming its language (see `renderBlockGroup`). An inline variant (a name in prose or a parameter
+ * list) keeps the canonical text and adds, in parentheses, the other spellings where they differ, with the
+ * languages that share a spelling listed together.
  */
 function renderVariantGroup(group: Element[]): string {
   if (group.length === 1) return children(group[0]);
-  // Protected code is a placeholder per occurrence, so copies compare equal only once restored.
-  const restored = (v: Element) => restoreProtected(children(v)).trim();
-  const first = restored(group[0]);
+  // Each copy is rendered once. Protected code is a placeholder per occurrence, so copies are compared, and fences
+  // read, only once restored.
+  const copies = new Map(group.map((v) => {
+    const raw = children(v).trim();
+    return [v, { raw, text: restoreProtected(raw) }] as const;
+  }));
   if (group[0].name.toLowerCase() === 'div') {
-    return renderBlockGroup(group, restored);
+    return renderBlockGroup(group, copies);
   }
-  const canonical = children(group[0]).trim();
-  const byText = new Map<string, { text: string; labels: string[] }>();
+  const first = copies.get(group[0])!;
+  const byText = new Map<string, { raw: string; labels: string[] }>();
   for (const v of group.slice(1)) {
-    const key = restored(v);
-    if (key === first) continue;
-    const entry = byText.get(key) ?? { text: children(v).trim(), labels: [] };
+    const { raw, text } = copies.get(v)!;
+    if (text === first.text) continue;
+    const entry = byText.get(text) ?? { raw, labels: [] };
     entry.labels.push(languageLabel(v));
-    byText.set(key, entry);
+    byText.set(text, entry);
   }
-  const others = [...byText.values()].map(({ text, labels }) => `${labels.join(', ')}: ${text}`);
-  return others.length ? `${canonical} (${others.join('; ')})` : canonical;
+  const others = [...byText.values()].map(({ raw, labels }) => `${labels.join(', ')}: ${raw}`);
+  return others.length ? `${first.raw} (${others.join('; ')})` : first.raw;
 }
 
 function children(el: Element): string {
@@ -207,40 +209,37 @@ function children(el: Element): string {
 }
 
 /**
- * A block group (examples). A copy is a fallback when its first fence is tagged for another language than its own,
- * or when it equals the first copy: docgen's TypeScript fill for a snippet that was not translated. Fallbacks are
- * not repeated. When the first copy is TypeScript, its label names the languages that fall back on it; otherwise one
- * TypeScript copy is kept, labeled with those languages, so TypeScript code never sits under another language.
+ * A block group (examples), one copy per language in the site's language order. Docgen fences each copy in its own
+ * language, so a copy whose first fence is tagged for another language is the TypeScript source docgen fills in for
+ * a snippet that was not translated. That fallback is never labeled as its own language. With TypeScript enabled,
+ * the TypeScript copy's label names the languages that fall back on it (`TypeScript (also shown for Python):`) and
+ * the fallbacks are not repeated. Without TypeScript, one fallback copy stands in, at the position of the first
+ * language that uses it, labeled `TypeScript (shown for Python):`.
  */
-function renderBlockGroup(group: Element[], restored: (v: Element) => string): string {
-  const fenceLang = (v: Element) => /^ {0,3}(?:`{3,}|~{3,})([^\s`]*)/m.exec(restored(v))?.[1];
-  const ownFence = (v: Element) => FENCE_LANG[v.attribs['data-lang'] as Language];
-  const first = restored(group[0]);
-  const tsFirst = group[0].attribs['data-lang'] === DEFAULT_LANGUAGE;
-  const foreignFence = (v: Element) => {
+function renderBlockGroup(group: Element[], copies: Map<Element, { raw: string; text: string }>): string {
+  const fenceLang = (v: Element) => /^ {0,3}(?:`{3,}|~{3,})([^\s`]*)/m.exec(copies.get(v)!.text)?.[1];
+  const isFallback = (v: Element) => {
     const lang = fenceLang(v);
-    return lang !== undefined && lang !== ownFence(v);
+    return lang !== undefined && lang !== FENCE_LANG[v.attribs['data-lang'] as Language];
   };
-  const isFallback = (v: Element) => (v === group[0]
-    ? !tsFirst && foreignFence(v)
-    : (tsFirst && restored(v) === first) || foreignFence(v));
   const fallbacks = group.filter(isFallback);
-  const kept = group.filter((v) => !isFallback(v));
-  const also = (v: Element[]) => v.map(languageLabel).join(', ');
-  const block = (label: string, v: Element) => `\n${label}:\n\n${children(v).trim()}\n`;
-  if (fallbacks.length === 0) return kept.map((v) => block(languageLabel(v), v)).join('\n');
-  if (tsFirst) {
-    if (kept.length === 1) return children(group[0]);
-    return kept
-      .map((v) => block(v === group[0] ? `${languageLabel(v)} (also shown for ${also(fallbacks)})` : languageLabel(v), v))
-      .join('\n');
-  }
-  // No TypeScript copy of its own: the first fallback stands for TypeScript, named for every language using it.
+  const fallbackSet = new Set(fallbacks);
+  const block = (label: string, v: Element) => `\n${label}:\n\n${copies.get(v)!.raw}\n`;
+  const names = fallbacks.map(languageLabel).join(', ');
+  const tsFirst = group[0].attribs['data-lang'] === DEFAULT_LANGUAGE;
   const typescript = LANGUAGE_LABEL.get(DEFAULT_LANGUAGE) ?? DEFAULT_LANGUAGE;
-  return [
-    ...kept.map((v) => block(languageLabel(v), v)),
-    block(`${typescript} (shown for ${also(fallbacks)})`, fallbacks[0]),
-  ].join('\n');
+  const blocks: string[] = [];
+  for (const v of group) {
+    if (!fallbackSet.has(v)) {
+      const label = tsFirst && v === group[0] && fallbacks.length
+        ? `${languageLabel(v)} (also shown for ${names})`
+        : languageLabel(v);
+      blocks.push(block(label, v));
+    } else if (!tsFirst && v === fallbacks[0]) {
+      blocks.push(block(`${typescript} (shown for ${names})`, v));
+    }
+  }
+  return blocks.join('\n');
 }
 
 /** Plain text of a subtree, with links and code rendered as Markdown. */

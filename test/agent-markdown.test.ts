@@ -268,7 +268,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       .toBe('- `bucketName`: string (required) (static) = "x" — Physical name of this bucket.\n');
   });
 
-  test('an example copy identical to the first is dropped, not labeled as another language', () => {
+  test('when every other language fell back on the TypeScript copy, its label still names them', () => {
     const fence = ['', '```ts', 'new Bucket(this, "B");', '```', ''];
     const page = [
       '<div class="lang-variant" data-lang="ts">', ...fence,
@@ -276,7 +276,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
       '</div>',
       '',
     ].join('\n');
-    expect(toAgentMarkdown(page).markdown).toBe('```ts\nnew Bucket(this, "B");\n```\n');
+    expect(toAgentMarkdown(page).markdown).toBe('TypeScript (also shown for Python):\n\n```ts\nnew Bucket(this, "B");\n```\n');
   });
 
   test('when one language fell back on the first copy, the first label names it and its copy is dropped', () => {
@@ -329,6 +329,20 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     expect(markdown).toContain('TypeScript (shown for Java, Golang):\n\n```ts');
     expect(markdown).not.toMatch(/^(Java|Golang):/m);
     expect(markdown.match(/```ts/g)).toHaveLength(1);
+  });
+
+  test('without TypeScript, a fallback in the first language stands in at its place, labeled TypeScript', () => {
+    const page = exampleGroup([
+      ['python', 'ts', 'new Bucket(this, "B");'],
+      ['java', 'java', 'new Bucket(this, "B");'],
+      ['go', 'go', 'awss3.NewBucket(stack, jsii.String("B"))'],
+    ]);
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).not.toMatch(/^Python:/m);
+    const order = ['TypeScript (shown for Python):\n\n```ts', 'Java:\n\n```java', 'Golang:\n\n```go']
+      .map((label) => markdown.indexOf(label));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
   test('languages that spell a member the same way share one sub-bullet', () => {
