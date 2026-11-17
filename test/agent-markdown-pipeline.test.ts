@@ -128,7 +128,7 @@ describe('agent-oriented Markdown twins', () => {
         .filter((file) => file.endsWith('.md'))
         .map((file) => pageUrl(`v2/${file}`, siteUrl)),
       ...walk(join(ROOT, 'docs'))
-        .filter((file) => file.endsWith('.md') && !file.startsWith('.vitepress/'))
+        .filter((file) => file.endsWith('.md') && !file.startsWith('.vitepress/') && !file.startsWith('v2/'))
         .map((file) => pageUrl(file, siteUrl)),
     ]);
     const links = walk(agentOutDir)
