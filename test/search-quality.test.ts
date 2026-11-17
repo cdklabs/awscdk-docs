@@ -47,6 +47,16 @@ describe('search markup helpers', () => {
       '<span data-pagefind-weight="10">Application<wbr>Version<wbr>Lifecycle<wbr>Config<wbr>Property</span>',
     );
     expect(weightedTitle('HTTPServer')).toBe('<span data-pagefind-weight="10">HTTP<wbr>Server</span>');
+    expect(weightedTitle('CfnVPCPeeringConnection')).toBe(
+      '<span data-pagefind-weight="10">Cfn<wbr>VPC<wbr>Peering<wbr>Connection</span>',
+    );
+  });
+
+  test('weightedTitle keeps a single leading capital attached', () => {
+    // A lone `O` or `I` at a line end is the break #193 removes.
+    expect(weightedTitle('OAuthScope')).toBe('<span data-pagefind-weight="10">OAuth<wbr>Scope</span>');
+    expect(weightedTitle('IBucket')).toBe('<span data-pagefind-weight="10">IBucket</span>');
+    expect(weightedTitle('IPv6Address')).toBe('<span data-pagefind-weight="10">IPv6<wbr>Address</span>');
   });
 
   test('searchKind collapses construct levels to a small vocabulary', () => {

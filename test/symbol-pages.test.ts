@@ -249,7 +249,7 @@ describe('symbol page generation', () => {
   test('behavioral interfaces without implementors still get a page', () => {
     // ILocalBundling declares tryBundle() but no class in the assemblies implements it
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ILocalBundling.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">I<wbr>Local<wbr>Bundling</span> <Badge type="info" class="api-badge api-badge-interface" text="Interface" />');
+    expect(page).toContain('# <span data-pagefind-weight="10">ILocal<wbr>Bundling</span> <Badge type="info" class="api-badge api-badge-interface" text="Interface" />');
     expect(page).not.toContain('| **Kind** |');
     expect(page).toContain('<div class="member-row" id="trybundle" data-params="outputDir,options">');
   });

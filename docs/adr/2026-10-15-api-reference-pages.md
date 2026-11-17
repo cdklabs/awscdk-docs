@@ -95,7 +95,9 @@ row — no metadata table, no `## Overview` heading, no package+version badge.
 into one continuous prose block, which is Pagefind-indexed (remarks read as
 the page lead, where readers look). The H1 carries only the type name and the
 kind badge. The type-name span inserts `<wbr>` at CamelCase boundaries,
-including the final capital of an acronym before a capitalized word. The
+including the final capital of an acronym of two or more capitals before a
+capitalized word (`HTTP<wbr>Server`). A single leading capital stays attached
+(`IBucket`, `OAuth<wbr>Scope`), so no line ends in a lone `I` or `O`. The
 weighted span still encloses the whole name, and `<wbr>` adds no text to page
 titles, search results, copied names, sidebars, outlines, or Markdown twins.
 

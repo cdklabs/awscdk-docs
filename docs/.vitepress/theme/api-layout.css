@@ -100,12 +100,6 @@
   vertical-align: middle;
 }
 
-/* Title names carry `<wbr>` at identifier boundaries. Disable the H1's
-   emergency break so words stay whole on narrow screens. */
-.vp-doc h1 > [data-pagefind-weight="10"] {
-  overflow-wrap: normal;
-}
-
 /* ---------- API kind badge: one row, one color per kind ---------- */
 
 /* VitePress 1.6.4 ships `.vp-doc h1 > .VPBadge { margin-top: 4px;
