@@ -1591,7 +1591,7 @@ describe('buildServiceSidebar', () => {
       ]);
     });
 
-    test('IoT lists Overview, Developer Preview and the actions readme by its title', () => {
+    test('IoT lists Overview, then the actions readme by its title, then Developer Preview', () => {
       const sidebar = sidebarSections([
         entry({
           name: 'CfnThing',
