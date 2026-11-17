@@ -403,7 +403,7 @@ describe('API page layout', () => {
       expect(page).toContain('<a class="member-permalink" href="#versioned"'
         + ' aria-label="Permalink to versioned" data-pagefind-ignore>#</a>');
       // The permalink is kept out of the index, and the header-line parts are space-separated, so a search excerpt
-      // reads `fromBucketArn(...) static` rather than `fromBucketArn(...)static#` (#207).
+      // reads `fromBucketArn(...) static`.
       const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
       const row = bucket.slice(bucket.indexOf('<div class="member-row" id="frombucketarn"'));
       const line = row.slice(0, row.indexOf('</div>'));

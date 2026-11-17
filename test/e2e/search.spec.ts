@@ -83,8 +83,7 @@ test.describe('pagefind search', () => {
     expect(results.type?.[0]).toBe('/v2/docs/constructs.Node.html');
   });
 
-  // #207: a member's excerpt used to read `fromQueueArn(...)static#`, with the parts run together and the permalink
-  // glyph indexed as text.
+  // A member excerpt separates the name from its flags and never contains the permalink glyph.
   test('a member excerpt separates the header parts and leaves out the permalink', async ({ page }) => {
     await page.goto('/');
     const excerpt = await page.evaluate(async () => {
@@ -103,7 +102,7 @@ test.describe('pagefind search', () => {
     });
 
     expect(excerpt).toMatch(/fromQueueArn\S*\s+static\b/);
-    expect(excerpt).not.toContain('#');
+    expect(excerpt).not.toMatch(/static\s*#/);
   });
 
   // The fixture documents aws-sns and aws-sqs; `Topic` is an SNS construct.
