@@ -461,7 +461,7 @@ describe('symbol page generation', () => {
   });
 
   test('a README twin links every site page absolutely', () => {
-    // The issue's own page: README prose links a type with a code label, the shape that used to 404.
+    // README prose links types through code-span labels; every one must resolve to an absolute .html page.
     const readme = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_apigatewayv2_integrations-readme.md'), 'utf-8');
     const twin = toAgentMarkdown(readme, SITE_URL).markdown;
     expect(twin).toContain(`](${SITE_URL}v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations.HttpLambdaIntegration.html`);
