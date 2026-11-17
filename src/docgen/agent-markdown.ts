@@ -14,7 +14,7 @@
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { tokenizeFences } from './fences.js';
-import { DEFAULT_LANGUAGE, LANGUAGES } from './languages.js';
+import { LANGUAGES } from './languages.js';
 
 // Node types come from the parser's own signatures so no second package has to be pinned for them.
 type Node = ReturnType<typeof parseDocument>['children'][number];
@@ -132,8 +132,8 @@ const languageLabel = (variant: Element): string =>
   LANGUAGE_LABEL.get(variant.attribs['data-lang']) ?? variant.attribs['data-lang'] ?? '';
 
 /**
- * The run of sibling `.lang-variant` elements that starts at the canonical variant `el`: docgen emits one per
- * enabled language, in the site's language order, side by side. Whitespace between them is skipped.
+ * The run of sibling `.lang-variant` elements that starts at `el`: docgen emits one per enabled language, in the
+ * site's language order, side by side. Whitespace between them is skipped. A language seen twice starts the next run.
  */
 function variantGroup(el: Element): Element[] {
   const siblings = el.parent?.children ?? [el];
@@ -141,13 +141,36 @@ function variantGroup(el: Element): Element[] {
   for (let i = siblings.indexOf(el); i < siblings.length; i++) {
     const n = siblings[i];
     if (isVariant(n)) {
-      if (group.length > 0 && n.attribs['data-lang'] === DEFAULT_LANGUAGE) break;
+      if (group.some((v) => v.attribs['data-lang'] === n.attribs['data-lang'])) break;
       group.push(n);
     } else if (!(isText(n) && n.data.trim() === '')) {
       break;
     }
   }
   return group;
+}
+
+/**
+ * Whether `el` opens its run of variants: the first variant docgen emits is the canonical one, TypeScript when it is
+ * enabled and otherwise the first enabled language.
+ */
+function startsVariantGroup(el: Element): boolean {
+  const siblings = el.parent?.children ?? [el];
+  // Walk back to the first variant of the contiguous run, then step through its groups.
+  let start = siblings.indexOf(el);
+  for (let i = start - 1; i >= 0; i--) {
+    const n = siblings[i];
+    if (isVariant(n)) start = i;
+    else if (!(isText(n) && n.data.trim() === '')) break;
+  }
+  let head = siblings[start] as Element;
+  while (head !== el) {
+    const group = variantGroup(head);
+    if (group.includes(el)) return false;
+    const next = group[group.length - 1];
+    head = siblings.slice(siblings.indexOf(next) + 1).find(isVariant)!;
+  }
+  return true;
 }
 
 /**
@@ -191,9 +214,9 @@ function render(node: Node): string {
     return literalTag(el);
   }
 
-  // Language variants: the canonical one renders its whole group; the others are rendered with it.
+  // Language variants: the first of each group renders the whole group; the others are rendered with it.
   if (cls.has('lang-variant')) {
-    return el.attribs['data-lang'] === DEFAULT_LANGUAGE ? renderVariantGroup(variantGroup(el)) : '';
+    return startsVariantGroup(el) ? renderVariantGroup(variantGroup(el)) : '';
   }
   if (tag === 'languagetabs') {
     return `\n${children(el)}\n`;
@@ -324,9 +347,11 @@ function renderMemberRow(el: Element): string {
   const rest = el.children.filter((n) => n !== line && n !== summary);
 
   // The bullet carries the canonical name and type; each other language whose name or type reads differently
-  // gets one labeled sub-bullet under it.
+  // gets one labeled sub-bullet under it. The canonical spelling is the first variant, as docgen emits it: that is
+  // TypeScript when it is enabled, and otherwise the first enabled language, so a build without TypeScript reads the
+  // same way.
   const variants = line ? DomUtils.findAll(isVariant, line.children) : [];
-  const canonical = variants.find((v) => v.attribs['data-lang'] === DEFAULT_LANGUAGE);
+  const canonical = variants[0];
   const head = line ? renderMemberLine(line, canonical) : '';
   const spellings = variants
     .filter((v) => v !== canonical)

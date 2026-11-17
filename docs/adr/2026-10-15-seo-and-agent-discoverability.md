@@ -110,8 +110,10 @@ count, behind an explicit `--agent-markdown <dir>` flag; a missing tree fails
 the merge. The hand-written homepage is the one exception: it declares
 `agentMarkdown: "/index.md"`, and `scripts/agent-markdown-overlay.cjs`
 transforms its finished Markdown into the root twin during the same overlay
-step, keeping the advertised file and its producer together. The ~27 MB
-compressed corpus is overlaid once, with no per-shard cost.
+step, keeping the advertised file and its producer together. The compressed
+corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
+`docs:generate`, five languages) is about 31 MB, up from about 12 MB when the
+twin kept TypeScript only. It is overlaid once, with no per-shard cost.
 
 ### llms.txt index
 
@@ -178,11 +180,11 @@ run, including failures.
   a preview deploy gets a sitemap and canonicals rooted at its host.
 - Bumping `CONTENT_REVISED_DATE` re-dates every page without a later release of
   its own, in both the JSON-LD and the footer.
-- The twin keeps TypeScript signatures, examples, member tables, warnings and
-  cross-links and drops the other languages, badges, breadcrumb and search
-  plumbing; widening what it keeps is a change to one transform. The merge step
-  has one non-shard input, and a missing twin tree or module index fails the
-  build.
+- The twin keeps every enabled language's signatures and examples (labeled),
+  and member tables, warnings and cross-links once; it drops badges, breadcrumb
+  and search plumbing. Widening what it keeps is a change to one transform. The
+  merge step has one non-shard input, and a missing twin tree or module index
+  fails the build.
 - The install command is deliberately duplicated between upstream and this
   repo; the pin turns silent drift into a failing test. Readers who want the
   skill's contents still leave the site to read the single published copy.

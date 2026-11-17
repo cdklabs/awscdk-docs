@@ -236,4 +236,76 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     ].join('\n');
     expect(toAgentMarkdown(page).markdown).toBe('- `bucketName`: string — Physical name of this bucket.\n');
   });
+
+  // A member line with one variant span per language, and the flags and default outside them, as docgen emits it.
+  const variantRow = (python: string, extra = '') => [
+    '<div class="member-row" id="bucketname"><div class="member-line">'
+    + '<span class="lang-variant" data-lang="ts"><code class="member-name">bucketName</code>'
+    + '<span class="member-type" data-pagefind-ignore title="string">string</span></span>'
+    + `<span class="lang-variant" data-lang="python" data-pagefind-ignore>${python}</span>`
+    + `${extra}<span class="member-required">required</span>`
+    + '<span class="member-default" data-pagefind-ignore>= "x"</span></div>',
+    '<div class="member-summary">Physical name of this bucket.</div></div>',
+    '',
+  ].join('\n');
+
+  test('a member whose name reads differently in another language gets one labeled sub-bullet', () => {
+    const page = variantRow('<code class="member-name">bucket_name</code>'
+      + '<span class="member-type" data-pagefind-ignore title="str">str</span>');
+    expect(toAgentMarkdown(page).markdown).toBe([
+      '- `bucketName`: string (required) = "x" — Physical name of this bucket.',
+      '',
+      '  - Python: `bucket_name`: str (required) = "x"',
+      '',
+    ].join('\n'));
+  });
+
+  test('a member that reads the same in every language gets no sub-bullet', () => {
+    const page = variantRow('<code class="member-name">bucketName</code>'
+      + '<span class="member-type" data-pagefind-ignore title="string">string</span>');
+    expect(toAgentMarkdown(page).markdown).toBe('- `bucketName`: string (required) = "x" — Physical name of this bucket.\n');
+  });
+
+  test('without TypeScript the first language is the head line', () => {
+    const page = [
+      '<div class="member-row" id="bucketname"><div class="member-line">'
+      + '<span class="lang-variant" data-lang="python"><code class="member-name">bucket_name</code></span>'
+      + '<span class="lang-variant" data-lang="java" data-pagefind-ignore><code class="member-name">bucketName</code></span>'
+      + '</div></div>',
+      '',
+    ].join('\n');
+    expect(toAgentMarkdown(page).markdown).toBe('- `bucket_name`\n\n  - Java: `bucketName`\n');
+  });
+
+  test('without TypeScript an example and an inline name still keep every language', () => {
+    const page = [
+      'Call <span class="lang-variant" data-lang="python"><code>add_rule</code></span>'
+      + '<span class="lang-variant" data-lang="java" data-pagefind-ignore><code>addRule</code></span>.',
+      '',
+      '<div class="lang-variant" data-lang="python">',
+      '',
+      '```python',
+      'x = 1',
+      '```',
+      '',
+      '</div><div class="lang-variant" data-lang="java" data-pagefind-ignore>',
+      '',
+      '```java',
+      'int x = 1;',
+      '```',
+      '',
+      '</div>',
+      '',
+    ].join('\n');
+    const { markdown } = toAgentMarkdown(page);
+    expect(markdown).toContain('Call `add_rule` (Java: `addRule`).');
+    expect(markdown).toContain('Python:\n\n```python\nx = 1\n```');
+    expect(markdown).toContain('Java:\n\n```java\nint x = 1;\n```');
+  });
+
+  test('two variant groups side by side each render once', () => {
+    const v = (lang: string, text: string) => `<span class="lang-variant" data-lang="${lang}"><code>${text}</code></span>`;
+    const page = `${v('ts', 'a')}${v('python', 'a_py')}${v('ts', 'b')}${v('python', 'b_py')}\n`;
+    expect(toAgentMarkdown(page).markdown).toBe('`a` (Python: `a_py`)`b` (Python: `b_py`)\n');
+  });
 });
