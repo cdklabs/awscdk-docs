@@ -48,7 +48,7 @@ bucket. Docgen counters this:
 - Wrap generated boilerplate in `data-pagefind-ignore` (via `ignoreBlock`):
   property type cells, facts/metadata tables, signatures, the type-hierarchy
   block (including a struct's "used as props by" row), and cross-reference lists
-  ("Referenced by"). Property names stay indexable inside their existing
+  ("Referenced by"), and each member row's `#` permalink. Property names stay indexable inside their existing
   type-page entry, matching method names without creating per-member results;
   property types and descriptions stay ignored so they cannot add incidental
   matches. Symbol *lookup* is the type-ahead filter's job. This also shrinks the

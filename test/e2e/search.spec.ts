@@ -83,6 +83,28 @@ test.describe('pagefind search', () => {
     expect(results.type?.[0]).toBe('/v2/docs/constructs.Node.html');
   });
 
+  // A member excerpt separates the name from its flags and never contains the permalink glyph.
+  test('a member excerpt separates the header parts and leaves out the permalink', async ({ page }) => {
+    await page.goto('/');
+    const excerpt = await page.evaluate(async () => {
+      const preload = document.querySelector<HTMLLinkElement>(
+        'link[rel="modulepreload"][href$="pagefind/pagefind.js"]',
+      );
+      if (!preload) return undefined;
+      const pagefind = await import(/* @vite-ignore */ preload.href);
+      await pagefind.init?.();
+      const search = await pagefind.search('fromQueueArn');
+      const data = await Promise.all(search.results.map(
+        (result: { data(): Promise<{ url: string; excerpt: string }> }) => result.data(),
+      ));
+      const queue = data.find((entry: { url: string }) => entry.url === '/v2/docs/aws-cdk-lib.aws_sqs.Queue.html');
+      return queue?.excerpt.replace(/<\/?mark>/g, '');
+    });
+
+    expect(excerpt).toMatch(/fromQueueArn\S*\s+static\b/);
+    expect(excerpt).not.toMatch(/static\s*#/);
+  });
+
   // The fixture documents aws-sns and aws-sqs; `Topic` is an SNS construct.
   test.describe('module: filter', () => {
     const search = async (page: import('@playwright/test').Page, query: string) => {

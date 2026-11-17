@@ -401,7 +401,13 @@ describe('API page layout', () => {
       // rather than on one span inside it.
       expect(page).toContain('<div class="member-row" id="versioned" data-optional="input">');
       expect(page).toContain('<a class="member-permalink" href="#versioned"'
-        + ' aria-label="Permalink to versioned">#</a>');
+        + ' aria-label="Permalink to versioned" data-pagefind-ignore>#</a>');
+      // The permalink is kept out of the index, and the header-line parts are space-separated, so a search excerpt
+      // reads `fromBucketArn(...) static`.
+      const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+      const row = bucket.slice(bucket.indexOf('<div class="member-row" id="frombucketarn"'));
+      const line = row.slice(0, row.indexOf('</div>'));
+      expect(line).toContain('</code> <span class="member-static">static</span> <a class="member-permalink"');
       // Identity is the canonical TS name, not the displayed one, so a deep
       // link survives a language switch.
       const rows = [...page.matchAll(/<div class="member-row" id="([^"]+)"/g)].map((m) => m[1]);
