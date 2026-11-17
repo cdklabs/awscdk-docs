@@ -8,6 +8,11 @@
 // macOS, which can leave window fullscreen on Escape). The plugin tracks keys
 // with its own window listener and ignores defaultPrevented, so the dialog still
 // closes. With search closed, Escape is not touched.
+//
+// The plugin prevents the browser default for Ctrl+K but not for Cmd+K, so on
+// macOS Firefox the browser can also move focus to its own search bar. The
+// theme prevents the default for both, from a capture listener on window that
+// runs before the plugin's; the plugin still opens the dialog itself.
 
 /** Every shortcut that opens search, in the `aria-keyshortcuts` grammar. */
 export const SEARCH_KEYSHORTCUTS = '/ Control+K Meta+K';
@@ -31,6 +36,7 @@ export interface HotkeyEvent {
   ctrlKey: boolean;
   metaKey: boolean;
   altKey: boolean;
+  shiftKey?: boolean;
   defaultPrevented: boolean;
   isComposing?: boolean;
   getModifierState?(key: string): boolean;
@@ -86,7 +92,27 @@ export function isGuardedEscape(event: Pick<HotkeyEvent, 'key' | 'isComposing'>,
   return event.key === 'Escape' && event.isComposing !== true && dialogOpen;
 }
 
+/**
+ * Whether a keydown is Cmd+K or Ctrl+K, the plugin's open shortcut, whose browser default must be prevented.
+ * With Shift or Alt also held the default is kept, so browser chords such as Firefox's web console still work,
+ * even though the plugin may open search on them too.
+ */
+export function isOpenSearchShortcut(
+  event: Pick<HotkeyEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>,
+): boolean {
+  // Lowercased, as the plugin's own matcher does: Caps Lock reports `K` without Shift and still opens search.
+  return event.key.toLowerCase() === 'k'
+    && (event.ctrlKey || event.metaKey)
+    && !event.altKey
+    && event.shiftKey !== true;
+}
+
 const g = globalThis as {
+  addEventListener?(
+    type: 'keydown',
+    listener: (event: HotkeyEvent & { preventDefault(): void }) => void,
+    options?: { capture: boolean },
+  ): void;
   document?: {
     getElementById(id: string): { } | null;
     querySelector(selector: string): {
@@ -111,12 +137,18 @@ export function markSearchShortcuts(): void {
   g.document?.querySelector(SEARCH_BUTTON_SELECTOR)?.setAttribute('aria-keyshortcuts', SEARCH_KEYSHORTCUTS);
 }
 
-/** Install the `/` shortcut and the Escape guard on the document. No-op on the server. */
+/** Install the `/` shortcut, the Cmd+K / Ctrl+K default guard and the Escape guard. No-op on the server. */
 export function installSearchHotkeys(): void {
   const doc = g.document;
   if (!doc) {
     return;
   }
+  // On window in the capture phase, so the default is prevented before the plugin's window listener sees the key.
+  g.addEventListener?.('keydown', (event) => {
+    if (isOpenSearchShortcut(event)) {
+      event.preventDefault();
+    }
+  }, { capture: true });
   // Capture phase, so the default is prevented before any bubbling handler runs.
   doc.addEventListener('keydown', (event) => {
     if (isGuardedEscape(event, isDialogOpen(doc.querySelector(SEARCH_DIALOG_SELECTOR)))) {
