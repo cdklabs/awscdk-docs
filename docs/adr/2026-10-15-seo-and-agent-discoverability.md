@@ -98,11 +98,14 @@ generated pages have: authored routes such as `/stability`, `/versions` and
 `/skills` ship no twin. Each rendered page advertises its own twin through
 `<link rel="alternate" type="text/markdown">`. Other root-relative Markdown
 targets, such as `/llms.txt` and `![…](…)` image sources, are joined onto
-`DOCS_SITE_URL` unchanged, except that under `/v2/` only the listed lowercase
-asset extensions count as files, so PascalCase type IDs such as `…Map` stay
-pages; raw HTML such as `<img src>` and autolinks pass
-through as authored. Targets that still contain whitespace or a backslash after
-CommonMark punctuation escapes are removed stay as authored. Only single-line,
+`DOCS_SITE_URL` unchanged, except that under `/v2/` only `.txt`, `.json`,
+`.xml`, `.png`, `.svg`, `.jpg`/`.jpeg`, `.gif`, `.webp`, `.css`, `.js`, `.map`,
+`.ico`, `.pdf` and `.zip`, lowercase, count as files, so PascalCase type IDs
+such as `…Map` stay pages. Raw `<a href>` anchors are rewritten the same way,
+with `(`, `)` and `|` in the target backslash-escaped; other raw HTML such as
+`<img src>`, and autolinks, pass through as authored. Targets that still
+contain whitespace or a backslash after CommonMark punctuation escapes are
+removed stay as authored. Only single-line,
 untitled inline links within one text run are rewritten; reference definitions
 and titled links pass through. The pipeline test builds the `constructs`
 package only. It fails if a Markdown link, image or reference definition in a
