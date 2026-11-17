@@ -221,6 +221,50 @@ test.describe('navigation style', () => {
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toHaveAttribute('href', /aws_sns\.Topic/);
   });
 
+  test('in the package style, opening a package while its preload is in flight renders its items', async ({ page }) => {
+    await page.addInitScript((key) => {
+      window.localStorage.setItem(key, 'package');
+    }, NAV_KEY);
+    const requests = trackSidebarRequests(page);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/api-sidebar/chunks/sns.*', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto(QUEUE_PAGE);
+    await waitForSidebar(page);
+    await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toBeInViewport();
+    const snsChunks = () => requests.filter((name) => /^chunks\/sns\./.test(name));
+    await expect.poll(snsChunks).toHaveLength(1);
+
+    // The open joins the held preload rather than starting a fetch of its own.
+    const button = page.getByRole('button', { name: 'aws-cdk-lib.aws_sns', exact: true });
+    await button.click();
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    release();
+    await expect(topGroup(page, 'aws-cdk-lib.aws_sns').locator('a.api-sidebar-link', { hasText: 'Topic' }).first())
+      .toBeVisible();
+    expect(snsChunks()).toHaveLength(1);
+  });
+
+  test('in the package style, the filter finds a leaf from a preloaded package', async ({ page }) => {
+    await page.addInitScript((key) => {
+      window.localStorage.setItem(key, 'package');
+    }, NAV_KEY);
+    const preloaded = page.waitForResponse((response) => /\/api-sidebar\/chunks\/sns\./.test(response.url()));
+    await page.goto(QUEUE_PAGE);
+    await waitForSidebar(page);
+    await preloaded;
+    await settled(page);
+    // Only the preloaded chunks can answer: every chunk the filter still asks for fails.
+    await page.route('**/api-sidebar/chunks/**', (route) => route.abort());
+
+    await page.getByRole('textbox', { name: 'Filter navigation in the sidebar' }).fill('Topic');
+    await expect(topGroup(page, 'aws-cdk-lib.aws_sns').locator('a.api-sidebar-link', { hasText: /^Topic$/ }).first())
+      .toBeVisible();
+  });
+
   test('collapse memory is kept per style: a package toggle lands in the suffixed store and the service store stays empty', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);

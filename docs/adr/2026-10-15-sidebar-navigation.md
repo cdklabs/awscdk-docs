@@ -189,8 +189,9 @@ VitePress sidebar shell:
   page (matched against `modules` stems on a whole-stem boundary — `<stem>.`
   or `<stem>-readme`, longest stem wins, so `aws_s3` cannot claim
   `aws_s3_deployment`); on section open; when a stored choice reopens its
-  section on load or on a style switch; once a closed section's heading
-  has stayed in view, with the sidebar not scrolling, for 100 ms; and
+  section on load or on a style switch; once any part of a closed
+  section's heading has stayed visible below the sticky header, with the
+  sidebar not scrolling, for 100 ms; and
   **every** chunk when the in-sidebar symbol filter activates (it prunes
   the whole corpus). Loading the headings in view lets a tap, click or
   Enter on any heading the reader can see usually find its items already
@@ -219,7 +220,7 @@ tested. Measured on the e2e fixture build (`npx projen docs:e2e`: the full
 skeleton and all 322 chunks; sizes are each served file gzipped at Node's
 default level), a cold load of the SNS Topic page at 1440×900 fetches ~27 KB
 gzip of sidebar data in 16 requests: ~13 KB for the skeleton and that
-section, and the rest for the 14 closed sections fully visible below the
+section, and the rest for the 14 closed sections visible below the
 sticky header. The whole tree is ~472 KB, the upper bound per session,
 and the largest single chunk is ~29 KB gzip. Server-rendered page content and its inline
 cross-links are unaffected, so the crawlable link graph and Pagefind

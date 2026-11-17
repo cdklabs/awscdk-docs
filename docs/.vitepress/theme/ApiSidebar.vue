@@ -298,8 +298,8 @@ function loadChunk(name: string, preloading = false): Promise<void> {
       serviceTree.value = withChunk(serviceTree.value, name, items);
     }
     // A preload lands in closed groups the reader cannot see into, so the package tree is only
-    // marked stale and rebuilt when next read: on open, navigation, Locate current page or a style
-    // switch. Any other load, including an open that joined a preload in flight, regroups at once.
+    // marked stale and rebuilt when next read: on open, navigation, Locate current page, the filter
+    // or a style switch. Any other load, including an open that joined a preload in flight, regroups at once.
     if (preloading) packageStale = true;
     else schedulePackageRebuild();
   });
@@ -587,7 +587,10 @@ onUnmounted(() => {
 watch(isApi, ensureLoaded);
 watch(filtering, (active) => {
   if (active) {
-    if (status.value === "ready") loadAllChunks();
+    if (status.value !== "ready") return;
+    // The filter searches the package tree as it stands, so bring in what preloads left out.
+    if (navStyle.value === "package") ensurePackageTree();
+    loadAllChunks();
     return;
   }
   // The filter ended (cleared, shortened, or Enter jumped): drop the folds
