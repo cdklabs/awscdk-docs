@@ -1,7 +1,7 @@
 import * as spec from '@jsii/spec';
 import { anchoredHeading, SECTION_ANCHORS } from './anchors.js';
 import type { TypeIndex } from './constructs.js';
-import { escapeAttr, escapeVueText } from './escape.js';
+import { escapeAttr, escapeSummaryHtml, escapeVueText } from './escape.js';
 import { codeFence, mapProse } from './fences.js';
 import { classLineage } from './interfaces.js';
 import {
@@ -415,7 +415,7 @@ function memberRow(
   );
   const bodyIndexing = indexBody ? '' : ` ${PAGEFIND_IGNORE}`;
   if (summary) {
-    lines.push(`<div class="member-summary"${bodyIndexing}>${escHtml(summary.replace(/\s+/g, ' ').trim())}</div>`);
+    lines.push(`<div class="member-summary"${bodyIndexing}>${escapeSummaryHtml(summary.replace(/\s+/g, ' ').trim())}</div>`);
   }
   if (prose.length > 0) {
     lines.push(`<div class="member-extra"${bodyIndexing}>`, '', ...prose, '</div>');

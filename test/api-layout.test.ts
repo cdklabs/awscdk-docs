@@ -752,6 +752,20 @@ describe('API page layout', () => {
     });
   });
 
+  describe('summary lines render Markdown links', () => {
+    test('the CfnFunction runtime summary links the word runtime to the Lambda runtimes page', () => {
+      const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_lambda.CfnFunction.md'), 'utf-8');
+      const row = page.match(/<div class="member-row" id="runtime"[\s\S]*?<div class="member-summary"[^>]*>([^\n]*)<\/div>/);
+      expect(row).not.toBeNull();
+      const summary = row![1];
+      // Opens in a new tab like every other external link on the page.
+      expect(summary).toContain(
+        '<a href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html" target="_blank" rel="noopener noreferrer">runtime</a>',
+      );
+      expect(summary).not.toMatch(/\[runtime\]|\(https:/);
+    });
+  });
+
   describe('methods render as member rows too', () => {
     test('a method is one row carrying its full signature inline', () => {
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
