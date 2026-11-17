@@ -176,7 +176,7 @@ test.describe('a jump to a member row flashes it', () => {
     await page.locator(OUTLINE_LINK(RETENTION)).click();
     await expect(page.locator(`.member-row${RETENTION}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));
     await expect.poll(() => flashStarts(page)).toBe(2);
-    // Back/forward arrive as a native hashchange and the route hook, in no fixed order.
+    // Back/forward: the native hashchange is left to the route hook, which runs once the route has reloaded.
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`${FIFO}$`));
     await expect(page.locator(`.member-row${FIFO}`)).toHaveClass(new RegExp(`\\b${FLASH}\\b`));

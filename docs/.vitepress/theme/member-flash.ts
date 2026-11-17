@@ -125,15 +125,15 @@ export function createFlashOnce(
  * first page has mounted and after each route change, which is how a page load
  * with a hash and a cross-page link that lands on a member are covered.
  *
- * The paths overlap: one click raises `hashchange` and then reaches the click
- * listener, a load with a hash reaches the hook and then the mount, and
- * back/forward raises `hashchange` and, once VitePress's `popstate` handler
- * has reloaded the route, the hook, in no fixed order. `createFlashOnce` drops
- * whichever arrival for the row last flashed comes second. When a reload
- * renders new rows (a return from another page, and in practice a same-page
- * back/forward too), a row marked before the render is detached before a
- * frame can start its fade and its replacement counts as the landing, so each
- * jump still starts exactly one fade.
+ * The paths overlap. One click raises `hashchange` and then reaches the click
+ * listener, and a load with a hash reaches the hook and then the mount;
+ * `createFlashOnce` drops whichever arrival for the row last flashed comes
+ * second. A history traversal VitePress handles (its `popstate` handler sees
+ * the state its `pushState` set) raises the native `hashchange` first and then
+ * reloads the route, which renders new rows, so that `hashchange` is skipped
+ * and the hook marks the row once the page has rendered. A `hashchange` that
+ * changes the path is skipped on the same grounds. So each jump starts exactly
+ * one fade.
  */
 export function installMemberFlash(): (hash: string) => void {
   const g = globalThis as { document?: Document; addEventListener?: Window['addEventListener']; location?: Location };
@@ -160,7 +160,20 @@ export function installMemberFlash(): (hash: string) => void {
     }
   };
   const flashOnce = createFlashOnce(doc, flash);
-  g.addEventListener('hashchange', () => flashOnce(g.location?.hash ?? ''));
+  // Set by a traversal VitePress will reload the route for; the hashchange that
+  // follows it, and any that changes the path, is left to the route hook.
+  let traversal = false;
+  g.addEventListener('popstate', (e) => {
+    traversal = e.state !== null;
+  });
+  g.addEventListener('hashchange', (e) => {
+    const samePage = new URL(e.oldURL).pathname === new URL(e.newURL).pathname;
+    if (traversal || !samePage) {
+      traversal = false;
+      return;
+    }
+    flashOnce(g.location?.hash ?? '');
+  });
   g.addEventListener('click', (e) => {
     // Like VitePress's link handler, skip a modified or secondary click, or a
     // link that opens elsewhere: neither is a jump on this page.
@@ -177,5 +190,9 @@ export function installMemberFlash(): (hash: string) => void {
     }
   });
   g.document.documentElement.classList.add(READY_CLASS);
-  return (hash) => flashOnce(hash);
+  return (hash) => {
+    // The route hook: every traversal VitePress handles ends here.
+    traversal = false;
+    flashOnce(hash);
+  };
 }
