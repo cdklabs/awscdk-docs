@@ -74,9 +74,10 @@ function stripFrontmatter(s: string): string {
 /**
  * Documentation text legitimately contains `<`: generics and placeholders in code (`add<Event>Notification`,
  * `<CloudFront distribution ID>`), CommonMark autolinks (`<https://…>`) and bare placeholders (`<Stack>`) in README
- * prose, which reaches the page verbatim. Fenced and indented code, and every angle-bracketed token that is not a
- * tag this site emits, are swapped for placeholders before the HTML parse and put back afterwards, byte for byte.
- * Fences come from the shared tokenizer every other fence-aware pass uses; a fence's info string keeps only its
+ * prose, which reaches the page verbatim. Fenced and indented code, and every angle-bracketed token that is not one
+ * of the `KNOWN_TAGS`, are swapped for placeholders before the HTML parse and put back afterwards, byte for byte. The
+ * generated `type-metadata` table is the one exception: its exact markup passes through to the parser whole, so table
+ * tags elsewhere (README tables, `<Table>` generics, `<table name>` placeholders) stay literal. Fences come from the shared tokenizer every other fence-aware pass uses; a fence's info string keeps only its
  * language tag, dropping the `type-links=…` attribute that drives hover links.
  */
 function protectCode(s: string): { text: string; restore: (out: string) => string } {
@@ -106,7 +107,7 @@ function protectCode(s: string): { text: string; restore: (out: string) => strin
         // escapes docstring prose without recognizing this form, so the block is decoded back to what was written.
         .replace(/(^|\n\n)((?:(?: {4}|\t)[^\n]*(?:\n|$))+)/g, (_m, lead: string, block: string) =>
           lead + keep(decodeEntities(block)))
-        // Anything in angle brackets that is not a tag docgen or the theme emits is text: autolinks, placeholders,
+        // Anything in angle brackets that is not one of the `KNOWN_TAGS` is text: autolinks, placeholders,
         // generics inside code spans. Code spans themselves stay in the parse so escaped text in them is decoded.
         .replace(/<(\/?[^\s<>/][^<>]*)>/g, (m, inner: string) => (isKnownTag(inner) ? m : keep(m)));
     })
@@ -232,13 +233,17 @@ function decodeEntities(s: string): string {
   });
 }
 
-/** True when `<inner>` opens or closes a tag docgen or the theme emits. */
+/** True when `<inner>` opens or closes one of the `KNOWN_TAGS`. */
 function isKnownTag(inner: string): boolean {
   const name = inner.replace(/^\//, '').split(/[\s/]/)[0].toLowerCase();
   return KNOWN_TAGS.has(name);
 }
 
-/** Tags docgen or the theme emit. Anything else was documentation text that happened to look like a tag. */
+/**
+ * Tags that may reach the parser from any page. Anything else was documentation text that happened to look like a
+ * tag. The generated `type-metadata` table enters through its own pass in `protectCode`; adding table tags here would
+ * expose README tables and generics to the parser.
+ */
 const KNOWN_TAGS = new Set([
   'a', 'br', 'code', 'dd', 'details', 'div', 'dl', 'dt', 'li', 'nav', 'ol', 'p', 'section', 'span', 'summary', 'ul',
   'wbr', 'languagetabs', 'badge',

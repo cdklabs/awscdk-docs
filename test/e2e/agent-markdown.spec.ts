@@ -33,6 +33,8 @@ test.describe('agent-oriented Markdown twin', () => {
     ]) {
       expect(body).not.toContain(marker);
     }
+    // The metadata table survives as bullets rather than vanishing with the HTML.
+    expect(body).toMatch(/^- CloudFormation: /m);
   });
 
   test('an overview page has a twin too, and it keeps the README prose', async ({ page, request }) => {

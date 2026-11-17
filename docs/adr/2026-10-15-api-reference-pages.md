@@ -221,7 +221,7 @@ label and one `<td>` value, and only facts that apply to the type render:
 
 Provenance is neither prose nor title material, so it lives here rather than in
 the H1 or the description. The block emits nothing when there are no rows (no
-empty shell), and a fourth row needs no markup or layout change. The only
+empty shell), and another row needs no markup or layout change. The only
 positional selector, `tr:nth-child(2n)`, cancels VitePress's zebra stripe; it
 does not encode a row count. `isGeneratedSource()` is a predicate with no
 markup; the source chip no longer lives in the H1.

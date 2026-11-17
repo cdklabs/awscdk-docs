@@ -165,6 +165,14 @@ test.describe('API kind badge', () => {
     const block = page.locator('.type-metadata');
     await expect(block).toBeVisible();
 
+    // The table fits the 375px viewport and never forces a horizontal page scroll.
+    const box = await block.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // Below 640px the block scales with the hierarchy bar above it.
+    const chainSize = await page.locator('.inheritance-chain').first().evaluate((el) => getComputedStyle(el).fontSize);
+
     const measured = await block.evaluate((el) => {
       const value = el.querySelector('.type-metadata-value a[href*="TemplateReference"]');
       const code = value.querySelector('code');
@@ -196,6 +204,7 @@ test.describe('API kind badge', () => {
     });
 
     // No chip of its own: the value IS the text.
+    expect(measured.blockSize).toBe(chainSize);
     expect(measured.codeSize).toBe(measured.blockSize);
     expect(measured.valueSize).toBe(measured.blockSize);
     expect(measured.labelSize).toBe(measured.blockSize);

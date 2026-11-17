@@ -543,7 +543,7 @@ describe('construct page generation', () => {
     expect(bucket).not.toContain('obtainable from');
   });
 
-  test('legacy module and FQN metadata rows remain absent', () => {
+  test('type pages carry no Module or FQN metadata rows', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(page).not.toContain('| | |');
     expect(page).not.toContain('| **Module** |');

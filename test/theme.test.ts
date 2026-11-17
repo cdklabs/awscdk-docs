@@ -303,6 +303,21 @@ describe('API kind badge palette', () => {
     return bodies.join('\n');
   };
 
+  // The body of the one rule whose selector list is exactly `selectors`, so a
+  // declaration cannot be alibied by a longer selector that merely contains it.
+  const exactRuleBody = (...selectors: string[]): string => {
+    const want = selectors.join(',');
+    const bodies: string[] = [];
+    const re = /([^{}]+)\{([^}]*)\}/g;
+    for (let m = re.exec(bare); m !== null; m = re.exec(bare)) {
+      if (m[1].split(',').map((s) => s.trim()).join(',') === want) {
+        bodies.push(m[2]);
+      }
+    }
+    expect(bodies).toHaveLength(1);
+    return bodies[0];
+  };
+
   // The palette declares its own `:root` / `.dark` pair, which is the
   // SECOND such pair in this stylesheet — slice from the palette block
   // rather than from the first `:root {` in the file.
@@ -526,7 +541,7 @@ describe('API kind badge palette', () => {
     expect(table).toContain('font-family: var(--vp-font-family-base)');
     expect(table).not.toContain('font-family: var(--vp-font-family-mono)');
 
-    const cells = ruleBody('.vp-doc .type-metadata-value');
+    const cells = exactRuleBody('.vp-doc .type-metadata-label', '.vp-doc .type-metadata-value');
     expect(cells).toContain('font-size: inherit');
     expect(cells).toContain('vertical-align: baseline');
 

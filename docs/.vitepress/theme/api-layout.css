@@ -981,10 +981,12 @@ a.chain-item:hover {
     padding: 6px 10px;
   }
 
-  /* The metadata block scales with the hierarchy bar it sits under. */
-  .type-metadata {
+  /* The metadata block scales with the hierarchy bar it sits under. The inset
+     is padding plus border-spacing, matching the bar's 6px 10px. */
+  .vp-doc .type-metadata {
     font-size: 0.75rem;
-    padding: 6px 10px;
+    padding: 2px 0;
+    border-spacing: 10px 4px;
   }
 
   /* Hover tooltips have no meaning on touch viewports */
