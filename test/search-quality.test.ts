@@ -53,7 +53,7 @@ describe('search markup helpers', () => {
   });
 
   test('weightedTitle keeps a single leading capital attached', () => {
-    // A lone `O` or `I` at a line end is the break #193 removes.
+    // A lone leading capital never ends a line.
     expect(weightedTitle('OAuthScope')).toBe('<span data-pagefind-weight="10">OAuth<wbr>Scope</span>');
     expect(weightedTitle('IBucket')).toBe('<span data-pagefind-weight="10">IBucket</span>');
     expect(weightedTitle('IPv6Address')).toBe('<span data-pagefind-weight="10">IPv6<wbr>Address</span>');
