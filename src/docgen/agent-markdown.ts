@@ -190,9 +190,12 @@ function publishedPageHref(href: string): string {
   return `${new URL(relative, publishedSiteUrl).href}${suffix}`;
 }
 
-/** Escape what would end a Markdown link destination early (parentheses) or split a table cell (a pipe). */
+/**
+ * Percent-encode what would end a Markdown link destination early (parentheses) or split a table cell (a pipe).
+ * Unlike a backslash escape, the result is still a working URL when copied out of the raw Markdown.
+ */
 function escapeDestination(url: string): string {
-  return url.replace(/[()|]/g, '\\$&');
+  return url.replace(/[()|]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
 }
 
 /** Undo CommonMark punctuation escapes in a Markdown link destination. */

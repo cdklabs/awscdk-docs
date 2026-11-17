@@ -102,7 +102,8 @@ targets, such as `/llms.txt` and `![…](…)` image sources, are joined onto
 `.xml`, `.png`, `.svg`, `.jpg`/`.jpeg`, `.gif`, `.webp`, `.css`, `.js`, `.map`,
 `.ico`, `.pdf` and `.zip`, lowercase, count as files, so PascalCase type IDs
 such as `…Map` stay pages. Raw `<a href>` anchors are rewritten the same way,
-with `(`, `)` and `|` in the target backslash-escaped; other raw HTML such as
+with `(`, `)` and `|` in the target percent-encoded, as in rewritten Markdown
+links, so the copied URL still works; other raw HTML such as
 `<img src>`, and autolinks, pass through as authored. Targets that still
 contain whitespace or a backslash after CommonMark punctuation escapes are
 removed stay as authored. Only single-line,

@@ -460,6 +460,14 @@ describe('symbol page generation', () => {
     expect(duration).toMatch(/^Obtainable from: /m);
   });
 
+  test('a README twin links every site page absolutely', () => {
+    // The issue's own page: README prose links a type with a code label, the shape that used to 404.
+    const readme = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_apigatewayv2_integrations-readme.md'), 'utf-8');
+    const twin = toAgentMarkdown(readme, SITE_URL).markdown;
+    expect(twin).toContain(`](${SITE_URL}v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations.HttpLambdaIntegration.html`);
+    expect(twin).not.toMatch(/\]\(\/(?!\/)/);
+  });
+
   test('a type nothing produces has no obtainable-from row', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
     expect(page).toContain('<span class="chain-label">used as props by</span>');
