@@ -297,7 +297,8 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
  * A relation row whose entries are members rather than types: `obtainable from Bucket.fromBucketName`. Each
  * entry links to the owner's page at the member's row anchor (the same `memberAnchor` the row itself carries), so
  * the reader lands on the member; an entry owned by the page's own type links by fragment alone, so a version
- * catalog with hundreds of constants does not repeat its own path hundreds of times. The whole `Owner<sep>member`
+ * catalog with hundreds of constants does not repeat its own path hundreds of times.
+ *
  * The MEMBER NAME is the language variant, translated per enabled language through the same translators the
  * member rows use. The owner, the separator and the `<wbr>` are written once outside the variants, except for a
  * static in Go, where the separator is `_` (jsii exposes it as the package-level `Owner_Member`) and the whole

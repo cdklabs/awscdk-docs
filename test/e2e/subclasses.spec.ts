@@ -240,14 +240,14 @@ test.describe('type hierarchy block', () => {
       await expect(row.locator('a.chain-item').first()).toBeVisible();
 
       // The accessible name is what a screen reader reads out and what speech input matches, so it has to be the
-      // visible text: the owner written once outside the variant spans must not change it.
-      const names = await row.locator('a.chain-item:visible').evaluateAll(
-        (links) => links.map((el) => [el.textContent?.replace(/\s+/g, ' ').trim(), el.getAttribute('aria-label')]),
-      );
-      expect(names.length).toBeGreaterThan(0);
-      for (const [text, label] of names) {
-        expect(text).toBeTruthy();
-        expect(label).toBeNull();
+      // visible text: the owner written once outside the variant spans must not change it, and the hidden
+      // language variants must not leak into it.
+      const entries = await row.locator('a.chain-item:visible').all();
+      expect(entries.length).toBeGreaterThan(0);
+      for (const entry of entries) {
+        const visible = ((await entry.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+        expect(visible).not.toBe('');
+        await expect(entry).toHaveAccessibleName(visible);
       }
 
       const geometry = await row.evaluate((el) => {

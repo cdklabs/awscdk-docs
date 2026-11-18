@@ -190,7 +190,12 @@ identical link texts pointing at different pages cannot be told apart in a
 links list or a tab sequence (WCAG 2.4.4). The note is a parenthetical rather
 than a prefix, because a prefix reads as a namespace and the jsii submodule is
 not the namespace Go, Java or C# would use, and it is counted into the width
-budget like any other text. The
+budget like any other text. The note is the jsii submodule, which is the
+TypeScript and Python module name, and it is **not** translated per language:
+the Java and C# namespaces for the same submodule
+(`software.amazon.awscdk.services.events`, `Amazon.CDK.AWS.Events`) are longer
+than the entry they would disambiguate, and the note's job is to tell two rows
+apart rather than to name an import. The
 anchor stays on the canonical jsii name and the width budget uses the widest
 translation; the block is wrapped in `<LanguageTabs>` only when a member row
 carries such a variant entry. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
