@@ -97,6 +97,19 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
     }
   };
 
+  // The parameters a reader passes. A leading `scope` is the construct tree the member attaches to, by the
+  // convention `constructs` sets for initializers and for the `X.fromY(scope, id, …)` and `X.of(scope)` families,
+  // so it is not recorded: it would list most of the corpus on the two pages that name the scope type, repeating
+  // what their `superclass of` row already carries.
+  const recordParameters = (params: readonly spec.Parameter[] | undefined, entry: MemberRef) => {
+    for (const [position, param] of (params ?? []).entries()) {
+      if (position === 0 && param.name === SCOPE_PARAM) {
+        continue;
+      }
+      recordUsage(argumentIn, param.type, entry);
+    }
+  };
+
   // A static member "produces" a type only when its declared type IS that type (or an optional of it): one
   // instance. A collection or a union produces something else, so neither counts. Protected statics are skipped
   // like the member tables skip them (`classMethods`/`classProperties`): a reader cannot call one, and the owner
@@ -140,15 +153,7 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       // A protected initializer cannot be called, so it is no more a usage than a protected method is.
       const init = type.initializer;
       if (init && !init.protected) {
-        const entry: MemberRef = { ownerFqn: type.fqn, memberName: INITIALIZER_MEMBER, kind: 'initializer' };
-        for (const [position, param] of (init.parameters ?? []).entries()) {
-          // Every construct's initializer opens with `scope`, the same parameter the construct tree is built from,
-          // so recording it would list most of the corpus on the two pages that type names.
-          if (position === 0 && param.name === SCOPE_PARAM) {
-            continue;
-          }
-          recordUsage(argumentIn, param.type, entry);
-        }
+        recordParameters(init.parameters, { ownerFqn: type.fqn, memberName: INITIALIZER_MEMBER, kind: 'initializer' });
       }
     }
     if (spec.isClassType(type) || spec.isInterfaceType(type)) {
@@ -169,9 +174,7 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
           kind: 'method',
           ...(method.static ? { static: true } : {}),
         };
-        for (const param of method.parameters ?? []) {
-          recordUsage(argumentIn, param.type, entry);
-        }
+        recordParameters(method.parameters, entry);
         recordUsage(returnedBy, method.returns?.type, entry);
       }
     }
@@ -217,7 +220,10 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
 /** The canonical member name of an initializer, which anchors its entry to the owner page's Initializer section. */
 const INITIALIZER_MEMBER = SECTION_ANCHORS.initializer;
 
-/** First initializer parameter of a construct: the scope it is created in, by the convention `constructs` sets. */
+/**
+ * First parameter of a construct initializer, and of the `X.fromY(scope, id, …)` and `X.of(scope)` families: the
+ * construct tree the member attaches to, by the convention `constructs` sets.
+ */
 const SCOPE_PARAM = 'scope';
 
 /** Byte-stable ordering, so the output does not depend on the build host's locale. */

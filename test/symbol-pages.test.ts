@@ -124,12 +124,23 @@ describe('usage index', () => {
     expect(usage.argumentIn.get('aws-cdk-lib.aws_s3.LifecycleRule')).toEqual([
       { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'addLifecycleRule', kind: 'method' },
     ]);
-    // Every construct initializer opens with `scope`, so recording it would list most of the corpus on the
-    // Construct and IConstruct pages. Those entries are the ones the row drops.
+    // Every construct initializer opens with `scope`, and so do the `X.fromY(scope, id, …)` and `X.of(scope)`
+    // families, so recording that parameter would list most of the corpus on the Construct and IConstruct pages.
+    // Those entries are the ones the row drops, from an initializer and from a method alike.
     expect((index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType).initializer?.parameters?.[0])
       .toMatchObject({ name: 'scope', type: { fqn: 'constructs.Construct' } });
+    expect((index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType).methods
+      ?.find((m) => m.name === 'fromBucketArn')?.parameters?.[0]).toMatchObject({ name: 'scope' });
     expect(usage.argumentIn.get('constructs.Construct') ?? []).not.toContainEqual(
       expect.objectContaining({ ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', kind: 'initializer' }),
+    );
+    expect(usage.argumentIn.get('constructs.Construct') ?? []).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketArn' }),
+    );
+    // A later parameter of the same kind of member is a usage like any other: `Stack.of(construct)` names its
+    // parameter `construct`, so nothing about it is skipped.
+    expect(usage.argumentIn.get('constructs.IConstruct')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.Stack', memberName: 'of', kind: 'method', static: true },
     );
     // An instance method carries no static flag, so Go keeps the dot for it; the static entries below are
     // flagged, because jsii exposes a static in Go as the package-level `Owner_Member`.
@@ -189,8 +200,8 @@ describe('usage index', () => {
       kind: spec.TypeKind.Class,
       initializer: { protected: true, parameters: [{ name: 'thing', type: ref('lib.IThing') }] },
     };
-    // A construct's first parameter is the scope it is created in, which every construct takes, so it is not
-    // recorded. The second parameter of the same initializer still is.
+    // A construct's first parameter is the scope it is created in, which every construct takes, and the same
+    // holds for a method that opens with one. The second parameter of the same initializer still counts.
     const construct: spec.ClassType = {
       assembly: 'lib',
       fqn: 'lib.Widget',
@@ -199,6 +210,7 @@ describe('usage index', () => {
       initializer: {
         parameters: [{ name: 'scope', type: ref('lib.IThing') }, { name: 'config', type: ref('lib.IThing') }],
       },
+      methods: [{ name: 'from', static: true, parameters: [{ name: 'scope', type: ref('lib.IThing') }] }],
     };
     // A redeclaration of a member declared OUTSIDE the documented assemblies is kept: nothing else records it.
     const impl: spec.ClassType = {

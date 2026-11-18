@@ -250,39 +250,52 @@ assembly. The rules:
   relations are usage rows, such as `LifecycleRule`, and `Type hierarchy`
   otherwise. The label follows what the block contains rather than the page
   kind, so a landmark never promises a hierarchy and delivers call sites.
-- **The `scope` parameter is not a usage.** Every construct's initializer opens
-  with `scope`, the parameter the construct tree is built from, so recording it
-  would list most of the corpus on the `Construct` and `IConstruct` pages and
-  repeat names their `superclass of` row already carries. The first initializer
-  parameter named `scope` is skipped; the second and later parameters of the
-  same initializer are not.
+- **The `scope` parameter is not a usage.** A leading parameter named `scope`
+  is the construct tree the member attaches to, by the convention `constructs`
+  sets for initializers and for the `X.fromY(scope, id, …)` family. It is
+  skipped wherever it appears, in an initializer or in a method, because
+  recording it listed most of the corpus on the two pages that name the scope
+  type and repeated what their `superclass of` row already carries. A later
+  parameter is a usage like any other, and so is a leading parameter under
+  another name: `Stack.of(construct)` still lists on `IConstruct`.
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
-  the disclosure. All figures below come from one host, base `6052c36` against
-  the branch head, same installed dependencies, and the method is: entry counts
-  from walking the assemblies of `docgen.config.json` with the rules in this
-  section; corpus size is the total bytes of the generated `.md` pages under
-  `docs/v2` from `npx projen docs:generate`; built HTML is the total bytes of
-  `.html` under the VitePress `dist` of the 84-page e2e fixture build
-  (`docs:generate`, `scripts/e2e-fixture-prune.cjs`, `vitepress build docs`);
-  DOM nodes are `document.querySelectorAll('*').length` on a built fixture
-  page. The counts are 14,827 `used as argument in` entries over 8,375 types
-  and 5,804 `returned by` entries over 2,120 types. The corpus grew from
-  733.3 MB to 740.4 MB, +0.97 percent over 29,893 pages. The added HTML runs at
-  0.97 bytes per added markdown byte on the fixture, so the full site, about
-  1.97 GB of HTML, is **estimated** at +0.35 percent. That share is
-  extrapolated from the fixture, not read off a sharded build, and nothing
-  checks it automatically: whoever changes what these rows collect re-measures
-  the same way and reports it on the pull request. A growth above **5 percent**
-  of total built HTML is the line at which this presentation has to be
-  reconsidered rather than shipped.
-- **The heaviest page.** The weight is not spread evenly. `constructs.Construct`
-  carries the most entries of any page, and its built page went from 0.41 MB and
-  7,685 DOM nodes to 1.28 MB and 25,457, where the next heaviest type page is
-  under 0.5 MB; a method entry costs about twelve nodes, one variant span and
-  one `<wbr>` per enabled language. The disclosure bounds the height a reader
-  sees, not the DOM the browser parses. That page is the one to watch when these
-  rows change, and the one to measure before adding a third such row.
+  the disclosure. Measured on one host with the same installed dependencies,
+  base `6052c36` against the commit this bullet arrives in, which `git log` on
+  this file resolves, and the method is: entry counts from
+  walking the assemblies of `docgen.config.json` with the rules in this
+  section; corpus size as the total bytes of generated `.md` pages under
+  `docs/v2` from `npx projen docs:generate`; artifact size as the total bytes
+  of the whole VitePress `dist` of the 84-page e2e fixture build
+  (`docs:generate`, then `scripts/e2e-fixture-prune.cjs`, then `vitepress build
+  docs`), HTML and `assets/*.js` together, because the per-page hydration chunk
+  is the artifact cost that counts against the deploy limit as much as the HTML
+  does; DOM nodes from `document.querySelectorAll('*').length` on a built
+  fixture page.
+
+  The counts are 13,340 `used as argument in` entries over 8,375 types and
+  5,804 `returned by` entries over 2,120 types. The corpus grew 733.3 MB to
+  739.5 MB, +0.85 percent over 29,893 pages. On the fixture, HTML grew
+  +0.54 percent, `assets/*.js` +0.35 percent and the whole `dist`
+  +0.38 percent. The full site is not built on a developer host, so its total
+  is **not measured**: the corpus figure is the site-wide number, and the
+  fixture ratios are the best available read on what that becomes after
+  bundling. Nothing checks either automatically, so whoever changes what these
+  rows collect re-measures the same way and reports it on the pull request. A
+  growth above **5 percent** of the deployed artifact is the line at which this
+  presentation has to be reconsidered rather than shipped.
+- **The heaviest pages.** Ranking the 29,893 generated pages by size, the
+  biggest are catalog types that predate these rows:
+  `aws_quicksight.CfnCustomPermissions.CapabilitiesProperty` and
+  `aws_ec2.InterfaceVpcEndpointAwsService` at about 1.08 MB each,
+  `aws_config.ResourceType` at 0.99 MB. `constructs.Construct` ranks 24th at
+  0.39 MB, and these rows added 11 KB to it; its built page went 0.41 MB and
+  7,685 DOM nodes to 0.42 MB and 7,913, and its hydration chunk 431 KB to
+  443 KB. `aws_iam.IGrantable`, the parameter of every `grant*` method, is the
+  page these rows grow most in relative terms, 21 KB to 269 KB of generated
+  markdown, and it is not in the e2e fixture, so its built size is unmeasured.
+  The disclosure bounds the height a reader sees, not the DOM the browser
+  parses, so those are the pages to measure before adding a third such row.
 
 Each row is clamped to two lines by a **build-time character budget**
 (`RELATION_ROW_BUDGET = 70`, tuned by measurement — a derived 150 ran to 3–4.75
@@ -587,11 +600,10 @@ outline, only overview pages suppress it.
   vocabularies; the old `prop-row`/`method-details` markup and markdown props
   tables are gone.
 - Relationship rows ship every entry in the HTML behind native `<details>`, so
-  the heaviest base-class pages pay in bytes for completeness; the usage rows
-  added to this block push `constructs.Construct` furthest, and the figures and
-  the page to watch are in the Size and heaviest-page bullets above. An
-  absolute "… and N more" cap is the lever if those pages are later judged too
-  heavy.
+  the heaviest base-class pages pay in bytes for completeness; the figures, the
+  measurement method and the pages to watch are in the Size and heaviest-pages
+  bullets above. An absolute "… and N more" cap is the lever if those pages are
+  later judged too heavy.
 - Nine badge hues, their contrast pairs, and the per-kind label are this
   project's to maintain; a tenth kind means a new hue and two pinned pairs.
 - The L-level heuristic can misclassify unconventional constructs; it is

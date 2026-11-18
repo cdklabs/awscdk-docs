@@ -14,6 +14,7 @@ import {
   renderMixinPage,
 } from '../src/docgen/mixins.js';
 import { inlineMethodSignature, signatureText } from '../src/docgen/signatures.js';
+import { buildUsageIndex } from '../src/docgen/symbols.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -319,6 +320,26 @@ describe('mixin page generation', () => {
     expect(page).toMatch(
       /id="returned-by"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.Shims\.html#asmixin">Shims\.<wbr>asMixin<\/a>/,
     );
+  });
+
+  test('the usage rows on a mixin page follow the page language', () => {
+    // The member names in these rows are language variants, so the enabled languages have to reach the bar; with
+    // one language the output is identical either way, which is what makes this its own case.
+    const index = buildTypeIndex([loadAssembly('aws-cdk-lib'), loadAssembly('constructs')]);
+    const assembly = loadAssembly('constructs');
+    const page = renderMixinPage({
+      type: index.get('constructs.IMixin')!.type as spec.InterfaceType,
+      assembly,
+      index,
+      mixins: buildMixinIndex(index),
+      linkFor: (fqn: string) => `/v2/docs/${fqn}`,
+      languages: ['ts', 'go'],
+      usage: buildUsageIndex(index),
+    });
+    expect(page).toMatch(
+      /id="used-as-argument-in"[\s\S]*?data-lang="go"[^>]*>IConstruct\.<wbr>With<\/span>/,
+    );
+    expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
   });
 
   test('a behavioral interface is badged Interface, not Mixin', () => {

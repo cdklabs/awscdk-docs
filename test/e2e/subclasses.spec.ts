@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { CONSTRUCT_PAGE, QUEUE_PAGE } from './fixture.js';
+import { CONSTRUCT_PAGE, IQUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
 
 // Type hierarchy block. The unit tests only read the generated markdown, and
 // the design requirement — one block, and at most two lines per relation
@@ -222,13 +222,11 @@ test.describe('type hierarchy block', () => {
     await expect(more).toHaveAttribute('open', '');
   });
 
-  // The usage rows are built by the same renderer, so what needs driving in a
-  // browser is that a row added to the block behaves like the rows that were
-  // there: clamped to two lines, and losslessly unclamped by its own
-  // disclosure. Construct is a parameter of methods across the corpus
-  // (`Stack.of` and kin), so this is the row with a remainder to reveal.
+  // A usage row clamps to two lines and its disclosure reveals the rest, which
+  // only a rendered page can show. IQueue is passed to initializers across the
+  // corpus, so its row has an overflow to reveal.
   test('a usage row clamps to two lines and opens its own disclosure', async ({ page }) => {
-    await page.goto(CONSTRUCT_PAGE);
+    await page.goto(IQUEUE_PAGE);
 
     const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
     await expect(row).toBeAttached();
