@@ -99,7 +99,7 @@ test.describe('sidebar links open as real page URLs', () => {
     const hrefs = await sidebarHrefs(page, 20);
     const bare = hrefs.filter((href) => !PAGE_FILE.test(href));
     expect(bare).toEqual([]);
-    // The links still point at the generated pages, with the base applied.
+    // The links still point at the generated pages; base handling is unit-tested in test/page-href.test.ts.
     expect(hrefs).toContain(TOPIC_PAGE);
   });
 
