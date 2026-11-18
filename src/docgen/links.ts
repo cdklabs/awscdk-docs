@@ -9,7 +9,7 @@
  * sub-path (e.g. a GitHub Pages project site). Every raw HTML anchor must
  * build its final href through {@link pageHref}.
  */
-import { API_ROOT } from '../site-routes.js';
+import { API_ROOT, pageFile } from '../site-routes.js';
 
 /** A URL path prefix: `/`, or `/`-delimited segments of unreserved URL characters, none `.` or `..`. */
 const BASE_PATTERN = /^\/(?:(?!\.\.?\/)[A-Za-z0-9._~-]+\/)*$/;
@@ -93,14 +93,14 @@ const SITE_RELATIVE_LINK = /^(?!\/\/)(?![a-zA-Z][\w+.-]*:)[^\s?#\\]*$/;
  * Convert a site-root-relative page link (`/v2/docs/<docId>…`, the
  * convention `groupTypes` generates pages under) into a
  * final anchor-ready href: the site base is prefixed and the `.html`
- * suffix appended — exactly what VitePress produces for the equivalent
- * markdown link. Directory-style links (trailing `/`) only get the base.
+ * suffix appended ({@link pageFile}) — exactly what VitePress produces for
+ * the equivalent markdown link. Directory-style links (trailing `/`) only
+ * get the base. The theme's `pageHref()` (docs/.vitepress/theme/page-href.ts)
+ * is the client-side twin, built on VitePress's `withBase`.
  */
 export function pageHref(link: string): string {
   if (!SITE_RELATIVE_LINK.test(link)) {
     throw new Error(`pageHref: not a site-relative page link: ${JSON.stringify(link)}`);
   }
-  const path = link.replace(/^\//, '');
-  const suffixed = path === '' || path.endsWith('/') ? path : `${path}.html`;
-  return `${siteBase()}${suffixed}`;
+  return `${siteBase()}${pageFile(link).replace(/^\//, '')}`;
 }

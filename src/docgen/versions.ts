@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as https from 'https';
 import * as path from 'path';
-import { VERSIONS_JSON_PATH } from '../site-routes.js';
+import { pageFile, VERSIONS_JSON_PATH } from '../site-routes.js';
 import { CDK_DIST_DIR_ENV, distDirFromEnv, readBuildJson } from './dist.js';
 import { moduleReadmeLink } from './links.js';
 import { CLOUD_ASSEMBLY_SCHEMA_REPO } from './provenance.js';
@@ -47,11 +47,11 @@ export interface TrackedPackage {
 /**
  * Site-relative path of this site's own generated API docs for an npm package: the package's `…-readme.html`
  * overview page in the canonical `/v2/docs/` tree. Rendered into a raw `<a>` on the versions page, so the
- * `.html` suffix is explicit. Starts with `/`; the VitePress `base` is applied at render time (`withBase`), never
- * here.
+ * `.html` suffix comes from the shared `pageFile()` rule. Starts with `/`; the VitePress `base` is applied at
+ * render time (`withBase`), never here.
  */
 export function siteApiDocsUrl(packageName: string): string {
-  return `${moduleReadmeLink(packageName)}.html`;
+  return pageFile(moduleReadmeLink(packageName));
 }
 
 /** The core CDK ecosystem packages listed on the /versions page. */

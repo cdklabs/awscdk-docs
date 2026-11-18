@@ -103,7 +103,8 @@ re-implement the navbar the custom controls stay mounted in the slots the theme
 offers and are repositioned with flex `order` in `nav-controls.css`.
 `nav-bar-content-after` renders `[LanguageToggle, VersionBadge, SettingsMenu]`;
 `nav-screen-content-after` (the mobile hamburger menu) renders
-`[LanguageToggle, ThemePicker]`.
+`[LanguageToggle, ThemePicker, NavStylePicker]`. The navigation style row is
+specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.md).
 
 - **Language slider leads** (`.language-toggle { order: -2 }`), taking the slot
   the search box used to occupy and the leading gap the search's `padding-left`
@@ -180,7 +181,9 @@ disambiguated the rows side by side) is hidden.
 
 The mobile hamburger nav screen mounts `ThemePicker` directly, unlabeled and
 side by side — it has full width and no hover affordance, so burying it a second
-tap deep would make it worse.
+tap deep would make it worse. For the same reason it mounts `NavStylePicker`
+directly as the row after it, keeping its visible `Navigation` caption, because
+its text segments alone do not name what they group.
 
 Segments never drop below the WCAG 2.5.8 24px minimum target size; the active
 state is exposed via `aria-pressed`, never color alone. A hydration-gating flag

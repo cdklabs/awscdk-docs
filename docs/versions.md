@@ -1,5 +1,6 @@
 ---
 pageClass: versions-page
+editLink: false
 ---
 
 # AWS CDK Versions

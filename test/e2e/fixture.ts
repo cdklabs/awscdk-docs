@@ -10,6 +10,7 @@ export const QUEUE_PROPS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueProps.html';
 export const IQUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.IQueue.html';
 export const QUEUE_ENCRYPTION_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueEncryption.html';
 export const SQS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs-readme.html';
+export const SNS_OVERVIEW_PAGE = '/v2/docs/aws-cdk-lib.aws_sns-readme.html';
 // An L1. Its header chip is the "Generated at build time" label rather than a Source
 // link, which is the other shape the page title has to stay clean of.
 export const CFN_QUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue.html';
@@ -33,6 +34,8 @@ export const API_OVERVIEW = '/v2/';
 // geometry assertion. The fixture prune keeps the hand-written pages, so it
 // is served by the e2e build.
 export const SKILLS_PAGE = '/skills.html';
+// The hand-written versions page, which lists live release data.
+export const VERSIONS_PAGE = '/versions.html';
 // The authored construct-library overview, served here through a VitePress rewrite.
 export const CONSTRUCT_LIBRARY_PAGE = '/v2/docs/aws-construct-library.html';
 // A class page with descendants, for the subclasses list. The

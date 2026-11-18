@@ -15,7 +15,7 @@ import {
 } from './languages.js';
 import { pageHref } from './links.js';
 import { encodeOutlineParams } from './outline-members.js';
-import { PAGEFIND_IGNORE } from './search.js';
+import { camelBreaks, PAGEFIND_IGNORE } from './search.js';
 import {
   LinkResolver,
   inlineMethodSignature,
@@ -564,13 +564,51 @@ export function renderExpandableProps(
 }
 
 /**
- * Blank the `title` over type links. The clamped type span carries the full spelling in a `title`, and a native
+ * Blank the `title` over type links. The type span carries the full spelling in a `title`, and a native
  * tooltip is inherited by descendants — so a linked type would show the browser bubble on top of the richer hover
  * card `type-tooltips.ts` renders for it. An empty `title` on the anchor suppresses the bubble there and leaves it
- * on the bare or clipped text around it.
+ * on the bare text around it.
  */
 function withoutAnchorTooltips(html: string): string {
   return html.replace(/<a class="sig-type" /g, '<a class="sig-type" title="" ');
+}
+
+/**
+ * Longest qualified name the narrowest content column holds whole: about 36 monospace characters at 375px and the
+ * largest density. A shorter name never has to break, and a dot in it is a worse break than the space or bracket
+ * beside it.
+ */
+const TYPE_NAME_BREAK_BUDGET = 32;
+
+/**
+ * Follow every dot in an over-budget qualified name with a `<wbr>`, so a name wider than its row
+ * (`CfnRegistry.CustomMetadataSchemaConfigurationProperty`) wraps after a dot rather than overflowing. A name within
+ * the budget is returned unchanged. `<wbr>` is empty, so text content is unchanged.
+ */
+function dotBreaks(name: string): string {
+  return name.length > TYPE_NAME_BREAK_BUDGET ? name.replace(/\./g, '.<wbr>') : name;
+}
+
+/**
+ * A type name for a list: `<wbr>` after each dot when it is over the budget, and a dot-separated part that is itself
+ * over the budget also breaks at camelCase word boundaries. A shorter name is returned unchanged.
+ */
+export function breakableTypeName(name: string): string {
+  if (name.length <= TYPE_NAME_BREAK_BUDGET) {
+    return name;
+  }
+  return dotBreaks(name.split('.').map((part) => (part.length > TYPE_NAME_BREAK_BUDGET ? camelBreaks(part) : part)).join('.'));
+}
+
+/**
+ * Apply {@link dotBreaks} to every qualified name in the text of a piece of HTML, so `typing.List[…]` stays together.
+ * Only text is touched, never a tag's `href`.
+ */
+function withDotBreaks(html: string): string {
+  return html.split(/(<[^>]*>)/).map((part) => part.startsWith('<')
+    ? part
+    : part.replace(/[\w.]+/g, dotBreaks),
+  ).join('');
 }
 
 /**
@@ -612,7 +650,7 @@ function propRowHtml(
     const type = lang === 'ts'
       ? typeRefHtml(prop.type, linkFor)
       : translatedTypeRefHtml(prop.type, lang, linkFor);
-    // The type is clamped to keep the header line readable, so the full spelling stays reachable in `title`.
+    // The full spelling stays in `title` as plain text; the visible copy carries the `<wbr>` break points.
     const full = lang === 'ts' ? typeRefText(prop.type) : translateTypeRef(prop.type, lang);
     // Strikethrough marks the IDENTIFIER only — running it over the type or the anchor reads as a scribble.
     const nameClass = deprecated ? 'member-name member-name-deprecated' : 'member-name';
@@ -620,7 +658,8 @@ function propRowHtml(
     // one language spells it.
     const mark = prop.optional ? optionalMarkHtml(optionalKind) : '';
     return `<code class="${nameClass}">${name}</code>${mark}`
-      + `<span class="member-type" data-pagefind-ignore title="${escapeAttr(full)}">${withoutAnchorTooltips(type)}</span>`;
+      + `<span class="member-type" data-pagefind-ignore title="${escapeAttr(full)}">`
+      + `${withDotBreaks(withoutAnchorTooltips(type))}</span>`;
   });
   const parts = [nameAndType];
   const fullDefault = defaultText(prop.docs?.default);

@@ -17,7 +17,7 @@
 export type OverviewSpec =
   /** The module's own README (the default). */
   | { readonly kind: 'readme' }
-  /** No README body — the type list / table only. */
+  /** No README body — the type list only. */
   | { readonly kind: 'none' }
   /** Another module's README verbatim, body only. */
   | { readonly kind: 'copy'; readonly from: string }

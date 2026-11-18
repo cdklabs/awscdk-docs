@@ -6,7 +6,7 @@
 // code-block theme).
 import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme-without-fonts";
-import { h, onMounted } from "vue";
+import { h, nextTick, onMounted } from "vue";
 import ApiSidebar from "./ApiSidebar.vue";
 import { initCodeTheme } from "./code-theme";
 import CopyMarkdown from "./CopyMarkdown.vue";
@@ -16,8 +16,10 @@ import FavoriteStar from "./FavoriteStar.vue";
 import FavoritesList from "./FavoritesList.vue";
 import LanguageTabs from "./LanguageTabs.vue";
 import LanguageToggle from "./LanguageToggle.vue";
+import { installMemberFlash } from "./member-flash";
 import JumpToCurrent from "./JumpToCurrent.vue";
 import NavFilter from "./NavFilter.vue";
+import NavStylePicker from "./NavStylePicker.vue";
 import NavSiteTitle from "./NavSiteTitle.vue";
 import NotFound from "./NotFound.vue";
 import PageFooterLinks from "./PageFooterLinks.vue";
@@ -46,6 +48,9 @@ import "./home-features.css";
 import "./callouts.css";
 import "./glyphs.css";
 
+// Set in enhanceApp, called from setup and after each route change.
+let flashMember: (hash: string) => void = () => {};
+
 const theme: Theme = {
   extends: DefaultTheme,
   Layout: () =>
@@ -72,7 +77,9 @@ const theme: Theme = {
       // Positioning is flex `order` + centering in nav-controls.css. The
       // aws-cdk-lib version badge sits just left of the gear.
       "nav-bar-content-after": () => [h(LanguageToggle), h(VersionBadge), h(SettingsMenu)],
-      "nav-screen-content-after": () => [h(LanguageToggle), h(ThemePicker)],
+      // Below 768px the Settings dropdown is hidden (nav-controls.css), so the
+      // hamburger screen carries its controls directly, navigation style included.
+      "nav-screen-content-after": () => [h(LanguageToggle), h(ThemePicker), h(NavStylePicker)],
       // Site-wide footer: community links + AWS legal line. In layout-bottom
       // because themeConfig.footer is hidden by the default theme on sidebar
       // pages (every /api/** page).
@@ -92,6 +99,10 @@ const theme: Theme = {
     // Re-apply a stored layout-density choice at client boot. No-op on the
     // server and at the default (Balanced) level, which carries no attribute.
     initDensity();
+    // Mark the member row a jump lands on. Same-page links arrive as `hashchange`;
+    // the route hook below covers back/forward, cross-page links with a hash and,
+    // in a build, the initial load.
+    flashMember = installMemberFlash();
     // Spacious opens every fold-out; a client-side navigation renders a new
     // page whose fold-outs start closed, so reapply the level after each one.
     // Chained so any hook another module set keeps running.
@@ -99,6 +110,12 @@ const theme: Theme = {
     router.onAfterRouteChange = async (to) => {
       await previousAfterRouteChange?.(to);
       applyFoldoutsAfterNavigation();
+      // SSR renders through the same hook with no window; `to` is then not a jump to flash.
+      if (typeof location !== "undefined") {
+        // The new page's rows exist after Vue has patched the route component in.
+        await nextTick();
+        flashMember(new URL(to, location.href).hash);
+      }
     };
     installTypeTooltips(siteData.value.themeConfig.typeSummariesAsset ?? "");
     installFavoritesSearchBoost();
@@ -112,6 +129,9 @@ const theme: Theme = {
   setup() {
     // Runs inside the root component, so the navbar search button exists once mounted.
     onMounted(markSearchShortcuts);
+    // A load with a member hash: in a build the route hook already marked the server-rendered row;
+    // on the dev server the rows exist only after mount, so this call covers it.
+    onMounted(() => flashMember(location.hash));
   },
 };
 

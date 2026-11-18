@@ -16,7 +16,7 @@ submodules (one per service, e.g. `aws_lambda`, `aws_lakeformation`). These
 submodules contain only mixin types and ship no upstream README, so each one's
 overview resolves to the type-list-only fallback. The result is a `…-readme`
 page per mixin submodule whose heading corresponds to no readable upstream
-document and whose body duplicates the type table already reachable from the
+document and whose body duplicates the type list already reachable from the
 sidebar. Those pages are noise in navigation and in search, and a reader who
 lands on one learns nothing a type page would not tell them.
 

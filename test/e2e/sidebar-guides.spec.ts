@@ -127,7 +127,7 @@ test.describe('sidebar nesting guide lines', () => {
   test('the accent follows client-side navigation', async ({ page }) => {
     await open(page);
     await page.getByRole('textbox', { name: 'Filter navigation in the sidebar' }).fill('QueueProps');
-    const target = page.locator('.api-sidebar a.api-sidebar-link[href$=".aws_sqs.QueueProps"]').first();
+    const target = page.locator('.api-sidebar a.api-sidebar-link[href$=".aws_sqs.QueueProps.html"]').first();
     await expect(target).toBeVisible();
     await target.click();
     await expect(page).toHaveURL(/aws_sqs\.QueueProps/);

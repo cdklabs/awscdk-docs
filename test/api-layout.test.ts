@@ -850,7 +850,7 @@ describe('API page layout', () => {
       expect(summaries['/v2/docs/aws-cdk-lib.aws_s3.Bucket']).toEqual({
         name: 'Bucket',
         // `kind` stays the classification value: `searchKind` derives the
-        // Pagefind filter from its first word, and the index tables print it.
+        // Pagefind filter from its first word, and the module type lists print it.
         kind: 'Construct (L2)',
         // The reader-facing label and its level ride alongside for the hover
         // preview's chip, so the preview and the page's H1 badge
@@ -1050,6 +1050,27 @@ describe('API page layout', () => {
           .toBeGreaterThanOrEqual(4.5);
       });
 
+      test.each(['light', 'dark'] as const)('%s mode: the theme\'s own text tokens keep AA on the flash color', (scheme) => {
+        // The flash starts at its darkest and, under reduced motion, stays. The
+        // tokens this theme declares are checked here; text-2 comes from
+        // VitePress and is measured as a rendered color in the e2e spec.
+        const layout = split(css())[scheme];
+        const surface = split(theme())[scheme];
+        const signatures = split(readFileSync(join(THEME_DIR, 'signatures.css'), 'utf-8'))[scheme];
+        const flash = hex(layout, '--api-c-flash');
+        const texts = [
+          hex(surface, '--vp-c-text-1'),
+          hex(surface, '--vp-c-brand-1'),
+          hex(surface, '--vp-c-brand-2'),
+          hex(layout, '--api-c-type'),
+          hex(layout, '--api-c-deprecated'),
+          hex(signatures, '--sig-c-type-param'),
+        ];
+        for (const text of texts) {
+          expect([scheme, text, contrast(text, flash) >= 4.5]).toEqual([scheme, text, true]);
+        }
+      });
+
       test('deprecation never depends on color alone', () => {
         // A reader who cannot distinguish the tag's hue still has the
         // strikethrough, which is why the mark is not just a color swap.
@@ -1068,7 +1089,7 @@ describe('API page layout', () => {
     });
   });
 
-  describe('long translated types stay on one row line', () => {
+  describe('long translated types wrap inside their row', () => {
     const css = () =>
       readFileSync(resolve(import.meta.dirname, '../docs/.vitepress/theme/api-layout.css'), 'utf-8');
 
@@ -1082,43 +1103,89 @@ describe('API page layout', () => {
       return rules.slice(open, rules.indexOf('}', open));
     };
 
-    test('the type carries the same clamp as the description', () => {
-      // The row is one nowrap flex line, so an item that is not clamped
-      // wraps internally and grows the line box instead: `int | float`
-      // (Python's spelling of jsii `number`) broke onto a second line while
-      // the summary beside it stayed one. The clamp is scoped to the
-      // table because the bare `.prop-type` rule is shared with signature
-      // rendering, which has no line to clamp to.
-      const rules = css();
-      const type = declarations(rules, '.member-list .member-type');
-      // The summary is allowed to wrap and carries no clamp, so there is no
-      // second rule to compare against. The type's own declarations are the
-      // claim.
-      for (const decl of ['min-width: 0', 'overflow: hidden', 'white-space: nowrap', 'text-overflow: ellipsis']) {
-        expect(type).toContain(decl);
+    test('the type wraps instead of clipping', () => {
+      // The type is part of the member contract and appears nowhere else in the
+      // row, so an ellipsis hides exactly the part a reader came for. The
+      // variant wrapper is `nowrap`; the type's own text releases that so a
+      // long spelling breaks at its spaces and `<wbr>` points.
+      const type = declarations(css(), '.member-list .member-type');
+      expect(type).toContain('white-space: normal');
+      for (const decl of ['overflow: hidden', 'text-overflow', 'white-space: nowrap', 'display: inline-block']) {
+        expect(type).not.toContain(decl);
       }
-      // Without a definite display the clamp is inert: `overflow` and
-      // `text-overflow` do nothing on a non-replaced inline box, which is
-      // what `.prop-type` is inside the shipped multi-language row.
-      expect(type).toContain('display: inline-block');
-      // And inline-block alone still needs a ceiling to ellipsize against.
+      // With a single language the span is the row's flex item, so it needs
+      // the wrapper's ceiling itself or an over-wide token widens the row.
+      expect(type).toContain('min-width: 0');
       expect(type).toContain('max-width: 100%');
+    });
+
+    test('a dot in a long qualified name is a break point, and only in the visible copy', () => {
+      // The renderer follows every dot in a qualified name longer than the
+      // narrowest column holds with a `<wbr>`, so a nested-type name wraps
+      // after the dot rather than running past the row. A short name gets
+      // none: its dot would be taken before the space or bracket beside it.
+      // The `title` is plain text and keeps the spelling intact, and an
+      // `href` keeps its dots so the link still resolves.
+      // Two L1s' props carry nested-type names on both sides of the budget:
+      // `CfnTopic.LoggingConfigProperty` and `CfnBucket.AccelerateConfigurationProperty`.
+      const pages = ['aws-cdk-lib.aws_sns.CfnTopicProps.md', 'aws-cdk-lib.aws_s3.CfnBucketProps.md']
+        .map((name) => readFileSync(join(outDir, 'docs', name), 'utf-8'));
+      // The type span nests `sig-punct` spans, so its end is the matching close tag, not the first `</span>`.
+      const typeSpans = (page: string): { attrs: string; inner: string }[] => {
+        const out = [];
+        for (const open of page.matchAll(/<span class="member-type"([^>]*)>/g)) {
+          let depth = 1;
+          const tags = page.slice(open.index + open[0].length).matchAll(/<\/?span\b/g);
+          for (const tag of tags) {
+            depth += tag[0] === '<span' ? 1 : -1;
+            if (depth === 0) {
+              out.push({ attrs: open[1], inner: page.slice(open.index + open[0].length, open.index + open[0].length + tag.index) });
+              break;
+            }
+          }
+        }
+        return out;
+      };
+      const names = pages.flatMap(typeSpans).flatMap(({ attrs, inner }) => {
+        expect(attrs).not.toContain('<wbr>');
+        for (const [, href] of inner.matchAll(/href="([^"]*)"/g)) {
+          expect(href).not.toContain('<wbr>');
+        }
+        // Qualified names in the text, with any `<wbr>` the renderer put inside them.
+        return [...inner.replace(/<(?!wbr>)[^>]*>/g, ' ').matchAll(/[\w.]+(?:<wbr>[\w.]*)*/g)]
+          .map(([name]) => ({ name, text: name.replace(/<wbr>/g, '') }));
+      });
+      const dotted = names.filter(({ text }) => text.includes('.'));
+      const long = dotted.filter(({ text }) => text.length > 32);
+      const short = dotted.filter(({ text }) => text.length <= 32);
+      expect(long.length).toBeGreaterThan(0);
+      expect(short.length).toBeGreaterThan(0);
+      for (const { name, text } of long) {
+        expect(name.match(/\.<wbr>/g)?.length).toBe(text.split('.').length - 1);
+      }
+      for (const { name } of short) {
+        expect(name).not.toContain('<wbr>');
+      }
     });
 
     test('the name keeps a gap from the type that follows it', () => {
       expect(declarations(css(), '.member-list .member-name')).toContain('margin-right: 8px');
     });
 
-    test('the language-variant wrapper holds the name and type on one line', () => {
+    test('the language-variant wrapper holds the name and type together', () => {
       // The row grew in the multi-language shape because the line BROKE
       // between the name and the type — measured with the type at the same x
-      // as the name, one line below it — not because the type wrapped
-      // internally. `min-width: 0` then lets the span shrink past its content
-      // so the type has a width to clamp to. No clip is needed here: without a
-      // right-hand control there is no gutter to protect.
+      // as the name, one line below it. `nowrap` on the wrapper keeps the pair
+      // together; the type's own text releases it so a long type wraps inside
+      // the row rather than breaking away from its name. `min-width: 0` lets
+      // the span shrink past its content so the type has a width to wrap to.
       const wrapper = declarations(css(), '.member-list .member-line > .lang-variant');
       expect(wrapper).toContain('white-space: nowrap');
       expect(wrapper).toContain('min-width: 0');
+      // Where the row stacks, the wrapper is sized to its content: without a
+      // ceiling a single token wider than the column widens the row instead
+      // of falling back to the page's `overflow-wrap`.
+      expect(wrapper).toContain('max-width: 100%');
       // It must NOT become a flex container: that blockifies the name `code`
       // beside it, whose height then comes from line-height rather than the
       // font, growing every row by 4px and pushing the disclosure control off
@@ -1143,11 +1210,11 @@ describe('API page layout', () => {
     });
 
     test('the summary sits in its own block, so it never shares the line with the type', () => {
-      // With the summary and the type on one line, the shrink has to be
-      // weighted so a long description yields before the type clamps. The
-      // summary sits in its own block instead, which removes the competition
-      // rather than tuning it — so it must NOT be inside the header line, and
-      // must carry no clamp of its own, being free to wrap.
+      // On one line with the type, the shrink would have to be weighted so a
+      // long description yields before the type wraps. The summary sits in
+      // its own block instead, which removes the competition rather than
+      // tuning it — so it must NOT be inside the header line, and must carry
+      // no clamp of its own, being free to wrap.
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
       expect(page).toMatch(/<\/div>\n<div class="member-summary"[^>]*>/);
       expect(page).not.toMatch(/<div class="member-line"[^>]*>[^\n]*<div class="member-summary"[^>]*>/);
@@ -1173,26 +1240,23 @@ describe('API page layout', () => {
         return bodies.join('\n');
       };
 
-      for (const selector of ['.member-list .member-type', '.member-list .member-default']) {
-        const block = blockFor(selector);
-        expect(block).toContain('white-space: normal');
-        expect(block).toContain('overflow: visible');
-      }
-
-      // The default's clamp is a `ch` measure rather than the type's
-      // `max-width: 100%`, so it keeps truncating even once the text may wrap —
-      // and below this breakpoint its `title` recovery is unusable, because the
-      // same media block switches hover tooltips off for touch.
-      expect(blockFor('.member-list .member-default')).toContain('max-width: none');
+      const block = blockFor('.member-list .member-default');
+      expect(block).toContain('white-space: normal');
+      expect(block).toContain('overflow: visible');
+      // The default's clamp is a `ch` measure, so it keeps truncating even once
+      // the text may wrap — and below this breakpoint its `title` recovery is
+      // unusable, because the same media block switches hover tooltips off for
+      // touch.
+      expect(block).toContain('max-width: none');
       expect(blockFor('.type-tooltip')).toContain('display: none');
 
       expect(blockFor('.member-list .member-line > .lang-variant'))
         .toContain('white-space: normal');
     });
 
-    test('the clamped type keeps its full value in a title', () => {
-      // Clipping is visual only: the row is the only place the type appears,
-      // so an ellipsis with nothing behind it would lose the information.
+    test('the type keeps its full value in a title', () => {
+      // The row is the only place the type appears, and the title is its
+      // plain-text spelling without the `<wbr>` break points.
       // This fixture generates TypeScript alone; the translated spellings are
       // asserted in the e2e spec, against the five-language build that ships.
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
@@ -1203,9 +1267,9 @@ describe('API page layout', () => {
       }
     });
 
-    test('a clamped type keeps every link it had', () => {
-      // The anchors are children of the clamped box, so truncation must not
-      // change an href — the type stays a way to navigate.
+    test('a wrapped type keeps every link it had', () => {
+      // The anchors are children of the type span, so the break points must
+      // not change an href — the type stays a way to navigate.
       const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
       const inType = page.slice(page.indexOf('<span class="member-type'));
       expect(inType).toContain('<a class="sig-type" title="" href="');

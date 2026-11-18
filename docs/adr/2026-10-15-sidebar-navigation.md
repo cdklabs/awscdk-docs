@@ -33,7 +33,11 @@ The optional package regrouping of this same data is recorded in
 
 - **Section per service.** A jsii submodule maps to its service via the
   first token after the `aws_` prefix, so integration submodules fold in
-  (`aws_s3` and `aws_s3_deployment` both land in *S3*). Display names use
+  (`aws_s3` and `aws_s3_deployment` both land in *S3*). EKS is the one
+  exception: `aws_eks_v2` and `aws_eks` hold different classes, so
+  `aws_eks_v2` is the service *EKS V2* and `aws_eks` is *EKS (legacy)*, and a
+  submodule or package owned by either follows it. This is a named special
+  case, not a rule for `_v2` suffixes. Display names use
   curated entries for branded, renamed, and multi-word services, with an
   acronym/title-case fallback for unchanged names. Types from different
   packages that map to the same service merge into one section.
@@ -91,7 +95,10 @@ The optional package regrouping of this same data is recorded in
   folding one module gets a plain `Overview`; one folding several puts the
   primary `aws-cdk-lib` service module first, then keeps the canonical-package
   and link order for related overviews. A primary module is a non-empty
-  `aws_<service>` or `alexa_<service>` name with no further suffix. Multiple
+  `aws_<service>` or `alexa_<service>` name with no further suffix. *In
+  Services sections the labels below are superseded — see
+  [sidebar readme labels](./2026-11-17-sidebar-readme-labels.md); Framework
+  sections keep them.* Multiple
   overviews are disambiguated as `Overview (<submodule>)`, qualified with the
   package name on a cross-package collision. Labels are language-aware via
   `labelVariants`.
@@ -153,9 +160,9 @@ A construct's level (`L1`/`L2`/`L3`) travels as its own optional field
 `label` — `text` is the node's identity (group keys, in-sidebar filter,
 jump), so `Bucket` must not become matchable as `l2` through its text. The
 level is determined once by `constructLevel()` (L1 has jsii
-`cloudformationResource` metadata, L3 lives in a `*patterns*` submodule, L2
-extends `Resource`) and carried to three consumers. The theme renders it as
-a `aria-hidden` chip inside the leaf link, before the name, with a fixed
+`cloudformationResource` metadata and a `Cfn*` name, a tagged class with any
+other name is L2, L3 lives in a `*patterns*` submodule, L2 extends `Resource`)
+and carried to three consumers. The theme renders it as a `aria-hidden` chip inside the leaf link, before the name, with a fixed
 `min-width` so L1/L2/L3 measure identically. The level reaches assistive
 tech through the link's `aria-label`, spelled out and **appended** (`Queue
 (L2 construct)`) so the accessible name still starts with the visible label
@@ -165,7 +172,7 @@ active row) to meet 4.5:1 contrast; `--vp-c-text-3` fails there because the
 chip's `aria-hidden` text is the only visual level channel. Because level is
 a field, it is also a sort key: `byLevelThenName` in `src/docgen/ordering.ts`
 orders construct lists L3, L2, L1, then unleveled, alphabetically within
-each tier, applied to sidebar leaf lists and index/overview type tables.
+each tier, applied to sidebar leaf lists and, within each kind group, to module type lists.
 
 ### Lazy loading, skeleton + per-section chunks, content-hashed
 
@@ -189,8 +196,17 @@ VitePress sidebar shell:
   page (matched against `modules` stems on a whole-stem boundary — `<stem>.`
   or `<stem>-readme`, longest stem wins, so `aws_s3` cannot claim
   `aws_s3_deployment`); on section open; when a stored choice reopens its
-  section on load or on a style switch; and **every** chunk when the
-  in-sidebar symbol filter activates (it prunes the whole corpus). Fetches
+  section on load or on a style switch; once a closed section's heading
+  has stayed in view, with the sidebar not scrolling, for 100 ms; and
+  **every** chunk when the in-sidebar symbol filter activates (it prunes
+  the whole corpus). Loading the headings in view lets a tap, click or
+  Enter on any heading the reader can see usually find its items already
+  there, with no wait on the network while the caret turns. It costs one
+  chunk per closed heading that rests in view, about a screenful of
+  sections on each load and after each scroll that stops (14 chunks,
+  ~14 KB gzip, on the SNS Topic page at 1440×900, measured as below), and never more than
+  the whole tree (~472 KB) per session; headings that
+  only pass by during a scroll fetch nothing. Fetches
   go through one memoized retry-on-failure loader; a failed chunk leaves the
   skeleton usable. Internal links are native `<a>`, so the VitePress router
   preserves SPA navigation; active-state and auto-expansion derive from
@@ -206,9 +222,13 @@ VitePress sidebar shell:
 
 Framework-free logic (path normalization, active-branch computation, fetch
 memoization) lives in `docs/.vitepress/theme/api-sidebar.ts` and is unit
-tested. A cold load of a construct page fetches ~7.5 KB gzip of sidebar data
-(skeleton + that section) instead of ~275 KB for the whole tree; the largest
-single chunk is ~26 KB gzip. Server-rendered page content and its inline
+tested. Measured on the e2e fixture build (`npx projen docs:e2e`: the full
+skeleton and all 322 chunks; sizes are each served file gzipped at Node's
+default level), a cold load of the SNS Topic page at 1440×900 fetches ~27 KB
+gzip of sidebar data in 16 requests: ~13 KB for the skeleton and that
+section, and the rest for the 14 closed sections fully visible below the
+sticky header. The whole tree is ~472 KB, the upper bound per session,
+and the largest single chunk is ~29 KB gzip. Server-rendered page content and its inline
 cross-links are unaffected, so the crawlable link graph and Pagefind
 indexing ([search and filter](./2026-10-15-search-and-filter.md)) still work.
 

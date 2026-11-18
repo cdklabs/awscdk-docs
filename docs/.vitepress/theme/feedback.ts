@@ -2,10 +2,11 @@
 // "Report an issue". No Vue/VitePress imports, so Jest tests can
 // use them directly.
 
-export const REPO_URL = "https://github.com/aws/aws-cdk";
+/** Repository that holds this site's hand-written pages. */
+export const REPO_URL = "https://github.com/cdklabs/awscdk-docs";
 
 /** Repository that collects reports about this documentation site. */
-export const ISSUES_REPO_URL = "https://github.com/cdklabs/awscdk-docs";
+export const ISSUES_REPO_URL = REPO_URL;
 
 // Generated API pages live under this docs-relative prefix and are gitignored
 // build outputs, so their `filePath` names a file absent from the repository.
@@ -25,14 +26,20 @@ export function isGeneratedPage(filePath: string): boolean {
  * instead links to the upstream file its prose came from, passed through
  * frontmatter as `upstreamEditUrl`: an overview's `README.md`, or the source
  * file a type page's docstrings are declared in. A generated page with no such
- * file (a table-only overview, an L1 built from generated code) gets no link.
+ * file (a list-only overview, an L1 built from generated code) gets no link.
  *
- * `upstreamEditUrl` is checked first and wins outright.
+ * `editLink: false` in frontmatter is checked first and suppresses the link
+ * outright (such as on the live versions page). Otherwise `upstreamEditUrl`
+ * wins over the path rule.
  */
 export function editLinkFor(
   filePath: string,
   upstreamEditUrl?: string,
+  editLink?: unknown,
 ): string | undefined {
+  if (editLink === false) {
+    return undefined;
+  }
   if (upstreamEditUrl) {
     return upstreamEditUrl;
   }

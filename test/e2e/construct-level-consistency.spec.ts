@@ -49,8 +49,8 @@ test.describe('construct level is consistent across its three surfaces', () => {
     await page
       .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
       .fill('Queue');
-    await expect(page.locator(`${SIDEBAR_LINK}[href$=".aws_sqs.Queue"]`)).toBeVisible();
-    await expect(page.locator(`${SIDEBAR_LINK}[href$=".aws_sqs.CfnQueue"]`)).toBeVisible();
+    await expect(page.locator(`${SIDEBAR_LINK}[href$=".aws_sqs.Queue.html"]`)).toBeVisible();
+    await expect(page.locator(`${SIDEBAR_LINK}[href$=".aws_sqs.CfnQueue.html"]`)).toBeVisible();
   }
 
   /** Computed foreground and background, as one comparable string. */
@@ -80,7 +80,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
     page: Page,
     fqnSuffix: string,
   ): Promise<{ text: string; paint: string }> {
-    const link = page.locator(`${SIDEBAR_LINK}[href$="${fqnSuffix}"]`);
+    const link = page.locator(`${SIDEBAR_LINK}[href$="${fqnSuffix}.html"]`);
     await scrollSettled(page);
     await link.scrollIntoViewIfNeeded();
     await scrollSettled(page);
@@ -100,7 +100,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
     page: Page,
     fqnSuffix: string,
   ): Promise<{ text: string; color: string }> {
-    const row = page.locator(`${SIDEBAR_LINK}[href$="${fqnSuffix}"]`);
+    const row = page.locator(`${SIDEBAR_LINK}[href$="${fqnSuffix}.html"]`);
     await expect(row).not.toHaveClass(/active/);
     const tag = row.locator('.api-sidebar-level');
     await expect(tag).toBeVisible();
@@ -174,7 +174,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
     const l2Hue = badge.paint.split('|')[0];
     await surfaceQueues(page);
 
-    const activeRow = page.locator(`${SIDEBAR_LINK}[href$=".aws_sqs.Queue"]`);
+    const activeRow = page.locator(`${SIDEBAR_LINK}[href$=".aws_sqs.Queue.html"]`);
     await expect(activeRow).toHaveClass(/active/);
     const activeColor = await activeRow
       .locator('.api-sidebar-level')
@@ -239,7 +239,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
         await page
           .getByRole('textbox', { name: 'Filter navigation in the sidebar' })
           .fill(example.name);
-        await expect(page.locator(`${SIDEBAR_LINK}[href$="${example.suffix}"]`)).toBeVisible();
+        await expect(page.locator(`${SIDEBAR_LINK}[href$="${example.suffix}.html"]`)).toBeVisible();
         const preview = await previewChip(page, example.suffix);
 
         expect(preview.text).toBe(badge.text);

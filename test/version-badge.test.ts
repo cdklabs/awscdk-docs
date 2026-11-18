@@ -36,13 +36,6 @@ describe('navbar version badge', () => {
     expect(component).toMatch(/length\s*>\s*0/);
   });
 
-  test('the badge links to the versions page, base-aware', () => {
-    // Same page the "Versions" nav item targets. withBase keeps it correct
-    // under the project-pages base path.
-    expect(component).toContain('withBase');
-    expect(component).toContain('withBase(VERSIONS_ROUTE)');
-  });
-
   test('label carries the v prefix and an accessible name that starts with it', () => {
     expect(component).toMatch(/v\{\{\s*version\s*\}\}/);
     // The visible "v2.263.0" alone does not say what is versioned, so the

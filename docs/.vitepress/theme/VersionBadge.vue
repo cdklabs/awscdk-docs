@@ -2,8 +2,9 @@
      from and links to the Versions page. -->
 <script setup lang="ts">
 import { computed } from "vue";
-import { useData, withBase } from "vitepress";
+import { useData } from "vitepress";
 import { VERSIONS_ROUTE } from "../../../src/site-routes";
+import { pageHref } from "./page-href";
 import { stampVersion } from "../../../src/site-stamp";
 
 const { theme } = useData();
@@ -26,7 +27,7 @@ const version = computed<string | undefined>(() => {
   <a
     v-if="version"
     class="version-badge"
-    :href="withBase(VERSIONS_ROUTE)"
+    :href="pageHref(VERSIONS_ROUTE)"
     :aria-label="`v${version} — aws-cdk-lib, browse all versions`"
     :title="`Generated from aws-cdk-lib ${version}`"
   >

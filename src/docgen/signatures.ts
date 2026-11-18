@@ -94,7 +94,7 @@ export function typeRefHtml(ref: spec.TypeReference, linkFor: LinkResolver): str
 }
 
 /**
- * Plain-text twin of {@link typeRefHtml}, for a `title` on a clamped type.
+ * Plain-text twin of {@link typeRefHtml}, for the `title` on a property row's type span.
  * The link resolver is stubbed out because text carries no
  * links.
  */

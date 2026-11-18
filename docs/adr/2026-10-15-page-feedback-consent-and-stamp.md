@@ -37,19 +37,23 @@ and user agent. The URL/body construction lives in a pure, Jest-testable module
 
 ### Edit-this-page link and upstream provenance
 
-The edit link resolves from `editLinkFor(filePath, upstreamEditUrl)`:
+The edit link resolves from `editLinkFor(filePath, upstreamEditUrl, editLink)`;
+a page's `editLink: false` frontmatter suppresses it (see
+[edit link on hand-written pages](./2026-11-17-hand-written-page-edit-link.md)):
 
-- **Hand-written pages** link to their own markdown:
-  `https://github.com/aws/aws-cdk/edit/main/docs/<filePath>`.
+- **Hand-written pages** link to their own markdown — superseded in
+  [edit link on hand-written pages](./2026-11-17-hand-written-page-edit-link.md),
+  which moves the target to this site's repository and lets a page opt out;
+  before it they linked `https://github.com/aws/aws-cdk/edit/main/docs/<filePath>`.
 - **Generated overview pages** link to the upstream `README.md` the prose came
   from, not to this repo's `src/docgen`. Docgen emits `upstreamEditUrl` into the
-  page frontmatter; the pure helper takes it as an argument and it wins
-  outright. `isGeneratedPage()` (path prefix `v2/`) guards against ever making a
+  page frontmatter; the pure helper takes it as an argument and it wins over
+  the path rule. `isGeneratedPage()` (path prefix `v2/`) guards against ever making a
   generated page's own gitignored path an edit target.
 - **Symbol pages** (class, interface, struct, enum) link the upstream source
   file their docstrings are declared in — superseded in
   [edit link on type pages](./2026-10-23-type-page-edit-link.md); before it they
-  rendered no edit link. L1 pages built from generated code and table-only
+  rendered no edit link. L1 pages built from generated code and list-only
   overviews render **no edit link** — a misleading link is worse than none. The
   footer still shows the report link, so footer shape differs by page kind
   deliberately, and the browser spec pins both shapes.

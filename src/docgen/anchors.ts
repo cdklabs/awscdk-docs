@@ -29,6 +29,14 @@ export const SECTION_ANCHORS = {
  */
 export const PROPS_ANCHOR_PREFIX = 'props-';
 
+/**
+ * Anchor of a kind group heading in a module's type list (`module-types-structs`, `module-types-constructs-l1`). It
+ * shares the `module-types` prefix of its section so README prose above it cannot take the same slug.
+ */
+export function typeKindAnchor(heading: string): string {
+  return `${SECTION_ANCHORS.types}-${heading.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+}
+
 /** A markdown heading with an explicit anchor (markdown-it-attrs `{#id}` syntax). */
 export function anchoredHeading(level: number, text: string, id: string): string {
   return `${'#'.repeat(level)} ${text} {#${id}}`;

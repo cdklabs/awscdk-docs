@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as spec from '@jsii/spec';
 import { toAgentMarkdown, withFrontmatterKey } from './agent-markdown.js';
-import { anchoredHeading, pinTitleAnchor, SECTION_ANCHORS, titleAnchor } from './anchors.js';
+import { anchoredHeading, pinTitleAnchor, SECTION_ANCHORS, titleAnchor, typeKindAnchor } from './anchors.js';
 import { hashedAssetName } from './asset-hash.js';
 import { buildFacadeIndex, buildTraitIndex } from './classification.js';
 import {
@@ -17,7 +17,7 @@ import {
   renderConstructPage,
   TypeIndex,
 } from './constructs.js';
-import { removeAll } from './escape.js';
+import { escapeVueText, removeAll } from './escape.js';
 import { FENCE_LANG, withoutLiteralsAndComments } from './examples.js';
 import { codeFence, mapProse, tokenizeFences } from './fences.js';
 import { injectBadges } from './freshness.js';
@@ -36,6 +36,7 @@ import {
   writeLedger,
 } from './history.js';
 import { LANGUAGES, Language, LanguageMeta, sidebarModuleLabels } from './languages.js';
+import { breakableTypeName } from './layout.js';
 import { API_ROOT, moduleReadmeLink, typePageLink } from './links.js';
 import { LlmsTxtEntry, renderLlmsTxt, titleOf } from './llms-txt.js';
 import { HISTORY_FRONTMATTER } from '../page-history.js';
@@ -970,7 +971,7 @@ function renderTypePage(
         tablet,
         emitExamples,
         history,
-        // A class-based mixin is grouped as `Mixin` in the index table, the sidebar and the search filter, so its
+        // A class-based mixin is grouped as `Mixin` in the module type list, the sidebar and the search filter, so its
         // own page badges itself the same way, in the same color renderMixinPage gives an interface mixin. A Facade
         // is classified by `buildFacadeIndex` and labeled Facade elsewhere, so its page badges itself Facade too.
         badge: KIND_BADGE[entry.kind],
@@ -1046,7 +1047,7 @@ export function renderSeparateInstallAlert(assembly: spec.Assembly): string[] {
 /**
  * YAML frontmatter that hides VitePress's right-hand "On this page" outline — applied ONLY where the outline merely
  * mirrors the navigation the left sidebar already provides: module index pages (`## Submodules` / `## Types`) and
- * table-only submodule pages. README-backed pages keep their outline: their README section headings are quick
+ * list-only submodule pages. README-backed pages keep their outline: their README section headings are quick
  * navigation the sidebar does not cover. `outline: false` is VitePress's per-page toggle; the aside column itself is
  * kept (no `aside: false`) so these pages keep the same content width as every other page.
  */
@@ -1145,7 +1146,7 @@ function renderModuleIndex(
     lines.push('');
   }
   if (rootTypes.length > 0) {
-    lines.push(anchoredHeading(2, 'Types', SECTION_ANCHORS.types), '', ...renderTypeTable(rootTypes), '');
+    lines.push(anchoredHeading(2, 'Types', SECTION_ANCHORS.types), '', ...renderTypeList(rootTypes), '');
   }
   return lines.join('\n');
 }
@@ -1186,7 +1187,7 @@ export interface OverviewPageOptions {
   readonly title: string;
   /** Types listed on this page (root types for a package root). */
   readonly types: TypeEntry[];
-  /** Resolved README markdown, or undefined for the table-only variant. */
+  /** Resolved README markdown, or undefined for the list-only variant. */
   readonly readme?: string;
   /** Pre-rendered breadcrumb, emitted above the H1. */
   readonly breadcrumb?: string[];
@@ -1238,13 +1239,13 @@ export function overviewReadme(
 
 /**
  * One overview-page renderer for package roots and submodules alike. The resolved README comes first, then the type
- * list. A module with no README (or `kind: 'none'`) gets the table-only layout.
+ * list. A module with no README (or `kind: 'none'`) gets the list-only layout.
  *
  * READMEs open with their own `# <Title>` heading, which becomes the page title; the `title` option is a fallback
  * used only when the README is missing or lacks a leading heading. The heading is emitted at the top level (so
  * VitePress still extracts the page title); the rest of the README body is wrapped in a `<div v-pre>` container.
  *
- * The right-hand "On this page" outline is suppressed only on the table-only variant, where it merely mirrors the
+ * The right-hand "On this page" outline is suppressed only on the list-only variant, where it merely mirrors the
  * left sidebar. README-backed pages KEEP the outline — their section headings are rich quick navigation the sidebar
  * does not provide. The redundant inline `## Table of Contents` some READMEs open with is stripped instead (see
  * {@link stripInlineToc}).
@@ -1262,7 +1263,8 @@ export function renderOverviewPage(options: OverviewPageOptions): string {
       frontmatter: overviewFrontmatter(['outline: false', ...upstreamKey(options.upstreamEditUrl)]),
       breadcrumb,
       heading: `# ${title}`,
-      body: [...preamble, ...sections, ...renderTypeTable(types), ''],
+      // No `## Types` section here, so the kind groups are the page's second-level headings.
+      body: [...preamble, ...sections, ...renderTypeList(types, 2), ''],
     }).join('\n');
   }
   // Hoist the README's leading H1 out of the v-pre container so the page
@@ -1286,7 +1288,7 @@ export function renderOverviewPage(options: OverviewPageOptions): string {
     lines.push(...renderReadmeBody(rest, examples));
   }
   lines.push(...sections);
-  lines.push(anchoredHeading(2, 'Types', SECTION_ANCHORS.types), '', ...renderTypeTable(types), '');
+  lines.push(anchoredHeading(2, 'Types', SECTION_ANCHORS.types), '', ...renderTypeList(types), '');
   return lines.join('\n');
 }
 
@@ -1478,7 +1480,7 @@ function splitReadmeExamples(body: string, options?: ReadmeExampleOptions): Read
  * package in `packages`, npm otherwise), then escape Vue-hostile characters
  * fence-aware.
  * Returns '' for effectively-empty READMEs so callers can fall back to
- * the table-only layout.
+ * the list-only layout.
  *
  * Repo-relative `![](./img.png)` / `[](../doc.md)` targets are stripped
  * because Vite treats a relative `![]()` image as a build-time asset to
@@ -1608,13 +1610,42 @@ function stripRelativeRefs(text: string): string {
       (isRelativeTarget(target) ? label : m));
 }
 
-function renderTypeTable(types: TypeEntry[]): string[] {
-  return [
-    '| Name | Kind | Summary |',
-    '| --- | --- | --- |',
-    ...types.map((t) => {
-      const name = t.link ? `[\`${t.name}\`](${t.link})` : `\`${t.name}\``;
-      return `| ${name} | ${t.kind} | ${escapeCell(t.summary)} |`;
-    }),
-  ];
+/** Plural of a kind label for its group heading: `Class` -> `Classes`, `Construct (L1)` -> `Constructs (L1)`. */
+function kindPlural(kind: string): string {
+  const leveled = /^(.*?)( \(L\d\))$/.exec(kind);
+  const [base, level] = leveled ? [leveled[1], leveled[2]] : [kind, ''];
+  const plural = /(s|x|ch|sh)$/.test(base) ? `${base}es` : `${base}s`;
+  return `${plural}${level}`;
+}
+
+/**
+ * The module's types as a list grouped by kind, one heading per kind in the order each kind first appears. Each entry
+ * is the name as a link with the kind as a small tag, and the summary on the next line. Names wrap at any width.
+ * `headingLevel` is 3 under a `## Types` heading and 2 on the list-only layout, which has none.
+ */
+function renderTypeList(types: TypeEntry[], headingLevel = 3): string[] {
+  const groups = new Map<string, TypeEntry[]>();
+  for (const t of types) {
+    const group = groups.get(t.kind);
+    if (group) {
+      group.push(t);
+    } else {
+      groups.set(t.kind, [t]);
+    }
+  }
+  const lines: string[] = [];
+  for (const [kind, entries] of groups) {
+    const heading = kindPlural(kind);
+    lines.push(anchoredHeading(headingLevel, heading, typeKindAnchor(heading)), '', '<div class="type-list">', '');
+    for (const t of entries) {
+      const name = `<code>${breakableTypeName(escapeVueText(t.name))}</code>`;
+      const linked = t.link ? `[${name}](${t.link})` : name;
+      const summary = escapeCell(t.summary);
+      lines.push(`- ${linked} <span class="type-kind">${t.kind}</span>${summary ? `<br>${summary}` : ''}`);
+    }
+    // markdown-it-attrs puts the attribute on the list above it. An explicit role keeps the list semantics in
+    // browsers that drop them from a list whose markers are hidden.
+    lines.push('{role=list}', '', '</div>', '');
+  }
+  return lines;
 }

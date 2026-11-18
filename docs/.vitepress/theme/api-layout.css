@@ -9,6 +9,8 @@
      The strikethrough on the identifier carries the deprecation
      independently, so nothing depends on this color alone. */
   --api-c-deprecated: #9a2c2c;
+  /* Start of the member-row flash; every text color a row carries stays at AA on it (pinned in tests). */
+  --api-c-flash: #fdf3e3;
 }
 
 .dark {
@@ -16,6 +18,7 @@
   --api-c-badge-bg: #3b2c1a;
   --api-c-badge-text: #ffb84d;
   --api-c-deprecated: #ff9d9d;
+  --api-c-flash: #352d22;
 }
 
 /* ---------- Type page header bar: breadcrumb + favorite ---------- */
@@ -483,10 +486,53 @@ a.chain-item:hover {
   border-bottom: none;
 }
 
-/* A row navigated to by its permalink is tinted briefly so the landing is
-   visible; the id lives on the row, so the whole member highlights. */
-.member-list .member-row:target {
+/* A row navigated to by its permalink is tinted so the landing is visible; the
+   id lives on the row, so the whole member highlights. The browser sets
+   `:target` on a page load with a hash only and never moves it for a pushState
+   jump, so once member-flash.ts is installed (`html.member-flash-ready`) the
+   flash class is the one landing mark and this rule serves the no-JS and
+   pre-hydration case alone; otherwise the first-loaded row would keep this tint
+   beside every later landing. */
+html:not(.member-flash-ready) .member-list .member-row:target {
   background-color: var(--vp-c-bg-soft);
+}
+
+/* The landed row flashes and fades back over 1.5s, then the class is removed on
+   `animationend`. The flash color is pale enough to keep every text color at
+   AA, so a dashed brand outline fades with it as the cue a reader with low
+   contrast sensitivity can see; it sits just outside the row and moves no
+   layout. */
+@keyframes member-row-flash {
+  from {
+    background-color: var(--api-c-flash);
+    outline-color: var(--vp-c-brand-1);
+  }
+}
+
+.member-list .member-row.member-row-flash {
+  animation: member-row-flash 1500ms ease-out;
+  outline: 2px dashed transparent;
+  outline-offset: 2px;
+}
+
+/* Reduced motion: no fade. The landed row keeps the flash color and the brand
+   outline until the next jump. Dashed, so it is not mistaken for the theme's
+   solid focus ring. */
+@media (prefers-reduced-motion: reduce) {
+  .member-list .member-row.member-row-flash {
+    animation: none;
+    background-color: var(--api-c-flash);
+    outline-color: var(--vp-c-brand-1);
+  }
+}
+
+/* Forced colors drop author backgrounds, so the mark is the dashed outline in
+   the system highlight color; with motion allowed it lasts as long as the fade.
+   `!important` outranks the animation's `outline-color`. */
+@media (forced-colors: active) {
+  .member-list .member-row.member-row-flash {
+    outline-color: Highlight !important;
+  }
 }
 
 /* The header line wraps rather than clamping: it holds a full method
@@ -596,19 +642,17 @@ a.chain-item:hover {
   text-decoration-style: solid;
 }
 
-/* A long translated spelling (Python's `int | float` for jsii `number`, a
-   nested Java generic) would otherwise take the header line's whole width.
-   `inline-block` rather than a flex item on purpose: making the
-   variant wrapper a flex container blockifies the name `code` beside it,
-   whose height then comes from line-height instead of the font. */
+/* A type too long for its row wraps instead of clipping, at a space or after a
+   dot in a long qualified name (the renderer follows those with a `<wbr>`).
+   The variant wrapper's `nowrap` is released for the type's own text only.
+   With a single language the span is a flex item of the header line itself,
+   so it carries the same ceiling as the wrapper: inert while inline, it keeps
+   an over-wide token on the page's `overflow-wrap` fallback once the row
+   stacks. */
 .member-list .member-type {
-  display: inline-block;
-  max-width: 100%;
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  vertical-align: bottom;
+  max-width: 100%;
+  white-space: normal;
 }
 
 /* The name and its type are adjacent inline boxes inside one variant, so the
@@ -655,9 +699,13 @@ a.chain-item:hover {
 }
 
 /* With 2+ languages the row's flex child is the variant span, not the name or
-   type inside it: `nowrap` keeps the pair from breaking apart. */
+   type inside it: `nowrap` keeps the pair from breaking apart. `max-width`
+   keeps the span inside the row where it stacks, so a single token wider than
+   the column falls back to the page's `overflow-wrap` instead of pushing the
+   row out. */
 .member-list .member-line > .lang-variant {
   min-width: 0;
+  max-width: 100%;
   white-space: nowrap;
 }
 
@@ -951,24 +999,17 @@ a.chain-item:hover {
     align-items: flex-start;
   }
 
-  /* A stacked row has no single line to clamp against, so the type and the
-     default wrap rather than ellipsizing. Releasing the default
-     matters more than symmetry: its only recovery is the
-     `title` the emitter sets, and hover means nothing on touch — which is the
-     same reason `.type-tooltip` is switched off at the bottom of this block. A
-     22-character prose default like `No filtering on region` would otherwise be
-     ellipsized here with no way at all to read it, being under
-     INLINE_DEFAULT_BUDGET and so earning no `**Default:**` copy either. */
-  .member-list .member-type,
+  /* A stacked row has no single line to clamp against, so the default wraps
+     rather than ellipsizing. Its only recovery is the `title` the emitter sets,
+     and hover means nothing on touch — which is the same reason `.type-tooltip`
+     is switched off at the bottom of this block. A 22-character prose default
+     like `No filtering on region` would otherwise be ellipsized here with no
+     way at all to read it, being under INLINE_DEFAULT_BUDGET and so earning no
+     `**Default:**` copy either. The default has no clamp above this breakpoint;
+     `max-width: none` keeps it that way here too. */
   .member-list .member-default {
     white-space: normal;
     overflow: visible;
-  }
-
-  /* The type's clamp is `max-width: 100%`, which stops binding once the text
-     may wrap. The default has no clamp above this breakpoint; `max-width: none`
-     keeps it that way here too. */
-  .member-list .member-default {
     max-width: none;
   }
 
@@ -1018,4 +1059,44 @@ a.chain-item:hover {
      presets can vary it. */
   margin-top: var(--density-section-header-margin-top);
   margin-bottom: var(--density-section-header-margin-bottom);
+}
+
+/* Module type list: the Types section of a module overview. One entry per type, grouped by kind. The name is a link
+   with the kind as a small tag beside it and the summary on the next line. A name over the break budget carries
+   <wbr> after each dot (and at camelCase boundaries inside an over-budget part; see `breakableTypeName`), and
+   `overflow-wrap: anywhere` is the backstop for everything else, so no entry can be wider than the page body at any
+   width or density. */
+.vp-doc .type-list ul {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.vp-doc .type-list li {
+  margin: 0;
+  padding: calc(var(--density-type-list-gap) / 2) 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.vp-doc .type-list li + li {
+  margin-top: 0;
+}
+
+.vp-doc .type-list code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.vp-doc .type-kind {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+  white-space: nowrap;
+  vertical-align: baseline;
 }

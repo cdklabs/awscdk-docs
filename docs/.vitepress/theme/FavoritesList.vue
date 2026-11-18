@@ -10,7 +10,7 @@
   discoverability.
 -->
 <script setup lang="ts">
-import { useRoute, withBase } from "vitepress";
+import { useRoute } from "vitepress";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
 import {
@@ -19,6 +19,7 @@ import {
   writeCollapsed,
   type FavoriteEntry,
 } from "./favorites";
+import { pageHref } from "./page-href";
 
 const route = useRoute();
 
@@ -45,7 +46,7 @@ onMounted(() => {
 onUnmounted(() => unsubscribe?.());
 
 function linkFor(entry: FavoriteEntry): string {
-  return withBase(entry.path.endsWith("/") ? entry.path : `${entry.path}.html`);
+  return pageHref(entry.path);
 }
 
 function unstar(entry: FavoriteEntry): void {

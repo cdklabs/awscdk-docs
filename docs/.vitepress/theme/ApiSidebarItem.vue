@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from "vue";
-import { withBase } from "vitepress";
 import type { Ref } from "vue";
-import { displayLabel, groupKey, isActiveLink, type ApiSidebarNode } from "./api-sidebar";
+import { displayLabel, groupKey, isActiveLink, isUnloadedChunk, type ApiSidebarNode } from "./api-sidebar";
+import { pageHref } from "./page-href";
 import { isOpenWhileFiltering } from "./sidebar-filter";
 import { collapseScrollDelta, isStuck, type StickyHeadings } from "./sidebar-sticky";
 
@@ -11,6 +11,9 @@ interface ApiSidebarContext {
   activePath: Ref<string>;
   base: Ref<string>;
   toggle: (key: string) => void;
+  /** Fetches a closed group's chunk once its heading has been in view for a moment. */
+  watchHeading: (el: Element, key: string) => void;
+  unwatchHeading: (el: Element) => void;
   /** True while the in-sidebar symbol filter is active. */
   filtering: Ref<boolean>;
   /** Groups folded during the current filter session; empty outside it. */
@@ -110,6 +113,22 @@ function onToggle() {
   });
 }
 
+// A closed group backed by a chunk file hands its heading to the root, which fetches
+// any chunk it still misses once the heading has been in view for a moment.
+const headingEl = ref<HTMLElement | null>(null);
+const preloadable = computed(
+  () => isGroup.value && !open.value && (isUnloadedChunk(props.node) || !!props.node.chunks?.length),
+);
+watch(
+  [headingEl, preloadable, key],
+  ([el, eligible, groupKey], previous) => {
+    const prevEl = previous?.[0];
+    if (prevEl && (prevEl !== el || !eligible)) ctx.unwatchHeading(prevEl);
+    if (el && eligible) ctx.watchHeading(el, groupKey);
+  },
+  { flush: "post", immediate: true },
+);
+
 // Eligible to pin under the header: a collapsible group that is not a kind
 // group. Only those `<li>`s are handed to the sticky tracker.
 const itemEl = ref<HTMLElement | null>(null);
@@ -125,6 +144,7 @@ watch(
   { flush: "post" },
 );
 onBeforeUnmount(() => {
+  if (headingEl.value) ctx.unwatchHeading(headingEl.value);
   if (itemEl.value) ctx.sticky.unregister(itemEl.value);
 });
 </script>
@@ -151,6 +171,7 @@ onBeforeUnmount(() => {
   <li v-else ref="itemEl" class="api-sidebar-item" :style="{ '--api-sidebar-depth': depth }" :data-depth="depth" :data-kind-group="node.kindGroup ? '' : undefined" :data-active-parent="activeParent ? '' : undefined">
     <button
       v-if="isGroup"
+      ref="headingEl"
       type="button"
       class="api-sidebar-group"
       :aria-expanded="open"
@@ -163,7 +184,7 @@ onBeforeUnmount(() => {
       v-else
       class="api-sidebar-link"
       :class="{ active }"
-      :href="withBase(node.link || '')"
+      :href="pageHref(node.link || '')"
       :title="canonicalName"
       :aria-label="accessibleName"
       :aria-current="active ? 'page' : undefined"

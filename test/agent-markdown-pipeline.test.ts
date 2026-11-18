@@ -4,7 +4,10 @@ import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { agentMarkdownHref } from '../docs/.vitepress/agent-markdown.js';
 import { copyMarkdownFrom } from '../docs/.vitepress/copy-markdown.js';
+import { PAGE_REWRITES, pageSourceExcludes, pageUrl } from '../docs/.vitepress/page-url.js';
+import { mapProse } from '../src/docgen/fences.js';
 import { generateDocs } from '../src/docgen/index.js';
+import { docsSiteUrl } from '../src/docgen/versions.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -20,6 +23,16 @@ function walk(dir: string, rel = ''): string[] {
     }
   }
   return out.sort();
+}
+
+function markdownLinks(markdown: string): string[] {
+  const links: string[] = [];
+  mapProse(markdown, (prose) => {
+    const target = /(?:\]\(\s*|^\s{0,3}\[(?:\\.|[^\\\]\n])+\]:\s*)<?([^\s)>]+)>?/gm;
+    links.push(...[...prose.matchAll(target)].map((match) => match[1]));
+    return prose;
+  });
+  return links;
 }
 
 describe('agent-oriented Markdown twins', () => {
@@ -93,12 +106,12 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('> **Separate package**');
   });
 
-  test('the twin body is plain Markdown: content kept, chrome and non-canonical variants gone', () => {
+  test('the twin body is plain Markdown: content and every language kept, chrome gone', () => {
     const twin = readFileSync(join(agentOutDir, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
     const canonical = readFileSync(join(outDir, 'docs', 'constructs.Node.md'), 'utf-8');
     expect(twin.startsWith('# Node\n')).toBe(true);
-    expect(twin).toContain('```ts');
-    expect(twin).not.toContain('```python');
+    expect(twin).toContain('TypeScript:\n\n```ts');
+    expect(twin).toContain('Python:\n\n```python');
     expect(twin).not.toContain('agentMarkdown');
     for (const marker of [
       '<LanguageTabs', 'lang-variant', '<Badge', 'data-pagefind', '<nav', '<table', '<td', 'v-pre', '---\n',
@@ -112,6 +125,54 @@ describe('agent-oriented Markdown twins', () => {
     expect(twin).toContain('addDependency');
     expect(twin.length).toBeLessThan(canonical.length);
     expect(twin.length).toBeGreaterThan(canonical.length / 10);
+  });
+
+  test('site links in twins name emitted pages and external links stay external', () => {
+    const siteUrl = docsSiteUrl();
+    // The deployed shard build ships the twins, so check against the pages that build serves.
+    const excludedPrefixes = pageSourceExcludes(true).map((pattern) => {
+      // The test matches by directory prefix, so only `dir/**` patterns are supported.
+      expect(pattern).toMatch(/^[^*?[\]{}]+\/\*\*$/);
+      return pattern.slice(0, -2);
+    });
+    const excluded = ['.vitepress/', 'v2/', ...excludedPrefixes];
+    const emittedPages = new Set([
+      ...walk(outDir)
+        .filter((file) => file.endsWith('.md'))
+        .map((file) => pageUrl(`v2/${file}`, siteUrl)),
+      ...walk(join(ROOT, 'docs'))
+        .filter((file) => file.endsWith('.md') && !excluded.some((prefix) => file.startsWith(prefix)))
+        .map((file) => pageUrl(PAGE_REWRITES[file] ?? file, siteUrl)),
+    ]);
+    const links = walk(agentOutDir)
+      .filter((file) => file.endsWith('.md'))
+      .flatMap((file) => markdownLinks(readFileSync(join(agentOutDir, file), 'utf-8')));
+    const siteLinks = links.filter((link) => link.startsWith(siteUrl));
+    const leftovers = links.filter((link) => link.startsWith('/') && !link.startsWith('//'));
+
+    expect(leftovers).toEqual([]);
+    expect(siteLinks.length).toBeGreaterThan(5);
+    for (const link of siteLinks) {
+      const path = link.split(/[?#]/, 1)[0];
+      expect(path).not.toContain('.html.html');
+      expect(emittedPages.has(path)).toBe(true);
+    }
+    expect(links.some((link) => link.startsWith('https://') && !link.startsWith(siteUrl))).toBe(true);
+  });
+
+  test('a build with one language emits one copy and no language labels', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agent-md-ts-'));
+    try {
+      const out = join(dir, 'docs');
+      const agent = join(dir, 'agent');
+      generateDocs({ modules: ['constructs'] }, { outDir: out, agentOutDir: agent, packageRoot: ROOT, languages: ['ts'] });
+      const twin = readFileSync(join(agent, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
+      expect(twin).toContain('```ts');
+      expect(twin).not.toContain('TypeScript:');
+      expect(twin).not.toContain('```python');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test('without agentOutDir nothing changes: no key, no twins', () => {
@@ -223,6 +284,39 @@ describe('the page advertises its twin only when one exists', () => {
     const guarded = config.indexOf('if (typeof twin === "string")');
     expect(config.indexOf('type: "text/plain"')).toBeLessThan(guarded);
   });
+});
+
+describe('agent-oriented Markdown twins with every site language', () => {
+  // The Initializer signature block comes from docgen's own translators, not rosetta, so its five copies do not
+  // depend on which snippets a library's tablet happens to translate.
+  test('the Node twin carries the Initializer in all five languages, in site order, and members stay canonical', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agent-md-all-'));
+    try {
+      const out = join(dir, 'docs');
+      const agent = join(dir, 'agent');
+      generateDocs(
+        { modules: ['constructs'] },
+        { outDir: out, agentOutDir: agent, packageRoot: ROOT, languages: ['ts', 'python', 'java', 'dotnet', 'go'] },
+      );
+      const twin = readFileSync(join(agent, 'v2', 'docs', 'constructs.Node.md'), 'utf-8');
+      const section = twin.indexOf('\n## Initializer\n');
+      expect(section).toBeGreaterThan(-1);
+      const end = twin.indexOf('\n## ', section + 1);
+      expect(end).toBeGreaterThan(section);
+      const initializer = twin.slice(section, end);
+      const labels = [
+        'TypeScript:\n\n```ts', 'Python:\n\n```python', 'Java:\n\n```java', 'C# / .NET:\n\n```csharp', 'Golang:\n\n```go',
+      ];
+      const at = labels.map((label) => initializer.indexOf(label));
+      expect(at.every((i) => i >= 0)).toBe(true);
+      expect([...at].sort((x, y) => x - y)).toEqual(at);
+      // Members keep the canonical (TypeScript) name only; no member bullet is spelled in snake case.
+      expect(twin).toMatch(/^- `addr`: string — /m);
+      expect(twin).not.toMatch(/^\s*- `[a-z]+_[a-z_]+/m);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 120_000);
 });
 
 describe('copyMarkdownFrom', () => {

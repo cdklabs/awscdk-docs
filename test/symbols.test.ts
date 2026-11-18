@@ -34,7 +34,7 @@ describe('buildSymbolIndex', () => {
     ]);
   });
 
-  test('falls back to the type table link for types without pages', () => {
+  test('falls back to the type list link for types without pages', () => {
     const index = buildSymbolIndex([entry({ name: 'BucketEncryption', kind: 'Enum' })]);
     expect(index[0].link).toBe('/api/modules/aws-cdk-lib/aws-s3');
   });
@@ -98,6 +98,19 @@ describe('buildSymbolIndex', () => {
       'BucketVersioning:S3',
       'IBucketRef:S3',
       'IEnvironmentAware:Core',
+    ]);
+  });
+
+  test('labels each EKS module type with its own EKS service', () => {
+    const index = buildSymbolIndex([
+      entry({ name: 'Cluster', kind: 'Construct (L2)', submodule: 'aws_eks', link: '/eks-cluster' }),
+      entry({ name: 'Nodegroup', kind: 'Construct (L2)', submodule: 'aws_eks_v2', link: '/eks-v2-nodegroup' }),
+      entry({ name: 'IClusterRef', kind: 'Interface', submodule: 'interfaces.aws_eks_v2' }),
+    ]);
+    expect(index.map((e) => `${e.name}:${e.service}`)).toEqual([
+      'Cluster:EKS (legacy)',
+      'IClusterRef:EKS V2',
+      'Nodegroup:EKS V2',
     ]);
   });
 });

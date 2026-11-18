@@ -25,7 +25,7 @@ test.describe('sidebar short type labels', () => {
     await filterInput(page).fill('CfnTopic.Subscription');
 
     const entry = page.locator(
-      '.api-sidebar a.api-sidebar-link[href$=".aws_sns.CfnTopic.SubscriptionProperty"]',
+      '.api-sidebar a.api-sidebar-link[href$=".aws_sns.CfnTopic.SubscriptionProperty.html"]',
     );
     await expect(entry).toBeVisible();
 
@@ -49,7 +49,7 @@ test.describe('sidebar short type labels', () => {
     await filterInput(page).fill('CfnTopicPolicy');
 
     const entry = page.locator(
-      '.api-sidebar a.api-sidebar-link[href$=".aws_sns.CfnTopicPolicy"]',
+      '.api-sidebar a.api-sidebar-link[href$=".aws_sns.CfnTopicPolicy.html"]',
     );
     await expect(entry).toBeVisible();
     // The NAME element, since an L1 construct's link also carries its level

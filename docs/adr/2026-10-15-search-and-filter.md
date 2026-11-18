@@ -198,7 +198,7 @@ facades, and traits by name and navigates straight to the API page:
   only for alpha modules), and an optional construct `level` (`L1`/`L2`/`L3`,
   carried through from the sidebar entry — see
   [sidebar-navigation](./2026-10-15-sidebar-navigation.md)). Types without a
-  dedicated page fall back to their (sub)module type table so every result is
+  dedicated page fall back to their (sub)module type list so every result is
   navigable.
 - **Component placement.** `NavFilter.vue` is injected at the top of the sidebar
   via the default theme's `sidebar-nav-before` slot, above the favorites list and
