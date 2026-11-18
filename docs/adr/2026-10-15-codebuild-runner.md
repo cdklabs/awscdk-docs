@@ -30,9 +30,10 @@ Build the site in a single `build` job on a self-hosted AWS CodeBuild runner. Th
 - **Machine.** `BUILD_GENERAL1_2XLARGE` (72 vCPU, 145 GB). A shard is roughly single-core bound, so memory limits
   concurrency: the heaviest shard outgrows an 8 GB heap once struct, enum and interface pages carry translated
   examples.
-- **Build.** `docs:build:sharded` with 72 shards, a 12288 MB heap and a concurrency of 10. Ten shards at their cap,
-  plus about 1 GB of off-heap memory each, stay within the machine's memory. Every shard carries a fixed ~30 s cost,
-  so more shards lower the per-shard peak but lengthen the build.
+- **Build.** `docs:build:ci`, which runs `docs:build:sharded` with 72 shards, a 12288 MB heap and a concurrency
+  of 10; `DOCS_BUILD_SHARDS`, `DOCS_BUILD_HEAP_MB` and `DOCS_BUILD_CONCURRENCY` override them for one run. Ten
+  shards at their cap, plus about 1 GB of off-heap memory each, stay within the machine's memory. Every shard
+  carries a fixed ~30 s cost, so more shards lower the per-shard peak but lengthen the build.
 - **One job, end to end.** The job generates the docs once, builds and merges every shard, indexes the site with
   Pagefind, verifies it and packages the site as the versioned S3 zip with `scripts/package-site.sh`. Packaging
   fails when the zip exceeds 900 MB. The publish job depends on `build` directly

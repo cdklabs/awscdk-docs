@@ -170,12 +170,14 @@ count, behind an explicit `--agent-markdown <dir>` flag; a missing tree fails
 the merge. The hand-written homepage is the one exception: it declares
 `agentMarkdown: "/index.md"`, and `scripts/agent-markdown-overlay.cjs`
 transforms its finished Markdown into the root twin during the same overlay
-step, keeping the advertised file and its producer together. The compressed
+step, keeping the advertised file and its producer together. The sizes below
+are a point-in-time measurement against `aws-cdk-lib` 2.277.0 and grow with
+each CDK release, so re-measure rather than reuse them. The compressed
 corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
-`docs:generate`, five languages, `aws-cdk-lib` 2.277.0) is about 23 MB with
-examples in every enabled language (22,752,643 B at `6a0affa`), up from about
+`docs:generate`, five languages) is about 23 MB with
+examples in every enabled language (22,752,643 B), up from about
 12 MB at `f18f6ea` when the twin kept TypeScript only. The deployed
-`docs-site` zip (the same five-language `aws-cdk-lib` 2.277.0 build), which
+`docs-site` zip (the same five-language build), which
 `package-site.sh` checks against its 900 MiB `MAX_ZIP_MB` gate, was 661 MiB at
 `f36e864`. The tree is overlaid
 once, with no per-shard cost.

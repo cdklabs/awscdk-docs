@@ -88,7 +88,7 @@ tooling, the documented CDK packages (content sources — their prose ships, the
 code does not), and all test, lint, CI, and release tooling.
 
 A package belongs in `deps` iff its code or assets can be found in the built
-site. This makes `license-checker --production` report attribution for what the
+site. This makes `license-checker-rseidelsohn --production` report attribution for what the
 site is actually made of. Because docgen under `src/` now imports devDeps, the
 eslint `import/no-extraneous-dependencies` rule allows devDeps in `src/**`; its
 premise — that `src/` imports must be runtime-available to consumers — does not
