@@ -21,6 +21,7 @@ import {
 import { buildPackageSidebar, decodePackageModules } from "./api-sidebar-package";
 import { API_ROOT } from "../../../src/site-routes";
 import { splitTerms, termRank } from "./filterSymbols";
+import { pageHref } from "./page-href";
 import { activeLanguage, initLanguageState } from "./language-state";
 import { initNavStyle, navStyle, styleStorageKey, type NavStyle } from "./nav-style";
 import { sidebarFilterQuery, toggleFilterCollapsed } from "./sidebar-filter";
@@ -652,7 +653,7 @@ watch(activePath, (next, prev) => {
     </p>
     <p v-else-if="status === 'error'" class="api-sidebar-status">
       Could not load the API index.
-      <a :href="withBase(`/api/`)">Browse the API reference →</a>
+      <a :href="pageHref(API_ROOT)">Browse the API reference →</a>
     </p>
     <p
       v-else-if="filtering && displayTree.length === 0"

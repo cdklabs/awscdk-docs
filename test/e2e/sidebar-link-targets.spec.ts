@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { TOPIC_PAGE } from './fixture.js';
+import { API_OVERVIEW, apiSidebarAssetPath, TOPIC_PAGE } from './fixture.js';
 
 // Raw anchors built from stored page links name the served `.html` file.
 //
@@ -107,10 +107,11 @@ test.describe('sidebar links open as real page URLs', () => {
     await page.goto(TOPIC_PAGE);
     await waitForSidebar(page);
 
-    // Take a leaf the sidebar rendered for the current section other than the
-    // page itself, so the fresh tab is a real cross-page open.
-    const href = (await sidebarHrefs(page, 2)).find((h) => h !== TOPIC_PAGE) ?? TOPIC_PAGE;
-    const { status, titles } = await titlesWhileLoading(context, href);
+    // A page leaf the sidebar rendered for the current section, other than the
+    // page itself, so the fresh tab is a real cross-page open of a file.
+    const href = (await sidebarHrefs(page, 2)).find((h) => h !== TOPIC_PAGE && !h.endsWith('/'));
+    expect(href, 'a page leaf other than the current page').toBeDefined();
+    const { status, titles } = await titlesWhileLoading(context, href!);
 
     // Every title seen while loading, so a failure names the bad one.
     expect(titles.filter((t) => /^404\b/.test(t))).toEqual([]);
@@ -122,6 +123,15 @@ test.describe('sidebar links open as real page URLs', () => {
     await page.locator('.favorite-star-button').click();
     const link = page.locator('.favorites-section .favorites-link');
     await expect(link).toHaveAttribute('href', TOPIC_PAGE);
+  });
+
+  test('the sidebar\'s load-failure fallback links to the API overview directory', async ({ page }) => {
+    const skeleton = apiSidebarAssetPath('sidebar');
+    await page.route((url) => url.pathname.endsWith(skeleton), (route) => route.abort());
+    await page.goto(TOPIC_PAGE);
+    const fallback = page.locator('.api-sidebar-status a');
+    await expect(fallback).toHaveAttribute('href', API_OVERVIEW);
+    expect((await page.request.get(API_OVERVIEW)).status()).toBe(200);
   });
 
   test('the version badge links to the versions page file', async ({ page }) => {
