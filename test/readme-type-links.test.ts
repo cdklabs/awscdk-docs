@@ -259,8 +259,12 @@ describe('README type links in the built pages', () => {
       expect(page).not.toContain('package-reference');
       expect(page).not.toContain('&lt;span');
     }
-    expect(toAgentMarkdown(amplify).markdown).toContain(
-      '[`@aws-cdk/aws-amplify-alpha`](/v2/docs/@aws-cdk_aws-amplify-alpha-readme)',
+    const siteUrl = 'https://docs.example.com/cdk/api/';
+    expect(toAgentMarkdown(amplify, siteUrl).markdown).toContain(
+      '[`@aws-cdk/aws-amplify-alpha`](https://docs.example.com/cdk/api/v2/docs/@aws-cdk_aws-amplify-alpha-readme.html)',
+    );
+    expect(toAgentMarkdown(apprunner, siteUrl).markdown).toContain(
+      '[`@aws-cdk/aws-apprunner-alpha`](https://www.npmjs.com/package/@aws-cdk/aws-apprunner-alpha)',
     );
   });
 
