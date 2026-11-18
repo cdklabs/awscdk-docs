@@ -593,12 +593,14 @@ describe('construct page generation', () => {
   });
 
   test('construct page lists the members that take the construct', () => {
-    // S3EventSource's initializer takes a Bucket, which is the only usage of the construct type itself.
+    // S3EventSource's initializer takes a Bucket, which is the only usage of the construct type itself. The entry
+    // names the section it links to, so a row of members does not read as a row of types.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(page).toContain(
       '<div class="chain-row" id="used-as-argument-in"><span class="chain-label">used as argument in</span> '
       + '<ul class="chain-list" role="list"><li role="listitem">'
-      + '<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_lambda_event_sources.S3EventSource.html#initializer">S3EventSource</a>'
+      + '<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_lambda_event_sources.S3EventSource.html#initializer">'
+      + 'S3EventSource (initializer)</a>'
       + '</li></ul></div>',
     );
     expect(page).not.toContain('id="returned-by"');

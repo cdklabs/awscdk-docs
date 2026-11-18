@@ -177,7 +177,9 @@ entry is rendered as inline language variants, translated per enabled language
 like the member rows (the multi-language ADR's canonical identity, translated
 display): the member name through the member-name translators (a `const`
 keeps its UPPER_SNAKE name in Python, as the member rows do) and the
-separator `_` for Go, where a static is the package-level `Owner_Member`. The
+separator `_` for a static in Go, where jsii exposes it as the package-level
+`Owner_Member`; an instance member keeps the dot, because in Go it is called
+on a value. The
 anchor stays on the canonical jsii name and the width budget uses the widest
 translation; the block is wrapped in `<LanguageTabs>` only when a member row
 carries such a variant entry. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
@@ -207,18 +209,26 @@ assembly. The rules:
 - **Protected members are skipped**, for the same reason `obtainable from`
   skips protected statics: a reader cannot call one, and the owner page has no
   row to anchor the entry to.
-- **The declaring type owns the entry.** A jsii type lists only its own
-  methods, so an inherited member is recorded once where it is declared
-  (`BucketBase.grantRead`, not once per subclass). That also keeps the index
-  from multiplying down deep hierarchies.
+- **The declaring type owns the entry.** A jsii type lists its own methods plus
+  a redeclaration of every method it overrides or implements, carrying an
+  `overrides` field. Those redeclarations are skipped, so each member is
+  recorded once where it is declared (`IBucket.grantRead`, not again on
+  `BucketBase` and on every subclass, and `IAspect.visit` rather than one entry
+  per implementor). A redeclaration of a member declared outside the documented
+  assemblies is kept, because nothing else would record it. Filtering them cut
+  the corpus growth from +1.76 to +1.03 percent and `constructs.IConstruct`
+  from 2.81 MB to 0.42 MB.
 - **Entry format.** `Owner.member`, the same as `obtainable from`, linked to
-  the owner's page at the member's row anchor. An **initializer** entry is the
-  owner name alone, linked to the owner page's `#initializer` section: jsii
-  gives an initializer no member name, and its per-language spelling changes
-  form rather than casing (`new Bucket(...)`, `Bucket(...)`,
-  `NewBucket(...)`), so no `Owner<sep>member` string exists to translate. It is
-  also the presentation `used as props by` already uses for exactly this
-  relation. Such an entry is language-stable and carries no variant spans.
+  the owner's page at the member's row anchor. An **initializer** entry reads
+  `Owner (initializer)`, linked to the owner page's `#initializer` section:
+  jsii gives an initializer no member name, and its per-language spelling
+  changes form rather than casing (`new Bucket(...)`, `Bucket(...)`,
+  `NewBucket(...)`), so no `Owner<sep>member` string exists to translate. The
+  suffix names the section the link lands on, and keeps a row of members from
+  reading as a row of types, since the same owner name can appear in
+  `superclass of` or `implemented by` right above. Such an entry is
+  language-stable and carries no variant spans; its suffix counts against the
+  width budget like any other text.
 - **Order.** By owner name, then by member name, with the owner FQN breaking a
   tie between two types of the same name; an initializer entry leads its
   owner's entries, matching how it renders. Each owner and member appears once
@@ -234,16 +244,29 @@ assembly. The rules:
   static factories do render as returners.
 - **Page kinds.** Classes, structs, interfaces, constructs, mixins and enums.
   An enum has no type-to-type relation of its own, so it gains a block that
-  holds these rows alone (`renderUsageBar`); a mixin page gains them in the
-  block it already had. `obtainable from` stays off enum and mixin pages, as
-  before.
+  holds these rows alone (`renderUsageBar`), labeled `Type relations` rather
+  than `Type hierarchy`, since an enum has no hierarchy for a landmark to
+  promise; a mixin page gains them in the block it already had.
+  `obtainable from` stays off enum and mixin pages, as before.
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
-  the disclosure. Measured over `aws-cdk-lib` and `constructs`: 18,712 entries
-  across 5,212 types for `used as argument in` and 1,426 for `returned by`, which
-  is a fraction of a percent of the built HTML. A growth above **5 percent**
-  of total built HTML is the line at which this presentation has to be
-  reconsidered rather than shipped.
+  the disclosure. Counted from the configured modules at the commit that added
+  the rows: 17,555 `used as argument in` entries over 8,376 types, and 5,804
+  `returned by` entries over 2,120 types. Generating the 29,893-page corpus
+  grew it from 733.3 MB to 740.9 MB, +1.03 percent, and the built HTML grows by
+  0.97 bytes per added markdown byte on the e2e fixture, so the full site is
+  **estimated** at about +0.37 percent. That share is extrapolated from the
+  fixture, not read off a sharded build, and nothing checks it automatically:
+  whoever changes what these rows collect re-measures the corpus the same way
+  and reports it on the pull request. A growth above **5 percent** of total
+  built HTML is the line at which this presentation has to be reconsidered
+  rather than shipped.
+- **The heaviest page.** The weight is not spread evenly. `constructs.Construct`
+  carries one entry per construct initializer that takes a `scope`, which took
+  its built page from 0.41 MB and 7,685 DOM nodes to 1.71 MB and 30,907, where
+  the next heaviest type page is under 0.5 MB. The disclosure bounds the height
+  a reader sees, not the DOM the browser parses. That page is the one to watch
+  when these rows change, and the one to measure before adding a third such row.
 
 Each row is clamped to two lines by a **build-time character budget**
 (`RELATION_ROW_BUDGET = 70`, tuned by measurement — a derived 150 ran to 3–4.75

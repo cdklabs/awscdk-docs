@@ -310,10 +310,11 @@ describe('mixin page generation', () => {
   });
 
   test('a mixin page lists the members that take it and the members that return it', () => {
-    // Construct.with(mixin) takes an IMixin and Shims.asMixin returns one, so both usage rows render here too.
+    // IConstruct.with(mixin) takes an IMixin and Shims.asMixin returns one, so both usage rows render here too.
+    // The entry names the interface that declares `with`, not every class that reimplements it.
     const page = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
     expect(page).toMatch(
-      /id="used-as-argument-in"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/constructs\.Construct\.html#with">Construct\.<wbr>with<\/a>/,
+      /id="used-as-argument-in"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/constructs\.IConstruct\.html#with">IConstruct\.<wbr>with<\/a>/,
     );
     expect(page).toMatch(
       /id="returned-by"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.Shims\.html#asmixin">Shims\.<wbr>asMixin<\/a>/,

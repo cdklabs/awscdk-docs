@@ -85,8 +85,9 @@ components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 `Extends:`/`Implements:` lines (one `Label: …` line per relation row, emitted
 for `Extends:` only when the type has an ancestor; entries shown without
 opening the row's disclosure keep their cross-page link, folded entries render
-as text, except in the `obtainable from` row, where every factory keeps its
-deep link), the type-metadata table becomes `- Label: value` bullets, `:::`
+as text, except in the three member rows (`obtainable from`,
+`used as argument in`, `returned by`), where every entry keeps its
+deep link to the member, which is the point of those rows), the type-metadata table becomes `- Label: value` bullets, `:::`
 containers become titled blockquotes. The type-metadata table is the only
 `<table>` the transform parses; every other table-shaped text passes through
 literally. Headings, prose, fenced code and tables pass through. Links keep

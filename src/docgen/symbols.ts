@@ -112,6 +112,7 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       ownerFqn,
       memberName: member.name,
       kind,
+      static: true,
       ...(kind === 'property' && (member as spec.Property).const ? { constant: true } : {}),
     });
     obtainableFrom.set(ref.type.fqn, list);
@@ -149,13 +150,20 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       for (const prop of type.properties ?? []) {
         recordEnumRefs(type.fqn, prop);
       }
-      // The DECLARING type owns the entry: a jsii type lists only its own methods, so an inherited member is
-      // recorded once, where it is declared, rather than on every subclass that also exposes it.
+      // The DECLARING type owns the entry: a jsii type lists its own methods plus a redeclaration of every method
+      // it overrides or implements, so skipping the redeclarations records each member once, where it is declared
+      // (`IBucket.grantRead`, not again on `BucketBase` and on every subclass). A redeclaration of a member
+      // declared outside the documented assemblies is kept, since nothing else would record it.
       for (const method of type.methods ?? []) {
-        if (method.protected || !method.name) {
+        if (method.protected || !method.name || (method.overrides && index.has(method.overrides))) {
           continue;
         }
-        const entry: MemberRef = { ownerFqn: type.fqn, memberName: method.name, kind: 'method' };
+        const entry: MemberRef = {
+          ownerFqn: type.fqn,
+          memberName: method.name,
+          kind: 'method',
+          ...(method.static ? { static: true } : {}),
+        };
         for (const param of method.parameters ?? []) {
           recordUsage(argumentIn, param.type, entry);
         }

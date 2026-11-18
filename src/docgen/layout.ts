@@ -172,6 +172,12 @@ interface RelationItem {
 }
 
 /**
+ * What an initializer entry carries after the owner name, so a row of members does not read as a row of types.
+ * It names the section the entry links to, and is the same word in every language.
+ */
+const INITIALIZER_SUFFIX = '(initializer)';
+
+/**
  * A member that relates a type to the page's type: a static factory that produces it
  * (`Bucket.fromBucketName`), a member that takes it as an argument, or a member that returns it. The owner FQN
  * links the entry to the owner's page and the member name to its row anchor there; `kind` picks the per-language
@@ -186,6 +192,8 @@ export interface MemberRef {
   readonly ownerFqn: string;
   readonly memberName: string;
   readonly kind: 'method' | 'property' | 'initializer';
+  /** A static member: jsii exposes one in Go as the package-level `Owner_Member`, where an instance member is not. */
+  readonly static?: boolean;
   /** A `const` static property: `translatePropertyName` keeps its UPPER_SNAKE name in Python, as jsii does. */
   readonly constant?: boolean;
 }
@@ -252,11 +260,12 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
  * the reader lands on the member; an entry owned by the page's own type links by fragment alone, so a version
  * catalog with hundreds of constants does not repeat its own path hundreds of times. The whole `Owner<sep>member`
  * is a language variant, translated per enabled language like the member rows: the member name through the same
- * translators, and the separator `_` for Go, where jsii exposes a static as the package-level
- * `Owner_Member`. The anchor stays on the canonical jsii name; the width budget uses the widest translation, so the
- * two-line clamp holds in every language. A `<wbr>` after the separator lets a long token wrap at narrow widths
- * without changing the accessible name; the agent Markdown twin drops the tag. An initializer entry is the owner
- * name alone, which is one spelling in every language, so it carries no variants.
+ * translators, and the separator `_` for a STATIC in Go, where jsii exposes it as the package-level
+ * `Owner_Member`; an instance member keeps the dot, because in Go it is called on a value. The anchor stays on the
+ * canonical jsii name; the width budget uses the widest translation, so the two-line clamp holds in every
+ * language. A `<wbr>` after the separator lets a long token wrap at narrow widths without changing the accessible
+ * name; the agent Markdown twin drops the tag. An initializer entry reads `Owner (initializer)` in every
+ * language, naming the section it links to rather than leaving a bare type name in a row of members.
  */
 function memberRelationRow(
   label: string,
@@ -271,15 +280,15 @@ function memberRelationRow(
     const translate = ref.kind === 'method'
       ? translateMethodName
       : (name: string, lang: Language) => translatePropertyName(name, lang, ref.constant);
-    const entry = (lang: Language) => ({ sep: lang === 'go' ? '_' : '.', member: translate(ref.memberName, lang) });
+    const entry = (lang: Language) => ({ sep: lang === 'go' && ref.static ? '_' : '.', member: translate(ref.memberName, lang) });
     const text = ref.kind === 'initializer'
-      ? owner
+      ? `${owner} ${INITIALIZER_SUFFIX}`
       : (languages.length > 0 ? languages : [DEFAULT_LANGUAGE])
         .map((lang) => `${owner}${entry(lang).sep}${entry(lang).member}`)
         .reduce((widest, candidate) => (candidate.length > widest.length ? candidate : widest));
     // The enclosing <nav> already carries `data-pagefind-ignore`, so the spans do not repeat it.
     const content = ref.kind === 'initializer'
-      ? escHtml(owner)
+      ? `${escHtml(owner)} ${INITIALIZER_SUFFIX}`
       : languageVariantSpans(languages, (lang) => {
         const { sep, member } = entry(lang);
         return `${escHtml(owner)}${sep}<wbr>${escHtml(member)}`;
@@ -489,13 +498,21 @@ export function renderUsageBar(
     type.name,
     memberRows(type.fqn, relations, linkFor, languages),
     hasVariantEntries(relations) ? languages : [],
+    // An enum has no hierarchy at all, so the landmark says what this block actually holds: a screen-reader user
+    // jumping between landmarks should not be told "Type hierarchy" and find call sites.
+    'Type relations',
   );
 }
 
 /** The bar every type without a breadcrumb trail shares: the type's own name, then its relation rows. */
-function relationBar(name: string, rows: string, languages: readonly Language[]): string[] {
+function relationBar(
+  name: string,
+  rows: string,
+  languages: readonly Language[],
+  label = 'Type hierarchy',
+): string[] {
   return hierarchyBlock(
-    `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`
+    `<nav class="inheritance-chain" aria-label="${escapeAttr(label)}" ${PAGEFIND_IGNORE}>`
     + `<div class="chain-line"><span class="chain-item chain-current">${escHtml(name)}</span></div>`
     + rows
     + '</nav>',
