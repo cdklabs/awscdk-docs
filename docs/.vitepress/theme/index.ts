@@ -19,6 +19,7 @@ import LanguageToggle from "./LanguageToggle.vue";
 import { installMemberFlash } from "./member-flash";
 import JumpToCurrent from "./JumpToCurrent.vue";
 import NavFilter from "./NavFilter.vue";
+import NavStylePicker from "./NavStylePicker.vue";
 import NavSiteTitle from "./NavSiteTitle.vue";
 import NotFound from "./NotFound.vue";
 import PageFooterLinks from "./PageFooterLinks.vue";
@@ -76,7 +77,9 @@ const theme: Theme = {
       // Positioning is flex `order` + centering in nav-controls.css. The
       // aws-cdk-lib version badge sits just left of the gear.
       "nav-bar-content-after": () => [h(LanguageToggle), h(VersionBadge), h(SettingsMenu)],
-      "nav-screen-content-after": () => [h(LanguageToggle), h(ThemePicker)],
+      // Below 768px the Settings dropdown is hidden (nav-controls.css), so the
+      // hamburger screen carries its controls directly, navigation style included.
+      "nav-screen-content-after": () => [h(LanguageToggle), h(ThemePicker), h(NavStylePicker)],
       // Site-wide footer: community links + AWS legal line. In layout-bottom
       // because themeConfig.footer is hidden by the default theme on sidebar
       // pages (every /api/** page).

@@ -357,9 +357,10 @@ describe('navbar layout', () => {
 
     test('is reachable at narrow widths through the nav screen', () => {
       expect(entry).toMatch(
-        /"nav-screen-content-after":\s*\(\)\s*=>\s*\[\s*h\(LanguageToggle\),\s*h\(ThemePicker\)\s*\]/,
+        /"nav-screen-content-after":\s*\(\)\s*=>\s*\[\s*h\(LanguageToggle\),\s*h\(ThemePicker\),\s*h\(NavStylePicker\)\s*\]/,
       );
       expect(css).toMatch(/\.VPNavScreen \.language-toggle/);
+      expect(css).toMatch(/\.VPNavScreen \.NavStylePicker/);
     });
   });
 
