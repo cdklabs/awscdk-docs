@@ -180,7 +180,17 @@ display): the member name through the member-name translators (a `const`
 keeps its UPPER_SNAKE name in Python, as the member rows do) and the
 separator `_` for a static in Go, where jsii exposes it as the package-level
 `Owner_Member`; an instance member keeps the dot, because in Go it is called
-on a value. The
+on a value. Only the member name varies between languages, so wherever the
+separator is the same in every enabled language the owner, the separator and
+the `<wbr>` are emitted once outside the variant spans, which is three of the
+five nodes an entry would otherwise cost per language. In **every** member row,
+including this one, an entry whose short owner name is not unique in its row
+carries its submodule as a trailing note, `Schedule.rate (aws_events)`: two
+identical link texts pointing at different pages cannot be told apart in a
+links list or a tab sequence (WCAG 2.4.4). The note is a parenthetical rather
+than a prefix, because a prefix reads as a namespace and the jsii submodule is
+not the namespace Go, Java or C# would use, and it is counted into the width
+budget like any other text. The
 anchor stays on the canonical jsii name and the width budget uses the widest
 translation; the block is wrapped in `<LanguageTabs>` only when a member row
 carries such a variant entry. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
@@ -222,12 +232,8 @@ assembly. The rules:
   it is recorded on the override. Parameters need no such exception, because an
   override cannot change them.
 - **Entry format.** `Owner.member`, the same as `obtainable from`, linked to
-  the owner's page at the member's row anchor. Two owners of the same short name
-  in one row are qualified with their namespace (`aws_events.Schedule.rate`),
-  because identical link text pointing at different pages cannot be told apart
-  in a links list or a tab sequence (WCAG 2.4.4), and these rows make that
-  collision common: three submodules declare a `Schedule` whose `rate` takes a
-  `Duration`. An **initializer** entry reads
+  the owner's page at the member's row anchor, and the same-name note the
+  shared renderer adds (above) applies here too. An **initializer** entry reads
   `Owner (initializer)`, linked to the owner page's `#initializer` section:
   jsii gives an initializer no member name, and its per-language spelling
   changes form rather than casing (`new Bucket(...)`, `Bucket(...)`,

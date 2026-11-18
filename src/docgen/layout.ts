@@ -178,20 +178,18 @@ interface RelationItem {
 const INITIALIZER_SUFFIX = '(initializer)';
 
 /**
- * The owner as the entry shows it. Two owners of the same short name in one row would render identical link text
- * pointing at different pages, which a links list or a tab sequence cannot tell apart (WCAG 2.4.4), and the usage
- * rows make that collision common: three `Schedule.rate` from three submodules on one row. A colliding owner is
- * qualified with its enclosing namespace, `aws_events.Schedule`, and the qualifier is part of the visible text, so
- * it counts against the row's width budget and stays in the accessible name.
+ * The owner as the entry shows it, and the note that tells two of them apart. Two owners of the same short name
+ * in one row would render identical link text pointing at different pages, which a links list or a tab sequence
+ * cannot tell apart (WCAG 2.4.4), and the usage rows make that collision common: three `Schedule.rate` from three
+ * submodules on one row. A colliding entry carries its submodule as a trailing note, `Schedule.rate (aws_events)`,
+ * rather than as a prefix: a prefix reads as a namespace, and the jsii submodule is not the namespace any of Go,
+ * Java or C# would use. The note is part of the visible text, so it counts against the row's width budget and
+ * stays in the accessible name.
  */
-function ownerLabel(fqn: string, refs: readonly MemberRef[]): string {
+function ownerNote(fqn: string, refs: readonly MemberRef[]): string {
   const name = shortName(fqn);
   const owners = new Set(refs.filter((ref) => shortName(ref.ownerFqn) === name).map((ref) => ref.ownerFqn));
-  if (owners.size < 2) {
-    return name;
-  }
-  const namespace = ownerNamespace(fqn);
-  return namespace ? `${namespace}.${name}` : name;
+  return owners.size > 1 ? ownerNamespace(fqn) : '';
 }
 
 /** The segment enclosing the type in its FQN: `aws_events` for `aws-cdk-lib.aws_events.Schedule`. */
@@ -289,7 +287,8 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
  * canonical jsii name; the width budget uses the widest translation, so the two-line clamp holds in every
  * language. A `<wbr>` after the separator lets a long token wrap at narrow widths without changing the accessible
  * name; the agent Markdown twin drops the tag. An initializer entry reads `Owner (initializer)` in every
- * language, naming the section it links to rather than leaving a bare type name in a row of members.
+ * language, naming the section it links to rather than leaving a bare type name in a row of members, and an entry
+ * whose short owner name is not unique in its row carries its submodule the same way, `Owner.member (aws_events)`.
  */
 function memberRelationRow(
   label: string,
@@ -300,23 +299,33 @@ function memberRelationRow(
   id?: string,
 ): string {
   return relationRowOf(label, refs.map((ref) => {
-    const owner = ownerLabel(ref.ownerFqn, refs);
+    const owner = shortName(ref.ownerFqn);
+    const note = ownerNote(ref.ownerFqn, refs);
+    const suffix = (word: string) => (word ? ` (${word})` : '');
     const translate = ref.kind === 'method'
       ? translateMethodName
       : (name: string, lang: Language) => translatePropertyName(name, lang, ref.constant);
     const entry = (lang: Language) => ({ sep: lang === 'go' && ref.static ? '_' : '.', member: translate(ref.memberName, lang) });
+    const langs = languages.length > 0 ? languages : [DEFAULT_LANGUAGE];
     const text = ref.kind === 'initializer'
-      ? `${owner} ${INITIALIZER_SUFFIX}`
-      : (languages.length > 0 ? languages : [DEFAULT_LANGUAGE])
-        .map((lang) => `${owner}${entry(lang).sep}${entry(lang).member}`)
+      ? `${owner} ${INITIALIZER_SUFFIX}${suffix(note)}`
+      : langs
+        .map((lang) => `${owner}${entry(lang).sep}${entry(lang).member}${suffix(note)}`)
         .reduce((widest, candidate) => (candidate.length > widest.length ? candidate : widest));
+    // Only the member name varies between languages, except for a Go static, where the separator does too. So the
+    // owner, the separator and the `<wbr>` are emitted once wherever the separator is the same in every enabled
+    // language: on the heaviest pages that is three of the five nodes an entry would otherwise cost per language.
     // The enclosing <nav> already carries `data-pagefind-ignore`, so the spans do not repeat it.
+    const separators = new Set(langs.map((lang) => entry(lang).sep));
+    const member = (lang: Language) => escHtml(entry(lang).member);
     const content = ref.kind === 'initializer'
-      ? `${escHtml(owner)} ${INITIALIZER_SUFFIX}`
-      : languageVariantSpans(languages, (lang) => {
-        const { sep, member } = entry(lang);
-        return `${escHtml(owner)}${sep}<wbr>${escHtml(member)}`;
-      }, { indexed: false });
+      ? `${escHtml(owner)} ${INITIALIZER_SUFFIX}${escHtml(suffix(note))}`
+      : (separators.size === 1
+        ? `${escHtml(owner)}${[...separators][0]}<wbr>${languageVariantSpans(languages, member, { indexed: false })}`
+        : languageVariantSpans(languages, (lang) => {
+          const { sep } = entry(lang);
+          return `${escHtml(owner)}${sep}<wbr>${member(lang)}`;
+        }, { indexed: false })) + escHtml(suffix(note));
     const fragment = `#${memberAnchor(ref.memberName)}`;
     const link = ref.ownerFqn === pageFqn ? fragment : (() => {
       const page = linkFor(ref.ownerFqn);

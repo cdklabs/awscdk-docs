@@ -337,8 +337,11 @@ describe('mixin page generation', () => {
       usage: buildUsageIndex(index),
     });
     expect(page).toMatch(
-      /id="used-as-argument-in"[\s\S]*?data-lang="go"[^>]*>IConstruct\.<wbr>With<\/span>/,
+      /id="used-as-argument-in"[\s\S]*?>IConstruct\.<wbr><span class="lang-variant" data-lang="ts">with<\/span><span class="lang-variant" data-lang="go" v-pre>With<\/span>/,
     );
+    // A static is the package-level `Owner_Member` in Go, so its separator differs by language and the whole
+    // entry stays per-language.
+    expect(page).toMatch(/id="used-as-argument-in"[\s\S]*?data-lang="go"[^>]*>Shims_<wbr>AsAspect<\/span>/);
     expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
   });
 

@@ -184,13 +184,15 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
         }
         // jsii allows a covariant override, so a redeclaration can narrow the return type even though its
         // parameters are fixed. The narrowed type is documented only here, so it is recorded even though the
-        // declaration this one overrides owns the parameter entries.
+        // declaration this one overrides owns the parameter entries. A lookup that finds no overridden method is
+        // not a narrowing: nothing is known to compare against, so the redeclaration is skipped like any other.
         const overridden = (spec.isClassType(base) || spec.isInterfaceType(base))
           ? base.methods?.find((m) => m.name === method.name)
           : undefined;
-        if (!returnsSameTypes(overridden?.returns?.type, method.returns?.type)) {
-          recordUsage(returnedBy, method.returns?.type, entry);
+        if (!overridden || returnsSameTypes(overridden.returns?.type, method.returns?.type)) {
+          continue;
         }
+        recordUsage(returnedBy, method.returns?.type, entry);
       }
     }
   }

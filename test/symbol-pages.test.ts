@@ -235,6 +235,16 @@ describe('usage index', () => {
       kind: spec.TypeKind.Class,
       methods: [{ name: 'visit', overrides: 'ext.IExternal', parameters: [{ name: 't', type: ref('lib.IThing') }] }],
     };
+    // Owners whose FQN order differs from their short-name order, which is what pins the sort key. `sub.Beta`
+    // sorts before `Impl` by short name and after `lib.Zeta` by FQN; the two `Same` owners sort by FQN only
+    // because their short names are equal.
+    const other = (fqn: string, name: string, member: string): spec.ClassType => ({
+      assembly: 'lib',
+      fqn,
+      name,
+      kind: spec.TypeKind.Class,
+      methods: [{ name: member, parameters: [{ name: 'thing', type: ref('lib.IThing') }] }],
+    });
     const assembly = {
       name: 'lib',
       types: {
@@ -245,6 +255,9 @@ describe('usage index', () => {
         'lib.Widget': construct,
         'lib.Named': named,
         'lib.Impl': impl,
+        'lib.sub.Beta': other('lib.sub.Beta', 'Beta', 'take'),
+        'lib.b.Same': other('lib.b.Same', 'Same', 'take'),
+        'lib.a.Same': other('lib.a.Same', 'Same', 'take'),
       },
     } as unknown as spec.Assembly;
     const constructs = {
@@ -256,13 +269,18 @@ describe('usage index', () => {
       },
     } as unknown as spec.Assembly;
     const synthetic = buildUsageIndex(buildTypeIndex([assembly, constructs]));
-    // Arrays and unions count for the named type inside them. The initializer entry leads its owner, because it
-    // renders as the owner name. `Base` is absent: its initializer is protected.
+    // Arrays and unions count for the named type inside them. The order is by SHORT owner name, then owner FQN,
+    // then member: `Beta` leads although `lib.sub.Beta` is the last FQN, and the two `Same` owners are separated
+    // only by their FQN. The initializer entry leads its owner, because it renders as the owner name. `Base` is
+    // absent: its initializer is protected.
     expect(synthetic.argumentIn.get('lib.IThing')).toEqual([
       { ownerFqn: 'lib.Alpha', memberName: 'initializer', kind: 'initializer' },
       { ownerFqn: 'lib.Alpha', memberName: 'add', kind: 'method' },
+      { ownerFqn: 'lib.sub.Beta', memberName: 'take', kind: 'method' },
       { ownerFqn: 'lib.Impl', memberName: 'visit', kind: 'method' },
       { ownerFqn: 'lib.Named', memberName: 'pick', kind: 'method' },
+      { ownerFqn: 'lib.a.Same', memberName: 'take', kind: 'method' },
+      { ownerFqn: 'lib.b.Same', memberName: 'take', kind: 'method' },
       { ownerFqn: 'lib.Widget', memberName: 'initializer', kind: 'initializer' },
       { ownerFqn: 'lib.Widget', memberName: 'from', kind: 'method', static: true },
       { ownerFqn: 'lib.Zeta', memberName: 'initializer', kind: 'initializer' },
@@ -618,6 +636,25 @@ describe('symbol page generation', () => {
     expect(third).not.toContain('<a ');
   });
 
+  test('the same-name note applies to the obtainable-from row too, since the renderer is shared', () => {
+    // `ownerLabel` runs inside the shared member-row renderer, so the rule is not a usage-row rule. Two `Thing`
+    // factories from two submodules get the note; a third owner with its own name does not.
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const refs = [
+      { ownerFqn: 'x.left.Thing', memberName: 'of', kind: 'method' as const, static: true },
+      { ownerFqn: 'x.right.Thing', memberName: 'of', kind: 'method' as const, static: true },
+      { ownerFqn: 'x.Other', memberName: 'of', kind: 'method' as const, static: true },
+    ];
+    const [nav] = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], { obtainableFrom: refs })
+      .filter((l) => l.includes('<nav'));
+    const row = nav.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/x.left.Thing.html#of">Thing.<wbr>of (left)</a>');
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/x.right.Thing.html#of">Thing.<wbr>of (right)</a>');
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/x.Other.html#of">Other.<wbr>of</a>');
+  });
+
   test('a const static keeps its name in the Python member row, matching the obtainable-from entry', () => {
     const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
     const assembly = loadAssembly('aws-cdk-lib');
@@ -627,7 +664,8 @@ describe('symbol page generation', () => {
     const page = renderClassPage({ type: jsonNull, assembly, index, usage, linkFor, languages: ['ts', 'python'], emitExamples: false });
     // The property row and the hierarchy entry agree: both read INSTANCE in Python, as jsii's bindings spell it.
     expect(page).toMatch(/<div class="member-row" id="instance"[\s\S]*?data-lang="python"[^>]*><code class="member-name">INSTANCE<\/code>/);
-    expect(page).toMatch(/id="obtainable-from"[\s\S]*?data-lang="python"[^>]*>JsonNull\.<wbr>INSTANCE<\/span>/);
+    // Only the member name varies between the two languages, so the owner and the separator are emitted once.
+    expect(page).toMatch(/id="obtainable-from"[\s\S]*?>JsonNull\.<wbr><span class="lang-variant" data-lang="ts">INSTANCE<\/span><span class="lang-variant" data-lang="python" v-pre>INSTANCE<\/span>/);
     // A non-const property still snake-cases: creationStack -> creation_stack.
     expect(page).toMatch(/data-lang="python"[^>]*><code class="member-name">creation_stack<\/code>/);
   });
@@ -718,9 +756,11 @@ describe('symbol page generation', () => {
     // read `Schedule.rate, Schedule.rate, Schedule.rate`, three identical link texts pointing at three pages.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
     const row = page.match(/<div class="chain-row" id="used-as-argument-in">(.*?)<\/div>/)![1];
-    expect(row).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_events.Schedule.html#rate">aws_events.Schedule.<wbr>rate</a>');
-    expect(row).toContain('aws_synthetics.Schedule.<wbr>rate');
-    expect(row).not.toContain('>Schedule.<wbr>rate<');
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_events.Schedule.html#rate">Schedule.<wbr>rate (aws_events)</a>');
+    expect(row).toContain('Schedule.<wbr>rate (aws_synthetics)');
+    // The note is a trailing parenthetical rather than a prefix: a prefix would read as a namespace, and the
+    // jsii submodule is not the namespace Go, Java or C# would use.
+    expect(row).not.toContain('>aws_events.Schedule');
     // An owner whose name is unique in the row keeps the short name.
     expect(row).toContain('<a class="chain-item" href="#minus">Duration.<wbr>minus</a>');
   });
@@ -774,12 +814,15 @@ describe('symbol page generation', () => {
     const duration = index.get('aws-cdk-lib.Duration')!.type as spec.ClassType;
     const page = renderClassPage({ type: duration, assembly, index, usage, linkFor, languages: ['ts', 'python', 'go'], emitExamples: false });
     const row = page.match(/<div class="chain-row" id="returned-by">(.*?)<\/div>/)![1];
-    expect(row).toContain('<span class="lang-variant" data-lang="ts">Duration.<wbr>minus</span>');
-    expect(row).toMatch(/data-lang="python"[^>]*>Duration\.<wbr>minus<\/span>/);
-    // An instance method keeps the dot in Go, where it is called on a value; only a static is the package-level
-    // `Owner_Member`, as the obtainable-from row above shows.
-    expect(row).toMatch(/data-lang="go"[^>]*>Duration\.<wbr>Minus<\/span>/);
+    // An instance method keeps the dot in every language, so the owner and the separator are emitted once and
+    // only the member name varies.
+    expect(row).toContain('Duration.<wbr><span class="lang-variant" data-lang="ts">minus</span>');
+    expect(row).toMatch(/data-lang="python"[^>]*>minus<\/span>/);
+    expect(row).toMatch(/data-lang="go"[^>]*>Minus<\/span>/);
+    // A static in Go is the package-level `Owner_Member`, so its separator differs by language and the whole
+    // entry stays per-language.
     const factories = page.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
+    expect(factories).toContain('<span class="lang-variant" data-lang="ts">Duration.<wbr>days</span>');
     expect(factories).toMatch(/data-lang="go"[^>]*>Duration_<wbr>Days<\/span>/);
     expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
     // An initializer entry has one spelling in every language, so it carries no variants at all, and a block
