@@ -356,8 +356,8 @@ describe('navbar layout', () => {
     });
 
     test('is reachable at narrow widths through the nav screen', () => {
-      // Reads index.ts because the slot wiring has no rendered output below
-      // the build; the e2e specs check the rendered rows and their spacing.
+      // A fast source-level check; the rendered rows are covered by
+      // test/e2e/nav-style-mobile.spec.ts.
       const navScreen = entry.match(/"nav-screen-content-after":\s*\(\)\s*=>\s*\[([^\]]*)\]/);
       expect(navScreen).not.toBeNull();
       expect(navScreen![1]).toContain('h(LanguageToggle)');

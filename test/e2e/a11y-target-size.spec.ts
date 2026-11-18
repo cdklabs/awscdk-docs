@@ -66,6 +66,30 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
     });
   }
 
+  // The mobile hamburger menu exists only while it is open below 768px, so the page scans above never measure its
+  // language, theme and navigation rows. Open it at a phone width, then scan only the menu.
+  test('the open mobile menu meets the 24px floor at 375px', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto(TOPIC_PAGE);
+    await expect(page.locator('.VPNav')).toBeVisible();
+    await page.locator('.VPNavBarHamburger').click();
+    await expect(page.locator('.VPNavScreen .NavStylePicker')).toBeVisible();
+    // The menu fades in; scan it once the transition has finished, not at partial opacity.
+    await expect.poll(() => page.locator('.VPNavScreen').evaluate((el) => el.getAnimations({ subtree: true }).length === 0 && getComputedStyle(el).opacity === '1')).toBe(true);
+
+    const results = await new AxeBuilder({ page })
+      .include('.VPNavScreen')
+      .options({ rules: { 'target-size': { enabled: true } } })
+      .withRules(['target-size'])
+      .analyze();
+    const detail = results.violations
+      .flatMap((violation) => violation.nodes)
+      .map((node) => `${node.target.join(' ')} — ${node.failureSummary ?? ''}`)
+      .join('\n');
+
+    expect(detail, `target-size violations with the mobile menu open:\n${detail}`).toBe('');
+  });
+
   // The sidebar filter's hint button exists only while a query is active and the symbol index has loaded, so the
   // scans above (empty filter) never evaluate it.
   test('the filter hint button meets target size and contrast while a query is active', async ({ page }) => {
