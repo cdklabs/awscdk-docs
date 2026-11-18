@@ -29,14 +29,19 @@ export const STABILITY_ROUTE = '/stability';
 export const VERSIONS_JSON_PATH = `${VERSIONS_ROUTE.slice(1)}.json`;
 
 /**
- * The file a stored page link is served from: the link with `.html` appended,
- * which is what VitePress emits for the equivalent markdown link under
- * `cleanUrls: false`. Directory-style links (trailing `/`, or empty) and links
- * that already name their file pass through unchanged. The static host serves
- * `404.html` for an extensionless path, so an anchor whose `href` is the bare
- * stored link flashes a `404` title when opened in a fresh tab — every raw
- * anchor must point at the file.
+ * The file a stored page link is served from: the link's path with `.html`
+ * appended, which is what VitePress emits for the equivalent markdown link
+ * under `cleanUrls: false`. A query or fragment stays after the suffix.
+ * Directory-style paths (trailing `/`, or empty) and paths that already name
+ * their file pass through unchanged. The static host serves `404.html` for an
+ * extensionless path, so every raw anchor built from a stored link must point
+ * at the file. Page links only: an asset path (`versions.json`) is not a page
+ * link and never goes through here.
  */
 export function pageFile(link: string): string {
-  return link === '' || link.endsWith('/') || link.endsWith('.html') ? link : `${link}.html`;
+  const cut = link.search(/[?#]/);
+  const path = cut === -1 ? link : link.slice(0, cut);
+  const rest = cut === -1 ? '' : link.slice(cut);
+  const file = path === '' || path.endsWith('/') || path.endsWith('.html') ? path : `${path}.html`;
+  return `${file}${rest}`;
 }

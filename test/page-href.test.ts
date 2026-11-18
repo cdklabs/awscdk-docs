@@ -1,13 +1,10 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import { jest } from '@jest/globals';
 import { pageFile, VERSIONS_ROUTE } from '../src/site-routes.js';
 
 /**
- * Raw anchors the theme renders from STORED page links must name the served
- * file (`.html`), not the bare link. VitePress's client router adds the suffix
- * on an in-page click, which hid the gap; a middle-click, "open in new tab" or
- * a copied link sends the bare path to the host, which answers with `404.html`
- * and a `404` title until the client swaps the page in.
+ * The host answers an extensionless path with `404.html`, so every anchor
+ * built from a stored page link names the `.html` file: `pageFile` is the one
+ * suffix rule, and the theme's `pageHref` is VitePress's `withBase` over it.
  */
 describe('page links the theme renders as raw anchors', () => {
   describe('pageFile', () => {
@@ -22,38 +19,30 @@ describe('page links the theme renders as raw anchors', () => {
       expect(pageFile('')).toBe('');
       expect(pageFile('/versions.html')).toBe('/versions.html');
     });
+
+    test('puts .html before a fragment or query, which stay as they are', () => {
+      expect(pageFile('/v2/docs/aws-cdk-lib.aws_sqs.Queue#fifo')).toBe('/v2/docs/aws-cdk-lib.aws_sqs.Queue.html#fifo');
+      expect(pageFile('/v2/docs/aws-cdk-lib.aws_sqs.Queue?lang=python')).toBe('/v2/docs/aws-cdk-lib.aws_sqs.Queue.html?lang=python');
+      expect(pageFile('/v2/docs/aws-cdk-lib.aws_sqs.Queue.html#fifo')).toBe('/v2/docs/aws-cdk-lib.aws_sqs.Queue.html#fifo');
+      expect(pageFile('/v2/#top')).toBe('/v2/#top');
+    });
   });
 
-  // The theme cannot be unit-tested through VitePress's `withBase`, so pin the
-  // call sites by source: each anchor built from a stored link goes through the
-  // theme's `pageHref()`, and none reaches for `withBase` on such a link again.
-  describe('theme call sites', () => {
-    const theme = path.join(import.meta.dirname, '..', 'docs', '.vitepress', 'theme');
-    const read = (file: string) => fs.readFileSync(path.join(theme, file), 'utf-8');
-
-    test('pageHref is withBase over pageFile', () => {
-      const source = read('page-href.ts');
-      expect(source).toContain('import { pageFile } from "../../../src/site-routes"');
-      expect(source).toContain('return withBase(pageFile(link));');
+  describe('theme pageHref', () => {
+    // The theme module resolves the site base through VitePress's `withBase`,
+    // so a stand-in with a sub-path base shows both halves of the href.
+    beforeAll(() => {
+      jest.unstable_mockModule('vitepress', () => ({
+        withBase: (path: string) => `/cdk/api${path}`,
+      }));
     });
 
-    test.each([
-      ['ApiSidebarItem.vue', ':href="pageHref(node.link || \'\')"'],
-      ['FavoritesList.vue', 'return pageHref(entry.path);'],
-      ['NavFilter.vue', 'await router.go(pageHref(target.link));'],
-      ['VersionBadge.vue', ':href="pageHref(VERSIONS_ROUTE)"'],
-      ['NotFound.vue', ':href="pageHref(item.link)"'],
-    ])('%s builds its page href through pageHref()', (file, call) => {
-      const source = read(file);
-      expect(source).toContain('import { pageHref } from "./page-href";');
-      expect(source).toContain(call);
-      expect(source).not.toMatch(/withBase\((node\.link|entry\.path|target\.link|item\.link|VERSIONS_ROUTE)/);
-    });
-
-    test('no theme component hand-rolls the .html suffix any more', () => {
-      for (const file of fs.readdirSync(theme).filter((name) => name.endsWith('.vue'))) {
-        expect(read(file)).not.toMatch(/`\$\{[^}]+\}\.html`/);
-      }
+    test('prefixes the base and names the page file', async () => {
+      const { pageHref } = await import('../docs/.vitepress/theme/page-href.js');
+      expect(pageHref('/v2/docs/aws-cdk-lib.aws_sqs.Queue')).toBe('/cdk/api/v2/docs/aws-cdk-lib.aws_sqs.Queue.html');
+      expect(pageHref(VERSIONS_ROUTE)).toBe('/cdk/api/versions.html');
+      expect(pageHref('/v2/')).toBe('/cdk/api/v2/');
+      expect(pageHref('/v2/docs/aws-cdk-lib.aws_sqs.Queue#fifo')).toBe('/cdk/api/v2/docs/aws-cdk-lib.aws_sqs.Queue.html#fifo');
     });
   });
 });

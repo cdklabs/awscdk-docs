@@ -1,19 +1,14 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { TOPIC_PAGE } from './fixture.js';
 
-// Raw anchors built from stored page links name the served FILE.
+// Raw anchors built from stored page links name the served `.html` file.
 //
 // The sidebar, the favorites list and the symbol index store links without
-// `.html`. VitePress's client router appends it when it handles a click, so
-// following a link in-page never showed the gap. Opening the same anchor in a
-// fresh tab (middle-click, "open in new tab", a copied link) sends the bare
-// path to the host, which answers with `404.html` — a real 404 status and a
-// `404` title that stays until the client swaps the page in. `cleanUrls` stays
-// off and the host stays as it is, so the anchors themselves have to carry the
-// suffix. The e2e server mirrors the host: an extensionless path is a 404.
-//
-// Typing a bare URL by hand may still flash `404`; that is accepted and not
-// pinned here.
+// `.html`. The host answers an extensionless path with `404.html` (a 404
+// status and a `404` title until the client swaps the page in), so an anchor
+// opened in a fresh tab (middle-click, "open in new tab", a copied link) has
+// to carry the suffix itself. The e2e server mirrors the host: an
+// extensionless path is a 404.
 test.describe('sidebar links open as real page URLs', () => {
   /** A page href is either a file (`.html`) or a directory (trailing `/`). */
   const PAGE_FILE = /(\.html|\/)$/;
@@ -56,9 +51,9 @@ test.describe('sidebar links open as real page URLs', () => {
 
   /**
    * Open `href` in a fresh tab and record every distinct `document.title` from
-   * the first script tick until the load event, polling every 100 ms as the
-   * acceptance criteria ask, plus a MutationObserver on <title> so a swap
-   * between two polls cannot slip through.
+   * the first script tick until the load event, polling every 100 ms plus a
+   * MutationObserver on `<head>` so a swap between two polls cannot slip
+   * through.
    */
   async function titlesWhileLoading(context: BrowserContext, href: string) {
     const tab = await context.newPage();
