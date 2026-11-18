@@ -387,15 +387,15 @@ function relationRowOf(label: string, items: readonly RelationItem[], id?: strin
   const { shown, hidden } = splitToBudget(items);
   // One formatted value for the visible text AND the accessible name:
   // WCAG 2.5.3 Label in Name requires the visible label to appear in the
-  // accessible name, so `2,507 more` beside `aria-label="Show 2507 more"`
+  // accessible name, so a visible `2,507 more` beside an announced `2507`
   // is a speech-input failure — and not one the axe gate can catch, since
   // 2.5.3 is not machine-testable.
   //
-  // The name also carries the ROW's label, `Show 87 more returned by`: one
-  // block can hold several overflowing rows, and a reader moving by controls
-  // would otherwise hear the same `Show N more` for each with nothing to tell
-  // them apart (WCAG 2.4.4). The visible `N more` stays the leading text, so
-  // 2.5.3 still holds.
+  // The name also carries the ROW's label, `87 more returned by`: one block
+  // can hold several overflowing rows, and a reader moving by controls would
+  // otherwise hear the same `N more` for each with nothing to tell them apart
+  // (WCAG 2.4.4). The visible `N more` LEADS the name, which is what 2.5.3
+  // asks for and is why the name does not open with a verb.
   const count = hidden.length.toLocaleString('en-US');
   // The separator lives INSIDE the item, hugging the name it follows: raw text between `<li>` siblings is invalid in
   // a `<ul>`, and the sequence must still read as continuing past the disclosure control. Three states: `', '`
@@ -407,7 +407,7 @@ function relationRowOf(label: string, items: readonly RelationItem[], id?: strin
     .map((entry, i) => item(entry, i < shown.length - 1 ? ', ' : hidden.length > 0 ? ',' : ''))
     .join('');
   const more = hidden.length > 0
-    ? `<li role="listitem"><details class="chain-more"><summary aria-label="Show ${count} more ${escapeAttr(label)}">`
+    ? `<li role="listitem"><details class="chain-more"><summary aria-label="${count} more ${escapeAttr(label)}">`
       + `${count} more</summary>`
       + `<ul class="chain-list" role="list">${hidden.map((entry, i) => item(entry, i < hidden.length - 1 ? ', ' : '')).join('')}</ul>`
       + '</details></li>'

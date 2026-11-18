@@ -271,7 +271,7 @@ describe('API page layout', () => {
       // cannot catch, since 2.5.3 is not machine-testable. Both must come
       // from the same formatted value.
       // The name also names the ROW, so a reader moving by controls can tell one block's disclosures apart.
-      const summary = row.match(/<summary aria-label="Show ([^"]+) more implemented by">([0-9,]+) more<\/summary>/);
+      const summary = row.match(/<summary aria-label="([^"]+) more implemented by">([0-9,]+) more<\/summary>/);
       expect(summary).not.toBeNull();
       expect(summary![1]).toBe(summary![2]);
       expect(summary![2]).toContain(',');

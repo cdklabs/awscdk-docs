@@ -239,7 +239,7 @@ assembly. The rules:
   else would record it, and a **static**, because jsii marks a subclass static
   that shadows a base static with `overrides` although it is a separate
   callable with its own anchor, and its own package-level function in Go
-  (`DockerImage.fromRegistry` over `BundlingDockerImage.fromRegistry`). One
+  (`App.of` over `Stage.of`). One
   further exception, for `returned by` only: jsii allows a covariant override, so a redeclaration can
   narrow its return type, and that narrowed type is documented nowhere else, so
   it is recorded on the override. Parameters need no such exception, because an

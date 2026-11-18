@@ -601,8 +601,8 @@ describe('symbol page generation', () => {
       ['Bucket.fromBucketName', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketname'],
       ['Bucket.fromCfnBucket', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket'],
     ]);
-    expect(row![1]).toContain('<summary aria-label="Show 2 more obtainable from">2 more</summary>');
-    // The row is the last one in the block, after `extends`.
+    expect(row![1]).toContain('<summary aria-label="2 more obtainable from">2 more</summary>');
+    // The row follows every type-to-type relation, after `extends`.
     expect(page.indexOf('<span class="chain-label">extends</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
   });
 
