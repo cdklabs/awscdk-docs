@@ -237,7 +237,7 @@ floating listbox:
   the input after the jump. In the narrow drawer it is left where VitePress
   puts it on route change (a jump to the current page keeps focus on the
   input and the drawer open), because the closed drawer stays in the tab order
-  (it is only transparent and translated off-screen). On non-`/api/` pages the
+  (it is only transparent and translated off-screen). On non-`/v2/` pages the
   sidebar does not render but Enter-to-jump still works, so the input is not
   dead weight.
 - The input is a plain labeled text field plus a polite live region — no

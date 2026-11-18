@@ -25,7 +25,7 @@ for loading and typing jsii assemblies; it transparently handles compressed
 `.jsii.gz`). Heavier tools like `jsii-docgen` are deliberately avoided to keep
 full control over VitePress page layout.
 
-Generated markdown is written to `docs/api/modules/`, which is gitignored —
+Generated markdown is written to `docs/v2/`, which is gitignored —
 generated pages are build artifacts, always fresh, never stale in git.
 Generation runs via the projen task `docs:generate`, prepended to `docs:build`
 and `docs:dev`. A generated `sidebar.json` populates the API sidebar; see
@@ -162,7 +162,7 @@ rather than mid-build.
 The dist root holds `build.json` (naming the candidate version and commit) and
 `js/*.tgz` (the `npm pack` tarballs). The release invocation is
 `CDK_DIST_DIR=… npx projen docs:dist:install` followed by the existing
-`docs:build:sharded` (see
+`docs:build:ci`, which runs `docs:build:sharded` at the CI runner's size (see
 [site generator and build](./2026-10-15-site-generator-and-build.md)), with
 `CDK_DIST_DIR` flowing to the build through the environment.
 

@@ -17,7 +17,7 @@ must be served without inflating per-page HTML.
 The sidebar is fully generated. Docgen builds the tree in
 `src/docgen/sidebar.ts`; the theme renders it. Grouping and labeling are a
 data-layer concern — canonical page routes
-(`/api/modules/<lang>/<pkg>/<submodule>/<TypeName>`), anchors, and
+(`/v2/docs/<docId>[.<submodule>][.<TypeName>]`), anchors, and
 cross-reference targets are never changed by a navigation decision, only
 *where a type is listed* changes.
 
@@ -181,7 +181,7 @@ it applies to. A full ~27.5k-entry tree on every API page is O(n²) HTML, so
 the tree is generated once and loaded on demand, keeping the native
 VitePress sidebar shell:
 
-- `themeConfig.sidebar["/api/"]` carries only the "Overview" link so the
+- `themeConfig.sidebar["/v2/"]` carries only the "Overview" link so the
   rail still renders. The tree is served as static assets under
   `docs/public/api-sidebar/`.
 - Docgen emits (`splitSidebarChunks`) a **skeleton** (`sidebar.<hash>.js`):
@@ -189,9 +189,9 @@ VitePress sidebar shell:
   `modules` list of page-id stems (`<docId>[.<submodule>]`) it owns — but
   no `items`; each section names its `chunk` instead. Each section's
   `items` live in `chunks/<name>.<hash>.js`. The canonical
-  `docs/api/sidebar.json` stays the full tree; the split is serving-only.
+  `docs/v2/sidebar.json` stays the full tree; the split is serving-only.
 - A theme component **`ApiSidebar`** (mounted in `sidebar-nav-after`, inert
-  outside `/api/`) fetches the skeleton once per session, then a chunk when
+  outside `/v2/`) fetches the skeleton once per session, then a chunk when
   its section is needed: on load/route-change the section owning the active
   page (matched against `modules` stems on a whole-stem boundary — `<stem>.`
   or `<stem>-readme`, longest stem wins, so `aws_s3` cannot claim
@@ -367,7 +367,7 @@ away, and is withheld while the filter query is long enough to filter
 reveal uses the shared duration-pinned scroll animation
 (`smooth-scroll.ts`), because the UA's native smooth scroll scales duration
 with distance (a long jump measured ~1,506ms against a ~300ms budget).
-Rendering is gated on `activePath.startsWith("api/")`, excluding the `/api/`
+Rendering is gated on `activePath.startsWith("v2/")`, excluding the `/v2/`
 overview root (which has no entry to reveal). The control carries a 24px box
 inside a status row reserved at 24px, so that neither it nor the filter hint
 button overhangs the header, meeting WCAG 2.5.8's 24px minimum; the 44px floor
