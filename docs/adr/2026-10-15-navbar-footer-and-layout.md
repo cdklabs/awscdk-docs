@@ -182,7 +182,8 @@ disambiguated the rows side by side) is hidden.
 The mobile hamburger nav screen mounts `ThemePicker` directly, unlabeled and
 side by side — it has full width and no hover affordance, so burying it a second
 tap deep would make it worse. For the same reason it mounts `NavStylePicker`
-directly as the row after it.
+directly as the row after it, keeping its visible `Navigation` caption, because
+its text segments alone do not name what they group.
 
 Segments never drop below the WCAG 2.5.8 24px minimum target size; the active
 state is exposed via `aria-pressed`, never color alone. A hydration-gating flag

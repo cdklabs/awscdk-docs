@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { QUEUE_PAGE } from './fixture.js';
+import { sectionTitles, topButton } from './sidebar-view.js';
 
 // Navigation style on a phone (docs/adr/2026-10-23-sidebar-navigation-styles.md,
 // "Picker"): below 768px the Settings dropdown that holds the By service / By
@@ -13,15 +14,6 @@ async function dismissConsent(page: Page) {
   const accept = page.getByRole('button', { name: 'Accept' });
   if (await accept.count()) await accept.first().click();
 }
-
-const sectionTitles = (page: Page) =>
-  page.locator('.api-sidebar-nav > .api-sidebar-list > li > p.api-sidebar-section-title');
-const topButton = (page: Page, name: string) =>
-  page
-    .locator('.api-sidebar-nav > .api-sidebar-list > li')
-    .filter({ has: page.locator(`:scope > button.api-sidebar-group:has-text("${name}")`) })
-    .first()
-    .locator(':scope > button.api-sidebar-group');
 
 test.describe('navigation style on mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });

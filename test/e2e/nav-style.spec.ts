@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { apiSidebarAssetPath, chunkBase, CFN_QUEUE_PAGE, QUEUE_PAGE, TOPIC_PAGE } from './fixture.js';
-import { closedHeadings, scrollSettled } from './sidebar-view.js';
+import { closedHeadings, scrollSettled, sectionTitles, topButton, topGroup, topLevel } from './sidebar-view.js';
 import { buildPackageSidebar, decodePackageModules } from '../../docs/.vitepress/theme/api-sidebar-package.js';
 import type { ApiSidebarNode } from '../../docs/.vitepress/theme/api-sidebar.js';
 import { API_ROOT } from '../../src/site-routes.js';
@@ -34,11 +34,6 @@ test.describe('navigation style', () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click();
     return page.getByRole('group', { name: 'Navigation' });
   }
-
-  const topLevel = (page: Page) => page.locator('.api-sidebar-nav > .api-sidebar-list > li');
-  const topGroup = (page: Page, name: string) =>
-    topLevel(page).filter({ has: page.locator(`:scope > button.api-sidebar-group:has-text("${name}")`) }).first();
-  const topButton = (page: Page, name: string) => topGroup(page, name).locator(':scope > button.api-sidebar-group');
 
   /** Resolves once the sidebar has stopped scrolling and any in-view preloads have had time to start. */
   async function settled(page: Page) {
@@ -96,7 +91,7 @@ test.describe('navigation style', () => {
     }
     expect(await page.evaluate((key) => window.localStorage.getItem(key), NAV_KEY)).toBeNull();
     // The service tree: Framework and Services headings.
-    await expect(page.locator('.api-sidebar-nav > .api-sidebar-list > li > p.api-sidebar-section-title')).toHaveText(['Framework', 'Services']);
+    await expect(sectionTitles(page)).toHaveText(['Framework', 'Services']);
   });
 
   test('switching to By package regroups at once, refetches nothing, and reveals the active page', async ({ page }) => {
@@ -239,7 +234,7 @@ test.describe('navigation style', () => {
 
     // Back to service: its own defaults, untouched by the package toggle.
     await (await openSettings(page)).getByRole('button', { name: 'By service' }).click();
-    await expect(page.locator('.api-sidebar-nav > .api-sidebar-list > li > p.api-sidebar-section-title')).toHaveText(['Framework', 'Services']);
+    await expect(sectionTitles(page)).toHaveText(['Framework', 'Services']);
     await expect(page.locator('.api-sidebar a.api-sidebar-link.active')).toHaveCount(1);
 
     // And the package choice is still there when the reader comes back.
@@ -279,7 +274,7 @@ test.describe('navigation style', () => {
     }, NAV_KEY);
     await page.goto(QUEUE_PAGE);
     await waitForSidebar(page);
-    await expect(page.locator('.api-sidebar-nav > .api-sidebar-list > li > p.api-sidebar-section-title')).toHaveText(['Framework', 'Services']);
+    await expect(sectionTitles(page)).toHaveText(['Framework', 'Services']);
     const group = await openSettings(page);
     await expect(group.getByRole('button', { name: 'By service' })).toHaveAttribute('aria-pressed', 'true');
   });
