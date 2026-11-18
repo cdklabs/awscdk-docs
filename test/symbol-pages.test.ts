@@ -637,7 +637,7 @@ describe('symbol page generation', () => {
   });
 
   test('the same-name note applies to the obtainable-from row too, since the renderer is shared', () => {
-    // `ownerLabel` runs inside the shared member-row renderer, so the rule is not a usage-row rule. Two `Thing`
+    // `ownerNote` runs inside the shared member-row renderer, so the rule is not a usage-row rule. Two `Thing`
     // factories from two submodules get the note; a third owner with its own name does not.
     const iface: spec.InterfaceType = {
       assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
@@ -653,6 +653,23 @@ describe('symbol page generation', () => {
     expect(row).toContain('<a class="chain-item" href="/v2/docs/x.left.Thing.html#of">Thing.<wbr>of (left)</a>');
     expect(row).toContain('<a class="chain-item" href="/v2/docs/x.right.Thing.html#of">Thing.<wbr>of (right)</a>');
     expect(row).toContain('<a class="chain-item" href="/v2/docs/x.Other.html#of">Other.<wbr>of</a>');
+  });
+
+  test('the note falls back to the whole namespace path when one segment still collides', () => {
+    // Two owners can share the segment nearest the type, so the one-segment note would be identical on both and
+    // the row would be back to two links a reader cannot tell apart.
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const refs = [
+      { ownerFqn: 'x.a.mixins.Thing', memberName: 'of', kind: 'method' as const, static: true },
+      { ownerFqn: 'x.b.mixins.Thing', memberName: 'of', kind: 'method' as const, static: true },
+    ];
+    const [nav] = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], { obtainableFrom: refs })
+      .filter((l) => l.includes('<nav'));
+    const texts = [...nav.matchAll(/<a class="chain-item" href="[^"]*">(.*?)<\/a>/g)].map((m) => m[1]);
+    expect(texts).toEqual(['Thing.<wbr>of (x.a.mixins)', 'Thing.<wbr>of (x.b.mixins)']);
+    expect(new Set(texts).size).toBe(texts.length);
   });
 
   test('a const static keeps its name in the Python member row, matching the obtainable-from entry', () => {

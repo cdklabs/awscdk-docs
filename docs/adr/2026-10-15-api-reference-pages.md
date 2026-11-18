@@ -288,8 +288,9 @@ assembly. The rules:
   (`docs:generate`, then `scripts/e2e-fixture-prune.cjs`, then `vitepress build
   docs`), HTML and `assets/*.js` together, because the per-page hydration chunk
   is the artifact cost that counts against the deploy limit as much as the HTML
-  does; DOM nodes from `document.querySelectorAll('*').length` on a built
-  fixture page.
+  does, with the gzipped chunk reported separately where the performance gate's
+  ceiling is what matters; DOM nodes from
+  `document.querySelectorAll('*').length` on a built fixture page.
 
   The counts are 13,342 `used as argument in` entries over 8,376 types and
   5,804 `returned by` entries over 2,120 types. The corpus grew 733.3 MB to
@@ -318,11 +319,20 @@ assembly. The rules:
   two ends of the `grant*` signature, measured on a fixture extended with
   `aws-iam`:
 
-  | page | built HTML | DOM nodes | chunk |
-  |---|---|---|---|
-  | `aws_iam.IGrantable` | 43 KB → 252 KB | 2,346 → 5,938 | 24 KB → 254 KB |
-  | `aws_iam.Grant` | 74 KB → 283 KB | 2,915 → 6,493 | 59 KB → 289 KB |
+  | page | built HTML | DOM nodes | chunk, raw | chunk, gzipped |
+  |---|---|---|---|---|
+  | `aws_iam.IGrantable` | 43 KB → 252 KB | 2,346 → 5,938 | 24 KB → 254 KB | 3.2 KB → 14.2 KB |
+  | `aws_iam.Grant` | 74 KB → 283 KB | 2,915 → 6,493 | 59 KB → 289 KB | 6.3 KB → 17.2 KB |
 
+  The gzipped column is the one the performance gate's 400 KB combined JS+CSS
+  ceiling is measured against (the collect server serves gzipped, so
+  `transferSize` is compressed bytes). Those chunks are long runs of similar
+  markup, which compresses by about 17 times, and every other `assets/*.js`
+  and `assets/*.css` in the fixture adds 31 KB gzipped, so the heaviest of
+  these pages ships about 46 KB of the 400 KB. Raw bytes are what the deploy
+  artifact pays and gzipped bytes are what a reader downloads; neither is near
+  its limit, and the gate audits none of these pages
+  (`lighthouse.config.json` names three others).
   Those two are the cases to measure before adding a third such row: the
   disclosure bounds the height a reader sees, not the DOM the browser parses or
   the chunk it downloads.

@@ -181,22 +181,39 @@ const INITIALIZER_SUFFIX = '(initializer)';
  * The owner as the entry shows it, and the note that tells two of them apart. Two owners of the same short name
  * in one row would render identical link text pointing at different pages, which a links list or a tab sequence
  * cannot tell apart (WCAG 2.4.4), and the usage rows make that collision common: three `Schedule.rate` from three
- * submodules on one row. A colliding entry carries its submodule as a trailing note, `Schedule.rate (aws_events)`,
- * rather than as a prefix: a prefix reads as a namespace, and the jsii submodule is not the namespace any of Go,
- * Java or C# would use. The note is part of the visible text, so it counts against the row's width budget and
- * stays in the accessible name.
+ * submodules on one row. A colliding entry carries its namespace as a trailing note,
+ * `Schedule.rate (aws_events)`, rather than as a prefix: a prefix reads as a namespace, and the jsii submodule is
+ * not the namespace any of Go, Java or C# would use. The note is the one enclosing segment where that is enough to
+ * tell the owners apart, and the whole namespace path where it is not (`x.a.mixins.Thing` against
+ * `x.b.mixins.Thing`, which share a `mixins` segment). The note is part of the visible text, so it counts against
+ * the row's width budget and stays in the accessible name.
  */
 function ownerNote(fqn: string, refs: readonly MemberRef[]): string {
   const name = shortName(fqn);
-  const owners = new Set(refs.filter((ref) => shortName(ref.ownerFqn) === name).map((ref) => ref.ownerFqn));
-  return owners.size > 1 ? ownerNamespace(fqn) : '';
+  const owners = [...new Set(refs.filter((ref) => shortName(ref.ownerFqn) === name).map((ref) => ref.ownerFqn))];
+  if (owners.length < 2) {
+    return '';
+  }
+  const segment = ownerNamespace(fqn);
+  const distinct = owners.every((other) => other === fqn || ownerNamespace(other) !== segment);
+  return distinct ? segment : ownerNamespacePath(fqn);
 }
 
 /** The segment enclosing the type in its FQN: `aws_events` for `aws-cdk-lib.aws_events.Schedule`. */
 function ownerNamespace(fqn: string): string {
+  const segments = namespaceSegments(fqn);
+  return segments[segments.length - 1] ?? '';
+}
+
+/** Everything before the type in its FQN: `x.a.mixins` for `x.a.mixins.Thing`. */
+function ownerNamespacePath(fqn: string): string {
+  return namespaceSegments(fqn).join('.');
+}
+
+function namespaceSegments(fqn: string): string[] {
   const segments = fqn.split('.');
   const type = segments.findIndex((segment) => /^[A-Z]/.test(segment));
-  return type > 0 ? segments[type - 1] : '';
+  return type > 0 ? segments.slice(0, type) : [];
 }
 
 /**
@@ -281,14 +298,16 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
  * entry links to the owner's page at the member's row anchor (the same `memberAnchor` the row itself carries), so
  * the reader lands on the member; an entry owned by the page's own type links by fragment alone, so a version
  * catalog with hundreds of constants does not repeat its own path hundreds of times. The whole `Owner<sep>member`
- * is a language variant, translated per enabled language like the member rows: the member name through the same
- * translators, and the separator `_` for a STATIC in Go, where jsii exposes it as the package-level
- * `Owner_Member`; an instance member keeps the dot, because in Go it is called on a value. The anchor stays on the
- * canonical jsii name; the width budget uses the widest translation, so the two-line clamp holds in every
- * language. A `<wbr>` after the separator lets a long token wrap at narrow widths without changing the accessible
- * name; the agent Markdown twin drops the tag. An initializer entry reads `Owner (initializer)` in every
- * language, naming the section it links to rather than leaving a bare type name in a row of members, and an entry
- * whose short owner name is not unique in its row carries its submodule the same way, `Owner.member (aws_events)`.
+ * The MEMBER NAME is the language variant, translated per enabled language through the same translators the
+ * member rows use. The owner, the separator and the `<wbr>` are written once outside the variants, except for a
+ * static in Go, where the separator is `_` (jsii exposes it as the package-level `Owner_Member`) and the whole
+ * entry varies; an instance member keeps the dot in every language, because in Go it is called on a value. The
+ * anchor stays on the canonical jsii name; the width budget uses the widest translation, so the two-line clamp
+ * holds in every language. A `<wbr>` after the separator lets a long token wrap at narrow widths without changing
+ * the accessible name; the agent Markdown twin drops the tag. An initializer entry reads `Owner (initializer)` in
+ * every language, naming the section it links to rather than leaving a bare type name in a row of members, and an
+ * entry whose short owner name is not unique in its row carries its namespace the same way,
+ * `Owner.member (aws_events)`.
  */
 function memberRelationRow(
   label: string,

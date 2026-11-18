@@ -224,29 +224,61 @@ test.describe('type hierarchy block', () => {
 
   // A usage row clamps to two lines and its disclosure reveals the rest, which
   // only a rendered page can show. IQueue is passed to initializers across the
-  // corpus, so its row has an overflow to reveal.
-  test('a usage row clamps to two lines and opens its own disclosure', async ({ page }) => {
-    await page.goto(IQUEUE_PAGE);
+  // corpus, so its row has an overflow to reveal. The entries carry notes
+  // (`Owner (initializer)`, `Owner.member (namespace)`) and write the owner
+  // once outside the per-language spans, so the accessible name and the reflow
+  // are checked at phone widths too: the clamp is a desktop-measured budget,
+  // but no width may leak the row out of the block.
+  test('a usage row clamps to two lines, opens its disclosure and reflows', async ({ page }) => {
+    for (const width of [1280, 375, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(IQUEUE_PAGE);
 
-    const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
-    await expect(row).toBeAttached();
-    await expect(row.locator('.chain-label')).toHaveText('used as argument in');
-    await expect(row.locator('a.chain-item').first()).toBeVisible();
+      const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
+      await expect(row).toBeAttached();
+      await expect(row.locator('.chain-label')).toHaveText('used as argument in');
+      await expect(row.locator('a.chain-item').first()).toBeVisible();
 
-    const lines = await row.evaluate((el) => {
-      const cs = getComputedStyle(el);
-      const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
-      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-      return (el.getBoundingClientRect().height - pad) / lh;
-    });
-    expect(lines).toBeLessThanOrEqual(2);
+      // The accessible name is what a screen reader reads out and what speech input matches, so it has to be the
+      // visible text: the owner written once outside the variant spans must not change it.
+      const names = await row.locator('a.chain-item:visible').evaluateAll(
+        (links) => links.map((el) => [el.textContent?.replace(/\s+/g, ' ').trim(), el.getAttribute('aria-label')]),
+      );
+      expect(names.length).toBeGreaterThan(0);
+      for (const [text, label] of names) {
+        expect(text).toBeTruthy();
+        expect(label).toBeNull();
+      }
 
-    const more = row.locator('.chain-more');
-    await expect(more).toBeAttached();
-    const hidden = more.locator('a.chain-item').first();
-    await expect(hidden).toBeHidden();
-    await more.locator('summary').click();
-    await expect(more).toHaveAttribute('open', '');
-    await expect(hidden).toBeVisible();
+      const geometry = await row.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+        const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+        const block = el.closest('.inheritance-chain')!.getBoundingClientRect();
+        return {
+          lines: (el.getBoundingClientRect().height - pad) / lh,
+          overflowRight: el.getBoundingClientRect().right - block.right,
+          pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      // The budget is measured against the desktop content column; narrower viewports wrap further, as every row
+      // of this block already does.
+      if (width === 1280) {
+        expect(geometry.lines).toBeLessThanOrEqual(2);
+      }
+      expect(geometry.overflowRight).toBeLessThanOrEqual(1);
+      expect(geometry.pageOverflow).toBeLessThanOrEqual(0);
+
+      const more = row.locator('.chain-more');
+      await expect(more).toBeAttached();
+      const hidden = more.locator('a.chain-item').first();
+      await expect(hidden).toBeHidden();
+      await more.locator('summary').click();
+      await expect(more).toHaveAttribute('open', '');
+      await expect(hidden).toBeVisible();
+      expect(await row.evaluate(
+        (el) => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      )).toBeLessThanOrEqual(0);
+    }
   });
 });
