@@ -1,6 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { CONSTRUCT_PAGE, IQUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
 
+// What a browser announces for one entry of a relation row, given its visible text. Chromium puts a word
+// boundary where one inline child of the link ends and the next begins, so an entry that writes its owner once
+// outside the per-language spans is announced `Owner. member` where it reads `Owner.member`. Both spellings are
+// the visible label, and the pause falls on a `<wbr>`, which is a break opportunity anyway. What must not happen
+// is a hidden language variant joining the name, so the expectation allows a break after a separator and is
+// exact everywhere else.
+const announcedAs = (visible: string) => new RegExp(
+  `^${visible.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\.|_/g, '$&\\s?')}$`,
+);
+
 // Type hierarchy block. The unit tests only read the generated markdown, and
 // the design requirement — one block, and at most two lines per relation
 // before the overflow — can only be judged against a rendered page.
@@ -247,7 +257,7 @@ test.describe('type hierarchy block', () => {
       for (const entry of entries) {
         const visible = ((await entry.innerText()) ?? '').replace(/\s+/g, ' ').trim();
         expect(visible).not.toBe('');
-        await expect(entry).toHaveAccessibleName(visible);
+        await expect(entry).toHaveAccessibleName(announcedAs(visible));
       }
 
       const geometry = await row.evaluate((el) => {
@@ -286,19 +296,27 @@ test.describe('type hierarchy block', () => {
   // variant spans, while a Go static varies as a whole (`Duration_Days`). So the accessible name has to be read in
   // each language state, not only the default one.
   test('an entry announces the active language, whichever shape it takes', async ({ page }) => {
-    for (const [lang, member] of [['python', 'from_queue_arn'], ['go', 'FromQueueArn']] as const) {
+    for (const [lang, factory, member] of [
+      ['python', 'Queue.from_queue_arn', 'SourceWithDeadLetterTarget.grant_push'],
+      ['go', 'Queue_FromQueueArn', 'SourceWithDeadLetterTarget.GrantPush'],
+    ] as const) {
       await page.goto(`${IQUEUE_PAGE}?lang=${lang}`);
       await expect(page.locator('.lang-tabs').first()).toHaveAttribute('data-active', lang);
 
       // A static: the whole entry is one variant, and Go spells it `Owner_Member`.
-      const factory = page.locator('.inheritance-chain .chain-row#obtainable-from a.chain-item').first();
-      await expect(factory).toHaveAccessibleName(lang === 'go' ? `Queue_${member}` : `Queue.${member}`);
+      await expect(page.locator('.inheritance-chain .chain-row#obtainable-from a.chain-item').first())
+        .toHaveAccessibleName(factory);
 
-      // An instance entry: the owner is shared across the variants, so its name must still read as one string.
-      const usage = page.locator('.inheritance-chain .chain-row#used-as-argument-in a.chain-item:visible').first();
-      const visible = ((await usage.innerText()) ?? '').replace(/\s+/g, ' ').trim();
-      expect(visible).not.toBe('');
-      await expect(usage).toHaveAccessibleName(visible);
+      // A method entry, whose owner and separator are written once outside the variant spans. The subject is
+      // picked by that shape, not by position: initializer entries sort first and carry no variants, so the
+      // row's first entry is the one shape this case does not cover. It sits in the row's overflow, so the
+      // disclosure is opened first, and the expected name is spelled out here rather than read back from the
+      // same DOM, so a TypeScript member leaking into another language view fails this.
+      const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
+      await row.locator('.chain-more summary').click();
+      const shared = row.locator('a.chain-item').filter({ has: page.locator('.lang-variant') }).first();
+      await expect(shared).toBeVisible();
+      await expect(shared).toHaveAccessibleName(announcedAs(member));
     }
   });
 });

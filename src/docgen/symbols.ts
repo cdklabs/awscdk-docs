@@ -97,11 +97,11 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
     }
   };
 
-  // The parameters a reader passes. A leading `scope` of a construct type is the construct tree the member
-  // attaches to, by the convention `constructs` sets for initializers and for the `X.fromY(scope, id, …)` family,
-  // so it is not recorded: it would list most of the corpus on the two pages that name the scope type, repeating
-  // what their `superclass of` row already carries. The type is part of the test, so a parameter that merely
-  // shares the name still counts.
+  // The parameters a reader passes. A leading `scope` typed exactly `constructs.Construct` or
+  // `constructs.IConstruct` is the construct tree the member attaches to, by the convention `constructs` sets for
+  // initializers and for the `X.fromY(scope, id, …)` family, so it is not recorded: it would list most of the
+  // corpus on the two pages that name those types, repeating what their `superclass of` row already carries. Both
+  // the name and the type are part of the test, so a `scope` of any other type, a subclass included, still counts.
   const recordParameters = (params: readonly spec.Parameter[] | undefined, entry: MemberRef) => {
     for (const [position, param] of (params ?? []).entries()) {
       if (position === 0 && param.name === SCOPE_PARAM

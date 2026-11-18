@@ -87,6 +87,12 @@ export const REPRESENTATIVE_PAGES = [
   // The `obtainable from` row and its overflow disclosure: no page above has a
   // static member returning its own type, so the audits would never see it.
   SUBSCRIPTION_FILTER_PAGE,
+  // The `used as argument in` and `returned by` rows at their fullest: an
+  // interface whose members are spelled per language, so an entry carries
+  // variant spans inside a link, and whose rows overflow into the disclosure.
+  // `CONSTRUCT_PAGE` has usage rows too, but short ones and without the
+  // same-name note, so it would not audit the markup these rows are made of.
+  IQUEUE_PAGE,
 ] as const;
 
 // Severities that FAIL the accessibility gate. Moderate and minor

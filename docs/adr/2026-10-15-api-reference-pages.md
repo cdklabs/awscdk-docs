@@ -183,7 +183,14 @@ separator `_` for a static in Go, where jsii exposes it as the package-level
 on a value. Only the member name varies between languages, so wherever the
 separator is the same in every enabled language the owner, the separator and
 the `<wbr>` are emitted once outside the variant spans, which is three of the
-five nodes an entry would otherwise cost per language. In **every** member row,
+five nodes an entry would otherwise cost per language. The cost of that saving
+is one space in what a reader hears: Chromium puts a word boundary between the
+link's inline children, so such an entry is announced `Owner. member` where it
+reads `Owner.member`. It is kept, because the pause falls where the `<wbr>`
+already allows a line break, the visible label is still what the name contains
+(WCAG 2.5.3), and the alternative is the per-language prefix those nodes paid
+for. The e2e expectation allows that one break and is otherwise exact, so a
+hidden language leaking into the name still fails. In **every** member row,
 including this one, an entry whose short owner name is not unique in its row
 carries its submodule as a trailing note, `Schedule.rate (aws_events)`: two
 identical link texts pointing at different pages cannot be told apart in a
@@ -280,14 +287,16 @@ assembly. The rules:
   otherwise. The label follows what the block contains rather than the page
   kind, so a landmark never promises a hierarchy and delivers call sites.
 - **The `scope` parameter is not a usage.** A leading parameter named `scope`
-  of a construct type is the construct tree the member attaches to, by the
+  and typed exactly `constructs.Construct` or `constructs.IConstruct` is the
+  construct tree the member attaches to, by the
   convention `constructs` sets for initializers and for the
   `X.fromY(scope, id, …)` family. It is skipped wherever it appears, in an
   initializer or in a method, because recording it listed most of the corpus on
-  the two pages that name the scope type and repeated what their
-  `superclass of` row already carries. Both halves of the test matter: a later
-  parameter is a usage like any other, and so is a leading `scope` of some
-  other type, while `Stack.of(construct)` keeps its entry because its
+  those two pages and repeated what their
+  `superclass of` row already carries. Every part of the test matters: a later
+  parameter is a usage like any other, so is a leading `scope` of any other
+  type including a `Construct` subclass such as `Stack`, and
+  `Stack.of(construct)` keeps its entry because its
   parameter is named `construct`.
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
@@ -306,8 +315,10 @@ assembly. The rules:
   ceiling is what matters; DOM nodes from
   `document.querySelectorAll('*').length` on a built fixture page.
 
-  The counts are 13,342 `used as argument in` entries over 8,376 types and
-  5,804 `returned by` entries over 2,120 types. The corpus grew 733.3 MB to
+  The index holds 13,342 `used as argument in` entries over 8,376 types and
+  5,804 `returned by` entries over 2,120 types. What the rows RENDER is smaller,
+  because the de-duplication above drops what a more specific row already
+  states: 6,437 and 2,088 entries over 3,941 types. The corpus grew 733.3 MB to
   739.1 MB, +0.79 percent over 29,893 pages. Docgen wall time is the one figure
   this host measures badly: repeated runs of the same code ranged 103 s to
   147 s, so the index walk is inside the noise rather than measured.
@@ -316,13 +327,20 @@ assembly. The rules:
   +0.35 percent, and adding
   `aws-iam` through `E2E_FIXTURE_SERVICES` (211 pages) grew 72.94 MB to
   74.71 MB, +2.43 percent,
-  because almost every IAM type is a parameter or a return somewhere. The full
-  site is not built on a developer host, so its total is **not measured**: the
-  corpus figure is the site-wide number and the fixture figures bracket what
-  bundling does to it. Nothing checks either automatically, so whoever changes
-  what these rows collect re-measures the same way and reports it on the pull
-  request. A growth above **5 percent** of the deployed artifact is the line at
-  which this presentation has to be reconsidered rather than shipped.
+  because almost every IAM type is a parameter or a return somewhere.
+
+  Raw `dist` bytes are not what the deploy gate checks: `scripts/package-site.sh`
+  deflate-zips `dist` and fails above `MAX_ZIP_MB` (900, under the 1 GB
+  GitHub Pages limit on compressed bytes), so the zip is the figure that can
+  actually stop a release. On the `aws-iam` fixture it grew 8,004,536 bytes to
+  8,094,630, **+1.13 percent**: the rows are long runs of similar markup and
+  deflate takes most of them back. The full site is not built on a developer
+  host, so its own zip is **not measured**: the corpus figure is the site-wide
+  number and the fixture figures bracket what bundling and compression do to it.
+  Whoever changes what these rows collect re-measures the same way and reports
+  it on the pull request. A growth above **5 percent** of the deployed zip is
+  the line at which this presentation has to be reconsidered rather than
+  shipped, well before `MAX_ZIP_MB` becomes the thing that says no.
 - **The heaviest pages.** Ranking the 29,893 generated pages by size, the
   biggest are catalog types that predate these rows:
   `aws_quicksight.CfnCustomPermissions.CapabilitiesProperty` and
@@ -331,13 +349,16 @@ assembly. The rules:
   0.39 MB, and these rows added 10 KB to it; its built page went 0.41 MB and
   7,685 DOM nodes to 0.42 MB and 7,853.
 
-  Ranked by entries over the whole corpus, the types these rows add most to are
-  `@aws-cdk/cfn-property-mixins`'s `CfnPropertyMixinOptions` (1,905 in
-  `used as argument in`),
-  then `aws_cloudwatch.MetricOptions` (618) and `aws_iam.IGrantable` (445), and
-  for `returned by` `aws_cloudwatch.Metric` (619), `aws_iam.Grant` (452) and
-  `aws_events.EventPattern` (425): the shape repeats wherever one struct is the
-  parameter of a family of methods and one class is what they return. Only the
+  Ranked by the entries the rows RENDER, over the whole corpus, the pages these
+  rows add most to are `aws_cloudwatch.MetricOptions` (618 in
+  `used as argument in`) and `aws_iam.IGrantable` (445), then a run of
+  reference interfaces around 70 each, and for `returned by`
+  `aws_cloudwatch.Metric` (588), `aws_iam.Grant` (445) and
+  `aws_events.EventPattern` (115): the shape repeats wherever one struct is the
+  parameter of a family of methods and one class is what they return. Ranking by
+  index entries instead would put `CfnPropertyMixinOptions` first with 1,905,
+  which is wrong: every one of those is an initializer entry whose owner the
+  props row already names, so its rendered row is empty. Only the
   IAM pair is in a buildable fixture, so they are the ones with measured built
   figures, on a fixture extended with `aws-iam`:
 
