@@ -91,7 +91,10 @@ The optional package regrouping of this same data is recorded in
   folding one module gets a plain `Overview`; one folding several puts the
   primary `aws-cdk-lib` service module first, then keeps the canonical-package
   and link order for related overviews. A primary module is a non-empty
-  `aws_<service>` or `alexa_<service>` name with no further suffix. Multiple
+  `aws_<service>` or `alexa_<service>` name with no further suffix. *In
+  Services sections the labels below are superseded — see
+  [sidebar readme labels](./2026-11-17-sidebar-readme-labels.md); Framework
+  sections keep them.* Multiple
   overviews are disambiguated as `Overview (<submodule>)`, qualified with the
   package name on a cross-package collision. Labels are language-aware via
   `labelVariants`.
