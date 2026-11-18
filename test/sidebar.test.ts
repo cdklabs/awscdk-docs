@@ -131,6 +131,13 @@ describe('sectionName', () => {
     expect(sectionName('aws_stepfunctions_tasks')).toBe('Step Functions');
   });
 
+  test('splits the two EKS modules into EKS V2 and EKS (legacy), and keeps the kubectl layer in Lambda', () => {
+    expect(sectionName('aws_eks_v2')).toBe('EKS V2');
+    expect(sectionName('aws_eks')).toBe('EKS (legacy)');
+    expect(sectionName(assemblyOwner('@aws-cdk/aws-eks-v2-alpha'))).toBe('EKS V2');
+    expect(sectionName('lambda_layer_kubectl')).toBe('Lambda');
+  });
+
   test('title-cases non-service submodules without folding', () => {
     expect(sectionName('custom_resources')).toBe('Custom Resources');
     expect(sectionName('pipelines')).toBe('Pipelines');
@@ -371,6 +378,43 @@ describe('assemblyOwner', () => {
 
   test('aws-cdk-lib maps to the empty owner so its root types stay Core', () => {
     expect(assemblyOwner('aws-cdk-lib')).toBe('');
+  });
+
+  test('the two EKS modules are two Services sections, each with its own Overview and resources', () => {
+    const sidebar = buildServiceSidebar([
+      entry({
+        name: 'Cluster',
+        kind: 'Construct (L2)',
+        submodule: 'aws_eks',
+        link: '/eks-cluster',
+        indexLink: '/v2/docs/aws-cdk-lib.aws_eks-readme',
+      }),
+      entry({
+        name: 'Cluster',
+        kind: 'Construct (L2)',
+        submodule: 'aws_eks_v2',
+        link: '/eks-v2-cluster',
+        indexLink: '/v2/docs/aws-cdk-lib.aws_eks_v2-readme',
+      }),
+      entry({ name: 'Bucket', kind: 'Construct (L2)', link: '/bucket' }),
+      entry({
+        name: 'BucketDeployment',
+        kind: 'Construct (L2)',
+        submodule: 'aws_s3_deployment',
+        link: '/bucket-deployment',
+        indexLink: '/v2/docs/aws-cdk-lib.aws_s3_deployment-readme',
+      }),
+    ]);
+    const services = sidebar.find((s) => s.text === SERVICES_SECTION)!.items!;
+    expect(services.map((s) => s.text)).toEqual(['EKS (legacy)', 'EKS V2', 'S3']);
+    const legacy = services[0].items!;
+    const v2 = services[1].items!;
+    expect(legacy[0]).toEqual({ text: 'Overview', link: '/v2/docs/aws-cdk-lib.aws_eks-readme' });
+    expect(v2[0]).toEqual({ text: 'Overview', link: '/v2/docs/aws-cdk-lib.aws_eks_v2-readme' });
+    expect(JSON.stringify(legacy)).toContain('/eks-cluster');
+    expect(JSON.stringify(legacy)).not.toContain('/eks-v2-cluster');
+    expect(JSON.stringify(v2)).toContain('/eks-v2-cluster');
+    expect(JSON.stringify(v2)).not.toContain('/eks-cluster"');
   });
 
   test('alpha service packages fold into the same Services section as the stable submodule', () => {

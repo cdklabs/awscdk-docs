@@ -160,6 +160,15 @@ const CORE_SUBMODULES = new Set(['', 'core', 'assets']);
 const LAMBDA_LAYER_PREFIX = 'lambda_layer_';
 
 /**
+ * The two EKS modules, each a Services section of its own, with the newer module checked first because its owner
+ * also starts with `aws_eks_`. A submodule or package owned by either follows it into its section.
+ */
+const EKS_SECTIONS: ReadonlyArray<readonly [string, string]> = [
+  ['aws_eks_v2', 'EKS V2'],
+  ['aws_eks', 'EKS (legacy)'],
+];
+
+/**
  * Curated service display names: AWS brands with internal capitalization ("DynamoDB", "ElastiCache"), multi-word
  * names collapsed into one submodule token ("Amazon MQ", "Global Accelerator"), and renamed services ("Data
  * Firehose", "Cloud Map"). Keyed by the first `_`-token after the `aws_` prefix; tokens absent here fall back to
@@ -523,12 +532,19 @@ export function frameworkSectionCompare(a: string, b: string): number {
  * after the prefix is the service key, so integration submodules fold
  * into their service (`aws_s3_deployment` -> S3, like `aws_s3`).
  * Non-service submodules (e.g. `custom_resources`) keep their full
- * name, title-cased.
+ * name, title-cased. EKS is the one exception: `aws_eks_v2` and `aws_eks`
+ * hold different classes, so each is a service of its own
+ * ({@link EKS_SECTIONS}).
  */
 export function sectionName(submodule: string): string {
   // The Lambda-layer packages fold into the Lambda service, exactly like `aws_lambda` and its integration submodules.
   if (submodule.startsWith(LAMBDA_LAYER_PREFIX)) {
     return displayToken('lambda');
+  }
+  for (const [owner, section] of EKS_SECTIONS) {
+    if (submodule === owner || submodule.startsWith(`${owner}_`)) {
+      return section;
+    }
   }
   const tokens = submodule.startsWith('aws_')
     ? [submodule.slice(4).split('_')[0]]
