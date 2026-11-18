@@ -35,9 +35,10 @@ and search filters per page, then routes by kind:
   class initializer parameters.
 - **Behavioral interfaces** that are not mixins show methods and properties.
 - **Enums** show a members table and a "Referenced by" list of properties
-  typed by the enum. A deprecated member is marked like a deprecated
-  property row: struck-through name, a `deprecated` badge, and the
-  deprecation reason in place of the summary.
+  typed by the enum, plus the usage rows (below) in a `Type relations` block
+  when a member takes or returns the enum. A deprecated member is marked like
+  a deprecated property row: struck-through name, a `deprecated` badge, and
+  the deprecation reason in place of the summary.
 
 Type references in property tables render as markdown links when the target
 has a documented page (`linkFor` over a global FQN → link map), falling back
@@ -215,9 +216,7 @@ assembly. The rules:
   recorded once where it is declared (`IBucket.grantRead`, not again on
   `BucketBase` and on every subclass, and `IAspect.visit` rather than one entry
   per implementor). A redeclaration of a member declared outside the documented
-  assemblies is kept, because nothing else would record it. Filtering them cut
-  the corpus growth from +1.76 to +1.03 percent and `constructs.IConstruct`
-  from 2.81 MB to 0.42 MB.
+  assemblies is kept, because nothing else would record it.
 - **Entry format.** `Owner.member`, the same as `obtainable from`, linked to
   the owner's page at the member's row anchor. An **initializer** entry reads
   `Owner (initializer)`, linked to the owner page's `#initializer` section:
@@ -248,25 +247,39 @@ assembly. The rules:
   than `Type hierarchy`, since an enum has no hierarchy for a landmark to
   promise; a mixin page gains them in the block it already had.
   `obtainable from` stays off enum and mixin pages, as before.
+- **The `scope` parameter is not a usage.** Every construct's initializer opens
+  with `scope`, the parameter the construct tree is built from, so recording it
+  would list most of the corpus on the `Construct` and `IConstruct` pages and
+  repeat names their `superclass of` row already carries. The first initializer
+  parameter named `scope` is skipped; the second and later parameters of the
+  same initializer are not.
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
-  the disclosure. Counted from the configured modules at the commit that added
-  the rows: 17,555 `used as argument in` entries over 8,376 types, and 5,804
-  `returned by` entries over 2,120 types. Generating the 29,893-page corpus
-  grew it from 733.3 MB to 740.9 MB, +1.03 percent, and the built HTML grows by
-  0.97 bytes per added markdown byte on the e2e fixture, so the full site is
-  **estimated** at about +0.37 percent. That share is extrapolated from the
-  fixture, not read off a sharded build, and nothing checks it automatically:
-  whoever changes what these rows collect re-measures the corpus the same way
-  and reports it on the pull request. A growth above **5 percent** of total
-  built HTML is the line at which this presentation has to be reconsidered
-  rather than shipped.
+  the disclosure. All figures below come from one host, base `6052c36` against
+  the branch head, same installed dependencies, and the method is: entry counts
+  from walking the assemblies of `docgen.config.json` with the rules in this
+  section; corpus size is the total bytes of the generated `.md` pages under
+  `docs/v2` from `npx projen docs:generate`; built HTML is the total bytes of
+  `.html` under the VitePress `dist` of the 84-page e2e fixture build
+  (`docs:generate`, `scripts/e2e-fixture-prune.cjs`, `vitepress build docs`);
+  DOM nodes are `document.querySelectorAll('*').length` on a built fixture
+  page. The counts are 14,827 `used as argument in` entries over 8,375 types
+  and 5,804 `returned by` entries over 2,120 types. The corpus grew from
+  733.3 MB to 740.4 MB, +0.97 percent over 29,893 pages. The added HTML runs at
+  0.97 bytes per added markdown byte on the fixture, so the full site, about
+  1.97 GB of HTML, is **estimated** at +0.35 percent. That share is
+  extrapolated from the fixture, not read off a sharded build, and nothing
+  checks it automatically: whoever changes what these rows collect re-measures
+  the same way and reports it on the pull request. A growth above **5 percent**
+  of total built HTML is the line at which this presentation has to be
+  reconsidered rather than shipped.
 - **The heaviest page.** The weight is not spread evenly. `constructs.Construct`
-  carries one entry per construct initializer that takes a `scope`, which took
-  its built page from 0.41 MB and 7,685 DOM nodes to 1.71 MB and 30,907, where
-  the next heaviest type page is under 0.5 MB. The disclosure bounds the height
-  a reader sees, not the DOM the browser parses. That page is the one to watch
-  when these rows change, and the one to measure before adding a third such row.
+  carries the most entries of any page, and its built page went from 0.41 MB and
+  7,685 DOM nodes to 1.28 MB and 25,457, where the next heaviest type page is
+  under 0.5 MB; a method entry costs about twelve nodes, one variant span and
+  one `<wbr>` per enabled language. The disclosure bounds the height a reader
+  sees, not the DOM the browser parses. That page is the one to watch when these
+  rows change, and the one to measure before adding a third such row.
 
 Each row is clamped to two lines by a **build-time character budget**
 (`RELATION_ROW_BUDGET = 70`, tuned by measurement — a derived 150 ran to 3–4.75
@@ -455,7 +468,8 @@ HTML VitePress renders.
   The previous reference also appended its experimental/deprecated badge markup
   to the title id; that tail is not reproduced.
 - **Sections:** fixed ids `example`, `initializer`, `properties`, `methods`,
-  `members`, `referenced-by`, `used-as-props-by` and `obtainable-from`. Module
+  `members`, `referenced-by`, `used-as-props-by`, `obtainable-from`,
+  `used-as-argument-in` and `returned-by`. Module
   overview sections are `module-submodules` and `module-types`, because README
   prose above them can carry its own `## Types` heading.
 - **Members:** `memberAnchor(name)` from the canonical TypeScript name; inlined
@@ -570,9 +584,11 @@ outline, only overview pages suppress it.
   vocabularies; the old `prop-row`/`method-details` markup and markdown props
   tables are gone.
 - Relationship rows ship every entry in the HTML behind native `<details>`, so
-  the four heaviest base-class pages pay in bytes (`constructs.Construct.md`
-  ~211 KB) for completeness; an absolute "… and N more" cap is the lever if
-  those pages are later judged too heavy.
+  the heaviest base-class pages pay in bytes for completeness; the usage rows
+  added to this block push `constructs.Construct` furthest, and the figures and
+  the page to watch are in the Size and heaviest-page bullets above. An
+  absolute "… and N more" cap is the lever if those pages are later judged too
+  heavy.
 - Nine badge hues, their contrast pairs, and the per-kind label are this
   project's to maintain; a tenth kind means a new hue and two pinned pairs.
 - The L-level heuristic can misclassify unconventional constructs; it is

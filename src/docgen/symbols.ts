@@ -141,7 +141,12 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       const init = type.initializer;
       if (init && !init.protected) {
         const entry: MemberRef = { ownerFqn: type.fqn, memberName: INITIALIZER_MEMBER, kind: 'initializer' };
-        for (const param of init.parameters ?? []) {
+        for (const [position, param] of (init.parameters ?? []).entries()) {
+          // Every construct's initializer opens with `scope`, the same parameter the construct tree is built from,
+          // so recording it would list most of the corpus on the two pages that type names.
+          if (position === 0 && param.name === SCOPE_PARAM) {
+            continue;
+          }
           recordUsage(argumentIn, param.type, entry);
         }
       }
@@ -212,6 +217,9 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
 /** The canonical member name of an initializer, which anchors its entry to the owner page's Initializer section. */
 const INITIALIZER_MEMBER = SECTION_ANCHORS.initializer;
 
+/** First initializer parameter of a construct: the scope it is created in, by the convention `constructs` sets. */
+const SCOPE_PARAM = 'scope';
+
 /** Byte-stable ordering, so the output does not depend on the build host's locale. */
 function byCodeUnit(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -219,8 +227,8 @@ function byCodeUnit(a: string, b: string): number {
 
 /**
  * Each owner and member once, in the order the row displays them: by owner name, then by member name, with the
- * owner FQN breaking a tie between two types of the same name in different submodules. An initializer entry
- * renders as the owner name alone, so it leads its owner's entries.
+ * owner FQN breaking a tie between two types of the same name in different submodules. An initializer entry sorts
+ * first within its owner, matching how the row reads.
  */
 function sortedUsage(usage: Map<string, MemberRef[]>): Map<string, MemberRef[]> {
   const entryName = (ref: MemberRef) => (ref.kind === 'initializer' ? '' : ref.memberName);
@@ -351,8 +359,8 @@ export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): strin
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-enum" text="Enum" />`, ''];
   lines.push(...renderDescription(type));
-  // An enum extends nothing and implements nothing, so its block holds the usage rows alone. `obtainable from`
-  // stays off this page, as it always has.
+  // An enum extends nothing and implements nothing, so its block holds the usage rows alone. Enum pages carry no
+  // `obtainable from` row.
   lines.push(...renderUsageBar(type, linkFor, usageRowsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {

@@ -185,8 +185,8 @@ const INITIALIZER_SUFFIX = '(initializer)';
  *
  * An `initializer` has no member name of its own in jsii, and its per-language spelling changes form rather than
  * casing (`new Bucket(...)`, `Bucket(...)`, `NewBucket(...)`), so no `Owner<sep>member` string exists for it: the
- * entry renders as the owner name alone and `memberName` carries the canonical `initializer` that anchors it to the
- * owner page's Initializer section.
+ * entry renders as `Owner (initializer)` and `memberName` carries the canonical `initializer` that anchors it to
+ * the owner page's Initializer section.
  */
 export interface MemberRef {
   readonly ownerFqn: string;
@@ -382,10 +382,19 @@ export function renderInheritanceChain(
   ].join('');
   return hierarchyBlock(
     // Breadcrumbs repeat ancestor type names on every page; keep them out of the search index.
-    `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`
+    `<nav class="inheritance-chain" aria-label="${escapeAttr(landmarkLabel(ancestors.length + interfaces.length + subclasses.length > 0))}" ${PAGEFIND_IGNORE}>`
     + `<div class="chain-line">${items.join(sep)}</div>${rows}</nav>`,
     hasVariantEntries(relations) ? languages : [],
   );
+}
+
+/**
+ * What the block's landmark is called, chosen by what the block holds rather than by page kind: a block of usage
+ * rows alone promises no hierarchy, so a screen-reader user jumping between landmarks is not sent to call sites
+ * expecting ancestors.
+ */
+function landmarkLabel(hasTypeRelation: boolean): string {
+  return hasTypeRelation ? 'Type hierarchy' : 'Type relations';
 }
 
 /**
@@ -442,7 +451,7 @@ function hasVariantEntries(usage: UsageRelations): boolean {
 
 /**
  * The block as page lines. Only member rows carry language variants (member names), so the block is wrapped in
- * `<LanguageTabs>` exactly when one of those entries is present: every other page keeps the bare `<nav>` it had.
+ * `<LanguageTabs>` exactly when one of those entries is present; otherwise it is the bare `<nav>`.
  */
 function hierarchyBlock(nav: string, languages: readonly Language[]): string[] {
   const lines = wrapLanguageTabs(languages, [nav]);
@@ -477,11 +486,16 @@ export function renderExtendsBar(
       : '',
     memberRows(type.fqn, relations, linkFor, languages),
   ].join('');
-  return relationBar(type.name, rows, hasVariantEntries(relations) ? languages : []);
+  return relationBar(
+    type.name,
+    rows,
+    hasVariantEntries(relations) ? languages : [],
+    parents.length + implementers.length + propsUsers.length > 0,
+  );
 }
 
 /**
- * Hierarchy bar for a type with no type-to-type relation of its own, which is the enum case: an enum extends
+ * Relation bar for a type with no type-to-type relation of its own, which is the enum case: an enum extends
  * nothing and implements nothing, so its block exists only when a member takes it or returns it.
  */
 export function renderUsageBar(
@@ -498,9 +512,7 @@ export function renderUsageBar(
     type.name,
     memberRows(type.fqn, relations, linkFor, languages),
     hasVariantEntries(relations) ? languages : [],
-    // An enum has no hierarchy at all, so the landmark says what this block actually holds: a screen-reader user
-    // jumping between landmarks should not be told "Type hierarchy" and find call sites.
-    'Type relations',
+    false,
   );
 }
 
@@ -509,10 +521,10 @@ function relationBar(
   name: string,
   rows: string,
   languages: readonly Language[],
-  label = 'Type hierarchy',
+  hasTypeRelation: boolean,
 ): string[] {
   return hierarchyBlock(
-    `<nav class="inheritance-chain" aria-label="${escapeAttr(label)}" ${PAGEFIND_IGNORE}>`
+    `<nav class="inheritance-chain" aria-label="${escapeAttr(landmarkLabel(hasTypeRelation))}" ${PAGEFIND_IGNORE}>`
     + `<div class="chain-line"><span class="chain-item chain-current">${escHtml(name)}</span></div>`
     + rows
     + '</nav>',

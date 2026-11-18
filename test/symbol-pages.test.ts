@@ -124,7 +124,15 @@ describe('usage index', () => {
     expect(usage.argumentIn.get('aws-cdk-lib.aws_s3.LifecycleRule')).toEqual([
       { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'addLifecycleRule', kind: 'method' },
     ]);
-    // A static entry is marked as one, because jsii spells a static differently in Go.
+    // Every construct initializer opens with `scope`, so recording it would list most of the corpus on the
+    // Construct and IConstruct pages. Those entries are the ones the row drops.
+    expect((index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType).initializer?.parameters?.[0])
+      .toMatchObject({ name: 'scope', type: { fqn: 'constructs.Construct' } });
+    expect(usage.argumentIn.get('constructs.Construct') ?? []).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', kind: 'initializer' }),
+    );
+    // An instance method carries no static flag, so Go keeps the dot for it; the static entries below are
+    // flagged, because jsii exposes a static in Go as the package-level `Owner_Member`.
     expect(usage.returnedBy.get('aws-cdk-lib.Duration')).toContainEqual(
       { ownerFqn: 'aws-cdk-lib.Duration', memberName: 'minus', kind: 'method' },
     );
@@ -181,6 +189,25 @@ describe('usage index', () => {
       kind: spec.TypeKind.Class,
       initializer: { protected: true, parameters: [{ name: 'thing', type: ref('lib.IThing') }] },
     };
+    // A construct's first parameter is the scope it is created in, which every construct takes, so it is not
+    // recorded. The second parameter of the same initializer still is.
+    const construct: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Widget',
+      name: 'Widget',
+      kind: spec.TypeKind.Class,
+      initializer: {
+        parameters: [{ name: 'scope', type: ref('lib.IThing') }, { name: 'config', type: ref('lib.IThing') }],
+      },
+    };
+    // A redeclaration of a member declared OUTSIDE the documented assemblies is kept: nothing else records it.
+    const impl: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Impl',
+      name: 'Impl',
+      kind: spec.TypeKind.Class,
+      methods: [{ name: 'visit', overrides: 'ext.IExternal', parameters: [{ name: 't', type: ref('lib.IThing') }] }],
+    };
     const assembly = {
       name: 'lib',
       types: {
@@ -188,6 +215,8 @@ describe('usage index', () => {
         'lib.Zeta': owner('lib.Zeta', 'Zeta'),
         'lib.Alpha': owner('lib.Alpha', 'Alpha'),
         'lib.Base': hidden,
+        'lib.Widget': construct,
+        'lib.Impl': impl,
       },
     } as unknown as spec.Assembly;
     const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
@@ -196,6 +225,8 @@ describe('usage index', () => {
     expect(synthetic.argumentIn.get('lib.IThing')).toEqual([
       { ownerFqn: 'lib.Alpha', memberName: 'initializer', kind: 'initializer' },
       { ownerFqn: 'lib.Alpha', memberName: 'add', kind: 'method' },
+      { ownerFqn: 'lib.Impl', memberName: 'visit', kind: 'method' },
+      { ownerFqn: 'lib.Widget', memberName: 'initializer', kind: 'initializer' },
       { ownerFqn: 'lib.Zeta', memberName: 'initializer', kind: 'initializer' },
       { ownerFqn: 'lib.Zeta', memberName: 'add', kind: 'method' },
     ]);
@@ -613,16 +644,24 @@ describe('symbol page generation', () => {
     expect(page).not.toContain('id="returned-by"');
   });
 
-  test('an enum used as an argument gets the hierarchy block it otherwise has no reason to carry', () => {
+  test('an enum used as an argument gets the relation block it otherwise has no reason to carry', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.RemovalPolicy.md'), 'utf-8');
     expect(page).toContain('<nav class="inheritance-chain"');
     expect(page).toContain('<span class="chain-item chain-current">RemovalPolicy</span>');
     expect(page).toMatch(
       /id="used-as-argument-in"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.IResource\.html#applyremovalpolicy">IResource\.<wbr>applyRemovalPolicy<\/a>/,
     );
-    // An enum has no hierarchy, so the landmark says what the block holds.
+    // The landmark is named for what the block holds, so a block of usage rows promises no hierarchy. That is
+    // every enum, and any other type whose only relations are usages: nothing extends LifecycleRule or takes it
+    // as props.
     expect(page).toContain('<nav class="inheritance-chain" aria-label="Type relations"');
-    // An enum no member takes or returns keeps the page it always had.
+    const struct = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.LifecycleRule.md'), 'utf-8');
+    expect(struct).toContain('<nav class="inheritance-chain" aria-label="Type relations"');
+    expect(struct).toContain('id="used-as-argument-in"');
+    // A block with a type-to-type relation keeps the hierarchy name.
+    const iface = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
+    expect(iface).toContain('<nav class="inheritance-chain" aria-label="Type hierarchy"');
+    // An enum no member takes or returns has no relation block at all.
     const unused = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketEncryption.md'), 'utf-8');
     expect(unused).not.toContain('<nav class="inheritance-chain"');
   });
@@ -643,9 +682,9 @@ describe('symbol page generation', () => {
     const factories = page.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
     expect(factories).toMatch(/data-lang="go"[^>]*>Duration_<wbr>Days<\/span>/);
     expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
-    // An initializer entry has one spelling in every language, so it carries no variants at all — and a block
-    // whose member rows hold only such entries stays the bare <nav> it always was. It names the section it links
-    // to, so a row of members does not read as a row of types.
+    // An initializer entry has one spelling in every language, so it carries no variants at all, and a block
+    // whose member rows hold only such entries is the bare <nav> with no language tabs. It names the section it
+    // links to, so a row of members does not read as a row of types.
     const iface: spec.InterfaceType = { assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface };
     const argumentIn = [{ ownerFqn: 'x.Thing', memberName: 'initializer', kind: 'initializer' as const }];
     const lines = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], { argumentIn }, ['ts', 'python', 'go']);
@@ -663,14 +702,15 @@ describe('symbol page generation', () => {
     const duration = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8'), SITE_URL).markdown;
     expect(duration).toMatch(/^Used as argument in: /m);
     expect(duration).toMatch(/^Returned by: /m);
-    // Entries past the two-line budget keep their deep link in these rows, as they do in the obtainable-from row:
-    // the link to the member is what the row is for. Construct's row is almost entirely folded.
-    const construct = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'constructs.Construct.md'), 'utf-8'), SITE_URL).markdown;
-    const argumentIn = construct.split('\n').find((l) => l.startsWith('Used as argument in: '))!;
-    expect(argumentIn).toMatch(
-      /\[Stack \(initializer\)\]\(https:\/\/docs\.example\.com\/cdk\/api\/v2\/docs\/aws-cdk-lib\.Stack\.html#initializer\)/,
-    );
+    // The shown entries link, as they do in every row. Entries behind the disclosure render as text, because a
+    // type used in thousands of places would otherwise put hundreds of kilobytes of links between the
+    // description and the API surface the twin carries.
+    const argumentIn = duration.split('\n').find((l) => l.startsWith('Used as argument in: '))!;
     const links = (argumentIn.match(/\]\(https:\/\/docs\.example\.com\/cdk\/api\/v2\/docs\//g) ?? []).length;
-    expect(links).toBeGreaterThan(1000);
+    const entries = argumentIn.split(', ').length;
+    expect(links).toBeGreaterThan(0);
+    expect(links).toBeLessThan(10);
+    expect(entries).toBeGreaterThan(links);
+    expect(argumentIn).toContain('Duration.minus');
   });
 });

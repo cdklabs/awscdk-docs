@@ -290,8 +290,8 @@ export function renderMixinPage(options: MixinPageOptions): string {
   // Merged description: tagline + remarks, no `## Overview`.
   lines.push(...renderDescription(type));
   // Parent interfaces render in the hierarchy bar, and the classes carrying the mixin render as its
-  // `implemented by` row rather than a section further down. `obtainable from` stays off this page, as it always
-  // has.
+  // `implemented by` row rather than a section further down. Mixin pages carry no `obtainable from` row; only the
+  // usage rows render here.
   lines.push(...renderExtendsBar(
     type, linkFor, mixins.get(type.fqn) ?? [], [], usageRowsFor(type.fqn, options.usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));

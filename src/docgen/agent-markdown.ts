@@ -439,13 +439,6 @@ function literalTag(el: Element): string {
   return `<${el.name}${attrs}>${children(el)}`;
 }
 
-/** The rows whose entries are members, and whose deep links survive the fold. */
-const MEMBER_ROW_IDS: readonly string[] = [
-  SECTION_ANCHORS.obtainableFrom,
-  SECTION_ANCHORS.usedAsArgumentIn,
-  SECTION_ANCHORS.returnedBy,
-];
-
 /** Type hierarchy `<nav>`: one line for the chain above the type, one per relation row (implements, …). */
 function renderInheritance(el: Element): string {
   const lines: string[] = [];
@@ -454,8 +447,10 @@ function renderInheritance(el: Element): string {
     const cls = classes(child);
     // Entries shown without opening the row's disclosure keep their cross-page link (a same-page `#…` link renders
     // as text like everywhere else in the twin); entries folded inside `.chain-more` render as text, except in the
-    // three member rows, whose deep links to the member are the point of the row. Recorded in the SEO ADR.
-    const linkFolded = MEMBER_ROW_IDS.includes(child.attribs.id);
+    // `obtainable from` row, whose deep links to factories are the point of the row. The usage rows fold to text:
+    // a type used in thousands of places would otherwise put hundreds of kilobytes of links ahead of the API
+    // surface the twin exists to carry. Recorded in the SEO ADR.
+    const linkFolded = child.attribs.id === SECTION_ANCHORS.obtainableFrom;
     const folded = (n: Element): boolean => {
       for (let p = DomUtils.getParent(n); p && p !== child; p = DomUtils.getParent(p)) {
         if (isElement(p) && classes(p).has('chain-more')) return true;

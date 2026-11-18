@@ -54,6 +54,8 @@ describe('API page anchors', () => {
       'example', 'initializer', 'props-queueprops', 'properties', 'methods',
     ]));
     expect(ids('aws-cdk-lib.aws_sqs.QueueProps')).toContain('used-as-props-by');
+    // The usage rows carry fixed ids too: Duration.minus takes a Duration and returns one.
+    expect(ids('aws-cdk-lib.Duration')).toEqual(expect.arrayContaining(['used-as-argument-in', 'returned-by']));
     expect(ids('aws-cdk-lib.aws_sqs.QueueEncryption')).toEqual(expect.arrayContaining(['members', 'referenced-by']));
   });
 
