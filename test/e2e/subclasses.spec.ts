@@ -281,4 +281,24 @@ test.describe('type hierarchy block', () => {
       )).toBeLessThanOrEqual(0);
     }
   });
+
+  // The entry markup differs by language: an instance entry writes the owner and the separator once outside the
+  // variant spans, while a Go static varies as a whole (`Duration_Days`). So the accessible name has to be read in
+  // each language state, not only the default one.
+  test('an entry announces the active language, whichever shape it takes', async ({ page }) => {
+    for (const [lang, member] of [['python', 'from_queue_arn'], ['go', 'FromQueueArn']] as const) {
+      await page.goto(`${IQUEUE_PAGE}?lang=${lang}`);
+      await expect(page.locator('.lang-tabs').first()).toHaveAttribute('data-active', lang);
+
+      // A static: the whole entry is one variant, and Go spells it `Owner_Member`.
+      const factory = page.locator('.inheritance-chain .chain-row#obtainable-from a.chain-item').first();
+      await expect(factory).toHaveAccessibleName(lang === 'go' ? `Queue_${member}` : `Queue.${member}`);
+
+      // An instance entry: the owner is shared across the variants, so its name must still read as one string.
+      const usage = page.locator('.inheritance-chain .chain-row#used-as-argument-in a.chain-item:visible').first();
+      const visible = ((await usage.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+      expect(visible).not.toBe('');
+      await expect(usage).toHaveAccessibleName(visible);
+    }
+  });
 });

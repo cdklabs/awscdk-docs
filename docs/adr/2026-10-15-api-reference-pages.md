@@ -372,8 +372,10 @@ explicitly** — WebKit strips native list semantics from inline-styled lists,
 and the row must flow as text (`display: inline; list-style: none`) for the
 clamp. The disclosure is the list's final item with the hidden remainder as a
 nested `<ul>` inside it, never inside `<summary>`. Separators live inside each
-item (`', '` between names, bare `','` before the disclosure). Order is
-FQN-sorted for byte-stable output. All relations ship in the HTML (hidden by
+item (`', '` between names, bare `','` before the disclosure). Type rows and
+`obtainable from` are FQN-sorted for byte-stable output; the usage rows sort by
+owner short name first, as their Order bullet above records, which is byte-stable
+too. All relations ship in the HTML (hidden by
 `<details>`); the block carries `data-pagefind-ignore` so type names repeating
 on every page do not pollute search ([search](./2026-10-15-search-and-filter.md)).
 

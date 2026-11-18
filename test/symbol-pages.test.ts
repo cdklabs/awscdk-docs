@@ -345,6 +345,29 @@ describe('usage index', () => {
     ]);
   });
 
+  test('a redeclaration whose overridden method cannot be found is not read as a narrowing', () => {
+    // `overrides` names a documented type, so the member is a redeclaration, but that type declares no method of
+    // the name. Nothing is known to compare the return against, so the entry belongs to whatever declared it
+    // rather than here: treating the missing lookup as a narrowing would record every such member twice.
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.Thing': { assembly: 'lib', fqn: 'lib.Thing', name: 'Thing', kind: spec.TypeKind.Class },
+        'lib.Marker': { assembly: 'lib', fqn: 'lib.Marker', name: 'Marker', kind: spec.TypeKind.Interface },
+        'lib.Impl': {
+          assembly: 'lib',
+          fqn: 'lib.Impl',
+          name: 'Impl',
+          kind: spec.TypeKind.Class,
+          methods: [{ name: 'build', overrides: 'lib.Marker', returns: { type: ref('lib.Thing') } }],
+        },
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    expect(synthetic.returnedBy.has('lib.Thing')).toBe(false);
+  });
+
   test('a static that shadows a base static is its own entry, not a redeclaration', () => {
     // jsii marks a subclass static that shadows a base static with `overrides`, but it is a separate callable
     // with its own anchor, so both are listed. `App.of` shadows `Stage.of`, and both return their own type.

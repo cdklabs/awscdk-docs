@@ -179,17 +179,13 @@ const INITIALIZER_SUFFIX = '(initializer)';
 
 /**
  * The note that tells two owners of the same short name apart, for every entry of one row at once. Two such
- * owners would render identical link text pointing at different pages, which a links list or a tab sequence
- * cannot tell apart (WCAG 2.4.4), and the usage rows make that collision common: three `Schedule.rate` from three
- * submodules on one row. A colliding entry carries its namespace as a trailing note,
- * `Schedule.rate (aws_events)`, rather than as a prefix: a prefix reads as a namespace, and the jsii submodule is
- * not the namespace any of Go, Java or C# would use. The note is the one enclosing segment where that is enough to
- * tell the owners apart, and the whole namespace path where it is not (`x.a.mixins.Thing` against
- * `x.b.mixins.Thing`, which share a `mixins` segment). The note is part of the visible text, so it counts against
- * the row's width budget and stays in the accessible name.
- *
- * Built as one map per row rather than per entry: these rows grow with the number of call sites, and a per-entry
- * scan would cost a pass over the row for each of its entries.
+ * owners render identical link text pointing at different pages, which a links list or a tab sequence cannot tell
+ * apart (WCAG 2.4.4). A colliding entry carries its namespace as a trailing note,
+ * `Schedule.rate (aws_events)`: the one enclosing segment where that tells the owners apart, and the whole
+ * namespace path where it does not (`x.a.mixins.Thing` against `x.b.mixins.Thing`, which share a `mixins`
+ * segment). The note is part of the visible text, so it counts against the row's width budget and stays in the
+ * accessible name. One map per row keeps a row linear in its entries, which matters for the one relation that
+ * grows with the number of call sites.
  */
 function ownerNotes(refs: readonly MemberRef[]): ReadonlyMap<string, string> {
   const owners = new Map<string, Set<string>>();
@@ -349,8 +345,7 @@ function memberRelationRow(
         .reduce((widest, candidate) => (candidate.length > widest.length ? candidate : widest));
     // Only the member name varies between languages, except for a Go static, where the separator does too. So the
     // owner, the separator and the `<wbr>` are emitted once wherever the separator is the same in every enabled
-    // language: on the heaviest pages that is three of the five nodes an entry would otherwise cost per language.
-    // The enclosing <nav> already carries `data-pagefind-ignore`, so the spans do not repeat it.
+    // language. The enclosing <nav> already carries `data-pagefind-ignore`, so the spans do not repeat it.
     const separators = new Set(langs.map((lang) => entry(lang).sep));
     const member = (lang: Language) => escHtml(entry(lang).member);
     const content = ref.kind === 'initializer'
@@ -392,10 +387,9 @@ function relationRowOf(label: string, items: readonly RelationItem[], id?: strin
   // 2.5.3 is not machine-testable.
   //
   // The name also carries the ROW's label, `87 more returned by`: one block
-  // can hold several overflowing rows, and a reader moving by controls would
-  // otherwise hear the same `N more` for each with nothing to tell them apart
-  // (WCAG 2.4.4). The visible `N more` LEADS the name, which is what 2.5.3
-  // asks for and is why the name does not open with a verb.
+  // can hold several overflowing rows, and a reader moving by controls hears
+  // which one each disclosure opens (WCAG 2.4.4). The visible `N more` LEADS
+  // the name, which is what 2.5.3 asks for.
   const count = hidden.length.toLocaleString('en-US');
   // The separator lives INSIDE the item, hugging the name it follows: raw text between `<li>` siblings is invalid in
   // a `<ul>`, and the sequence must still read as continuing past the disclosure control. Three states: `', '`
