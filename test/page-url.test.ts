@@ -12,6 +12,10 @@ describe('pageUrl', () => {
     expect(pageUrl('v2/index.md', SITE)).toBe(`${SITE}v2/`);
   });
 
+  test('a page whose name ends in "index" is not a directory index', () => {
+    expect(pageUrl('v2/docs/foo-index.md', SITE)).toBe(`${SITE}v2/docs/foo-index.html`);
+  });
+
   test('a site URL without a trailing slash joins without doubling it', () => {
     expect(pageUrl('versions.md', 'https://docs.aws.amazon.com/cdk/api')).toBe('https://docs.aws.amazon.com/cdk/api/versions.html');
   });
