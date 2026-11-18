@@ -320,7 +320,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
   const typeIndex = buildTypeIndex([...assemblies.values()]);
   // Import paths README examples resolve their type names through.
   const readmeModules = importModules(assemblies.values());
-  const documentedPackages: ReadonlySet<string> = new Set(config.modules);
+  // Keyed by assembly name, the name readme pages are emitted under, which can differ from the node_modules directory.
+  const documentedPackages: ReadonlySet<string> = new Set([...assemblies.values()].map((a) => a.name));
   // Both mixin shapes, sharing one marker resolution and one closure memo: interface-marked mixins, and the concrete
   // CLASSES extending the marker-carrying abstract base, which the interface-keyed index cannot hold.
   const {
