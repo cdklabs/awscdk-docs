@@ -48,14 +48,15 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Same track, caption and segment rules as ThemePicker.vue's labeled layout,
-   so the group sits flush under the theme pickers in the Settings panel. */
+/* Same track, caption and segment rules as ThemePicker.vue's labeled layout.
+   The root sets no outer margin: each host places it (SettingsMenu.vue under
+   the theme pickers, nav-controls.css as a mobile nav-screen row), so the two
+   placements never tie on specificity and depend on stylesheet order. */
 .NavStylePicker {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
-  margin-top: 6px;
 }
 
 .nav-style-group-label {

@@ -46,6 +46,8 @@ test.describe('navigation style on mobile', () => {
       .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))) {
       expect(height).toBeGreaterThanOrEqual(24);
     }
+    // The nav-screen row spacing, not the Settings panel's.
+    await expect(page.locator('.VPNavScreen .NavStylePicker')).toHaveCSS('margin-top', '12px');
 
     await group.getByRole('button', { name: 'By package' }).click();
     await expect(group.getByRole('button', { name: 'By package' })).toHaveAttribute('aria-pressed', 'true');
@@ -85,5 +87,6 @@ test.describe('navigation style on desktop', () => {
     const group = page.locator('.SettingsMenu').getByRole('group', { name: 'Navigation' });
     await expect(group).toBeVisible();
     await expect(page.getByRole('group', { name: 'Navigation' })).toHaveCount(1);
+    await expect(page.locator('.SettingsMenu .NavStylePicker')).toHaveCSS('margin-top', '6px');
   });
 });
