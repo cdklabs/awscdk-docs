@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from "vue";
-import { withBase } from "vitepress";
 import type { Ref } from "vue";
 import { displayLabel, groupKey, isActiveLink, isUnloadedChunk, type ApiSidebarNode } from "./api-sidebar";
+import { pageHref } from "./page-href";
 import { isOpenWhileFiltering } from "./sidebar-filter";
 import { collapseScrollDelta, isStuck, type StickyHeadings } from "./sidebar-sticky";
 
@@ -184,7 +184,7 @@ onBeforeUnmount(() => {
       v-else
       class="api-sidebar-link"
       :class="{ active }"
-      :href="withBase(node.link || '')"
+      :href="pageHref(node.link || '')"
       :title="canonicalName"
       :aria-label="accessibleName"
       :aria-current="active ? 'page' : undefined"

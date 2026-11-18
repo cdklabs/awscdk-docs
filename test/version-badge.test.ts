@@ -36,11 +36,13 @@ describe('navbar version badge', () => {
     expect(component).toMatch(/length\s*>\s*0/);
   });
 
-  test('the badge links to the versions page, base-aware', () => {
-    // Same page the "Versions" nav item targets. withBase keeps it correct
-    // under the project-pages base path.
-    expect(component).toContain('withBase');
-    expect(component).toContain('withBase(VERSIONS_ROUTE)');
+  test('the badge links to the versions page file, base-aware', () => {
+    // Same page the "Versions" nav item targets. pageHref applies the base
+    // and names the served file (`/versions.html`): a bare `/versions` opened
+    // in a fresh tab is a 404 on the host, which flashes the 404 title.
+    expect(component).toContain('import { pageHref } from "./page-href";');
+    expect(component).toContain('pageHref(VERSIONS_ROUTE)');
+    expect(component).not.toContain('withBase');
   });
 
   test('label carries the v prefix and an accessible name that starts with it', () => {

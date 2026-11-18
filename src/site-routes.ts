@@ -1,7 +1,7 @@
 /**
  * Site-root-relative route constants, shared by docgen (which emits links) and
  * the theme client code (which parses and builds them). Browser-safe by design:
- * constants only, no node imports, no environment reads.
+ * constants and pure string helpers only, no node imports, no environment reads.
  *
  * The site is hosted at docs.aws.amazon.com/cdk/api/, so the hosting base
  * completes the historical URLs: `/v2/docs/…` serves at `/cdk/api/v2/docs/…`.
@@ -27,3 +27,16 @@ export const STABILITY_ROUTE = '/stability';
  * versions page route with the extension swapped, served beside it.
  */
 export const VERSIONS_JSON_PATH = `${VERSIONS_ROUTE.slice(1)}.json`;
+
+/**
+ * The file a stored page link is served from: the link with `.html` appended,
+ * which is what VitePress emits for the equivalent markdown link under
+ * `cleanUrls: false`. Directory-style links (trailing `/`, or empty) and links
+ * that already name their file pass through unchanged. The static host serves
+ * `404.html` for an extensionless path, so an anchor whose `href` is the bare
+ * stored link flashes a `404` title when opened in a fresh tab — every raw
+ * anchor must point at the file.
+ */
+export function pageFile(link: string): string {
+  return link === '' || link.endsWith('/') || link.endsWith('.html') ? link : `${link}.html`;
+}

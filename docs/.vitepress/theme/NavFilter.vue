@@ -8,6 +8,7 @@ import { useData, useRouter, withBase } from "vitepress";
 import { computed, ref, watch } from "vue";
 import { apiSidebarAsset } from "./api-sidebar";
 import { filterSymbols, type SymbolEntry } from "./filterSymbols";
+import { pageHref } from "./page-href";
 import { isFilterActive, sidebarFilterQuery } from "./sidebar-filter";
 
 const query = ref("");
@@ -94,7 +95,7 @@ async function onEnter() {
     // page loads, at any width (the drawer is still open here). Only the refocus after navigation is width-guarded.
     inputEl.value?.focus();
     clear();
-    await router.go(withBase(target.link));
+    await router.go(pageHref(target.link));
     focusInput();
   }
 }

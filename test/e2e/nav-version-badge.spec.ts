@@ -15,7 +15,7 @@ test.describe('navbar version badge', () => {
     // from an absent package.
     await expect(badge).toHaveText(/^v\d+\.\d+\.\d+/);
     const href = await badge.getAttribute('href');
-    expect(href).toMatch(/\/versions$/);
+    expect(href).toMatch(/\/versions\.html$/);
     // Accessible name says what is versioned, not just the number.
     await expect(badge).toHaveAttribute('aria-label', /aws-cdk-lib/);
   });
@@ -42,7 +42,7 @@ test.describe('navbar version badge', () => {
 
     await expect(badge).toBeVisible();
     await expect(badge).toHaveText(/^v\d+\.\d+\.\d+/);
-    await expect(badge).toHaveAttribute('href', /\/versions$/);
+    await expect(badge).toHaveAttribute('href', /\/versions\.html$/);
     await expect(badge).toHaveAttribute('aria-label', /aws-cdk-lib/);
 
     const titleBox = await title.boundingBox();

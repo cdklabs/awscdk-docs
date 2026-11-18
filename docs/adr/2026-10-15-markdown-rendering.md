@@ -113,9 +113,22 @@ through `pageHref()` in `src/docgen/links.ts`, which:
 
 Markdown links keep emitting the bare site-root-relative page link:
 VitePress rewrites those itself, and they double as keys for client
-features (`symbols.json`, `type-summaries.json`) whose consumers already
-apply `withBase()` and strip `.html`. A hand-run `docs:generate` must use
-the same `DOCS_BASE` as its build.
+features (`symbols.json`, `type-summaries.json`, the sidebar tree, the
+favorites store) whose consumers apply the base and strip `.html` to
+compare routes. A hand-run `docs:generate` must use the same `DOCS_BASE`
+as its build.
+
+The same rule binds the theme. VitePress's client router appends `.html`
+when it handles a click, so an anchor whose `href` is the bare stored link
+works in-page — but a middle-click, "open in new tab" or a copied link
+sends the bare path to the host, which answers with `404.html` and a `404`
+title until the client swaps the page in. Every theme anchor built from a
+stored link (sidebar leaves, favorites, the version badge, the 404 page's
+next steps, the filter's jump) goes through `pageHref()` in
+`docs/.vitepress/theme/page-href.ts`: `withBase()` over the shared
+`pageFile()` in `src/site-routes.ts`, the one place the `.html` rule lives
+for docgen and theme alike. `cleanUrls` stays off and the host serves the
+files as they are; the anchors carry the suffix.
 
 The `pageHref()` rule covers cross-reference anchors to generated pages.
 Raw-HTML anchors to external sites (the CloudFormation and source links in
@@ -226,8 +239,10 @@ dropped, so the failure mode is a leftover list, never lost prose.
   deployments without relying on `ignoreDeadLinks` or Pages URL fallbacks.
   Generated markdown becomes base-dependent when `DOCS_BASE` is set; safe
   because every docs task regenerates before building. Any future raw-HTML
-  cross-reference anchor must build its href via `pageHref()`; any raw-HTML
-  anchor docgen emits to an external site carries `EXTERNAL_LINK_ATTRS`.
+  cross-reference anchor must build its href via `pageHref()`, and any
+  theme anchor built from a stored page link via the theme's `pageHref()`;
+  any raw-HTML anchor docgen emits to an external site carries
+  `EXTERNAL_LINK_ATTRS`.
 - All escaping shares one reviewed implementation; new escape contexts add
   a named helper in `escape.ts` rather than a fresh `.replace()` chain.
 - The six fence-aware passes cannot disagree about fence boundaries;
