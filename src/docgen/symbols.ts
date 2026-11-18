@@ -97,13 +97,15 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
     }
   };
 
-  // The parameters a reader passes. A leading `scope` is the construct tree the member attaches to, by the
-  // convention `constructs` sets for initializers and for the `X.fromY(scope, id, …)` and `X.of(scope)` families,
+  // The parameters a reader passes. A leading `scope` of a construct type is the construct tree the member
+  // attaches to, by the convention `constructs` sets for initializers and for the `X.fromY(scope, id, …)` family,
   // so it is not recorded: it would list most of the corpus on the two pages that name the scope type, repeating
-  // what their `superclass of` row already carries.
+  // what their `superclass of` row already carries. The type is part of the test, so a parameter that merely
+  // shares the name still counts.
   const recordParameters = (params: readonly spec.Parameter[] | undefined, entry: MemberRef) => {
     for (const [position, param] of (params ?? []).entries()) {
-      if (position === 0 && param.name === SCOPE_PARAM) {
+      if (position === 0 && param.name === SCOPE_PARAM
+        && spec.isNamedTypeReference(param.type) && SCOPE_TYPES.has(param.type.fqn)) {
         continue;
       }
       recordUsage(argumentIn, param.type, entry);
@@ -165,7 +167,7 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       // (`IBucket.grantRead`, not again on `BucketBase` and on every subclass). A redeclaration of a member
       // declared outside the documented assemblies is kept, since nothing else would record it.
       for (const method of type.methods ?? []) {
-        if (method.protected || !method.name || (method.overrides && index.has(method.overrides))) {
+        if (method.protected || !method.name) {
           continue;
         }
         const entry: MemberRef = {
@@ -174,8 +176,21 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
           kind: 'method',
           ...(method.static ? { static: true } : {}),
         };
-        recordParameters(method.parameters, entry);
-        recordUsage(returnedBy, method.returns?.type, entry);
+        const base = method.overrides ? index.get(method.overrides)?.type : undefined;
+        if (!base) {
+          recordParameters(method.parameters, entry);
+          recordUsage(returnedBy, method.returns?.type, entry);
+          continue;
+        }
+        // jsii allows a covariant override, so a redeclaration can narrow the return type even though its
+        // parameters are fixed. The narrowed type is documented only here, so it is recorded even though the
+        // declaration this one overrides owns the parameter entries.
+        const overridden = (spec.isClassType(base) || spec.isInterfaceType(base))
+          ? base.methods?.find((m) => m.name === method.name)
+          : undefined;
+        if (!returnsSameTypes(overridden?.returns?.type, method.returns?.type)) {
+          recordUsage(returnedBy, method.returns?.type, entry);
+        }
       }
     }
   }
@@ -226,6 +241,9 @@ const INITIALIZER_MEMBER = SECTION_ANCHORS.initializer;
  */
 const SCOPE_PARAM = 'scope';
 
+/** The types that convention takes as a scope. A `scope` of any other type is an ordinary parameter. */
+const SCOPE_TYPES: ReadonlySet<string> = new Set(['constructs.Construct', 'constructs.IConstruct']);
+
 /** Byte-stable ordering, so the output does not depend on the build host's locale. */
 function byCodeUnit(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -261,6 +279,15 @@ function namedFqns(ref: spec.TypeReference): string[] {
     return ref.union.types.flatMap(namedFqns);
   }
   return [];
+}
+
+/**
+ * Whether two returns name the same documented types. The rows are keyed by named type, so this is exactly the
+ * comparison that decides whether a covariant override would otherwise lose an entry.
+ */
+function returnsSameTypes(a: spec.TypeReference | undefined, b: spec.TypeReference | undefined): boolean {
+  const names = (ref: spec.TypeReference | undefined) => (ref ? [...new Set(namedFqns(ref))].sort().join('|') : '');
+  return names(a) === names(b);
 }
 
 interface SymbolPageOptions<T extends spec.Type> {

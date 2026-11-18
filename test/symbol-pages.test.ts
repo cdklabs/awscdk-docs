@@ -200,17 +200,32 @@ describe('usage index', () => {
       kind: spec.TypeKind.Class,
       initializer: { protected: true, parameters: [{ name: 'thing', type: ref('lib.IThing') }] },
     };
-    // A construct's first parameter is the scope it is created in, which every construct takes, and the same
-    // holds for a method that opens with one. The second parameter of the same initializer still counts.
+    // A leading `scope` of a construct type is the construct tree, so it is not a usage; the second parameter of
+    // the same initializer, and a method parameter after it, still are.
     const construct: spec.ClassType = {
       assembly: 'lib',
       fqn: 'lib.Widget',
       name: 'Widget',
       kind: spec.TypeKind.Class,
       initializer: {
-        parameters: [{ name: 'scope', type: ref('lib.IThing') }, { name: 'config', type: ref('lib.IThing') }],
+        parameters: [
+          { name: 'scope', type: ref('constructs.IConstruct') },
+          { name: 'config', type: ref('lib.IThing') },
+        ],
       },
-      methods: [{ name: 'from', static: true, parameters: [{ name: 'scope', type: ref('lib.IThing') }] }],
+      methods: [{
+        name: 'from',
+        static: true,
+        parameters: [{ name: 'scope', type: ref('constructs.IConstruct') }, { name: 'thing', type: ref('lib.IThing') }],
+      }],
+    };
+    // A parameter that merely shares the name is an ordinary parameter: the type is part of the test.
+    const named: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Named',
+      name: 'Named',
+      kind: spec.TypeKind.Class,
+      methods: [{ name: 'pick', parameters: [{ name: 'scope', type: ref('lib.IThing') }] }],
     };
     // A redeclaration of a member declared OUTSIDE the documented assemblies is kept: nothing else records it.
     const impl: spec.ClassType = {
@@ -228,20 +243,33 @@ describe('usage index', () => {
         'lib.Alpha': owner('lib.Alpha', 'Alpha'),
         'lib.Base': hidden,
         'lib.Widget': construct,
+        'lib.Named': named,
         'lib.Impl': impl,
       },
     } as unknown as spec.Assembly;
-    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    const constructs = {
+      name: 'constructs',
+      types: {
+        'constructs.IConstruct': {
+          assembly: 'constructs', fqn: 'constructs.IConstruct', name: 'IConstruct', kind: spec.TypeKind.Interface,
+        },
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly, constructs]));
     // Arrays and unions count for the named type inside them. The initializer entry leads its owner, because it
     // renders as the owner name. `Base` is absent: its initializer is protected.
     expect(synthetic.argumentIn.get('lib.IThing')).toEqual([
       { ownerFqn: 'lib.Alpha', memberName: 'initializer', kind: 'initializer' },
       { ownerFqn: 'lib.Alpha', memberName: 'add', kind: 'method' },
       { ownerFqn: 'lib.Impl', memberName: 'visit', kind: 'method' },
+      { ownerFqn: 'lib.Named', memberName: 'pick', kind: 'method' },
       { ownerFqn: 'lib.Widget', memberName: 'initializer', kind: 'initializer' },
+      { ownerFqn: 'lib.Widget', memberName: 'from', kind: 'method', static: true },
       { ownerFqn: 'lib.Zeta', memberName: 'initializer', kind: 'initializer' },
       { ownerFqn: 'lib.Zeta', memberName: 'add', kind: 'method' },
     ]);
+    // The scope parameters themselves are recorded nowhere.
+    expect(synthetic.argumentIn.has('constructs.IConstruct')).toBe(false);
     expect(synthetic.returnedBy.get('lib.IThing')).toEqual([
       { ownerFqn: 'lib.Alpha', memberName: 'Pick', kind: 'method' },
       { ownerFqn: 'lib.Zeta', memberName: 'Pick', kind: 'method' },
@@ -249,6 +277,54 @@ describe('usage index', () => {
     expect(synthetic.argumentIn.get('lib.IThing')).not.toContainEqual(
       expect.objectContaining({ ownerFqn: 'lib.Base' }),
     );
+  });
+
+  test('a covariant override is recorded where the narrowed return type is declared', () => {
+    // jsii allows an override to narrow its return type, and that narrowed type is documented only on the
+    // override. Skipping the redeclaration outright would lose the entry, since the declaration it overrides
+    // returns the wider type.
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const base: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Base',
+      name: 'Base',
+      kind: spec.TypeKind.Class,
+      methods: [
+        { name: 'build', returns: { type: ref('lib.Wide') } },
+        { name: 'name', parameters: [{ name: 'wide', type: ref('lib.Wide') }] },
+      ],
+    };
+    const derived: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Derived',
+      name: 'Derived',
+      kind: spec.TypeKind.Class,
+      base: 'lib.Base',
+      methods: [
+        { name: 'build', overrides: 'lib.Base', returns: { type: ref('lib.Narrow') } },
+        { name: 'name', overrides: 'lib.Base', parameters: [{ name: 'wide', type: ref('lib.Wide') }] },
+      ],
+    };
+    const plain = (fqn: string, name: string): spec.ClassType => ({ assembly: 'lib', fqn, name, kind: spec.TypeKind.Class });
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.Base': base, 'lib.Derived': derived, 'lib.Wide': plain('lib.Wide', 'Wide'), 'lib.Narrow': plain('lib.Narrow', 'Narrow'),
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    expect(synthetic.returnedBy.get('lib.Narrow')).toEqual([
+      { ownerFqn: 'lib.Derived', memberName: 'build', kind: 'method' },
+    ]);
+    // The wider type keeps the one entry it had, on the declaring type.
+    expect(synthetic.returnedBy.get('lib.Wide')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'build', kind: 'method' },
+    ]);
+    // A redeclaration that returns the same type adds nothing, and parameters are never doubled: an override
+    // cannot change them.
+    expect(synthetic.argumentIn.get('lib.Wide')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'name', kind: 'method' },
+    ]);
   });
 
   test('class member collection walks the base-class chain', () => {
@@ -635,6 +711,18 @@ describe('symbol page generation', () => {
     // The three member rows come last, in one order: obtainable from, then the two usage rows.
     expect(page.indexOf('id="obtainable-from"')).toBeLessThan(page.indexOf('id="used-as-argument-in"'));
     expect(page.indexOf('id="used-as-argument-in"')).toBeLessThan(page.indexOf('id="returned-by"'));
+  });
+
+  test('two owners of the same name in one row are told apart by their namespace', () => {
+    // Three submodules declare a `Schedule` whose `rate` takes a Duration, so without the qualifier the row would
+    // read `Schedule.rate, Schedule.rate, Schedule.rate`, three identical link texts pointing at three pages.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
+    const row = page.match(/<div class="chain-row" id="used-as-argument-in">(.*?)<\/div>/)![1];
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_events.Schedule.html#rate">aws_events.Schedule.<wbr>rate</a>');
+    expect(row).toContain('aws_synthetics.Schedule.<wbr>rate');
+    expect(row).not.toContain('>Schedule.<wbr>rate<');
+    // An owner whose name is unique in the row keeps the short name.
+    expect(row).toContain('<a class="chain-item" href="#minus">Duration.<wbr>minus</a>');
   });
 
   test('a struct taken by an initializer keeps the props row alone, with no second row saying the same', () => {

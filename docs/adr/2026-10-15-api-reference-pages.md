@@ -216,9 +216,18 @@ assembly. The rules:
   recorded once where it is declared (`IBucket.grantRead`, not again on
   `BucketBase` and on every subclass, and `IAspect.visit` rather than one entry
   per implementor). A redeclaration of a member declared outside the documented
-  assemblies is kept, because nothing else would record it.
+  assemblies is kept, because nothing else would record it. One exception, for
+  `returned by` only: jsii allows a covariant override, so a redeclaration can
+  narrow its return type, and that narrowed type is documented nowhere else, so
+  it is recorded on the override. Parameters need no such exception, because an
+  override cannot change them.
 - **Entry format.** `Owner.member`, the same as `obtainable from`, linked to
-  the owner's page at the member's row anchor. An **initializer** entry reads
+  the owner's page at the member's row anchor. Two owners of the same short name
+  in one row are qualified with their namespace (`aws_events.Schedule.rate`),
+  because identical link text pointing at different pages cannot be told apart
+  in a links list or a tab sequence (WCAG 2.4.4), and these rows make that
+  collision common: three submodules declare a `Schedule` whose `rate` takes a
+  `Duration`. An **initializer** entry reads
   `Owner (initializer)`, linked to the owner page's `#initializer` section:
   jsii gives an initializer no member name, and its per-language spelling
   changes form rather than casing (`new Bucket(...)`, `Bucket(...)`,
@@ -251,13 +260,15 @@ assembly. The rules:
   otherwise. The label follows what the block contains rather than the page
   kind, so a landmark never promises a hierarchy and delivers call sites.
 - **The `scope` parameter is not a usage.** A leading parameter named `scope`
-  is the construct tree the member attaches to, by the convention `constructs`
-  sets for initializers and for the `X.fromY(scope, id, …)` family. It is
-  skipped wherever it appears, in an initializer or in a method, because
-  recording it listed most of the corpus on the two pages that name the scope
-  type and repeated what their `superclass of` row already carries. A later
-  parameter is a usage like any other, and so is a leading parameter under
-  another name: `Stack.of(construct)` still lists on `IConstruct`.
+  of a construct type is the construct tree the member attaches to, by the
+  convention `constructs` sets for initializers and for the
+  `X.fromY(scope, id, …)` family. It is skipped wherever it appears, in an
+  initializer or in a method, because recording it listed most of the corpus on
+  the two pages that name the scope type and repeated what their
+  `superclass of` row already carries. Both halves of the test matter: a later
+  parameter is a usage like any other, and so is a leading `scope` of some
+  other type, while `Stack.of(construct)` keeps its entry because its
+  parameter is named `construct`.
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
   the disclosure. Measured on one host with the same installed dependencies,
@@ -265,8 +276,9 @@ assembly. The rules:
   this file resolves, and the method is: entry counts from
   walking the assemblies of `docgen.config.json` with the rules in this
   section; corpus size as the total bytes of generated `.md` pages under
-  `docs/v2` from `npx projen docs:generate`; artifact size as the total bytes
-  of the whole VitePress `dist` of the 84-page e2e fixture build
+  `docs/v2` from `npx projen docs:generate`, timed on the same host with the
+  same command; artifact size as the total bytes of the whole VitePress `dist`
+  of an e2e fixture build
   (`docs:generate`, then `scripts/e2e-fixture-prune.cjs`, then `vitepress build
   docs`), HTML and `assets/*.js` together, because the per-page hydration chunk
   is the artifact cost that counts against the deploy limit as much as the HTML
@@ -275,15 +287,17 @@ assembly. The rules:
 
   The counts are 13,340 `used as argument in` entries over 8,375 types and
   5,804 `returned by` entries over 2,120 types. The corpus grew 733.3 MB to
-  739.5 MB, +0.85 percent over 29,893 pages. On the fixture, HTML grew
-  +0.54 percent, `assets/*.js` +0.35 percent and the whole `dist`
-  +0.38 percent. The full site is not built on a developer host, so its total
-  is **not measured**: the corpus figure is the site-wide number, and the
-  fixture ratios are the best available read on what that becomes after
-  bundling. Nothing checks either automatically, so whoever changes what these
-  rows collect re-measures the same way and reports it on the pull request. A
-  growth above **5 percent** of the deployed artifact is the line at which this
-  presentation has to be reconsidered rather than shipped.
+  739.5 MB, +0.85 percent over 29,893 pages, and docgen ran 103.2 s against
+  104.1 s. Artifact growth depends on which services the fixture keeps: the
+  default SNS and SQS fixture (84 pages) grew +0.38 percent, and adding
+  `aws-iam` through `E2E_FIXTURE_SERVICES` (211 pages) grew +3.1 percent,
+  because almost every IAM type is a parameter or a return somewhere. The full
+  site is not built on a developer host, so its total is **not measured**: the
+  corpus figure is the site-wide number and the fixture figures bracket what
+  bundling does to it. Nothing checks either automatically, so whoever changes
+  what these rows collect re-measures the same way and reports it on the pull
+  request. A growth above **5 percent** of the deployed artifact is the line at
+  which this presentation has to be reconsidered rather than shipped.
 - **The heaviest pages.** Ranking the 29,893 generated pages by size, the
   biggest are catalog types that predate these rows:
   `aws_quicksight.CfnCustomPermissions.CapabilitiesProperty` and
@@ -291,11 +305,17 @@ assembly. The rules:
   `aws_config.ResourceType` at 0.99 MB. `constructs.Construct` ranks 24th at
   0.39 MB, and these rows added 11 KB to it; its built page went 0.41 MB and
   7,685 DOM nodes to 0.42 MB and 7,913, and its hydration chunk 431 KB to
-  443 KB. `aws_iam.IGrantable`, the parameter of every `grant*` method, is the
-  page these rows grow most in relative terms, 21 KB to 269 KB of generated
-  markdown, and it is not in the e2e fixture, so its built size is unmeasured.
-  The disclosure bounds the height a reader sees, not the DOM the browser
-  parses, so those are the pages to measure before adding a third such row.
+  443 KB. The pages these rows grow most are the two ends of the `grant*`
+  signature, measured on a fixture extended with `aws-iam`:
+
+  | page | built HTML | DOM nodes | chunk |
+  |---|---|---|---|
+  | `aws_iam.IGrantable` | 43 KB → 302 KB | 2,346 → 7,695 | 24 KB → 331 KB |
+  | `aws_iam.Grant` | 74 KB → 334 KB | 2,915 → 8,277 | 59 KB → 367 KB |
+
+  Those two are the cases to measure before adding a third such row: the
+  disclosure bounds the height a reader sees, not the DOM the browser parses or
+  the chunk it downloads.
 
 Each row is clamped to two lines by a **build-time character budget**
 (`RELATION_ROW_BUDGET = 70`, tuned by measurement — a derived 150 ran to 3–4.75

@@ -178,6 +178,30 @@ interface RelationItem {
 const INITIALIZER_SUFFIX = '(initializer)';
 
 /**
+ * The owner as the entry shows it. Two owners of the same short name in one row would render identical link text
+ * pointing at different pages, which a links list or a tab sequence cannot tell apart (WCAG 2.4.4), and the usage
+ * rows make that collision common: three `Schedule.rate` from three submodules on one row. A colliding owner is
+ * qualified with its enclosing namespace, `aws_events.Schedule`, and the qualifier is part of the visible text, so
+ * it counts against the row's width budget and stays in the accessible name.
+ */
+function ownerLabel(fqn: string, refs: readonly MemberRef[]): string {
+  const name = shortName(fqn);
+  const owners = new Set(refs.filter((ref) => shortName(ref.ownerFqn) === name).map((ref) => ref.ownerFqn));
+  if (owners.size < 2) {
+    return name;
+  }
+  const namespace = ownerNamespace(fqn);
+  return namespace ? `${namespace}.${name}` : name;
+}
+
+/** The segment enclosing the type in its FQN: `aws_events` for `aws-cdk-lib.aws_events.Schedule`. */
+function ownerNamespace(fqn: string): string {
+  const segments = fqn.split('.');
+  const type = segments.findIndex((segment) => /^[A-Z]/.test(segment));
+  return type > 0 ? segments[type - 1] : '';
+}
+
+/**
  * A member that relates a type to the page's type: a static factory that produces it
  * (`Bucket.fromBucketName`), a member that takes it as an argument, or a member that returns it. The owner FQN
  * links the entry to the owner's page and the member name to its row anchor there; `kind` picks the per-language
@@ -276,7 +300,7 @@ function memberRelationRow(
   id?: string,
 ): string {
   return relationRowOf(label, refs.map((ref) => {
-    const owner = shortName(ref.ownerFqn);
+    const owner = ownerLabel(ref.ownerFqn, refs);
     const translate = ref.kind === 'method'
       ? translateMethodName
       : (name: string, lang: Language) => translatePropertyName(name, lang, ref.constant);
