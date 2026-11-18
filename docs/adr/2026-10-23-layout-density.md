@@ -37,6 +37,7 @@ maintainer before the work started.
   - Doc-body tables (`density.css`): cell padding, block margin.
   - The Properties / Methods / Construct Props section headers
     (`api-layout.css`): header font size.
+  - Module type lists (`api-layout.css`): the gap between entries.
 
 - **State and storage.** `docs/.vitepress/theme/density.ts`, modeled on
   `code-theme.ts`, owns a `Density` type (`compact | balanced | spacious`), a
@@ -140,6 +141,7 @@ Added with the density picker step. The decisions above stand.
   | `section-header-margin-top` / `-bottom` | 40px / 16px | 40px / 16px | 40px / 16px |
   | `table-cell-pad-y` / `-x` | 6px / 12px | 7px / 12px | 8px / 16px |
   | `table-margin` | 16px | 18px | 20px |
+  | `type-list-gap` | 6px | 10px | 14px |
   | `sidebar-font` | 14px | 14px | 15px |
   | `sidebar-line` | 1.4 | 1.4 | 1.4 |
   | `sidebar-pad-y` | 3px | 4px | 5px |

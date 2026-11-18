@@ -63,6 +63,9 @@
   --density-table-cell-pad-x: 12px;
   --density-table-margin: 18px;
 
+  /* Module type lists (api-layout.css): the space between entries. */
+  --density-type-list-gap: 10px;
+
   /* Section headers (api-layout.css): the Properties / Methods / Construct
      Props heading font size, and the space above vs. below each heading so a
      section boundary reads clearly (more room above than below). */
@@ -111,6 +114,8 @@
   --density-table-cell-pad-y: 6px;
   --density-table-cell-pad-x: 12px;
   --density-table-margin: 16px;
+
+  --density-type-list-gap: 6px;
 }
 
 [data-density="spacious"] {
@@ -129,6 +134,8 @@
   --density-table-cell-pad-y: 8px;
   --density-table-cell-pad-x: 16px;
   --density-table-margin: 20px;
+
+  --density-type-list-gap: 14px;
 
   --density-section-header-font: 1.5rem;
 }

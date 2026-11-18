@@ -172,7 +172,7 @@ active row) to meet 4.5:1 contrast; `--vp-c-text-3` fails there because the
 chip's `aria-hidden` text is the only visual level channel. Because level is
 a field, it is also a sort key: `byLevelThenName` in `src/docgen/ordering.ts`
 orders construct lists L3, L2, L1, then unleveled, alphabetically within
-each tier, applied to sidebar leaf lists and index/overview type tables.
+each tier, applied to sidebar leaf lists and, within each kind group, to module type lists.
 
 ### Lazy loading, skeleton + per-section chunks, content-hashed
 

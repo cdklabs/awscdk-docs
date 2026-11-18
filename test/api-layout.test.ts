@@ -850,7 +850,7 @@ describe('API page layout', () => {
       expect(summaries['/v2/docs/aws-cdk-lib.aws_s3.Bucket']).toEqual({
         name: 'Bucket',
         // `kind` stays the classification value: `searchKind` derives the
-        // Pagefind filter from its first word, and the index tables print it.
+        // Pagefind filter from its first word, and the module type lists print it.
         kind: 'Construct (L2)',
         // The reader-facing label and its level ride alongside for the hover
         // preview's chip, so the preview and the page's H1 badge

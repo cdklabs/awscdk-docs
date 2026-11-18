@@ -7,7 +7,7 @@ Accepted
 ## Context
 
 The generated API reference needs a dedicated, deep-linkable page for every
-jsii type — not just per-submodule type tables — so readers can bookmark
+jsii type — not just per-submodule type lists — so readers can bookmark
 `BucketProps` or `BucketEncryption`, cross-references resolve to real pages,
 and Pagefind indexes per-type content. Each page must present a type's
 identity, provenance, relationships, and members densely and scannably, work
@@ -19,11 +19,34 @@ flags, `cloudformationResource` metadata, `docs.*`); see
 
 ## Decision
 
+### Module type list
+
+A module overview lists its types under a `## Types` heading as a list grouped by kind (`renderTypeList` in
+`src/docgen/index.ts`). A list wraps at any width, which a table of code spans does not: a long nested name such as
+`CfnCapability.EdiConfigurationProperty` would be forced wider than the page.
+
+- One `###` heading per kind, the plural of the kind label (`Constructs (L2)`, `Constructs (L1)`, `Structs`, ...).
+  Groups appear in the order each kind first appears in the sorted type list, and entries keep that order inside a
+  group. Empty groups are not shown. The `## Types` anchor is `module-types`; each kind heading has its own
+  `module-types-<kind>` anchor from `typeKindAnchor`. A module overview without a README has no `## Types` heading,
+  and its kind headings are `##` so the heading order stays valid.
+- One entry per type: the name as a link, the kind label as a small tag beside it, the summary on the next line.
+  A name over the break budget (`breakableTypeName` in `src/docgen/layout.ts`) carries `<wbr>` after each dot, so it
+  wraps there; a dot-separated part that is itself over the budget also breaks at the camelCase and acronym
+  boundaries a page title uses. A shorter name never needs a break and carries none, which keeps the element count
+  of a large module low. `<wbr>` is empty, so the copied text, the link target and the search index see exactly the
+  name.
+- Each list is a real `<ul role="list">`. The role is explicit because the markers are hidden, and a browser may
+  drop the list role from a list without visible markers.
+- The list is plain markdown plus a `type-list` wrapper. The Markdown twin of the page keeps each entry's name link,
+  kind and summary on one line, in that order, and drops the `{role=list}` attribute line, which is browser-only. Spacing reads `--density-type-list-gap`, which follows the density
+  level.
+
 ### One page per type, dispatched by classification
 
 Every jsii type gets a markdown page under
 `docs/api/modules/<pkg>/<submodule>/<Name>` (`core` for module-root types),
-reachable from the submodule type tables and indexed by Pagefind. A single
+reachable from the module type lists and indexed by Pagefind. A single
 dispatch in `src/docgen/index.ts` assembles frontmatter, breadcrumb, body,
 and search filters per page, then routes by kind:
 
@@ -69,7 +92,7 @@ the level in order, first match wins:
 Constructs matching none (e.g. `constructs.Construct` itself, `CfnJson`) get
 no badge rather than a wrong one. The level is also a sort key: `byLevelThenName`
 (`src/docgen/ordering.ts`) ranks L3 > L2 > L1 > unleveled in sidebar leaf
-lists and type tables, so the overrides and the `CfnElement` subtree reorder
+lists and module type lists, so the overrides and the `CfnElement` subtree reorder
 listings too. Source links pin the assembly version tag with any prerelease
 suffix removed, so an alpha assembly, which has no tag of its own, pins the tag
 of its release version (`2.277.0-alpha.0` -> `v2.277.0`). They are omitted for
@@ -87,7 +110,7 @@ even when the clause lives on an ancestor. `renderMixinPage` emits name with a
 `Mixin` badge, summary, methods, properties, and the implementing classes as
 the hierarchy block's `implemented by` row. The heuristic is intentionally
 inclusive: any implemented behavioral interface gets a useful page. Marker
-interfaces get no mixin page but still appear in type tables as `Interface`.
+interfaces get no mixin page but still appear in module type lists as `Interface`.
 
 ### Header: breadcrumb, merged description, hierarchy block
 
@@ -375,7 +398,8 @@ HTML VitePress renders.
 - **Sections:** fixed ids `example`, `initializer`, `properties`, `methods`,
   `members`, `referenced-by`, `used-as-props-by` and `obtainable-from`. Module
   overview sections are `module-submodules` and `module-types`, because README
-  prose above them can carry its own `## Types` heading.
+  prose above them can carry its own `## Types` heading. Each kind group in the
+  type list is `module-types-<kind>` (`typeKindAnchor`), e.g. `module-types-structs`.
 - **Members:** `memberAnchor(name)` from the canonical TypeScript name; inlined
   construct props as `props-<shortname>-<prop>` (above).
 - **Enum members:** the lowercased member name on each Members row.
@@ -440,7 +464,7 @@ or `<assemblyName>.<submodule>`), discriminated exhaustively on `kind`:
 
 `readme` as the default means a package root like `aws-cdk-lib` renders the
 library README at its canonical URL rather than an artificial index; a missing
-README degrades to table-only. The canonical URL never moves (`links.ts`
+README degrades to list-only. The canonical URL never moves (`links.ts`
 untouched) — `none` changes content, never existence, since removing a page
 would 404 tens of thousands of breadcrumb roots. Package roots pass root-only
 extras through two ordered slots: a **preamble** (documented version +

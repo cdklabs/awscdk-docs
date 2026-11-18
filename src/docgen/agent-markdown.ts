@@ -52,7 +52,11 @@ export interface AgentMarkdown {
 
 /** Produce the agent-oriented twin of a generated VitePress page. */
 export function toAgentMarkdown(page: string, siteUrl = docsSiteUrl()): AgentMarkdown {
-  const { text, restore } = protectCode(stripFrontmatter(page));
+  const protectedPage = protectCode(stripFrontmatter(page));
+  const { restore } = protectedPage;
+  // The `{role=list}` line docgen writes after each module type list is a markdown-it-attrs block: it sets the list
+  // role in the browser and is not Markdown. Fenced code is still a placeholder here, so a sample's own line stays.
+  const text = protectedPage.text.replace(/^\{role=list\}[ \t]*\n?/gm, '');
   restoreProtected = restore;
   publishedSiteUrl = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`;
   // `<Badge … />` is a Vue component, self-closed in the source; without the flag the parser would open it and
@@ -365,6 +369,11 @@ function render(node: Node): string {
   }
   if (cls.has('member-signature')) {
     return `\`${textOf(el)}\``;
+  }
+  if (cls.has('type-list')) {
+    // Each entry's link is split across text and `<code>` nodes, so no single text run holds a whole link. Render
+    // the entries first, then rewrite the finished Markdown, where `[`Name`](/path)` is one piece again.
+    return `\n${rewriteMarkdownLinks(children(el))}\n`;
   }
 
   switch (tag) {

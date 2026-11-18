@@ -15,7 +15,7 @@ import {
 } from './languages.js';
 import { pageHref } from './links.js';
 import { encodeOutlineParams } from './outline-members.js';
-import { PAGEFIND_IGNORE } from './search.js';
+import { camelBreaks, PAGEFIND_IGNORE } from './search.js';
 import {
   LinkResolver,
   inlineMethodSignature,
@@ -582,14 +582,32 @@ const TYPE_NAME_BREAK_BUDGET = 32;
 
 /**
  * Follow every dot in an over-budget qualified name with a `<wbr>`, so a name wider than its row
- * (`CfnRegistry.CustomMetadataSchemaConfigurationProperty`) wraps after a dot rather than overflowing, while
- * `typing.List[…]` stays together. Only text is touched, never a tag's `href`; `<wbr>` is empty, so text content is
- * unchanged.
+ * (`CfnRegistry.CustomMetadataSchemaConfigurationProperty`) wraps after a dot rather than overflowing. A name within
+ * the budget is returned unchanged. `<wbr>` is empty, so text content is unchanged.
+ */
+function dotBreaks(name: string): string {
+  return name.length > TYPE_NAME_BREAK_BUDGET ? name.replace(/\./g, '.<wbr>') : name;
+}
+
+/**
+ * A type name for a list: `<wbr>` after each dot when it is over the budget, and a dot-separated part that is itself
+ * over the budget also breaks at camelCase word boundaries. A shorter name is returned unchanged.
+ */
+export function breakableTypeName(name: string): string {
+  if (name.length <= TYPE_NAME_BREAK_BUDGET) {
+    return name;
+  }
+  return dotBreaks(name.split('.').map((part) => (part.length > TYPE_NAME_BREAK_BUDGET ? camelBreaks(part) : part)).join('.'));
+}
+
+/**
+ * Apply {@link dotBreaks} to every qualified name in the text of a piece of HTML, so `typing.List[…]` stays together.
+ * Only text is touched, never a tag's `href`.
  */
 function withDotBreaks(html: string): string {
   return html.split(/(<[^>]*>)/).map((part) => part.startsWith('<')
     ? part
-    : part.replace(/[\w.]+/g, (name) => (name.length > TYPE_NAME_BREAK_BUDGET ? name.replace(/\./g, '.<wbr>') : name)),
+    : part.replace(/[\w.]+/g, dotBreaks),
   ).join('');
 }
 

@@ -80,7 +80,7 @@ test.describe('API kind badge', () => {
   });
 
   test('a Facade page badges itself Facade, in its own color', async ({ page }) => {
-    // `buildFacadeIndex` classifies Facades and the index table and sidebar
+    // `buildFacadeIndex` classifies Facades and the module type list and sidebar
     // label them, so the page header badges `Facade` rather than a plain
     // `Class`.
     await page.goto(QUEUE_GRANTS_PAGE);

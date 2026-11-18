@@ -106,7 +106,9 @@ links, so the copied URL still works; other raw HTML such as
 `<img src>`, and autolinks, pass through as authored. Targets that still
 contain whitespace or a backslash after CommonMark punctuation escapes are
 removed stay as authored. Only single-line,
-untitled inline links within one text run are rewritten; reference definitions
+untitled inline links within one text run are rewritten, and so are those in a
+module type list, whose entries are rendered first and rewritten as finished
+Markdown because each link is split across `<code>` nodes; reference definitions
 and titled links pass through. The pipeline test builds the `constructs`
 package only. It fails if a Markdown link, image or reference definition in a
 twin there holds a root-relative target, and checks that each twin site link is

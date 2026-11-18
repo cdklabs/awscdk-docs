@@ -99,7 +99,7 @@ export interface SidebarEntry {
   readonly assemblyName: string;
   /** jsii submodule name ('' = module root). */
   readonly submodule: string;
-  /** Link to the type table page of the entry's (sub)module. */
+  /** Link to the type list page of the entry's (sub)module. */
   readonly indexLink: string;
   /**
    * Per-language display names of the entry's owning module, as the reader knows it in each language
@@ -1304,7 +1304,7 @@ function linkedItems(entries: SidebarEntry[], languages: readonly Language[]): S
 
 /**
  * Others (classes/interfaces/enums) mostly have no dedicated pages yet: link individual pages when present, and
- * fall back to the (sub)module type table for the rest. Once dedicated pages exist, they surface here automatically
+ * fall back to the (sub)module type list for the rest. Once dedicated pages exist, they surface here automatically
  * via `link`.
  */
 function otherItems(entries: SidebarEntry[], languages: readonly Language[]): SidebarItem[] {

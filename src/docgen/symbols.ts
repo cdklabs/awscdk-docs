@@ -172,7 +172,7 @@ interface SymbolPageOptions<T extends spec.Type> {
   readonly languages?: readonly Language[];
   /**
    * Heading badge, when the type's classification differs from its jsii kind: a class-based mixin is grouped as
-   * `Mixin` in the index table, the sidebar and the search filter, so its own page must badge itself the same way,
+   * `Mixin` in the module type list, the sidebar and the search filter, so its own page must badge itself the same way,
    * in the same color the interface mixin page uses. Defaults to the plain kind, `info`/`Class`.
    */
   readonly badge?: {
@@ -357,7 +357,7 @@ function renderStructProps(
 export interface SymbolIndexEntry {
   readonly name: string;
   readonly kind: string;
-  /** Site-absolute link: dedicated page, or the (sub)module type table. */
+  /** Site-absolute link: dedicated page, or the (sub)module type list. */
   readonly link: string;
   /** Display label for the owning service/section. */
   readonly service: string;
@@ -376,7 +376,7 @@ export interface SymbolIndexEntry {
 
 /**
  * Flatten sidebar entries into the symbol index. Types without a
- * dedicated page fall back to their (sub)module type table so every
+ * dedicated page fall back to their (sub)module type list so every
  * result is navigable.
  */
 export function buildSymbolIndex(entries: SidebarEntry[]): SymbolIndexEntry[] {

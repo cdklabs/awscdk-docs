@@ -26,7 +26,7 @@ export function isGeneratedPage(filePath: string): boolean {
  * instead links to the upstream file its prose came from, passed through
  * frontmatter as `upstreamEditUrl`: an overview's `README.md`, or the source
  * file a type page's docstrings are declared in. A generated page with no such
- * file (a table-only overview, an L1 built from generated code) gets no link.
+ * file (a list-only overview, an L1 built from generated code) gets no link.
  *
  * `editLink: false` in frontmatter is checked first and suppresses the link
  * outright (such as on the live versions page). Otherwise `upstreamEditUrl`

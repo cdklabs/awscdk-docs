@@ -34,7 +34,7 @@ describe('buildSymbolIndex', () => {
     ]);
   });
 
-  test('falls back to the type table link for types without pages', () => {
+  test('falls back to the type list link for types without pages', () => {
     const index = buildSymbolIndex([entry({ name: 'BucketEncryption', kind: 'Enum' })]);
     expect(index[0].link).toBe('/api/modules/aws-cdk-lib/aws-s3');
   });
