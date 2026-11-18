@@ -181,6 +181,31 @@ enforcement points, so they cannot drift. Adopting a new license means editing i
 recording why in an ADR, per repository convention
 ([repository conventions](./2026-10-15-repository-conventions.md)).
 
+### Unit coverage floor
+
+The Jest suite measures coverage over every source file, not only the files a test
+imports, so an untested file counts as 0% instead of dropping out of the total.
+`collectCoverageFrom` in `.projenrc.ts` lists `src/`, `scripts/`, `projenrc/`,
+`docs/*.data.ts`, and the TypeScript under `docs/.vitepress/`.
+
+Two groups stay out, on purpose:
+
+- **Vue components** (`docs/.vitepress/theme/*.vue`). Jest has no single-file-component
+  transformer here, and adding one means a new dependency plus a DOM test environment the
+  suite does not otherwise need. The browser e2e suite exercises these components.
+- **`.projenrc.ts`**. Projen runs it, not Jest; its output is checked by the tests that
+  read generated files.
+
+The test task passes `--coverageThreshold` to Jest with a floor for lines, statements,
+branches, and functions, so `npx projen test` (and the CI build that runs it) fails when
+coverage drops. The floor is the measured number rounded down, minus one more point for lines
+and statements so run-to-run noise does not fail CI. It lives on the task rather than in the
+Jest config so that `npx jest path/to/file` stays a quick local run that is not held to a
+whole-tree floor. Raise the floor when tests raise the numbers. Scripts that tests run as child processes
+(for example `e2e-serve.cjs`) read as 0%, because Jest's V8 coverage only sees its own
+workers. A unit test pins that every tracked source file is either measured or in one of
+the two groups above, so a new source directory cannot fall outside the scope unnoticed.
+
 ### Workflows
 
 Each browser gate has its own projen-generated workflow — `docs-e2e`, `docs-a11y`,
@@ -211,6 +236,8 @@ None is a required check unless the team opts in via branch protection.
   pages keeps the job inside a normal PR budget.
 - A dependency under any other license fails the build and the review gate, so adopting one
   is a deliberate decision.
+- Unit coverage cannot quietly drop, and an untested file shows up in the report. A single
+  `npx jest` file run is not held to the floor; only the full test task is.
 
 ### Rejected alternatives
 

@@ -515,7 +515,8 @@
           "execArgs": [
             "jest",
             "--passWithNoTests",
-            "--updateSnapshot"
+            "--updateSnapshot",
+            "--coverageThreshold={\"global\":{\"lines\":82,\"statements\":82,\"branches\":93,\"functions\":93}}"
           ],
           "receiveArgs": true
         },

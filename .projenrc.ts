@@ -982,4 +982,25 @@ project.jest!.config.transform = {
 };
 project.testTask.env('NODE_OPTIONS', '--experimental-vm-modules');
 
+// Measure every source file, including ones no test imports, so an untested file counts as 0% instead of vanishing.
+// Vue components are left out: Jest has no SFC transformer here, and the browser e2e suite covers them.
+// .projenrc.ts is left out because projen runs it, not Jest.
+project.jest!.config.collectCoverageFrom = [
+  'src/**/*.ts',
+  'scripts/**/*.cjs',
+  'projenrc/**/*.ts',
+  'docs/*.data.ts',
+  'docs/.vitepress/**/*.{ts,mts}',
+  '!docs/.vitepress/{cache,dist,.temp}/**',
+  '!**/*.d.ts',
+];
+// The coverage floor sits a little under today's numbers so the full suite fails when coverage drops.
+// It is passed on the test task, not the Jest config, so a single-file `npx jest` run is not held to it.
+const COVERAGE_FLOOR = { global: { lines: 82, statements: 82, branches: 93, functions: 93 } };
+const jestStep = project.testTask.steps.findIndex((step) => step.execArgs?.[0] === 'jest');
+project.testTask.updateStep(jestStep, {
+  ...project.testTask.steps[jestStep],
+  execArgs: [...project.testTask.steps[jestStep].execArgs!, `--coverageThreshold=${JSON.stringify(COVERAGE_FLOOR)}`],
+});
+
 project.synth();
