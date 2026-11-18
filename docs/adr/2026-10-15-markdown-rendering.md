@@ -130,7 +130,10 @@ through `pageHref()` in `docs/.vitepress/theme/page-href.ts`: `withBase()`
 over the shared `pageFile()` in `src/site-routes.ts`, the one place the
 `.html` rule lives — docgen's `pageHref()`, the versions page's docs link,
 the theme's `pageHref()` and `pageUrl()` in `docs/.vitepress/page-url.ts`
-(the canonical link, the JSON-LD `url` and the sitemap) all call it.
+(the canonical link and the JSON-LD `url`) all call it. VitePress builds
+the sitemap `<loc>` with its own rule, which `pageUrl()` mirrors; the
+canonical e2e spec holds the two together by asserting every page's
+canonical href is a sitemap `<loc>`.
 `cleanUrls` stays off and the host serves the files as they are; the links
 carry the suffix.
 
