@@ -8,6 +8,10 @@ describe('pageUrl', () => {
     expect(pageUrl('v2/aws-cdk-lib/aws_s3/Bucket.md', SITE)).toBe(`${SITE}v2/aws-cdk-lib/aws_s3/Bucket.html`);
   });
 
+  test('a nested directory index is its directory', () => {
+    expect(pageUrl('v2/index.md', SITE)).toBe(`${SITE}v2/`);
+  });
+
   test('a site URL without a trailing slash joins without doubling it', () => {
     expect(pageUrl('versions.md', 'https://docs.aws.amazon.com/cdk/api')).toBe('https://docs.aws.amazon.com/cdk/api/versions.html');
   });

@@ -128,8 +128,11 @@ favorite, a symbol-index entry) or from a route constant in
 `src/site-routes.ts` (the version badge, the 404 page's next steps) — goes
 through `pageHref()` in `docs/.vitepress/theme/page-href.ts`: `withBase()`
 over the shared `pageFile()` in `src/site-routes.ts`, the one place the
-`.html` rule lives for docgen and theme alike. `cleanUrls` stays off and
-the host serves the files as they are; the links carry the suffix.
+`.html` rule lives — docgen's `pageHref()`, the versions page's docs link,
+the theme's `pageHref()` and `pageUrl()` in `docs/.vitepress/page-url.ts`
+(the canonical link, the JSON-LD `url` and the sitemap) all call it.
+`cleanUrls` stays off and the host serves the files as they are; the links
+carry the suffix.
 
 Rejected for the theme side: `cleanUrls: true` (changes every URL the site
 publishes and the hosting contract), a host rewrite from extensionless
