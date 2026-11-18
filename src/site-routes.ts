@@ -32,8 +32,8 @@ export const VERSIONS_JSON_PATH = `${VERSIONS_ROUTE.slice(1)}.json`;
  * The file a stored page link is served from: the link's path with `.html`
  * appended, which is what VitePress emits for the equivalent markdown link
  * under `cleanUrls: false`. A query or fragment stays after the suffix.
- * Directory-style paths (trailing `/`, or empty) and paths that already name
- * their file pass through unchanged. The static host serves `404.html` for an
+ * Directory-style paths (trailing `/`, or empty) and paths already ending in
+ * `.html` pass through unchanged. The static host serves `404.html` for an
  * extensionless path, so every raw anchor built from a stored link must point
  * at the file. Page links only: an asset path (`versions.json`) is not a page
  * link and never goes through here.
