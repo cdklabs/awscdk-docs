@@ -26,11 +26,12 @@ test.describe('obtainable from row', () => {
 
     await row.locator('a.chain-item').first().click();
     await expect(page).toHaveURL(new RegExp(`${QUEUE_PAGE.replace(/\./g, '\\.')}#fromqueuearn$`));
-    // The target is the member row itself, so the `:target` tint marks the
+    // The target is the member row itself, so the landing flash marks the
     // factory the reader asked about. A static method's header is a signature,
     // so the identifier lives in `.sig-name`, not a property's `.member-name`.
     const target = page.locator('.member-row#fromqueuearn');
     await expect(target).toBeVisible();
+    await expect(target).toHaveClass(/\bmember-row-flash\b/);
     await expect(target.locator('.member-signature .sig-name').first()).toHaveText('fromQueueArn');
   });
 
