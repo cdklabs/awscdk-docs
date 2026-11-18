@@ -2,13 +2,13 @@
      crawler or agent can follow. The status code is not this component's job:
      the static host serves this as `404.html` with a genuine 404 status.
 
-     Every link goes through `withBase` because `base` is configurable
-     (DOCS_BASE), and every target exists in this site: home, the API reference
-     index, and the versions page. The `.html` suffix on the versions link is
-     required because `cleanUrls` is off in this build. -->
+     Every link goes through `pageHref` because `base` is configurable
+     (DOCS_BASE) and `cleanUrls` is off in this build, so the versions link
+     needs its `.html` suffix; every target exists in this site: home, the
+     API reference index, and the versions page. -->
 <script setup lang="ts">
-import { withBase } from "vitepress";
 import { API_ROOT, VERSIONS_ROUTE } from "../../../src/site-routes";
+import { pageHref } from "./page-href";
 
 const nextSteps = [
   {
@@ -18,7 +18,7 @@ const nextSteps = [
   },
   {
     text: "Versions",
-    link: `${VERSIONS_ROUTE}.html`,
+    link: VERSIONS_ROUTE,
     hint: "which library version these docs describe",
   },
   { text: "Documentation home", link: "/", hint: "start here" },
@@ -36,7 +36,7 @@ const nextSteps = [
     </p>
     <ul class="not-found-links">
       <li v-for="item in nextSteps" :key="item.link">
-        <a class="not-found-link" :href="withBase(item.link)">{{ item.text }}</a>
+        <a class="not-found-link" :href="pageHref(item.link)">{{ item.text }}</a>
         <span class="not-found-hint"> — {{ item.hint }}</span>
       </li>
     </ul>
