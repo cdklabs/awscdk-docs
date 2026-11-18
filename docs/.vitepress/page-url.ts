@@ -1,5 +1,5 @@
-// The public URL of a rendered page: the JSON-LD node's `url`, the canonical link, and VitePress's sitemap all
-// resolve a route this way. No VitePress imports, so Jest can call it directly.
+// The public URL of a rendered page: the JSON-LD node's `url` and the canonical link resolve a route this way, and
+// VitePress's sitemap uses an equivalent rule of its own. No VitePress imports, so Jest can call it directly.
 import { pageFile } from "../../src/site-routes";
 
 /**

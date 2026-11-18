@@ -113,7 +113,9 @@ test.describe('sidebar links open as real page URLs', () => {
     expect(href, 'a page leaf other than the current page').toBeDefined();
     const { status, titles } = await titlesWhileLoading(context, href!);
 
-    // Every title seen while loading, so a failure names the bad one.
+    // The recorder saw the loaded page (positive control), and every title seen
+    // while loading is listed so a failure names the bad one.
+    expect(titles.at(-1)).toMatch(/\| AWS CDK Reference$/);
     expect(titles.filter((t) => /^404\b/.test(t))).toEqual([]);
     expect(status).toBe(200);
   });
