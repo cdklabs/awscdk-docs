@@ -23,7 +23,7 @@ test.describe('sidebar submodule Overview link', () => {
       .locator('.api-sidebar a.api-sidebar-link:visible', { hasText: 'Overview' })
       .first();
     await expect(overview).toBeVisible();
-    await expect(overview).toHaveAttribute('href', '/v2/docs/aws-cdk-lib.aws_sqs-readme');
+    await expect(overview).toHaveAttribute('href', '/v2/docs/aws-cdk-lib.aws_sqs-readme.html');
   });
 
   test('clicking Overview navigates to the submodule page and marks it active', async ({ page }) => {

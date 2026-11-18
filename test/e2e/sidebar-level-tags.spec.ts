@@ -18,7 +18,7 @@ test.describe('sidebar construct level tags', () => {
   }
 
   const entry = (page: Page, fqnSuffix: string) =>
-    page.locator(`.api-sidebar a.api-sidebar-link[href$="${fqnSuffix}"]`);
+    page.locator(`.api-sidebar a.api-sidebar-link[href$="${fqnSuffix}.html"]`);
 
   // The glyph is stylesheet-generated from `data-level`, so read what the
   // browser actually paints rather than `textContent`, which is empty by design.
@@ -194,8 +194,8 @@ test.describe('sidebar construct level tags', () => {
     // `.active` for real -- no class is faked here. `CfnQueue` is the
     // resting arm, and the assertion below proves the two are distinct
     // states rather than the same rule measured twice.
-    const active = `${base}[href$=".aws_sqs.Queue"] .api-sidebar-level`;
-    const resting = `${base}[href$=".aws_sqs.CfnQueue"] .api-sidebar-level`;
+    const active = `${base}[href$=".aws_sqs.Queue.html"] .api-sidebar-level`;
+    const resting = `${base}[href$=".aws_sqs.CfnQueue.html"] .api-sidebar-level`;
     await expect(entry(page, '.aws_sqs.Queue')).toHaveClass(/active/);
     await expect(entry(page, '.aws_sqs.CfnQueue')).not.toHaveClass(/active/);
 
@@ -253,7 +253,7 @@ test.describe('sidebar construct level tags', () => {
     const widths = await page.evaluate(() =>
       ['.aws_sqs.CfnQueue', '.aws_sqs.Queue'].map((suffix) => {
         const link = document.querySelector<HTMLElement>(
-          `.api-sidebar a.api-sidebar-link[href$="${suffix}"]`,
+          `.api-sidebar a.api-sidebar-link[href$="${suffix}.html"]`,
         )!;
         const tag = link.querySelector<HTMLElement>('.api-sidebar-level')!;
         return { text: tag.dataset.level!, width: tag.getBoundingClientRect().width };
