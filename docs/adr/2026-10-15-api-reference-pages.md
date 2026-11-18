@@ -277,13 +277,13 @@ assembly. The rules:
   parameter is named `construct`.
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
-  the disclosure. Measured on one host with the same installed dependencies,
-  base `6052c36` against the commit this bullet arrives in, which `git log` on
-  this file resolves, and the method is: entry counts from
-  walking the assemblies of `docgen.config.json` with the rules in this
-  section; corpus size as the total bytes of generated `.md` pages under
-  `docs/v2` from `npx projen docs:generate`, timed on the same host with the
-  same command; artifact size as the total bytes of the whole VitePress `dist`
+  the disclosure. Every figure below was measured on one developer host, a
+  16-core arm64 Linux box, base `6052c36` against `5f68e72`, with the same
+  installed dependencies, and the method is: entry counts from
+  `buildUsageIndex` over the assemblies of `docgen.config.json`; corpus size as
+  the total bytes of generated `.md` pages under
+  `docs/v2` from `npx projen docs:generate`, which is also where the wall time
+  comes from; artifact size as the total bytes of the whole VitePress `dist`
   of an e2e fixture build
   (`docs:generate`, then `scripts/e2e-fixture-prune.cjs`, then `vitepress build
   docs`), HTML and `assets/*.js` together, because the per-page hydration chunk
@@ -291,12 +291,16 @@ assembly. The rules:
   does; DOM nodes from `document.querySelectorAll('*').length` on a built
   fixture page.
 
-  The counts are 13,340 `used as argument in` entries over 8,375 types and
+  The counts are 13,342 `used as argument in` entries over 8,376 types and
   5,804 `returned by` entries over 2,120 types. The corpus grew 733.3 MB to
-  739.5 MB, +0.85 percent over 29,893 pages, and docgen ran 103.2 s against
-  104.1 s. Artifact growth depends on which services the fixture keeps: the
-  default SNS and SQS fixture (84 pages) grew +0.38 percent, and adding
-  `aws-iam` through `E2E_FIXTURE_SERVICES` (211 pages) grew +3.1 percent,
+  739.1 MB, +0.79 percent over 29,893 pages. Docgen wall time is the one figure
+  this host measures badly: repeated runs of the same code ranged 103 s to
+  147 s, so the index walk is inside the noise rather than measured.
+  Artifact growth depends on which services the fixture keeps: the
+  default SNS and SQS fixture (84 pages) grew 44.96 MB to 45.11 MB,
+  +0.35 percent, and adding
+  `aws-iam` through `E2E_FIXTURE_SERVICES` (211 pages) grew 72.94 MB to
+  74.71 MB, +2.43 percent,
   because almost every IAM type is a parameter or a return somewhere. The full
   site is not built on a developer host, so its total is **not measured**: the
   corpus figure is the site-wide number and the fixture figures bracket what
@@ -309,15 +313,15 @@ assembly. The rules:
   `aws_quicksight.CfnCustomPermissions.CapabilitiesProperty` and
   `aws_ec2.InterfaceVpcEndpointAwsService` at about 1.08 MB each,
   `aws_config.ResourceType` at 0.99 MB. `constructs.Construct` ranks 24th at
-  0.39 MB, and these rows added 11 KB to it; its built page went 0.41 MB and
-  7,685 DOM nodes to 0.42 MB and 7,913, and its hydration chunk 431 KB to
-  443 KB. The pages these rows grow most are the two ends of the `grant*`
-  signature, measured on a fixture extended with `aws-iam`:
+  0.39 MB, and these rows added 10 KB to it; its built page went 0.41 MB and
+  7,685 DOM nodes to 0.42 MB and 7,853. The pages these rows grow most are the
+  two ends of the `grant*` signature, measured on a fixture extended with
+  `aws-iam`:
 
   | page | built HTML | DOM nodes | chunk |
   |---|---|---|---|
-  | `aws_iam.IGrantable` | 43 KB → 302 KB | 2,346 → 7,695 | 24 KB → 331 KB |
-  | `aws_iam.Grant` | 74 KB → 334 KB | 2,915 → 8,277 | 59 KB → 367 KB |
+  | `aws_iam.IGrantable` | 43 KB → 252 KB | 2,346 → 5,938 | 24 KB → 254 KB |
+  | `aws_iam.Grant` | 74 KB → 283 KB | 2,915 → 6,493 | 59 KB → 289 KB |
 
   Those two are the cases to measure before adding a third such row: the
   disclosure bounds the height a reader sees, not the DOM the browser parses or
