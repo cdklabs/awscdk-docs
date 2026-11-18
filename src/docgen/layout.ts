@@ -178,8 +178,8 @@ interface RelationItem {
 const INITIALIZER_SUFFIX = '(initializer)';
 
 /**
- * The owner as the entry shows it, and the note that tells two of them apart. Two owners of the same short name
- * in one row would render identical link text pointing at different pages, which a links list or a tab sequence
+ * The note that tells two owners of the same short name apart, for every entry of one row at once. Two such
+ * owners would render identical link text pointing at different pages, which a links list or a tab sequence
  * cannot tell apart (WCAG 2.4.4), and the usage rows make that collision common: three `Schedule.rate` from three
  * submodules on one row. A colliding entry carries its namespace as a trailing note,
  * `Schedule.rate (aws_events)`, rather than as a prefix: a prefix reads as a namespace, and the jsii submodule is
@@ -187,16 +187,30 @@ const INITIALIZER_SUFFIX = '(initializer)';
  * tell the owners apart, and the whole namespace path where it is not (`x.a.mixins.Thing` against
  * `x.b.mixins.Thing`, which share a `mixins` segment). The note is part of the visible text, so it counts against
  * the row's width budget and stays in the accessible name.
+ *
+ * Built as one map per row rather than per entry: these rows grow with the number of call sites, and a per-entry
+ * scan would cost a pass over the row for each of its entries.
  */
-function ownerNote(fqn: string, refs: readonly MemberRef[]): string {
-  const name = shortName(fqn);
-  const owners = [...new Set(refs.filter((ref) => shortName(ref.ownerFqn) === name).map((ref) => ref.ownerFqn))];
-  if (owners.length < 2) {
-    return '';
+function ownerNotes(refs: readonly MemberRef[]): ReadonlyMap<string, string> {
+  const owners = new Map<string, Set<string>>();
+  for (const ref of refs) {
+    const name = shortName(ref.ownerFqn);
+    const group = owners.get(name) ?? new Set<string>();
+    group.add(ref.ownerFqn);
+    owners.set(name, group);
   }
-  const segment = ownerNamespace(fqn);
-  const distinct = owners.every((other) => other === fqn || ownerNamespace(other) !== segment);
-  return distinct ? segment : ownerNamespacePath(fqn);
+  const notes = new Map<string, string>();
+  for (const group of owners.values()) {
+    if (group.size < 2) {
+      continue;
+    }
+    const segments = [...group].map((fqn) => [fqn, ownerNamespace(fqn)] as const);
+    const distinct = new Set(segments.map(([, segment]) => segment)).size === group.size;
+    for (const [fqn, segment] of segments) {
+      notes.set(fqn, distinct ? segment : ownerNamespacePath(fqn));
+    }
+  }
+  return notes;
 }
 
 /** The segment enclosing the type in its FQN: `aws_events` for `aws-cdk-lib.aws_events.Schedule`. */
@@ -318,9 +332,10 @@ function memberRelationRow(
   languages: readonly Language[],
   id?: string,
 ): string {
+  const notes = ownerNotes(refs);
   return relationRowOf(label, refs.map((ref) => {
     const owner = shortName(ref.ownerFqn);
-    const note = ownerNote(ref.ownerFqn, refs);
+    const note = notes.get(ref.ownerFqn) ?? '';
     const suffix = (word: string) => (word ? ` (${word})` : '');
     const translate = ref.kind === 'method'
       ? translateMethodName
@@ -375,6 +390,12 @@ function relationRowOf(label: string, items: readonly RelationItem[], id?: strin
   // accessible name, so `2,507 more` beside `aria-label="Show 2507 more"`
   // is a speech-input failure — and not one the axe gate can catch, since
   // 2.5.3 is not machine-testable.
+  //
+  // The name also carries the ROW's label, `Show 87 more returned by`: one
+  // block can hold several overflowing rows, and a reader moving by controls
+  // would otherwise hear the same `Show N more` for each with nothing to tell
+  // them apart (WCAG 2.4.4). The visible `N more` stays the leading text, so
+  // 2.5.3 still holds.
   const count = hidden.length.toLocaleString('en-US');
   // The separator lives INSIDE the item, hugging the name it follows: raw text between `<li>` siblings is invalid in
   // a `<ul>`, and the sequence must still read as continuing past the disclosure control. Three states: `', '`
@@ -386,7 +407,7 @@ function relationRowOf(label: string, items: readonly RelationItem[], id?: strin
     .map((entry, i) => item(entry, i < shown.length - 1 ? ', ' : hidden.length > 0 ? ',' : ''))
     .join('');
   const more = hidden.length > 0
-    ? `<li role="listitem"><details class="chain-more"><summary aria-label="Show ${count} more">`
+    ? `<li role="listitem"><details class="chain-more"><summary aria-label="Show ${count} more ${escapeAttr(label)}">`
       + `${count} more</summary>`
       + `<ul class="chain-list" role="list">${hidden.map((entry, i) => item(entry, i < hidden.length - 1 ? ', ' : '')).join('')}</ul>`
       + '</details></li>'

@@ -345,6 +345,52 @@ describe('usage index', () => {
     ]);
   });
 
+  test('a static that shadows a base static is its own entry, not a redeclaration', () => {
+    // jsii marks a subclass static that shadows a base static with `overrides`, but it is a separate callable
+    // with its own anchor, so both are listed. `App.of` shadows `Stage.of`, and both return their own type.
+    const app = index.get('aws-cdk-lib.App')!.type as spec.ClassType;
+    expect(app.methods?.find((m) => m.name === 'of'))
+      .toMatchObject({ static: true, overrides: 'aws-cdk-lib.Stage' });
+    expect(usage.argumentIn.get('constructs.IConstruct')).toEqual(expect.arrayContaining([
+      { ownerFqn: 'aws-cdk-lib.App', memberName: 'of', kind: 'method', static: true },
+      { ownerFqn: 'aws-cdk-lib.Stage', memberName: 'of', kind: 'method', static: true },
+    ]));
+    // The same holds for a static whose parameters or return reach the new rows: an instance method is the only
+    // kind a redeclaration hides.
+    const synthetic = buildUsageIndex(buildTypeIndex([{
+      name: 'lib',
+      types: {
+        'lib.IThing': { assembly: 'lib', fqn: 'lib.IThing', name: 'IThing', kind: spec.TypeKind.Interface },
+        'lib.Base': {
+          assembly: 'lib',
+          fqn: 'lib.Base',
+          name: 'Base',
+          kind: spec.TypeKind.Class,
+          methods: [
+            { name: 'make', static: true, parameters: [{ name: 't', type: { fqn: 'lib.IThing' } }] },
+            { name: 'take', parameters: [{ name: 't', type: { fqn: 'lib.IThing' } }] },
+          ],
+        },
+        'lib.Sub': {
+          assembly: 'lib',
+          fqn: 'lib.Sub',
+          name: 'Sub',
+          kind: spec.TypeKind.Class,
+          base: 'lib.Base',
+          methods: [
+            { name: 'make', static: true, overrides: 'lib.Base', parameters: [{ name: 't', type: { fqn: 'lib.IThing' } }] },
+            { name: 'take', overrides: 'lib.Base', parameters: [{ name: 't', type: { fqn: 'lib.IThing' } }] },
+          ],
+        },
+      },
+    } as unknown as spec.Assembly]));
+    expect(synthetic.argumentIn.get('lib.IThing')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'make', kind: 'method', static: true },
+      { ownerFqn: 'lib.Base', memberName: 'take', kind: 'method' },
+      { ownerFqn: 'lib.Sub', memberName: 'make', kind: 'method', static: true },
+    ]);
+  });
+
   test('class member collection walks the base-class chain', () => {
     const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType;
     const methods = classMethods(bucket, index).map((m) => m.name);
@@ -555,7 +601,7 @@ describe('symbol page generation', () => {
       ['Bucket.fromBucketName', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketname'],
       ['Bucket.fromCfnBucket', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket'],
     ]);
-    expect(row![1]).toContain('<summary aria-label="Show 2 more">2 more</summary>');
+    expect(row![1]).toContain('<summary aria-label="Show 2 more obtainable from">2 more</summary>');
     // The row is the last one in the block, after `extends`.
     expect(page.indexOf('<span class="chain-label">extends</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
   });

@@ -190,7 +190,11 @@ identical link texts pointing at different pages cannot be told apart in a
 links list or a tab sequence (WCAG 2.4.4). The note is a parenthetical rather
 than a prefix, because a prefix reads as a namespace and the jsii submodule is
 not the namespace Go, Java or C# would use, and it is counted into the width
-budget like any other text. The note is the jsii submodule, which is the
+budget like any other text. When two owners share that segment as well
+(`x.a.mixins.Thing` against `x.b.mixins.Thing`), the note is the whole
+namespace path, `x.a.mixins`, because a one-segment note would be identical on
+both and the row would be back to two links a reader cannot tell apart. The
+note is the jsii submodule, which is the
 TypeScript and Python module name, and it is **not** translated per language:
 the Java and C# namespaces for the same submodule
 (`software.amazon.awscdk.services.events`, `Amazon.CDK.AWS.Events`) are longer
@@ -230,9 +234,13 @@ assembly. The rules:
   `overrides` field. Those redeclarations are skipped, so each member is
   recorded once where it is declared (`IBucket.grantRead`, not again on
   `BucketBase` and on every subclass, and `IAspect.visit` rather than one entry
-  per implementor). A redeclaration of a member declared outside the documented
-  assemblies is kept, because nothing else would record it. One exception, for
-  `returned by` only: jsii allows a covariant override, so a redeclaration can
+  per implementor). Two kinds of member are never redeclarations: one whose
+  overridden declaration is outside the documented assemblies, because nothing
+  else would record it, and a **static**, because jsii marks a subclass static
+  that shadows a base static with `overrides` although it is a separate
+  callable with its own anchor, and its own package-level function in Go
+  (`DockerImage.fromRegistry` over `BundlingDockerImage.fromRegistry`). One
+  further exception, for `returned by` only: jsii allows a covariant override, so a redeclaration can
   narrow its return type, and that narrowed type is documented nowhere else, so
   it is recorded on the override. Parameters need no such exception, because an
   override cannot change them.
@@ -248,8 +256,9 @@ assembly. The rules:
   `superclass of` or `implemented by` right above. Such an entry is
   language-stable and carries no variant spans; its suffix counts against the
   width budget like any other text.
-- **Order.** By owner name, then by member name, with the owner FQN breaking a
-  tie between two types of the same name; an initializer entry leads its
+- **Order.** By owner short name, then by owner FQN, then by member, so two
+  owners of the same short name stay adjacent and sort between themselves by
+  namespace rather than interleaving by member; an initializer entry leads its
   owner's entries, matching how it renders. Each owner and member appears once
   even when several parameters of one member match.
 - **No row repeats a more specific one.** A usage the same block already states

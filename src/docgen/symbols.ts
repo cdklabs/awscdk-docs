@@ -165,7 +165,9 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       // The DECLARING type owns the entry: a jsii type lists its own methods plus a redeclaration of every method
       // it overrides or implements, so skipping the redeclarations records each member once, where it is declared
       // (`IBucket.grantRead`, not again on `BucketBase` and on every subclass). A redeclaration of a member
-      // declared outside the documented assemblies is kept, since nothing else would record it.
+      // declared outside the documented assemblies is kept, since nothing else would record it. A STATIC is never
+      // a redeclaration: jsii marks a subclass static that shadows a base static with `overrides`, but it is a
+      // separate callable with its own anchor, and in Go its own package-level function.
       for (const method of type.methods ?? []) {
         if (method.protected || !method.name) {
           continue;
@@ -176,7 +178,7 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
           kind: 'method',
           ...(method.static ? { static: true } : {}),
         };
-        const base = method.overrides ? index.get(method.overrides)?.type : undefined;
+        const base = method.static || !method.overrides ? undefined : index.get(method.overrides)?.type;
         if (!base) {
           recordParameters(method.parameters, entry);
           recordUsage(returnedBy, method.returns?.type, entry);
@@ -252,9 +254,9 @@ function byCodeUnit(a: string, b: string): number {
 }
 
 /**
- * Each owner and member once, in the order the row displays them: by owner name, then by member name, with the
- * owner FQN breaking a tie between two types of the same name in different submodules. An initializer entry sorts
- * first within its owner, matching how the row reads.
+ * Each owner and member once, in the order the row displays them: by owner short name, then by owner FQN, then by
+ * member, so two owners of the same short name stay adjacent and sort between themselves by namespace. An
+ * initializer entry sorts first within its owner, matching how the row reads.
  */
 function sortedUsage(usage: Map<string, MemberRef[]>): Map<string, MemberRef[]> {
   const entryName = (ref: MemberRef) => (ref.kind === 'initializer' ? '' : ref.memberName);
