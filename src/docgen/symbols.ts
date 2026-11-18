@@ -17,8 +17,11 @@ import {
   MemberRef,
   renderDescription,
   renderExpandableProps,
+  relationsFor,
   renderExtendsBar,
   renderInheritanceChain,
+  renderUsageBar,
+  usageRowsFor,
   renderTypeMetadata,
   renderMethodsSection,
 } from './layout.js';
@@ -46,17 +49,23 @@ export interface EnumRef {
  * - `propsUsers`: struct FQN -> class FQNs whose initializer takes it as props
  * - `enumRefs`: enum FQN -> property references (with owner FQN for linking)
  * - `obtainableFrom`: type FQN -> static methods and static properties whose declared type is that type
+ * - `argumentIn`: type FQN -> members that take the type as a parameter
+ * - `returnedBy`: type FQN -> methods that return the type
  */
 export interface UsageIndex {
   readonly propsUsers: Map<string, string[]>;
   readonly enumRefs: Map<string, EnumRef[]>;
   readonly obtainableFrom: Map<string, MemberRef[]>;
+  readonly argumentIn: Map<string, MemberRef[]>;
+  readonly returnedBy: Map<string, MemberRef[]>;
 }
 
 export function buildUsageIndex(index: TypeIndex): UsageIndex {
   const propsUsers = new Map<string, Set<string>>();
   const enumRefs = new Map<string, EnumRef[]>();
   const obtainableFrom = new Map<string, MemberRef[]>();
+  const argumentIn = new Map<string, MemberRef[]>();
+  const returnedBy = new Map<string, MemberRef[]>();
 
   const recordEnumRefs = (ownerFqn: string, prop: spec.Property) => {
     for (const fqn of namedFqns(prop.type)) {
@@ -66,6 +75,25 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
         list.push({ ownerFqn, propertyName: prop.name });
         enumRefs.set(fqn, list);
       }
+    }
+  };
+
+  // A member relates to every documented named type its signature mentions, including the types inside a
+  // collection or a union: `grantRead(identity: IGrantable[]): Grant` is a usage of IGrantable as much as a bare
+  // parameter would be. A type the site does not document gets no entry, since the row could not link it.
+  const recordUsage = (
+    map: Map<string, MemberRef[]>, ref: spec.TypeReference | undefined, entry: MemberRef,
+  ) => {
+    if (!ref) {
+      return;
+    }
+    for (const fqn of new Set(namedFqns(ref))) {
+      if (!index.has(fqn)) {
+        continue;
+      }
+      const list = map.get(fqn) ?? [];
+      list.push(entry);
+      map.set(fqn, list);
     }
   };
 
@@ -108,10 +136,30 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       for (const prop of type.properties ?? []) {
         recordFactory(type.fqn, prop, 'property', prop);
       }
+      // A protected initializer cannot be called, so it is no more a usage than a protected method is.
+      const init = type.initializer;
+      if (init && !init.protected) {
+        const entry: MemberRef = { ownerFqn: type.fqn, memberName: INITIALIZER_MEMBER, kind: 'initializer' };
+        for (const param of init.parameters ?? []) {
+          recordUsage(argumentIn, param.type, entry);
+        }
+      }
     }
     if (spec.isClassType(type) || spec.isInterfaceType(type)) {
       for (const prop of type.properties ?? []) {
         recordEnumRefs(type.fqn, prop);
+      }
+      // The DECLARING type owns the entry: a jsii type lists only its own methods, so an inherited member is
+      // recorded once, where it is declared, rather than on every subclass that also exposes it.
+      for (const method of type.methods ?? []) {
+        if (method.protected || !method.name) {
+          continue;
+        }
+        const entry: MemberRef = { ownerFqn: type.fqn, memberName: method.name, kind: 'method' };
+        for (const param of method.parameters ?? []) {
+          recordUsage(argumentIn, param.type, entry);
+        }
+        recordUsage(returnedBy, method.returns?.type, entry);
       }
     }
   }
@@ -138,14 +186,45 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
   // Each owner+member once, FQN-sorted in code-unit order like `propsUsers` (owner FQN, then member name), so the
   // row reads `Bucket.fromBucketArn, Bucket.fromBucketAttributes, ...` whatever order the assembly listed them in
   // and whatever locale the build host has.
-  const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
   const sortedFactories = new Map<string, MemberRef[]>();
   for (const [fqn, refs] of obtainableFrom) {
     const unique = new Map(refs.map((ref) => [`${ref.ownerFqn}.${ref.memberName}`, ref]));
     sortedFactories.set(fqn, [...unique.values()].sort((a, b) =>
       byCodeUnit(a.ownerFqn, b.ownerFqn) || byCodeUnit(a.memberName, b.memberName)));
   }
-  return { propsUsers: sortedPropsUsers, enumRefs: dedupedEnumRefs, obtainableFrom: sortedFactories };
+  return {
+    propsUsers: sortedPropsUsers,
+    enumRefs: dedupedEnumRefs,
+    obtainableFrom: sortedFactories,
+    argumentIn: sortedUsage(argumentIn),
+    returnedBy: sortedUsage(returnedBy),
+  };
+}
+
+/** The canonical member name of an initializer, which anchors its entry to the owner page's Initializer section. */
+const INITIALIZER_MEMBER = SECTION_ANCHORS.initializer;
+
+/** Byte-stable ordering, so the output does not depend on the build host's locale. */
+function byCodeUnit(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Each owner and member once, in the order the row displays them: by owner name, then by member name, with the
+ * owner FQN breaking a tie between two types of the same name in different submodules. An initializer entry
+ * renders as the owner name alone, so it leads its owner's entries.
+ */
+function sortedUsage(usage: Map<string, MemberRef[]>): Map<string, MemberRef[]> {
+  const entryName = (ref: MemberRef) => (ref.kind === 'initializer' ? '' : ref.memberName);
+  const sorted = new Map<string, MemberRef[]>();
+  for (const [fqn, refs] of usage) {
+    const unique = new Map(refs.map((ref) => [`${ref.kind}:${ref.ownerFqn}.${ref.memberName}`, ref]));
+    sorted.set(fqn, [...unique.values()].sort((a, b) =>
+      byCodeUnit(shortName(a.ownerFqn), shortName(b.ownerFqn))
+      || byCodeUnit(a.ownerFqn, b.ownerFqn)
+      || byCodeUnit(entryName(a), entryName(b))));
+  }
+  return sorted;
 }
 
 /** All named-type FQNs appearing anywhere in a type reference. */
@@ -212,7 +291,7 @@ export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): str
   lines.push(...renderDescription(type));
   // Implemented interfaces render inside the hierarchy bar.
   lines.push(...renderInheritanceChain(
-    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
+    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], relationsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -230,7 +309,7 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-struct" text="Struct" />`, ''];
   lines.push(...renderDescription(type));
   lines.push(...renderExtendsBar(
-    type, linkFor, [], usage.propsUsers.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
+    type, linkFor, [], usage.propsUsers.get(type.fqn) ?? [], relationsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -248,7 +327,7 @@ export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceTyp
   // `implemented by` is a row of the hierarchy bar, not a section of its own: it is the inverse of the class bar's
   // `implements`, so it belongs beside `extends`.
   lines.push(...renderExtendsBar(
-    type, linkFor, options.implementors?.get(type.fqn) ?? [], [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
+    type, linkFor, options.implementors?.get(type.fqn) ?? [], [], relationsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -264,6 +343,9 @@ export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): strin
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-enum" text="Enum" />`, ''];
   lines.push(...renderDescription(type));
+  // An enum extends nothing and implements nothing, so its block holds the usage rows alone. `obtainable from`
+  // stays off this page, as it always has.
+  lines.push(...renderUsageBar(type, linkFor, usageRowsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));

@@ -109,6 +109,81 @@ describe('usage index', () => {
     expect(pev[pev.length - 1].memberName).toBe('of');
   });
 
+  test('types know which members take them as an argument and which return them', () => {
+    // A method entry carries the DECLARING type, so an inherited member is recorded once where it is declared:
+    // grantRead is declared on BucketBase, not on Bucket.
+    expect(usage.returnedBy.get('aws-cdk-lib.aws_iam.Grant')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.aws_s3.BucketBase', memberName: 'grantRead', kind: 'method' },
+    );
+    expect(usage.argumentIn.get('aws-cdk-lib.aws_s3.LifecycleRule')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'addLifecycleRule', kind: 'method' },
+    ]);
+    // An initializer has no member name of its own, so its entry names the owner and the kind.
+    expect(usage.argumentIn.get('aws-cdk-lib.aws_s3.Bucket')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.aws_lambda_event_sources.S3EventSource', memberName: 'initializer', kind: 'initializer' },
+    ]);
+    // An enum reaches the index through a parameter; a property does not, because an enum page already lists the
+    // properties that reference it.
+    expect(usage.argumentIn.get('aws-cdk-lib.RemovalPolicy')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.Resource', memberName: 'applyRemovalPolicy', kind: 'method' },
+    );
+    expect(usage.argumentIn.has('aws-cdk-lib.aws_s3.BucketEncryption')).toBe(false);
+    expect(usage.returnedBy.has('aws-cdk-lib.aws_s3.BucketEncryption')).toBe(false);
+    // The index records every usage, including the ones a page may not repeat because a more specific row of the
+    // same block already states them: Bucket's initializer taking BucketProps, and the statics returning IBucket.
+    expect(usage.argumentIn.get('aws-cdk-lib.aws_s3.BucketProps')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'initializer', kind: 'initializer' },
+    ]);
+    expect(usage.returnedBy.get('aws-cdk-lib.aws_s3.IBucket')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketArn', kind: 'method' },
+    );
+    // A protected method is not callable and has no row on its owner page, so it is not a usage:
+    // Resource.getResourceArnAttribute is `protected` and takes ArnComponents.
+    const resource = index.get('aws-cdk-lib.Resource')!.type as spec.ClassType;
+    expect(resource.methods?.find((m) => m.name === 'getResourceArnAttribute')).toMatchObject({ protected: true });
+    expect(usage.argumentIn.get('aws-cdk-lib.ArnComponents') ?? []).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'aws-cdk-lib.Resource', memberName: 'getResourceArnAttribute' }),
+    );
+  });
+
+  test('usage entries unwrap generic types, list each member once, and sort by owner then member', () => {
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const target: spec.InterfaceType = { assembly: 'lib', fqn: 'lib.IThing', name: 'IThing', kind: spec.TypeKind.Interface };
+    const owner = (fqn: string, name: string): spec.ClassType => ({
+      assembly: 'lib',
+      fqn,
+      name,
+      kind: spec.TypeKind.Class,
+      initializer: {
+        parameters: [{ name: 'things', type: { collection: { kind: spec.CollectionKind.Array, elementtype: ref('lib.IThing') } } }],
+      },
+      methods: [
+        // Two parameters of the same type: one entry.
+        { name: 'add', parameters: [{ name: 'a', type: ref('lib.IThing') }, { name: 'b', type: ref('lib.IThing') }] },
+        { name: 'Pick', returns: { type: { union: { types: [ref('lib.IThing'), { primitive: spec.PrimitiveType.String }] } } } },
+      ],
+    });
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.IThing': target, 'lib.Zeta': owner('lib.Zeta', 'Zeta'), 'lib.Alpha': owner('lib.Alpha', 'Alpha'),
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    // Arrays and unions count for the named type inside them. The initializer entry leads its owner, because it
+    // renders as the owner name alone.
+    expect(synthetic.argumentIn.get('lib.IThing')).toEqual([
+      { ownerFqn: 'lib.Alpha', memberName: 'initializer', kind: 'initializer' },
+      { ownerFqn: 'lib.Alpha', memberName: 'add', kind: 'method' },
+      { ownerFqn: 'lib.Zeta', memberName: 'initializer', kind: 'initializer' },
+      { ownerFqn: 'lib.Zeta', memberName: 'add', kind: 'method' },
+    ]);
+    expect(synthetic.returnedBy.get('lib.IThing')).toEqual([
+      { ownerFqn: 'lib.Alpha', memberName: 'Pick', kind: 'method' },
+      { ownerFqn: 'lib.Zeta', memberName: 'Pick', kind: 'method' },
+    ]);
+  });
+
   test('class member collection walks the base-class chain', () => {
     const bucket = index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType;
     const methods = classMethods(bucket, index).map((m) => m.name);
@@ -373,7 +448,7 @@ describe('symbol page generation', () => {
     ];
     // Only `x.Thing` has a page: `y.Other` comes from an assembly the site does not document.
     const linkFor = (fqn: string) => (fqn === 'x.Thing' ? '/v2/docs/x.Thing' : undefined);
-    const [nav] = renderExtendsBar(iface, linkFor, [], [], refs, ['ts', 'python', 'go']).filter((l) => l.includes('<nav'));
+    const [nav] = renderExtendsBar(iface, linkFor, [], [], { obtainableFrom: refs }, ['ts', 'python', 'go']).filter((l) => l.includes('<nav'));
     const row = nav.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
     const [first, second, third] = [...row.matchAll(/<li role="listitem">(.*?)<\/li>/g)].map((m) => m[1]);
     // A `const` static keeps its UPPER_SNAKE name in Python, as jsii's bindings do.
@@ -472,5 +547,90 @@ describe('symbol page generation', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
     expect(page).toContain('<span class="chain-label">used as props by</span>');
     expect(page).not.toContain('obtainable from');
+  });
+
+  test('class pages list the members that take the type and the members that return it', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
+    const row = (id: string, label: string) =>
+      page.match(new RegExp(`<div class="chain-row" id="${id}"><span class="chain-label">${label}</span> (.*?)</div>`));
+    // Duration.minus takes a Duration and returns one, so it is an entry of both rows: an entry the page's own
+    // type owns links by fragment alone, like the obtainable-from row.
+    expect(row('used-as-argument-in', 'used as argument in')![1])
+      .toContain('<a class="chain-item" href="#minus">Duration.<wbr>minus</a>');
+    expect(row('returned-by', 'returned by')![1])
+      .toContain('<a class="chain-item" href="#minus">Duration.<wbr>minus</a>');
+    // The static factories stay in the obtainable-from row rather than being repeated as returners.
+    expect(row('returned-by', 'returned by')![1]).not.toContain('Duration.<wbr>days');
+    expect(page).toMatch(/id="obtainable-from"[\s\S]*?<a class="chain-item" href="#days">Duration\.<wbr>days<\/a>/);
+    // A member another type owns links that type's page at the member's row anchor.
+    expect(row('used-as-argument-in', 'used as argument in')![1])
+      .toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.Expiration.html#after">Expiration.<wbr>after</a>');
+    // The three member rows come last, in one order: obtainable from, then the two usage rows.
+    expect(page.indexOf('id="obtainable-from"')).toBeLessThan(page.indexOf('id="used-as-argument-in"'));
+    expect(page.indexOf('id="used-as-argument-in"')).toBeLessThan(page.indexOf('id="returned-by"'));
+  });
+
+  test('a struct taken by an initializer keeps the props row alone, with no second row saying the same', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+    // The props row keeps its own label, id and content.
+    expect(page).toContain('<div class="chain-row" id="used-as-props-by"><span class="chain-label">used as props by</span>');
+    // Bucket's initializer is the only member taking the struct, and the row above already names it.
+    expect(page).not.toContain('id="used-as-argument-in"');
+    // Nothing returns the struct, so no row claims otherwise.
+    expect(page).not.toContain('id="returned-by"');
+  });
+
+  test('a page carrying the obtainable-from row does not repeat its statics as returners', () => {
+    // Both statics that return an IBucket are factories, so the row above lists them and no `returned by` row
+    // follows. The index still records them, because what is dropped depends on which rows the page carries: an
+    // enum or mixin page has no obtainable-from row, so there the same entries do render.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
+    expect(page).toContain('id="obtainable-from"');
+    expect(page).not.toContain('id="returned-by"');
+  });
+
+  test('an enum used as an argument gets the hierarchy block it otherwise has no reason to carry', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.RemovalPolicy.md'), 'utf-8');
+    expect(page).toContain('<nav class="inheritance-chain"');
+    expect(page).toContain('<span class="chain-item chain-current">RemovalPolicy</span>');
+    expect(page).toMatch(
+      /id="used-as-argument-in"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.Resource\.html#applyremovalpolicy">Resource\.<wbr>applyRemovalPolicy<\/a>/,
+    );
+    // An enum no member takes or returns keeps the page it always had.
+    const unused = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketEncryption.md'), 'utf-8');
+    expect(unused).not.toContain('<nav class="inheritance-chain"');
+  });
+
+  test('usage entries are language variants, and an initializer entry is language-stable', () => {
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const index = buildTypeIndex([assembly, loadAssembly('constructs')]);
+    const usage = buildUsageIndex(index);
+    const duration = index.get('aws-cdk-lib.Duration')!.type as spec.ClassType;
+    const page = renderClassPage({ type: duration, assembly, index, usage, linkFor, languages: ['ts', 'python', 'go'], emitExamples: false });
+    const row = page.match(/<div class="chain-row" id="returned-by">(.*?)<\/div>/)![1];
+    expect(row).toContain('<span class="lang-variant" data-lang="ts">Duration.<wbr>minus</span>');
+    expect(row).toMatch(/data-lang="python"[^>]*>Duration\.<wbr>minus<\/span>/);
+    expect(row).toMatch(/data-lang="go"[^>]*>Duration_<wbr>Minus<\/span>/);
+    expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
+    // An initializer entry has one spelling in every language, so it carries no variants at all — and a block
+    // whose member rows hold only such entries stays the bare <nav> it always was.
+    const iface: spec.InterfaceType = { assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface };
+    const argumentIn = [{ ownerFqn: 'x.Thing', memberName: 'initializer', kind: 'initializer' as const }];
+    const lines = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], { argumentIn }, ['ts', 'python', 'go']);
+    const [nav] = lines.filter((l) => l.includes('<nav'));
+    expect(nav).toContain(
+      '<div class="chain-row" id="used-as-argument-in"><span class="chain-label">used as argument in</span> '
+      + '<ul class="chain-list" role="list"><li role="listitem">'
+      + '<a class="chain-item" href="/v2/docs/x.Thing.html#initializer">Thing</a></li></ul></div>',
+    );
+    expect(nav).not.toContain('lang-variant');
+    expect(lines.join('\n')).not.toContain('<LanguageTabs');
+  });
+
+  test('the agent Markdown twin renders the usage rows as labeled lines', () => {
+    const duration = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8'), SITE_URL).markdown;
+    expect(duration).toMatch(/^Used as argument in: /m);
+    expect(duration).toMatch(/^Returned by: /m);
   });
 });

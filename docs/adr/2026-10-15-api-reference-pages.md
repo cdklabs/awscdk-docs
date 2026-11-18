@@ -151,16 +151,20 @@ overview pages) the Teleport is disabled and the star keeps its standalone
 
 ### One type-hierarchy block: every relation as a row
 
-All six relationships — `implements`, `extends`, `implemented by`,
-`superclass of`, a struct's `used as props by`, and `obtainable from` — render
+All eight relationships — `implements`, `extends`, `implemented by`,
+`superclass of`, a struct's `used as props by`, `obtainable from`,
+`used as argument in` and `returned by` — render
 as rows of one hierarchy block under the breadcrumb, emitted through one shared
 row renderer (`relationRowOf`): type entries via `relationRow`, member entries
 via `memberRelationRow`. There is no separate `## Subclasses`, `## Implemented by` or
 `## Used as props by` section and no inline-vs-section split by direction.
 `used as props by` lists the classes whose initializer takes the struct (from
 the reverse usage index); its row keeps the `used-as-props-by` id, so deep
-links to the former section still land on it. `obtainable from` is the last
-row on class, interface, struct and construct pages: the static methods and
+links to the former section still land on it. The three member rows come after
+every type-to-type relation, in one order on every page kind: `obtainable
+from`, then `used as argument in`, then `returned by`.
+
+`obtainable from` renders on class, interface, struct and construct pages: the static methods and
 static properties (including constants) in the documented assemblies whose
 declared type is the page's type or an optional of it — arrays, maps and
 unions do not produce one instance, so they do not count. Protected statics are
@@ -175,8 +179,8 @@ display): the member name through the member-name translators (a `const`
 keeps its UPPER_SNAKE name in Python, as the member rows do) and the
 separator `_` for Go, where a static is the package-level `Owner_Member`. The
 anchor stays on the canonical jsii name and the width budget uses the widest
-translation; the block is wrapped in `<LanguageTabs>` only when this row is
-present. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
+translation; the block is wrapped in `<LanguageTabs>` only when a member row
+carries such a variant entry. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
 the agent Markdown twin drops it. `implements`
 lists the **full transitive closure** of
 interfaces reachable through class ancestors *and* interface `extends`
@@ -185,6 +189,61 @@ resolver in `src/docgen/interfaces.ts` cached per `TypeIndex`. `superclass of`
 (descendants, from `buildSubclassIndex`) and `implemented by` (implementors,
 from `buildImplementorsIndex`) are transitive, merged, and share the one
 corpus traversal that mixin classification already performs.
+
+`used as argument in` and `returned by` are the inverse of a member
+signature: for every named type the site documents, the members that take it
+as a parameter and the methods that return it. They read from the same reverse
+usage index and render as `memberRelationRow` entries, so a type page answers
+"what can I pass this to, and what hands me one" without a reader grepping the
+assembly. The rules:
+
+- **Sources.** Methods and static methods of classes and interfaces, plus
+  initializer parameters. Properties are deliberately not listed: an enum page
+  already carries `Referenced by` for the properties that reference it, and
+  property types are visible in the member tables of the owning type.
+- **Generic wrappers unwrap.** A type inside an array, a map, an optional or a
+  union is a usage of the named type inside it, because that is the type the
+  reader has to supply or receives.
+- **Protected members are skipped**, for the same reason `obtainable from`
+  skips protected statics: a reader cannot call one, and the owner page has no
+  row to anchor the entry to.
+- **The declaring type owns the entry.** A jsii type lists only its own
+  methods, so an inherited member is recorded once where it is declared
+  (`BucketBase.grantRead`, not once per subclass). That also keeps the index
+  from multiplying down deep hierarchies.
+- **Entry format.** `Owner.member`, the same as `obtainable from`, linked to
+  the owner's page at the member's row anchor. An **initializer** entry is the
+  owner name alone, linked to the owner page's `#initializer` section: jsii
+  gives an initializer no member name, and its per-language spelling changes
+  form rather than casing (`new Bucket(...)`, `Bucket(...)`,
+  `NewBucket(...)`), so no `Owner<sep>member` string exists to translate. It is
+  also the presentation `used as props by` already uses for exactly this
+  relation. Such an entry is language-stable and carries no variant spans.
+- **Order.** By owner name, then by member name, with the owner FQN breaking a
+  tie between two types of the same name; an initializer entry leads its
+  owner's entries, matching how it renders. Each owner and member appears once
+  even when several parameters of one member match.
+- **No row repeats a more specific one.** A usage the same block already states
+  is dropped from these rows, because reading one `Owner.member` twice in one
+  block tells the reader nothing the first row did not. So `used as argument
+  in` drops an initializer entry whose owner the `used as props by` row above
+  already names, and `returned by` drops a member the `obtainable from` row
+  above already names. The filter runs per page rather than in the index,
+  because whether the more specific row is on the page depends on the page
+  kind: an enum or a mixin page carries no `obtainable from` row, so there the
+  static factories do render as returners.
+- **Page kinds.** Classes, structs, interfaces, constructs, mixins and enums.
+  An enum has no type-to-type relation of its own, so it gains a block that
+  holds these rows alone (`renderUsageBar`); a mixin page gains them in the
+  block it already had. `obtainable from` stays off enum and mixin pages, as
+  before.
+- **Size.** Both rows are clamped and excluded from the search index like
+  every other row of this block, and the whole list ships in the HTML behind
+  the disclosure. Measured over `aws-cdk-lib` and `constructs`: 18,712 entries
+  across 5,212 types for `used as argument in` and 1,426 for `returned by`, which
+  is a fraction of a percent of the built HTML. A growth above **5 percent**
+  of total built HTML is the line at which this presentation has to be
+  reconsidered rather than shipped.
 
 Each row is clamped to two lines by a **build-time character budget**
 (`RELATION_ROW_BUDGET = 70`, tuned by measurement — a derived 150 ran to 3–4.75

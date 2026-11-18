@@ -172,16 +172,51 @@ interface RelationItem {
 }
 
 /**
- * A static member that produces an instance of the page's type: `Bucket.fromBucketName`. The owner FQN links the
- * entry to the owner's page and the member name to its row anchor there; `kind` picks the per-language name
- * translator, since a method and a property translate through different helpers.
+ * A member that relates a type to the page's type: a static factory that produces it
+ * (`Bucket.fromBucketName`), a member that takes it as an argument, or a member that returns it. The owner FQN
+ * links the entry to the owner's page and the member name to its row anchor there; `kind` picks the per-language
+ * name translator, since a method and a property translate through different helpers.
+ *
+ * An `initializer` has no member name of its own in jsii, and its per-language spelling changes form rather than
+ * casing (`new Bucket(...)`, `Bucket(...)`, `NewBucket(...)`), so no `Owner<sep>member` string exists for it: the
+ * entry renders as the owner name alone and `memberName` carries the canonical `initializer` that anchors it to the
+ * owner page's Initializer section.
  */
 export interface MemberRef {
   readonly ownerFqn: string;
   readonly memberName: string;
-  readonly kind: 'method' | 'property';
+  readonly kind: 'method' | 'property' | 'initializer';
   /** A `const` static property: `translatePropertyName` keeps its UPPER_SNAKE name in Python, as jsii does. */
   readonly constant?: boolean;
+}
+
+/** The member relation rows of one page's hierarchy block, in the order they render. */
+export interface UsageRelations {
+  readonly obtainableFrom?: readonly MemberRef[];
+  readonly argumentIn?: readonly MemberRef[];
+  readonly returnedBy?: readonly MemberRef[];
+}
+
+/** The same three relations as corpus-wide indexes, keyed by the type each entry relates to. */
+export interface UsageRelationIndex {
+  readonly obtainableFrom?: ReadonlyMap<string, readonly MemberRef[]>;
+  readonly argumentIn?: ReadonlyMap<string, readonly MemberRef[]>;
+  readonly returnedBy?: ReadonlyMap<string, readonly MemberRef[]>;
+}
+
+/** One page's member relations, read out of the corpus indexes. */
+export function relationsFor(fqn: string, index: UsageRelationIndex = {}): UsageRelations {
+  return {
+    obtainableFrom: index.obtainableFrom?.get(fqn) ?? [],
+    argumentIn: index.argumentIn?.get(fqn) ?? [],
+    returnedBy: index.returnedBy?.get(fqn) ?? [],
+  };
+}
+
+/** The two usage rows alone, for the page kinds that carry no `obtainable from` row. */
+export function usageRowsFor(fqn: string, index: UsageRelationIndex = {}): UsageRelations {
+  const { argumentIn, returnedBy } = relationsFor(fqn, index);
+  return { argumentIn, returnedBy };
 }
 
 /** Items that fit the row's two-line budget, and the remainder. */
@@ -212,15 +247,16 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
 }
 
 /**
- * A relation row whose entries are static members rather than types: `obtainable from Bucket.fromBucketName`. Each
+ * A relation row whose entries are members rather than types: `obtainable from Bucket.fromBucketName`. Each
  * entry links to the owner's page at the member's row anchor (the same `memberAnchor` the row itself carries), so
- * the reader lands on the factory; an entry owned by the page's own type links by fragment alone, so a version
+ * the reader lands on the member; an entry owned by the page's own type links by fragment alone, so a version
  * catalog with hundreds of constants does not repeat its own path hundreds of times. The whole `Owner<sep>member`
  * is a language variant, translated per enabled language like the member rows: the member name through the same
  * translators, and the separator `_` for Go, where jsii exposes a static as the package-level
  * `Owner_Member`. The anchor stays on the canonical jsii name; the width budget uses the widest translation, so the
  * two-line clamp holds in every language. A `<wbr>` after the separator lets a long token wrap at narrow widths
- * without changing the accessible name; the agent Markdown twin drops the tag.
+ * without changing the accessible name; the agent Markdown twin drops the tag. An initializer entry is the owner
+ * name alone, which is one spelling in every language, so it carries no variants.
  */
 function memberRelationRow(
   label: string,
@@ -236,14 +272,18 @@ function memberRelationRow(
       ? translateMethodName
       : (name: string, lang: Language) => translatePropertyName(name, lang, ref.constant);
     const entry = (lang: Language) => ({ sep: lang === 'go' ? '_' : '.', member: translate(ref.memberName, lang) });
-    const text = (languages.length > 0 ? languages : [DEFAULT_LANGUAGE])
-      .map((lang) => `${owner}${entry(lang).sep}${entry(lang).member}`)
-      .reduce((widest, candidate) => (candidate.length > widest.length ? candidate : widest));
+    const text = ref.kind === 'initializer'
+      ? owner
+      : (languages.length > 0 ? languages : [DEFAULT_LANGUAGE])
+        .map((lang) => `${owner}${entry(lang).sep}${entry(lang).member}`)
+        .reduce((widest, candidate) => (candidate.length > widest.length ? candidate : widest));
     // The enclosing <nav> already carries `data-pagefind-ignore`, so the spans do not repeat it.
-    const content = languageVariantSpans(languages, (lang) => {
-      const { sep, member } = entry(lang);
-      return `${escHtml(owner)}${sep}<wbr>${escHtml(member)}`;
-    }, { indexed: false });
+    const content = ref.kind === 'initializer'
+      ? escHtml(owner)
+      : languageVariantSpans(languages, (lang) => {
+        const { sep, member } = entry(lang);
+        return `${escHtml(owner)}${sep}<wbr>${escHtml(member)}`;
+      }, { indexed: false });
     const fragment = `#${memberAnchor(ref.memberName)}`;
     const link = ref.ownerFqn === pageFqn ? fragment : (() => {
       const page = linkFor(ref.ownerFqn);
@@ -299,21 +339,21 @@ function relationRowOf(label: string, items: readonly RelationItem[], id?: strin
  * ancestor linked to its page (`Construct › Resource › Bucket`), followed by the interfaces the type implements:
  * `Construct › Resource › Bucket · implements IBucket`. Interfaces declared by ancestor classes are included
  * (deduplicated, own declarations first) — `Bucket` implements `IBucket` via `BucketBase`. Emitted whenever the
- * type has a base class, implemented interfaces, subclasses, or static members that produce it; the `obtainable
- * from` row comes last.
+ * type has a base class, implemented interfaces, subclasses, or a member relation; the member rows come last.
  */
 export function renderInheritanceChain(
   type: spec.ClassType,
   index: TypeIndex,
   linkFor: LinkResolver,
   subclasses: readonly string[] = [],
-  obtainableFrom: readonly MemberRef[] = [],
+  usage: UsageRelations = {},
   languages: readonly Language[] = [DEFAULT_LANGUAGE],
 ): string[] {
   // One shared walk with the reverse implementers index, so `implements` here and `implemented by` there can never
   // disagree.
   const { ancestors, interfaces } = classLineage(type, index);
-  if (ancestors.length === 0 && interfaces.length === 0 && subclasses.length === 0 && obtainableFrom.length === 0) {
+  const relations = visibleRelations(usage, []);
+  if (ancestors.length === 0 && interfaces.length === 0 && subclasses.length === 0 && !hasMemberRows(relations)) {
     return [];
   }
   const items = ancestors.map((fqn) => {
@@ -329,22 +369,71 @@ export function renderInheritanceChain(
     interfaces.length > 0 ? relationRow('implements', interfaces, linkFor) : '',
     // A class's downward relation.
     subclasses.length > 0 ? relationRow('superclass of', subclasses, linkFor) : '',
-    // The static factories and constants that hand out an instance; last, after every type-to-type relation.
-    obtainableFrom.length > 0
-      ? memberRelationRow('obtainable from', obtainableFrom, linkFor, type.fqn, languages, SECTION_ANCHORS.obtainableFrom)
-      : '',
+    memberRows(type.fqn, relations, linkFor, languages),
   ].join('');
   return hierarchyBlock(
     // Breadcrumbs repeat ancestor type names on every page; keep them out of the search index.
     `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`
     + `<div class="chain-line">${items.join(sep)}</div>${rows}</nav>`,
-    obtainableFrom.length > 0 ? languages : [],
+    hasVariantEntries(relations) ? languages : [],
   );
 }
 
 /**
- * The block as page lines. Only the `obtainable from` row carries language variants (member names), so the block is
- * wrapped in `<LanguageTabs>` exactly when that row is present: every other page keeps the bare `<nav>` it had.
+ * The member rows a page actually shows. A usage the same block already states more specifically is dropped,
+ * because reading one `Owner.member` twice in one block tells the reader nothing the first row did not: the
+ * `used as props by` row already names the classes whose initializer takes a struct as props, and the
+ * `obtainable from` row already names the statics that hand out an instance. Both are filtered here rather than in
+ * the index, because whether the more specific row is on the page at all depends on the page kind — an enum or a
+ * mixin page carries no `obtainable from` row, so its returners must stay listed.
+ */
+function visibleRelations(usage: UsageRelations, propsUsers: readonly string[]): Required<UsageRelations> {
+  const obtainableFrom = usage.obtainableFrom ?? [];
+  return {
+    obtainableFrom,
+    argumentIn: (usage.argumentIn ?? []).filter((ref) =>
+      ref.kind !== 'initializer' || !propsUsers.includes(ref.ownerFqn)),
+    returnedBy: (usage.returnedBy ?? []).filter((ref) => !obtainableFrom
+      .some((factory) => factory.ownerFqn === ref.ownerFqn && factory.memberName === ref.memberName)),
+  };
+}
+
+/**
+ * The member relation rows, in one order on every page kind: the static members that hand out an instance, then
+ * the members that take the type, then the members that return it. Each is the inverse of a member signature, so
+ * they follow every type-to-type relation.
+ */
+function memberRows(
+  pageFqn: string,
+  usage: Required<UsageRelations>,
+  linkFor: LinkResolver,
+  languages: readonly Language[],
+): string {
+  const row = (label: string, refs: readonly MemberRef[], id: string): string =>
+    (refs.length > 0 ? memberRelationRow(label, refs, linkFor, pageFqn, languages, id) : '');
+  return [
+    row('obtainable from', usage.obtainableFrom, SECTION_ANCHORS.obtainableFrom),
+    row('used as argument in', usage.argumentIn, SECTION_ANCHORS.usedAsArgumentIn),
+    row('returned by', usage.returnedBy, SECTION_ANCHORS.returnedBy),
+  ].join('');
+}
+
+function memberEntries(usage: UsageRelations): readonly MemberRef[] {
+  return [...usage.obtainableFrom ?? [], ...usage.argumentIn ?? [], ...usage.returnedBy ?? []];
+}
+
+function hasMemberRows(usage: UsageRelations): boolean {
+  return memberEntries(usage).length > 0;
+}
+
+/** Whether any member entry is translated per language, which is what the `<LanguageTabs>` wrapper is for. */
+function hasVariantEntries(usage: UsageRelations): boolean {
+  return memberEntries(usage).some((ref) => ref.kind !== 'initializer');
+}
+
+/**
+ * The block as page lines. Only member rows carry language variants (member names), so the block is wrapped in
+ * `<LanguageTabs>` exactly when one of those entries is present: every other page keeps the bare `<nav>` it had.
  */
 function hierarchyBlock(nav: string, languages: readonly Language[]): string[] {
   const lines = wrapLanguageTabs(languages, [nav]);
@@ -354,19 +443,20 @@ function hierarchyBlock(nav: string, languages: readonly Language[]): string[] {
 /**
  * Hierarchy bar for interface-like types (interfaces, structs, mixins): `IBucket · extends IResource`, each parent
  * linked to its page — the same presentation as the class inheritance chain. A struct's `used as props by` row lists
- * the classes whose initializer takes it as props; the `obtainable from` row, the static members that produce the
- * type, comes last. Nothing is emitted for a type with no relation to show.
+ * the classes whose initializer takes it as props; the member rows come last. Nothing is emitted for a type with no
+ * relation to show.
  */
 export function renderExtendsBar(
   type: spec.InterfaceType,
   linkFor: LinkResolver,
   implementers: readonly string[] = [],
   propsUsers: readonly string[] = [],
-  obtainableFrom: readonly MemberRef[] = [],
+  usage: UsageRelations = {},
   languages: readonly Language[] = [DEFAULT_LANGUAGE],
 ): string[] {
   const parents = type.interfaces ?? [];
-  if (parents.length === 0 && implementers.length === 0 && propsUsers.length === 0 && obtainableFrom.length === 0) {
+  const relations = visibleRelations(usage, propsUsers);
+  if (parents.length === 0 && implementers.length === 0 && propsUsers.length === 0 && !hasMemberRows(relations)) {
     return [];
   }
   const rows = [
@@ -376,16 +466,40 @@ export function renderExtendsBar(
     propsUsers.length > 0
       ? relationRow('used as props by', propsUsers, linkFor, SECTION_ANCHORS.usedAsPropsBy)
       : '',
-    obtainableFrom.length > 0
-      ? memberRelationRow('obtainable from', obtainableFrom, linkFor, type.fqn, languages, SECTION_ANCHORS.obtainableFrom)
-      : '',
+    memberRows(type.fqn, relations, linkFor, languages),
   ].join('');
+  return relationBar(type.name, rows, hasVariantEntries(relations) ? languages : []);
+}
+
+/**
+ * Hierarchy bar for a type with no type-to-type relation of its own, which is the enum case: an enum extends
+ * nothing and implements nothing, so its block exists only when a member takes it or returns it.
+ */
+export function renderUsageBar(
+  type: spec.EnumType,
+  linkFor: LinkResolver,
+  usage: UsageRelations = {},
+  languages: readonly Language[] = [DEFAULT_LANGUAGE],
+): string[] {
+  const relations = visibleRelations(usage, []);
+  if (!hasMemberRows(relations)) {
+    return [];
+  }
+  return relationBar(
+    type.name,
+    memberRows(type.fqn, relations, linkFor, languages),
+    hasVariantEntries(relations) ? languages : [],
+  );
+}
+
+/** The bar every type without a breadcrumb trail shares: the type's own name, then its relation rows. */
+function relationBar(name: string, rows: string, languages: readonly Language[]): string[] {
   return hierarchyBlock(
     `<nav class="inheritance-chain" aria-label="Type hierarchy" ${PAGEFIND_IGNORE}>`
-    + `<div class="chain-line"><span class="chain-item chain-current">${escHtml(type.name)}</span></div>`
+    + `<div class="chain-line"><span class="chain-item chain-current">${escHtml(name)}</span></div>`
     + rows
     + '</nav>',
-    obtainableFrom.length > 0 ? languages : [],
+    languages,
   );
 }
 

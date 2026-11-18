@@ -584,12 +584,28 @@ describe('construct page generation', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Stack.md'), 'utf-8');
     expect(page).toContain(
       '<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from</span> '
-      + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="#of">Stack.<wbr>of</a></li></ul></div></nav>',
+      + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="#of">Stack.<wbr>of</a></li></ul></div>',
     );
     expect(page.indexOf('<span class="chain-label">superclass of</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
     // Nothing returns a Bucket itself (the factories return IBucket), so its page has no row.
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(bucket).not.toContain('obtainable from');
+  });
+
+  test('construct page lists the members that take the construct', () => {
+    // S3EventSource's initializer takes a Bucket, which is the only usage of the construct type itself.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    expect(page).toContain(
+      '<div class="chain-row" id="used-as-argument-in"><span class="chain-label">used as argument in</span> '
+      + '<ul class="chain-list" role="list"><li role="listitem">'
+      + '<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_lambda_event_sources.S3EventSource.html#initializer">S3EventSource</a>'
+      + '</li></ul></div>',
+    );
+    expect(page).not.toContain('id="returned-by"');
+    // The usage rows follow the member row that already came last.
+    const stack = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Stack.md'), 'utf-8');
+    expect(stack.indexOf('id="obtainable-from"')).toBeLessThan(stack.indexOf('id="used-as-argument-in"'));
+    expect(stack.indexOf('id="used-as-argument-in"')).toBeLessThan(stack.indexOf('id="returned-by"'));
   });
 
   test('type pages carry no Module or FQN metadata rows', () => {

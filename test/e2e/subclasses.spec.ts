@@ -221,4 +221,34 @@ test.describe('type hierarchy block', () => {
     await page.keyboard.press('Enter');
     await expect(more).toHaveAttribute('open', '');
   });
+
+  // The usage rows are built by the same renderer, so what needs driving in a
+  // browser is that a row added to the block behaves like the rows that were
+  // there: clamped to two lines, and losslessly unclamped by its own
+  // disclosure. Every construct's initializer takes a `scope: Construct`, so
+  // this is the row with a remainder to reveal.
+  test('a usage row clamps to two lines and opens its own disclosure', async ({ page }) => {
+    await page.goto(CONSTRUCT_PAGE);
+
+    const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
+    await expect(row).toBeAttached();
+    await expect(row.locator('.chain-label')).toHaveText('used as argument in');
+    await expect(row.locator('a.chain-item').first()).toBeVisible();
+
+    const lines = await row.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      return (el.getBoundingClientRect().height - pad) / lh;
+    });
+    expect(lines).toBeLessThanOrEqual(2);
+
+    const more = row.locator('.chain-more');
+    await expect(more).toBeAttached();
+    const hidden = more.locator('a.chain-item').first();
+    await expect(hidden).toBeHidden();
+    await more.locator('summary').click();
+    await expect(more).toHaveAttribute('open', '');
+    await expect(hidden).toBeVisible();
+  });
 });

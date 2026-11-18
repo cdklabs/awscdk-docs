@@ -309,6 +309,17 @@ describe('mixin page generation', () => {
     expect(page).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.Mixin.html">Mixin</a>');
   });
 
+  test('a mixin page lists the members that take it and the members that return it', () => {
+    // Construct.with(mixin) takes an IMixin and Shims.asMixin returns one, so both usage rows render here too.
+    const page = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
+    expect(page).toMatch(
+      /id="used-as-argument-in"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/constructs\.Construct\.html#with">Construct\.<wbr>with<\/a>/,
+    );
+    expect(page).toMatch(
+      /id="returned-by"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.Shims\.html#asmixin">Shims\.<wbr>asMixin<\/a>/,
+    );
+  });
+
   test('a behavioral interface is badged Interface, not Mixin', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
     expect(page).not.toContain('text="Mixin"');
