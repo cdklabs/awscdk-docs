@@ -100,6 +100,19 @@ describe('buildSymbolIndex', () => {
       'IEnvironmentAware:Core',
     ]);
   });
+
+  test('labels each EKS module type with its own EKS service', () => {
+    const index = buildSymbolIndex([
+      entry({ name: 'Cluster', kind: 'Construct (L2)', submodule: 'aws_eks', link: '/eks-cluster' }),
+      entry({ name: 'Nodegroup', kind: 'Construct (L2)', submodule: 'aws_eks_v2', link: '/eks-v2-nodegroup' }),
+      entry({ name: 'IClusterRef', kind: 'Interface', submodule: 'interfaces.aws_eks_v2' }),
+    ]);
+    expect(index.map((e) => `${e.name}:${e.service}`)).toEqual([
+      'Cluster:EKS (legacy)',
+      'IClusterRef:EKS V2',
+      'Nodegroup:EKS V2',
+    ]);
+  });
 });
 
 describe('symbol index generation', () => {

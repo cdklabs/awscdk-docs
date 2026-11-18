@@ -2,6 +2,7 @@ import { toAgentMarkdown, withFrontmatterKey } from '../src/docgen/agent-markdow
 import { renderOverviewPage } from '../src/docgen/index.js';
 import { renderTypeMetadata } from '../src/docgen/layout.js';
 import type { RosettaTablet } from '../src/docgen/rosetta.js';
+import { docsSiteUrl } from '../src/docgen/versions.js';
 
 describe('withFrontmatterKey', () => {
   test('inserts into an existing block right after the opening fence', () => {
@@ -115,7 +116,109 @@ describe('toAgentMarkdown', () => {
     expect(markdown).toContain('An S3 bucket with helpers.');
     expect(markdown).toContain('## Initializer');
     expect(markdown).toContain('| Name | Type |');
-    expect(markdown).toContain('See [BucketProps](/v2/docs/aws-cdk-lib.aws_s3.BucketProps).');
+    expect(markdown).toContain(
+      `See [BucketProps](${docsSiteUrl()}v2/docs/aws-cdk-lib.aws_s3.BucketProps.html).`,
+    );
+  });
+
+  test('rewrites site page links to published hrefs', () => {
+    const previousBase = process.env.DOCS_BASE;
+    process.env.DOCS_BASE = '/cdk/api/';
+    try {
+      const page = [
+        'See [`HttpLambdaIntegration`](/v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations.HttpLambdaIntegration#usage).',
+        'Visit [stability](/stability), [versions](/versions?all=true#current), and [skills](/skills).',
+        '<a href="/v2/docs/aws-cdk-lib.aws_s3.Bucket#objects">Bucket</a>',
+        '<a href="/cdk/api/stability.html">Experimental</a>',
+        'Keep [canonical](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
+        '[twin](/v2/docs/Other.md), [Map](/v2/docs/aws-cdk-lib.aws_stepfunctions.Map),',
+        '[map twin](/v2/docs/aws-cdk-lib.aws_stepfunctions.Map.md), and [data](/v2/data.json).',
+        '[external](https://docs.aws.amazon.com/), and [local](#properties).',
+        'Keep [cdn](//cdn.example.com/x), see ![img](/v2/docs/x.png),',
+        'and see [index](/llms.txt).',
+        '<a href="/v2/docs/a b">spaced</a>',
+        '<a href="/v2/docs/a|b">piped</a>',
+        '<a href="https://en.wikipedia.org/wiki/Foo_(bar)">wiki anchor</a>',
+        'Keep [wiki](https://en.wikipedia.org/wiki/Foo_\\(bar\\)) and [pipe](https://example.com/a\\|b).',
+        'Keep `[code](/v2/docs/Code)` unchanged; [escaped](/v2/docs/a\\_b) resolves too.',
+        'See [s](/stability.md), [paren](/v2/docs/a\\(b), [bar](/v2/docs/a\\|b) and [shot](/img/Foo.PNG).',
+        'Keep ``[double](/v2/docs/Double)`` unchanged.',
+        'Use `new',
+        'Bucket()` and see [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket).',
+        '',
+      ].join('\n');
+      expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api').markdown).toBe([
+        'See [`HttpLambdaIntegration`](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations.HttpLambdaIntegration.html#usage).',
+        'Visit [stability](https://docs.example.com/cdk/api/stability.html), [versions](https://docs.example.com/cdk/api/versions.html?all=true#current), and [skills](https://docs.example.com/cdk/api/skills.html).',
+        '[Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects)',
+        '[Experimental](https://docs.example.com/cdk/api/stability.html)',
+        'Keep [canonical](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#objects),',
+        '[twin](https://docs.example.com/cdk/api/v2/docs/Other.html), [Map](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_stepfunctions.Map.html),',
+        '[map twin](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_stepfunctions.Map.html), and [data](https://docs.example.com/cdk/api/v2/data.json).',
+        '[external](https://docs.aws.amazon.com/), and [local](#properties).',
+        'Keep [cdn](//cdn.example.com/x), see ![img](https://docs.example.com/cdk/api/v2/docs/x.png),',
+        'and see [index](https://docs.example.com/cdk/api/llms.txt).',
+        '[spaced](/v2/docs/a b)',
+        '[piped](https://docs.example.com/cdk/api/v2/docs/a%7Cb.html)',
+        '[wiki anchor](https://en.wikipedia.org/wiki/Foo_%28bar%29)',
+        'Keep [wiki](https://en.wikipedia.org/wiki/Foo_\\(bar\\)) and [pipe](https://example.com/a\\|b).',
+        'Keep `[code](/v2/docs/Code)` unchanged; [escaped](https://docs.example.com/cdk/api/v2/docs/a_b.html) resolves too.',
+        'See [s](https://docs.example.com/cdk/api/stability.html), [paren](https://docs.example.com/cdk/api/v2/docs/a%28b.html), [bar](https://docs.example.com/cdk/api/v2/docs/a%7Cb.html) and [shot](https://docs.example.com/cdk/api/img/Foo.PNG).',
+        'Keep ``[double](/v2/docs/Double)`` unchanged.',
+        'Use `new',
+        'Bucket()` and see [Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html).',
+        '',
+      ].join('\n'));
+    } finally {
+      if (previousBase === undefined) {
+        delete process.env.DOCS_BASE;
+      } else {
+        process.env.DOCS_BASE = previousBase;
+      }
+    }
+  });
+
+  test('handles many escaped label characters without backtracking', () => {
+    const page = `[${'\\_'.repeat(40)}] text\n`;
+    expect(toAgentMarkdown(page).markdown).toBe(page);
+  });
+
+  test('a stray backtick does not hide links in a later paragraph', () => {
+    const page = 'Press the ` key.\n\nSee [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket) and `Foo`.\n';
+    expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
+      'Press the ` key.\n\nSee [Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html) and `Foo`.\n',
+    );
+  });
+
+  test('an escaped backtick does not open a code span', () => {
+    const page = 'Use \\` here, see [Bucket](/v2/docs/aws-cdk-lib.aws_s3.Bucket) and `Foo`.\n';
+    expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
+      'Use \\` here, see [Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html) and `Foo`.\n',
+    );
+  });
+
+  test('an API page ending in a lowercase segment is still a page', () => {
+    const page = '[pipelines](/v2/docs/aws-cdk-lib.pipelines)\n';
+    expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
+      '[pipelines](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.pipelines.html)\n',
+    );
+  });
+
+  test('recognizes the published base when DOCS_BASE differs', () => {
+    const previousBase = process.env.DOCS_BASE;
+    delete process.env.DOCS_BASE;
+    try {
+      const page = '[Bucket](/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket)\n';
+      expect(toAgentMarkdown(page, 'https://docs.example.com/cdk/api/').markdown).toBe(
+        '[Bucket](https://docs.example.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html)\n',
+      );
+    } finally {
+      if (previousBase === undefined) {
+        delete process.env.DOCS_BASE;
+      } else {
+        process.env.DOCS_BASE = previousBase;
+      }
+    }
   });
 
   test('the twin\'s title has no word-break markup', () => {

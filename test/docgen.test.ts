@@ -699,7 +699,7 @@ describe('docgen generation', () => {
 
     // The Lambda service keeps its mixin types but carries no Overview for the mixin package.
     const lambda = tree.find((t) => t.text === 'Services')!.items!.find((s) => s.text === 'Lambda')!;
-    expect(lambda.items!.filter((i) => i.text.startsWith('Overview (@aws-cdk/cfn-property-mixins'))).toEqual([]);
+    expect(lambda.items!.filter((i) => /@aws-cdk_cfn-property-mixins[^/]*-readme$/.test(i.link ?? ''))).toEqual([]);
     // Exactly one entry opens the package readme: the package's own Overview, nested under aws-cdk-lib in Framework.
     expect(holders).toEqual([['Framework', 'aws-cdk-lib', '@aws-cdk/cfn-property-mixins', 'Overview']]);
     // And no page is the target of two entries, so only one highlights at a time.

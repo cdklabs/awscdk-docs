@@ -1050,6 +1050,27 @@ describe('API page layout', () => {
           .toBeGreaterThanOrEqual(4.5);
       });
 
+      test.each(['light', 'dark'] as const)('%s mode: the theme\'s own text tokens keep AA on the flash color', (scheme) => {
+        // The flash starts at its darkest and, under reduced motion, stays. The
+        // tokens this theme declares are checked here; text-2 comes from
+        // VitePress and is measured as a rendered color in the e2e spec.
+        const layout = split(css())[scheme];
+        const surface = split(theme())[scheme];
+        const signatures = split(readFileSync(join(THEME_DIR, 'signatures.css'), 'utf-8'))[scheme];
+        const flash = hex(layout, '--api-c-flash');
+        const texts = [
+          hex(surface, '--vp-c-text-1'),
+          hex(surface, '--vp-c-brand-1'),
+          hex(surface, '--vp-c-brand-2'),
+          hex(layout, '--api-c-type'),
+          hex(layout, '--api-c-deprecated'),
+          hex(signatures, '--sig-c-type-param'),
+        ];
+        for (const text of texts) {
+          expect([scheme, text, contrast(text, flash) >= 4.5]).toEqual([scheme, text, true]);
+        }
+      });
+
       test('deprecation never depends on color alone', () => {
         // A reader who cannot distinguish the tag's hue still has the
         // strikethrough, which is why the mark is not just a color swap.

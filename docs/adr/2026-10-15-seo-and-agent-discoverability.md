@@ -89,7 +89,31 @@ as text, except in the `obtainable from` row, where every factory keeps its
 deep link), the type-metadata table becomes `- Label: value` bullets, `:::`
 containers become titled blockquotes. The type-metadata table is the only
 `<table>` the transform parses; every other table-shaped text passes through
-literally. Headings, prose, fenced code, tables and links pass through.
+literally. Headings, prose, fenced code and tables pass through. Links keep
+their text and external target. Site page links use `pageHref()` for the
+`.html` route, then `DOCS_SITE_URL` to become absolute URLs, so they work when
+the Markdown is fetched, saved or pasted without a site origin. They target the
+rendered page, which every link target has, rather than a twin, which only
+generated pages have: authored routes such as `/stability`, `/versions` and
+`/skills` ship no twin. Each rendered page advertises its own twin through
+`<link rel="alternate" type="text/markdown">`. Other root-relative Markdown
+targets, such as `/llms.txt` and `![…](…)` image sources, are joined onto
+`DOCS_SITE_URL` unchanged, except that under `/v2/` only the lowercase
+extensions in `API_ASSET_EXTENSION` (`src/docgen/agent-markdown.ts`) count as
+files, so PascalCase type IDs such as `…Map` stay pages. Raw `<a href>` anchors are rewritten the same way,
+with `(`, `)` and `|` in the target percent-encoded, as in rewritten Markdown
+links, so the copied URL still works; other raw HTML such as
+`<img src>`, and autolinks, pass through as authored. Targets that still
+contain whitespace or a backslash after CommonMark punctuation escapes are
+removed stay as authored. Only single-line,
+untitled inline links within one text run are rewritten, and so are those in a
+module type list, whose entries are rendered first and rewritten as finished
+Markdown because each link is split across `<code>` nodes; reference definitions
+and titled links pass through. The pipeline test builds the `constructs`
+package only. It fails if a Markdown link, image or reference definition in a
+twin there holds a root-relative target, and checks that each twin site link is
+the `pageUrl()` of a page the site serves. Twins of other packages are not
+scanned.
 
 The twin keeps type-page `## Example` sections, README examples and initializer
 signatures in every enabled language
@@ -209,7 +233,8 @@ run, including failures.
   the merged site unions the sitemaps and overlays the twins and index once.
 - Changing the published prefix (`DOCS_SITE_URL`) moves the canonical, sitemap,
   and JSON-LD `url` together, since all three resolve routes through `pageUrl`;
-  a preview deploy gets a sitemap and canonicals rooted at its host.
+  a preview deploy gets a sitemap and canonicals rooted at its host. The twins'
+  site links move with it too, built from `pageHref()` rather than `pageUrl`.
 - Bumping `CONTENT_REVISED_DATE` re-dates every page without a later release of
   its own, in both the JSON-LD and the footer.
 - The twin keeps every enabled language's type-page and README examples and

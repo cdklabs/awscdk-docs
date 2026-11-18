@@ -77,13 +77,16 @@ describe('module type list', () => {
 });
 
 describe('module type list in the Markdown twin', () => {
-  const twin = toAgentMarkdown(renderOverviewPage({ title: 'fake.sub', types, readme: '# Fake\n\nProse.' })).markdown;
+  const twin = toAgentMarkdown(
+    renderOverviewPage({ title: 'fake.sub', types, readme: '# Fake\n\nProse.' }),
+    'https://example.test/cdk/api/',
+  ).markdown;
 
-  test('lists each entry with its name link, kind and summary, and plain text for the name', () => {
+  test('lists each entry with its absolute name link, kind and summary, and plain text for the name', () => {
     const line = twin.split('\n').find((l) => l.includes('CfnCapability.EdiConfigurationProperty'))!;
     // The name link, then the kind, then the summary, in that order on the entry's own line.
     expect(line).toMatch(
-      /^- \[`CfnCapability\.EdiConfigurationProperty`\]\(\/v2\/docs\/fake\.sub\.CfnCapability\.EdiConfigurationProperty\) Struct\b.*Settings for EDI\.$/,
+      /^- \[`CfnCapability\.EdiConfigurationProperty`\]\(https:\/\/example\.test\/cdk\/api\/v2\/docs\/fake\.sub\.CfnCapability\.EdiConfigurationProperty\.html\) Struct\b.*Settings for EDI\.$/,
     );
     expect(twin).toContain('### Structs');
     expect(twin).not.toContain('<wbr>');

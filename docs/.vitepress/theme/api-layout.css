@@ -9,6 +9,8 @@
      The strikethrough on the identifier carries the deprecation
      independently, so nothing depends on this color alone. */
   --api-c-deprecated: #9a2c2c;
+  /* Start of the member-row flash; every text color a row carries stays at AA on it (pinned in tests). */
+  --api-c-flash: #fdf3e3;
 }
 
 .dark {
@@ -16,6 +18,7 @@
   --api-c-badge-bg: #3b2c1a;
   --api-c-badge-text: #ffb84d;
   --api-c-deprecated: #ff9d9d;
+  --api-c-flash: #352d22;
 }
 
 /* ---------- Type page header bar: breadcrumb + favorite ---------- */
@@ -483,10 +486,53 @@ a.chain-item:hover {
   border-bottom: none;
 }
 
-/* A row navigated to by its permalink is tinted briefly so the landing is
-   visible; the id lives on the row, so the whole member highlights. */
-.member-list .member-row:target {
+/* A row navigated to by its permalink is tinted so the landing is visible; the
+   id lives on the row, so the whole member highlights. The browser sets
+   `:target` on a page load with a hash only and never moves it for a pushState
+   jump, so once member-flash.ts is installed (`html.member-flash-ready`) the
+   flash class is the one landing mark and this rule serves the no-JS and
+   pre-hydration case alone; otherwise the first-loaded row would keep this tint
+   beside every later landing. */
+html:not(.member-flash-ready) .member-list .member-row:target {
   background-color: var(--vp-c-bg-soft);
+}
+
+/* The landed row flashes and fades back over 1.5s, then the class is removed on
+   `animationend`. The flash color is pale enough to keep every text color at
+   AA, so a dashed brand outline fades with it as the cue a reader with low
+   contrast sensitivity can see; it sits just outside the row and moves no
+   layout. */
+@keyframes member-row-flash {
+  from {
+    background-color: var(--api-c-flash);
+    outline-color: var(--vp-c-brand-1);
+  }
+}
+
+.member-list .member-row.member-row-flash {
+  animation: member-row-flash 1500ms ease-out;
+  outline: 2px dashed transparent;
+  outline-offset: 2px;
+}
+
+/* Reduced motion: no fade. The landed row keeps the flash color and the brand
+   outline until the next jump. Dashed, so it is not mistaken for the theme's
+   solid focus ring. */
+@media (prefers-reduced-motion: reduce) {
+  .member-list .member-row.member-row-flash {
+    animation: none;
+    background-color: var(--api-c-flash);
+    outline-color: var(--vp-c-brand-1);
+  }
+}
+
+/* Forced colors drop author backgrounds, so the mark is the dashed outline in
+   the system highlight color; with motion allowed it lasts as long as the fade.
+   `!important` outranks the animation's `outline-color`. */
+@media (forced-colors: active) {
+  .member-list .member-row.member-row-flash {
+    outline-color: Highlight !important;
+  }
 }
 
 /* The header line wraps rather than clamping: it holds a full method
