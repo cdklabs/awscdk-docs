@@ -243,10 +243,13 @@ assembly. The rules:
   static factories do render as returners.
 - **Page kinds.** Classes, structs, interfaces, constructs, mixins and enums.
   An enum has no type-to-type relation of its own, so it gains a block that
-  holds these rows alone (`renderUsageBar`), labeled `Type relations` rather
-  than `Type hierarchy`, since an enum has no hierarchy for a landmark to
-  promise; a mixin page gains them in the block it already had.
-  `obtainable from` stays off enum and mixin pages, as before.
+  holds these rows alone (`renderUsageBar`); a mixin page gains them in the
+  block it already had. Enum and mixin pages carry no `obtainable from` row.
+- **Landmark name.** The block's `<nav>` is labeled `Type relations` whenever it
+  holds no type-to-type relation, which is every enum and any type whose only
+  relations are usage rows, such as `LifecycleRule`, and `Type hierarchy`
+  otherwise. The label follows what the block contains rather than the page
+  kind, so a landmark never promises a hierarchy and delivers call sites.
 - **The `scope` parameter is not a usage.** Every construct's initializer opens
   with `scope`, the parameter the construct tree is built from, so recording it
   would list most of the corpus on the `Construct` and `IConstruct` pages and

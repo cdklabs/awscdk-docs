@@ -225,8 +225,8 @@ test.describe('type hierarchy block', () => {
   // The usage rows are built by the same renderer, so what needs driving in a
   // browser is that a row added to the block behaves like the rows that were
   // there: clamped to two lines, and losslessly unclamped by its own
-  // disclosure. Every construct's initializer takes a `scope: Construct`, so
-  // this is the row with a remainder to reveal.
+  // disclosure. Construct is a parameter of methods across the corpus
+  // (`Stack.of` and kin), so this is the row with a remainder to reveal.
   test('a usage row clamps to two lines and opens its own disclosure', async ({ page }) => {
     await page.goto(CONSTRUCT_PAGE);
 
