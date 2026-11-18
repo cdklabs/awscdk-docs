@@ -968,7 +968,7 @@ function renderTypePage(
         tablet,
         emitExamples,
         history,
-        // A class-based mixin is grouped as `Mixin` in the index table, the sidebar and the search filter, so its
+        // A class-based mixin is grouped as `Mixin` in the module type list, the sidebar and the search filter, so its
         // own page badges itself the same way, in the same color renderMixinPage gives an interface mixin. A Facade
         // is classified by `buildFacadeIndex` and labeled Facade elsewhere, so its page badges itself Facade too.
         badge: KIND_BADGE[entry.kind],

@@ -132,7 +132,7 @@ describe('symbol page generation', () => {
   });
 
   test('a Facade class badges itself Facade, in its own color', () => {
-    // `buildFacadeIndex` classifies Facades and the index table and sidebar
+    // `buildFacadeIndex` classifies Facades and the module type list and sidebar
     // label them, so a renderer that emits no Facade badge leaves the page
     // badged a plain `Class` while every other surface disagrees. Same shape
     // as the Mixin pin in mixin-pages.test.ts.

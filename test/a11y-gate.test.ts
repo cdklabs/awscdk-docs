@@ -125,7 +125,7 @@ describe('accessibility gate configuration', () => {
     const CODE_CHIPS = ['#ebebec', '#e7e7e7', '#dedfe3', '#fbecd4'];
     const pairs: [string, string[]][] = [
       // Inline code, and code inside a link — a DIFFERENT variable, and the
-      // majority of findings, since the index tables are columns of linked code.
+      // majority of findings, since the module type lists are columns of linked code.
       [valueOf(custom, '--vp-code-color'), CODE_CHIPS],
       [valueOf(custom, '--vp-code-link-color'), CODE_CHIPS],
       // The fenced-block language label, on the code surface.

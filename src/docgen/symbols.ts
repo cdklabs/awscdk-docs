@@ -172,7 +172,7 @@ interface SymbolPageOptions<T extends spec.Type> {
   readonly languages?: readonly Language[];
   /**
    * Heading badge, when the type's classification differs from its jsii kind: a class-based mixin is grouped as
-   * `Mixin` in the index table, the sidebar and the search filter, so its own page must badge itself the same way,
+   * `Mixin` in the module type list, the sidebar and the search filter, so its own page must badge itself the same way,
    * in the same color the interface mixin page uses. Defaults to the plain kind, `info`/`Class`.
    */
   readonly badge?: {
