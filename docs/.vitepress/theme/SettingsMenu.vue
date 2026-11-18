@@ -127,4 +127,10 @@ onBeforeUnmount(() => {
   width: 18px;
   height: 18px;
 }
+
+/* The navigation group sits 6px under the theme pickers. The child's root
+   element carries this component's scope attribute, so a scoped rule reaches it. */
+.settings-panel > .NavStylePicker {
+  margin-top: 6px;
+}
 </style>

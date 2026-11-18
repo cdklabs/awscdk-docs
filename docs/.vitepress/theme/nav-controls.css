@@ -395,7 +395,8 @@
 }
 
 /* Narrow viewports: the hamburger nav screen carries the remaining controls
- * instead (theme picker row + full-width language slider). */
+ * instead (full-width language slider, theme picker row, navigation style
+ * row). */
 @media (max-width: 767px) {
   .VPNavBar .content-body > .SettingsMenu,
   .VPNavBar .language-toggle {
@@ -409,6 +410,15 @@
   margin-top: 12px;
   width: 100%;
   justify-content: center;
+}
+
+/* Mobile nav screen: the navigation style as a full-width row under the
+ * theme picker row, so the reader can switch the drawer between By service
+ * and By package (the Settings dropdown that holds it on desktop is hidden
+ * below 768px). */
+.VPNavScreen .NavStylePicker {
+  margin-top: 12px;
+  width: 100%;
 }
 
 /* Hint under the search results when a `module:` value selects no module or no results (search-client.ts). */

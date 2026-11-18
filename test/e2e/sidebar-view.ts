@@ -40,3 +40,16 @@ export async function closedHeadings(page: Page): Promise<ClosedHeading[]> {
     });
   });
 }
+
+/** The sidebar's top-level entries (`API Reference`, packages, or the Framework/Services sections). */
+export const topLevel = (page: Page) => page.locator('.api-sidebar-nav > .api-sidebar-list > li');
+
+/** The top-level entry whose group button reads `name`. */
+export const topGroup = (page: Page, name: string) =>
+  topLevel(page).filter({ has: page.locator(`:scope > button.api-sidebar-group:has-text("${name}")`) }).first();
+
+/** The group button of the top-level entry named `name`. */
+export const topButton = (page: Page, name: string) => topGroup(page, name).locator(':scope > button.api-sidebar-group');
+
+/** The service style's top-level section titles (Framework, Services); none in the package style. */
+export const sectionTitles = (page: Page) => topLevel(page).locator(':scope > p.api-sidebar-section-title');
