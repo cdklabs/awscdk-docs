@@ -879,14 +879,20 @@ describe('symbol page generation', () => {
     );
     // The landmark is named for what the block holds, so a block of usage rows promises no hierarchy. That is
     // every enum, and any other type whose only relations are usages: nothing extends LifecycleRule or takes it
-    // as props.
+    // as props, and Duration is a class with no ancestor, interface or subclass.
     expect(page).toContain('<nav class="inheritance-chain" aria-label="Type relations"');
     const struct = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.LifecycleRule.md'), 'utf-8');
     expect(struct).toContain('<nav class="inheritance-chain" aria-label="Type relations"');
     expect(struct).toContain('id="used-as-argument-in"');
-    // A block with a type-to-type relation keeps the hierarchy name.
+    const plainClass = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
+    expect(plainClass).toContain('<nav class="inheritance-chain" aria-label="Type relations"');
+    expect(plainClass).toContain('id="obtainable-from"');
+    expect(plainClass).not.toContain('<span class="chain-label">implements</span>');
+    // A block with a type-to-type relation keeps the hierarchy name, on a class as well as an interface.
     const iface = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
     expect(iface).toContain('<nav class="inheritance-chain" aria-label="Type hierarchy"');
+    const subclassed = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    expect(subclassed).toContain('<nav class="inheritance-chain" aria-label="Type hierarchy"');
     // An enum no member takes or returns has no relation block at all.
     const unused = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketEncryption.md'), 'utf-8');
     expect(unused).not.toContain('<nav class="inheritance-chain"');

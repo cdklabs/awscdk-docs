@@ -329,9 +329,17 @@ assembly. The rules:
   `aws_ec2.InterfaceVpcEndpointAwsService` at about 1.08 MB each,
   `aws_config.ResourceType` at 0.99 MB. `constructs.Construct` ranks 24th at
   0.39 MB, and these rows added 10 KB to it; its built page went 0.41 MB and
-  7,685 DOM nodes to 0.42 MB and 7,853. The pages these rows grow most are the
-  two ends of the `grant*` signature, measured on a fixture extended with
-  `aws-iam`:
+  7,685 DOM nodes to 0.42 MB and 7,853.
+
+  Ranked by entries over the whole corpus, the types these rows add most to are
+  `@aws-cdk/cfn-property-mixins`'s `CfnPropertyMixinOptions` (1,905 in
+  `used as argument in`),
+  then `aws_cloudwatch.MetricOptions` (618) and `aws_iam.IGrantable` (445), and
+  for `returned by` `aws_cloudwatch.Metric` (619), `aws_iam.Grant` (452) and
+  `aws_events.EventPattern` (425): the shape repeats wherever one struct is the
+  parameter of a family of methods and one class is what they return. Only the
+  IAM pair is in a buildable fixture, so they are the ones with measured built
+  figures, on a fixture extended with `aws-iam`:
 
   | page | built HTML | DOM nodes | chunk, raw | chunk, gzipped |
   |---|---|---|---|---|
@@ -347,9 +355,10 @@ assembly. The rules:
   artifact pays and gzipped bytes are what a reader downloads; neither is near
   its limit, and the gate audits none of these pages
   (`lighthouse.config.json` names three others).
-  Those two are the cases to measure before adding a third such row: the
-  disclosure bounds the height a reader sees, not the DOM the browser parses or
-  the chunk it downloads.
+  Those are the cases to measure before adding a third such row, together with
+  the `Metric`/`MetricOptions` pair, which is the same shape in a service the
+  e2e fixture does not keep: the disclosure bounds the height a reader sees, not
+  the DOM the browser parses or the chunk it downloads.
 
 Each row is clamped to two lines by a **build-time character budget**
 (`RELATION_ROW_BUDGET = 70`, tuned by measurement — a derived 150 ran to 3–4.75
@@ -357,7 +366,12 @@ line-heights), not a CSS line clamp, because unclamping a CSS clamp needs the
 hidden names inside `<summary>`, which is the `nested-interactive` a11y
 violation. Truncation is **lossless**: a sibling `<details>` reveals every
 hidden name and its summary states what is *hidden* (`2,507 more`), reading as
-the row's continuation. The disclosure is plain HTML, so pages work before
+the row's continuation. Its accessible name leads with that same visible count
+and then names the row, `2,507 more superclass of`: one block can hold several
+overflowing rows, and a reader moving by controls has to be able to tell which
+one each disclosure opens (WCAG 2.4.4), while the visible text leading the name
+is what 2.5.3 asks for. This applies to every row of the block, including the
+ones that predate the usage rows. The disclosure is plain HTML, so pages work before
 hydration and nothing is dropped even on `constructs.Construct` (2,332
 descendants) or `IConstruct`.
 
