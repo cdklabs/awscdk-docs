@@ -15,15 +15,15 @@ import {
   classMethods,
   classProperties,
   MemberRef,
+  relationsFor,
   renderDescription,
   renderExpandableProps,
-  relationsFor,
   renderExtendsBar,
   renderInheritanceChain,
-  renderUsageBar,
-  usageRowsFor,
   renderTypeMetadata,
   renderMethodsSection,
+  renderUsageBar,
+  usageRowsFor,
 } from './layout.js';
 import { collectMethods, collectProperties } from './mixins.js';
 import { RosettaTablet } from './rosetta.js';
