@@ -72,6 +72,9 @@ test.describe('sidebar links open as real page URLs', () => {
       const watchHead = () => {
         if (document.head) {
           observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+          // A small document can have its <title> parsed before the observer
+          // attaches; record what is there the moment it does.
+          note();
         } else {
           setTimeout(watchHead, 0);
         }
