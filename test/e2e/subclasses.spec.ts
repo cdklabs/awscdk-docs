@@ -308,13 +308,14 @@ test.describe('type hierarchy block', () => {
         .toHaveAccessibleName(factory);
 
       // A method entry, whose owner and separator are written once outside the variant spans. The subject is
-      // picked by that shape, not by position: initializer entries sort first and carry no variants, so the
-      // row's first entry is the one shape this case does not cover. It sits in the row's overflow, so the
-      // disclosure is opened first, and the expected name is spelled out here rather than read back from the
-      // same DOM, so a TypeScript member leaking into another language view fails this.
+      // pinned by its link, so the element and the expected name can never drift apart: picking by position, or
+      // by "the first entry with a variant span", lands on whatever sorts first across every assembly, which a
+      // dependency bump can change — and on a Go static, whose separator is `_`. It sits in the row's overflow,
+      // so the disclosure is opened first. The expected name is spelled out rather than read back from the same
+      // DOM, so a TypeScript member leaking into another language view fails this.
       const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
       await row.locator('.chain-more summary').click();
-      const shared = row.locator('a.chain-item').filter({ has: page.locator('.lang-variant') }).first();
+      const shared = row.locator('a.chain-item[href$="SourceWithDeadLetterTarget.html#grantpush"]');
       await expect(shared).toBeVisible();
       await expect(shared).toHaveAccessibleName(announcedAs(member));
     }

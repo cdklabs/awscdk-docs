@@ -43,6 +43,13 @@ export const CONSTRUCT_LIBRARY_PAGE = '/v2/docs/aws-construct-library.html';
 // exercise the overflow disclosure.
 export const CONSTRUCT_PAGE = '/v2/docs/constructs.Construct.html';
 export const IMIXIN_PAGE = '/v2/docs/constructs.IMixin.html';
+/** The one fixture page carrying a `returned by` row: `Node.findChild` and its siblings hand out an `IConstruct`. */
+export const ICONSTRUCT_PAGE = '/v2/docs/constructs.IConstruct.html';
+/**
+ * An enum that a method takes (`Node.findAll(order)`). It has no relation of its own, so its block holds member
+ * rows alone, which is the one page shape whose landmark reads `Type relations` rather than `Type hierarchy`.
+ */
+export const CONSTRUCT_ORDER_PAGE = '/v2/docs/constructs.ConstructOrder.html';
 
 // A spec cannot spell out a content hash, so both helpers below read the emitted directory. Lazily, so the unit
 // suite can import the constants above without a built site.
@@ -87,12 +94,17 @@ export const REPRESENTATIVE_PAGES = [
   // The `obtainable from` row and its overflow disclosure: no page above has a
   // static member returning its own type, so the audits would never see it.
   SUBSCRIPTION_FILTER_PAGE,
-  // The `used as argument in` and `returned by` rows at their fullest: an
-  // interface whose members are spelled per language, so an entry carries
-  // variant spans inside a link, and whose rows overflow into the disclosure.
-  // `CONSTRUCT_PAGE` has usage rows too, but short ones and without the
-  // same-name note, so it would not audit the markup these rows are made of.
+  // The `used as argument in` row at its fullest: an interface whose members
+  // are spelled per language, so an entry carries variant spans inside a link,
+  // with a same-name note (`SqsDestination (initializer) (aws_appconfig)`) and
+  // an overflow. `CONSTRUCT_PAGE` has that row too, but short and plain.
   IQUEUE_PAGE,
+  // The other two shapes the rows take, which no page above renders: a
+  // `returned by` row, and a block of member rows alone, whose landmark reads
+  // `Type relations` and which comes from the enum path rather than the class
+  // or interface one.
+  ICONSTRUCT_PAGE,
+  CONSTRUCT_ORDER_PAGE,
 ] as const;
 
 // Severities that FAIL the accessibility gate. Moderate and minor

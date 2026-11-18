@@ -178,13 +178,15 @@ interface RelationItem {
 const INITIALIZER_SUFFIX = '(initializer)';
 
 /**
- * The note that tells two owners of the same short name apart, for every entry of one row at once. Two such
- * owners render identical link text pointing at different pages, which a links list or a tab sequence cannot tell
- * apart (WCAG 2.4.4). A colliding entry carries its namespace as a trailing note,
+ * The note that tells two owners of the same short name apart, for every member entry of one BLOCK at once. Two
+ * such owners render identical link text pointing at different pages, which a links list or a tab sequence cannot
+ * tell apart (WCAG 2.4.4), and neither of those is bounded by a row: a `Schedule.rate` in `obtainable from` and
+ * another in `returned by` collide exactly as two in one row do. A colliding entry carries its namespace as a
+ * trailing note,
  * `Schedule.rate (aws_events)`: the one enclosing segment where that tells the owners apart, and the whole
  * namespace path where it does not (`x.a.mixins.Thing` against `x.b.mixins.Thing`, which share a `mixins`
  * segment). The note is part of the visible text, so it counts against the row's width budget and stays in the
- * accessible name. One map per row keeps a row linear in its entries, which matters for the one relation that
+ * accessible name. One map per block keeps a block linear in its entries, which matters for the one relation that
  * grows with the number of call sites.
  */
 function ownerNotes(refs: readonly MemberRef[]): ReadonlyMap<string, string> {
@@ -317,8 +319,8 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
  * holds in every language. A `<wbr>` after the separator lets a long token wrap at narrow widths without changing
  * the accessible name; the agent Markdown twin drops the tag. An initializer entry reads `Owner (initializer)` in
  * every language, naming the section it links to rather than leaving a bare type name in a row of members, and an
- * entry whose short owner name is not unique in its row carries its namespace the same way,
- * `Owner.member (aws_events)`.
+ * entry whose short owner name is not unique in its block carries its namespace the same way,
+ * `Owner.member (aws_events)`; the caller computes those notes once for the block and passes them in.
  */
 function memberRelationRow(
   label: string,
@@ -326,9 +328,9 @@ function memberRelationRow(
   linkFor: LinkResolver,
   pageFqn: string,
   languages: readonly Language[],
+  notes: ReadonlyMap<string, string>,
   id?: string,
 ): string {
-  const notes = ownerNotes(refs);
   return relationRowOf(label, refs.map((ref) => {
     const owner = shortName(ref.ownerFqn);
     const note = notes.get(ref.ownerFqn) ?? '';
@@ -488,6 +490,9 @@ function visibleRelations(usage: UsageRelations, propsUsers: readonly string[]):
  * The member relation rows, in one order on every page kind: the static members that hand out an instance, then
  * the members that take the type, then the members that return it. Each is the inverse of a member signature, so
  * they follow every type-to-type relation.
+ *
+ * The same-name notes are computed here, once over the block's entries, because two identical link texts are as
+ * hard to tell apart across two rows as inside one.
  */
 function memberRows(
   pageFqn: string,
@@ -495,8 +500,9 @@ function memberRows(
   linkFor: LinkResolver,
   languages: readonly Language[],
 ): string {
+  const notes = ownerNotes(memberEntries(usage));
   const row = (label: string, refs: readonly MemberRef[], id: string): string =>
-    (refs.length > 0 ? memberRelationRow(label, refs, linkFor, pageFqn, languages, id) : '');
+    (refs.length > 0 ? memberRelationRow(label, refs, linkFor, pageFqn, languages, notes, id) : '');
   return [
     row('obtainable from', usage.obtainableFrom, SECTION_ANCHORS.obtainableFrom),
     row('used as argument in', usage.argumentIn, SECTION_ANCHORS.usedAsArgumentIn),

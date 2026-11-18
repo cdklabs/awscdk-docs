@@ -741,6 +741,21 @@ describe('symbol page generation', () => {
     expect(new Set(texts).size).toBe(texts.length);
   });
 
+  test('two owners of the same name in DIFFERENT rows of one block are told apart too', () => {
+    // A links list and a tab sequence span the whole block, so the collision the note exists for does not stop at
+    // a row boundary: one `Thing.of` in `obtainable from` and another in `returned by` are two identical link
+    // texts pointing at different pages. Computing the notes per row would leave both bare.
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const [nav] = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], {
+      obtainableFrom: [{ ownerFqn: 'x.left.Thing', memberName: 'of', kind: 'method' as const, static: true }],
+      returnedBy: [{ ownerFqn: 'x.right.Thing', memberName: 'make', kind: 'method' as const }],
+    }).filter((l) => l.includes('<nav'));
+    expect(nav).toContain('<a class="chain-item" href="/v2/docs/x.left.Thing.html#of">Thing.<wbr>of (left)</a>');
+    expect(nav).toContain('<a class="chain-item" href="/v2/docs/x.right.Thing.html#make">Thing.<wbr>make (right)</a>');
+  });
+
   test('a const static keeps its name in the Python member row, matching the obtainable-from entry', () => {
     const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
     const assembly = loadAssembly('aws-cdk-lib');

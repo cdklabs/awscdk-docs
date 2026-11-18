@@ -191,16 +191,18 @@ already allows a line break, the visible label is still what the name contains
 (WCAG 2.5.3), and the alternative is the per-language prefix those nodes paid
 for. The e2e expectation allows that one break and is otherwise exact, so a
 hidden language leaking into the name still fails. In **every** member row,
-including this one, an entry whose short owner name is not unique in its row
-carries its submodule as a trailing note, `Schedule.rate (aws_events)`: two
+including this one, an entry whose short owner name is not unique in its
+**block** carries its submodule as a trailing note, `Schedule.rate (aws_events)`: two
 identical link texts pointing at different pages cannot be told apart in a
-links list or a tab sequence (WCAG 2.4.4). The note is a parenthetical rather
+links list or a tab sequence (WCAG 2.4.4), and neither of those stops at a row
+boundary, so the notes are computed once over the block's member entries
+rather than per row. The note is a parenthetical rather
 than a prefix, because a prefix reads as a namespace and the jsii submodule is
 not the namespace Go, Java or C# would use, and it is counted into the width
 budget like any other text. When two owners share that segment as well
 (`x.a.mixins.Thing` against `x.b.mixins.Thing`), the note is the whole
 namespace path, `x.a.mixins`, because a one-segment note would be identical on
-both and the row would be back to two links a reader cannot tell apart. The
+both and the block would be back to two links a reader cannot tell apart. The
 note is the jsii submodule, which is the
 TypeScript and Python module name, and it is **not** translated per language:
 the Java and C# namespaces for the same submodule
