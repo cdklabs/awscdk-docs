@@ -173,13 +173,14 @@ skipped, as the member tables skip them. Each entry reads `Owner.member`
 (`Bucket.fromBucketName`) and links the owner's page at the member's row
 anchor, or the fragment alone when the owner is the page's own type; entries
 are sorted by owner FQN then member, each once; the row carries the
-`obtainable-from` id and shares the budget and disclosure below. The whole
-entry is rendered as inline language variants, translated per enabled language
+`obtainable-from` id and shares the budget and disclosure below. The MEMBER
+NAME is rendered as an inline language variant, translated per enabled language
 like the member rows (the multi-language ADR's canonical identity, translated
-display): the member name through the member-name translators (a `const`
-keeps its UPPER_SNAKE name in Python, as the member rows do) and the
+display): through the member-name translators (a `const`
+keeps its UPPER_SNAKE name in Python, as the member rows do), with the
 separator `_` for a static in Go, where jsii exposes it as the package-level
-`Owner_Member`; an instance member keeps the dot, because in Go it is called
+`Owner_Member` and the whole entry varies instead;
+an instance member keeps the dot, because in Go it is called
 on a value. Only the member name varies between languages, so wherever the
 separator is the same in every enabled language the owner, the separator and
 the `<wbr>` are emitted once outside the variant spans, which is three of the
