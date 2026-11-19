@@ -218,8 +218,9 @@ describe('API page layout', () => {
       // `aws-cdk-lib.aws_s3.IBucket` because uppercase precedes lowercase,
       // and `constructs.*` sorts last. Asserting the exact list is what
       // documents that and what fails if the sort key ever changes —
-      // membership assertions above already cover reachability.
-      const impl = /<span class="chain-label">implements<\/span>(.*?)<\/nav>/s.exec(page)?.[1] ?? '';
+      // membership assertions above already cover reachability. Bounded by
+      // the row's own end, since the block carries further rows after it.
+      const impl = /<span class="chain-label">implements<\/span>(.*?)<\/div>/s.exec(page)?.[1] ?? '';
       const names = [...impl.matchAll(/>([A-Z]\w+)</g)].map((m) => m[1]);
       expect(names).toEqual([
         'IResource',
@@ -269,7 +270,8 @@ describe('API page layout', () => {
       // formatted visible count is a speech-input failure the axe gate
       // cannot catch, since 2.5.3 is not machine-testable. Both must come
       // from the same formatted value.
-      const summary = row.match(/<summary aria-label="Show ([^"]+) more">([0-9,]+) more<\/summary>/);
+      // The name also names the ROW, so a reader moving by controls can tell one block's disclosures apart.
+      const summary = row.match(/<summary aria-label="([^"]+) more implemented by">([0-9,]+) more<\/summary>/);
       expect(summary).not.toBeNull();
       expect(summary![1]).toBe(summary![2]);
       expect(summary![2]).toContain(',');

@@ -58,9 +58,10 @@ and search filters per page, then routes by kind:
   class initializer parameters.
 - **Behavioral interfaces** that are not mixins show methods and properties.
 - **Enums** show a members table and a "Referenced by" list of properties
-  typed by the enum. A deprecated member is marked like a deprecated
-  property row: struck-through name, a `deprecated` badge, and the
-  deprecation reason in place of the summary.
+  typed by the enum, plus the usage rows (below) in a `Type relations` block
+  when a member takes or returns the enum. A deprecated member is marked like
+  a deprecated property row: struck-through name, a `deprecated` badge, and
+  the deprecation reason in place of the summary.
 
 Type references in property tables render as markdown links when the target
 has a documented page (`linkFor` over a global FQN → link map), falling back
@@ -174,16 +175,20 @@ overview pages) the Teleport is disabled and the star keeps its standalone
 
 ### One type-hierarchy block: every relation as a row
 
-All six relationships — `implements`, `extends`, `implemented by`,
-`superclass of`, a struct's `used as props by`, and `obtainable from` — render
+All eight relationships — `implements`, `extends`, `implemented by`,
+`superclass of`, a struct's `used as props by`, `obtainable from`,
+`used as argument in` and `returned by` — render
 as rows of one hierarchy block under the breadcrumb, emitted through one shared
 row renderer (`relationRowOf`): type entries via `relationRow`, member entries
 via `memberRelationRow`. There is no separate `## Subclasses`, `## Implemented by` or
 `## Used as props by` section and no inline-vs-section split by direction.
 `used as props by` lists the classes whose initializer takes the struct (from
 the reverse usage index); its row keeps the `used-as-props-by` id, so deep
-links to the former section still land on it. `obtainable from` is the last
-row on class, interface, struct and construct pages: the static methods and
+links to the former section still land on it. The three member rows come after
+every type-to-type relation, in one order on every page kind: `obtainable
+from`, then `used as argument in`, then `returned by`.
+
+`obtainable from` renders on class, interface, struct and construct pages: the static methods and
 static properties (including constants) in the documented assemblies whose
 declared type is the page's type or an optional of it — arrays, maps and
 unions do not produce one instance, so they do not count. Protected statics are
@@ -191,15 +196,52 @@ skipped, as the member tables skip them. Each entry reads `Owner.member`
 (`Bucket.fromBucketName`) and links the owner's page at the member's row
 anchor, or the fragment alone when the owner is the page's own type; entries
 are sorted by owner FQN then member, each once; the row carries the
-`obtainable-from` id and shares the budget and disclosure below. The whole
-entry is rendered as inline language variants, translated per enabled language
+`obtainable-from` id and shares the budget and disclosure below. The MEMBER
+NAME is rendered as an inline language variant, translated per enabled language
 like the member rows (the multi-language ADR's canonical identity, translated
-display): the member name through the member-name translators (a `const`
-keeps its UPPER_SNAKE name in Python, as the member rows do) and the
-separator `_` for Go, where a static is the package-level `Owner_Member`. The
+display): through the member-name translators (a `const`
+keeps its UPPER_SNAKE name in Python, as the member rows do), with the
+separator `_` for a static in Go, where jsii exposes it as the package-level
+`Owner_Member` and the whole entry varies instead;
+an instance member keeps the dot, because in Go it is called
+on a value. Only the member name varies between languages, so wherever the
+separator is the same in every enabled language the owner, the separator and
+the `<wbr>` are emitted once outside the variant spans, which is three of the
+five nodes an entry would otherwise cost per language. It does not change what
+a reader hears: Chromium's own name computation inserts a space at the `<wbr>`,
+so **every** member entry is announced `Owner. member` where it reads
+`Owner.member`, in every member row of the block.
+Measured on a built page through `Accessibility.getPartialAXTree`, with the
+prefix outside the spans, inside each span and absent: only dropping the `<wbr>`
+removes the space, and moving it before the separator moves the space there
+(`Owner .member`). The `<wbr>` is kept, because the pause falls where a line
+break is already allowed and the visible label is still what the name contains
+(WCAG 2.5.3). Playwright computes the name differently — it ignores the `<wbr>`
+and inserts a space between a text node and an element instead — so the e2e
+expectation allows one break after the first separator and is exact from there
+on, which still fails a member name splitting inside its own span. In **every**
+member row,
+including this one, an entry whose short owner name is not unique in its
+**block** carries its submodule as a trailing note, `Schedule.rate (aws_events)`: two
+identical link texts pointing at different pages cannot be told apart in a
+links list or a tab sequence (WCAG 2.4.4), and neither of those stops at a row
+boundary, so the notes are computed once over the block's member entries
+rather than per row. The note is a parenthetical rather
+than a prefix, because a prefix reads as a namespace and the jsii submodule is
+not the namespace Go, Java or C# would use, and it is counted into the width
+budget like any other text. When two owners share that segment as well
+(`x.a.mixins.Thing` against `x.b.mixins.Thing`), the note is the whole
+namespace path, `x.a.mixins`, because a one-segment note would be identical on
+both and the block would be back to two links a reader cannot tell apart. The
+note is the jsii submodule, which is the
+TypeScript and Python module name, and it is **not** translated per language:
+the Java and C# namespaces for the same submodule
+(`software.amazon.awscdk.services.events`, `Amazon.CDK.AWS.Events`) are longer
+than the entry they would disambiguate, and the note's job is to tell two rows
+apart rather than to name an import. The
 anchor stays on the canonical jsii name and the width budget uses the widest
-translation; the block is wrapped in `<LanguageTabs>` only when this row is
-present. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
+translation; the block is wrapped in `<LanguageTabs>` only when a member row
+carries such a variant entry. A `<wbr>` after the separator lets a long entry wrap at narrow widths;
 the agent Markdown twin drops it. `implements`
 lists the **full transitive closure** of
 interfaces reachable through class ancestors *and* interface `extends`
@@ -209,13 +251,237 @@ resolver in `src/docgen/interfaces.ts` cached per `TypeIndex`. `superclass of`
 from `buildImplementorsIndex`) are transitive, merged, and share the one
 corpus traversal that mixin classification already performs.
 
+`used as argument in` and `returned by` are the inverse of a member
+signature: for every named type the site documents, the members that take it
+as a parameter and the methods that return it. They read from the same reverse
+usage index and render as `memberRelationRow` entries, so a type page answers
+"what can I pass this to, and what hands me one" without a reader grepping the
+assembly. The rules:
+
+- **Sources.** Methods and static methods of classes and interfaces, plus
+  initializer parameters. Properties are deliberately not listed: an enum page
+  already carries `Referenced by` for the properties that reference it, and
+  property types are visible in the member tables of the owning type.
+- **Generic wrappers unwrap.** A type inside an array, a map, an optional or a
+  union is a usage of the named type inside it, because that is the type the
+  reader has to supply or receives.
+- **Protected members are skipped**, for the same reason `obtainable from`
+  skips protected statics: a reader cannot call one, and the owner page has no
+  row to anchor the entry to.
+- **The declaring type owns the entry.** A jsii type lists its own methods plus
+  a redeclaration of every method it overrides or implements, carrying an
+  `overrides` field. Those redeclarations are skipped, so each member is
+  recorded once where it is declared (`IBucket.grantRead`, not again on
+  `BucketBase` and on every subclass, and `IAspect.visit` rather than one entry
+  per implementor). Two kinds of member are never redeclarations: one whose
+  overridden declaration is outside the documented assemblies, because nothing
+  else would record it, and a **static**, because jsii marks a subclass static
+  that shadows a base static with `overrides` although it is a separate
+  callable with its own anchor, and its own package-level function in Go
+  (`App.of` over `Stage.of`). One
+  further exception, for `returned by` only: jsii allows a covariant override, so a redeclaration can
+  narrow its return type. The types the narrowed return names that the
+  overridden return does not are documented nowhere else, so they are recorded
+  on the override; a type the overridden return already names stays with that
+  declaration, which keeps one logical member from filling a row twice when an
+  override narrows `Wide | Narrow` to `Narrow`. A redeclaration whose
+  overridden method cannot be found on the type its `overrides` names is
+  skipped like any other: nothing is known to compare the return against.
+  Parameters need no such exception, because an
+  override cannot change them.
+- **Entry format.** `Owner.member`, the same as `obtainable from`, linked to
+  the owner's page at the member's row anchor, and the same-name note the
+  shared renderer adds (above) applies here too. An **initializer** entry reads
+  `Owner (initializer)`, linked to the owner page's `#initializer` section:
+  jsii gives an initializer no member name, and its per-language spelling
+  changes form rather than casing (`new Bucket(...)`, `Bucket(...)`,
+  `NewBucket(...)`), so no `Owner<sep>member` string exists to translate. The
+  suffix names the section the link lands on, and keeps a row of members from
+  reading as a row of types, since the same owner name can appear in
+  `superclass of` or `implemented by` right above. Such an entry is
+  language-stable and carries no variant spans; its suffix counts against the
+  width budget like any other text.
+- **Order.** By owner short name, then by owner FQN, then by member, so two
+  owners of the same short name stay adjacent and sort between themselves by
+  namespace rather than interleaving by member; an initializer entry leads its
+  owner's entries, matching how it renders. Each owner and member appears once
+  even when several parameters of one member match.
+- **No row repeats a more specific one.** A usage the same block already states
+  is dropped from these rows, because reading one `Owner.member` twice in one
+  block tells the reader nothing the first row did not. So `used as argument
+  in` drops an initializer entry whose owner the `used as props by` row above
+  already names, and `returned by` drops a member the `obtainable from` row
+  above already names. The filter runs per page rather than in the index,
+  because whether the more specific row is on the page depends on the page
+  kind: an enum or an INTERFACE mixin page carries no `obtainable from` row, so
+  there the static factories do render as returners. A class-based mixin is
+  rendered by the class path and does carry the row, so its returners are
+  de-duplicated against it like any other class's.
+- **Page kinds.** Classes, structs, interfaces, constructs, mixins and enums.
+  An enum has no type-to-type relation of its own, so it gains a block that
+  holds these rows alone (`renderUsageBar`); a mixin page gains them in the
+  block it already had. Enum and interface mixin pages carry no
+  `obtainable from` row; a class-based mixin goes through the class path and
+  carries it.
+- **Landmark name.** The block's `<nav>` is labeled `Type relations` whenever it
+  holds no type-to-type relation, which is every enum and any type whose only
+  relations are usage rows, such as `LifecycleRule`, and `Type hierarchy`
+  otherwise. The label follows what the block contains rather than the page
+  kind, so a landmark never promises a hierarchy and delivers call sites.
+- **The `scope` parameter is not a usage.** A leading parameter named `scope`
+  and typed exactly `constructs.Construct` or `constructs.IConstruct` is the
+  construct tree the member attaches to, by the
+  convention `constructs` sets for initializers and for the
+  `X.fromY(scope, id, …)` family. It is skipped wherever it appears, in an
+  initializer or in a method, because recording it listed most of the corpus on
+  those two pages and repeated what their
+  `superclass of` row already carries. Every part of the test matters: a later
+  parameter is a usage like any other, so is a leading `scope` of any other
+  type including a `Construct` subclass such as `Stack`, and
+  `Stack.of(construct)` keeps its entry because its
+  parameter is named `construct`. What the rule costs, on the two pages it
+  applies to, is that a factory like `Bucket.fromBucketArn(scope, id, arn)` and
+  a lookup helper whose parameter is named `scope` — `Aspects.of(scope)`,
+  `Tags.of(scope)` — are not listed there, while
+  `Stack.of(construct)` and `Names.uniqueId(construct)`, the same shape with
+  another parameter name, are. The inconsistency is jsii's parameter names, and
+  the alternative is a row that lists most of the corpus.
+- **Size.** Both rows are clamped and excluded from the search index like
+  every other row of this block, and the whole list ships in the HTML behind
+  the disclosure. Every figure below was measured on one developer host, a
+  16-core arm64 Linux box, base `6052c36` against the change that introduced
+  these rows, with the same
+  installed dependencies, and the method is: entry counts from
+  `buildUsageIndex` over the assemblies of `docgen.config.json`; corpus size as
+  the total bytes of generated `.md` pages under
+  `docs/v2` from `npx projen docs:generate`, which is also where the wall time
+  comes from; artifact size as the total bytes of the whole VitePress `dist`
+  of an e2e fixture build
+  (`docs:generate`, then `scripts/e2e-fixture-prune.cjs`, then `vitepress build
+  docs`), HTML and `assets/*.js` together, because the per-page hydration chunk
+  is the artifact cost that counts against the deploy limit as much as the HTML
+  does, with the gzipped chunk reported separately where the performance gate's
+  ceiling is what matters, and the deflate zip `scripts/package-site.sh`
+  produces from that same `dist`, before the Markdown twins are overlaid, since
+  the twins are the whole corpus on every fixture and would drown the signal;
+  DOM nodes from
+  `document.querySelectorAll('*').length` on a built fixture page.
+
+  The index holds 13,343 `used as argument in` entries over 8,376 types and
+  5,806 `returned by` entries over 2,120 types. What the rows RENDER is smaller,
+  because the de-duplication above drops what a more specific row already
+  states: 6,437 and 2,088 entries over 3,941 types. The corpus grew 744.2 MB to
+  750.0 MB, +0.79 percent over 29,893 pages, and the Markdown twins 197.6 MB to
+  198.5 MB, +0.45 percent. Docgen wall time end to end is the one figure
+  this host measures badly: repeated runs of the same code ranged 103 s to
+  147 s. The new work was timed on its own instead, median of seven runs over
+  the 41,219 types of `docgen.config.json`: `buildUsageIndex` went 179 ms to
+  268 ms, so the extra parameter and return walk costs about **90 ms** for the
+  whole corpus. Per page, rendering `aws_cloudwatch.MetricOptions`, the page
+  with the most entries in the corpus, went from 0.5 ms to 12.1 ms with the two
+  rows and the de-duplication, median of seven `renderStructPage` runs in five
+  languages on the same host; a page with no usage entries pays nothing
+  measurable.
+
+  Artifact growth depends on which services the fixture keeps. Raw `dist` bytes
+  are not what the deploy gate checks: `scripts/package-site.sh`
+  deflate-zips `dist` and fails above `MAX_ZIP_MB` (900, under the 1 GB
+  GitHub Pages limit on compressed bytes), so the zip is the figure that can
+  actually stop a release, and these rows are long runs of similar markup that
+  deflate takes most of back.
+
+  | fixture | raw `dist` | deploy zip |
+  |---|---|---|
+  | default, SNS and SQS, 77 pages | 44,857,537 B → 45,016,359 B, +0.35% | 4,602,976 B → 4,623,324 B, +0.44% |
+  | plus `aws-cloudwatch` and `aws-iam`, 410 pages | 115,979,238 B → 119,872,457 B, +3.36% | 12,631,707 B → 12,867,022 B, +1.86% |
+
+  The second fixture is the worst case a developer host can build, because
+  almost every IAM type is a parameter or a return somewhere and CloudWatch
+  carries the two heaviest rows in the corpus. The full site is not built on a
+  developer host, so its own zip is **not measured**: the corpus figure is the
+  site-wide number and the fixture figures bracket what bundling and
+  compression do to it.
+  Whoever changes what these rows collect re-measures the same way and reports
+  it on the pull request. A growth above **5 percent** of the deployed zip is
+  the line at which this presentation has to be reconsidered rather than
+  shipped, well before `MAX_ZIP_MB` becomes the thing that says no. One
+  tripwire runs in CI: `test/symbol-pages.test.ts` renders the heaviest row,
+  `aws_cloudwatch.MetricOptions` from `aws-cdk-lib` and `constructs`, and pins
+  its bytes **per entry** 5 percent above today's 545 in five languages. That
+  catches markup growth in the renderer, which is this repo's to control. It
+  deliberately does not pin the row's absolute size: the number of entries
+  follows the pinned CDK version, so the nightly refresh would turn red for a
+  CloudWatch release that this repo did nothing to cause. It does bound that
+  count loosely, at about double today's 409, so a release that doubles the
+  call sites stops and asks for the re-measure above rather than landing
+  unseen.
+- **The heaviest pages.** Ranking the 29,893 generated pages by size, the
+  biggest are catalog types that predate these rows:
+  `aws_quicksight.CfnCustomPermissions.CapabilitiesProperty` and
+  `aws_ec2.InterfaceVpcEndpointAwsService` at about 1.08 MB each,
+  `aws_config.ResourceType` at 0.99 MB. `constructs.Construct` ranks 24th at
+  0.39 MB, and these rows added 10 KB to it; its built page went 0.41 MB and
+  7,685 DOM nodes to 0.42 MB and 7,853.
+
+  Ranked by the entries the rows RENDER, over the whole corpus, the pages these
+  rows add most to are `aws_cloudwatch.MetricOptions` (618 in
+  `used as argument in`) and `aws_iam.IGrantable` (445), then a run of
+  reference interfaces around 70 each, and for `returned by`
+  `aws_cloudwatch.Metric` (588), `aws_iam.Grant` (445) and
+  `aws_events.EventPattern` (115): the shape repeats wherever one struct is the
+  parameter of a family of methods and one class is what they return. Ranking by
+  index entries instead would put `CfnPropertyMixinOptions` first with 1,905,
+  which is wrong: every one of those is an initializer entry whose owner the
+  props row already names, so its rendered row is empty. All four are
+  measured, on the fixture extended with `aws-cloudwatch` and `aws-iam`:
+
+  | page | built HTML | DOM nodes | chunk, raw | chunk, gzipped |
+  |---|---|---|---|---|
+  | `aws_cloudwatch.MetricOptions` | 83 KB → 410 KB | 3,188 → 8,264 | 69 KB → 426 KB | 5.6 KB → 24.5 KB |
+  | `aws_cloudwatch.Metric` | 110 KB → 419 KB | 3,739 → 8,450 | 101 KB → 436 KB | 8.3 KB → 25.7 KB |
+  | `aws_iam.Grant` | 74 KB → 283 KB | 2,915 → 6,493 | 59 KB → 289 KB | 6.5 KB → 17.6 KB |
+  | `aws_iam.IGrantable` | 43 KB → 252 KB | 2,346 → 5,938 | 24 KB → 254 KB | 3.3 KB → 14.6 KB |
+
+  The gzipped column is the one the performance gate's 400 KB combined JS+CSS
+  ceiling is measured against (the collect server serves gzipped, so
+  `transferSize` is compressed bytes). Those chunks are long runs of similar
+  markup, which compresses by about 17 times, and every other `assets/*.js`
+  and `assets/*.css` in the fixture adds 31 KB gzipped, so the heaviest of
+  these pages ships about 56 KB of the 400 KB. Raw bytes are what the deploy
+  artifact pays and gzipped bytes are what a reader downloads; neither is near
+  its limit.
+
+  The other half of that gate is the Performance score, and
+  `lighthouse.config.json` audits none of these pages. It was run against them
+  by hand instead, with the gate's own settings — the `lighthouse` CLI,
+  `--only-categories=performance --preset=desktop`, `docs.aws.amazon.com`
+  blocked as `scripts/lighthouse-run.cjs` blocks it, three runs, lower-middle
+  median — on the fixture that keeps `aws-cloudwatch` and `aws-iam`:
+  `aws_cloudwatch.MetricOptions`, the heaviest page in the corpus, scores
+  **0.95** (0.94 to 0.98) and `aws_cloudwatch.Metric` **1.00**, against the
+  gate's 0.9 minimum, with total blocking time of 0 ms on both; on the default
+  fixture `aws_sqs.IQueue` scores 1.00 and `constructs.IConstruct` 0.98. So the
+  rows cost download bytes rather than main-thread time, which is what the
+  clamped, folded markup is for. Blocking the third party matters to the
+  reading: unblocked, the AWS cookie banner is the LCP element on every page
+  and swamps the score, which is why the gate blocks it.
+
+  These four are the cases to measure before adding a third such row: the
+  disclosure bounds the height a reader sees, not
+  the DOM the browser parses or the chunk it downloads.
+
 Each row is clamped to two lines by a **build-time character budget**
 (`RELATION_ROW_BUDGET = 70`, tuned by measurement — a derived 150 ran to 3–4.75
 line-heights), not a CSS line clamp, because unclamping a CSS clamp needs the
 hidden names inside `<summary>`, which is the `nested-interactive` a11y
 violation. Truncation is **lossless**: a sibling `<details>` reveals every
 hidden name and its summary states what is *hidden* (`2,507 more`), reading as
-the row's continuation. The disclosure is plain HTML, so pages work before
+the row's continuation. Its accessible name leads with that same visible count
+and then names the row, `2,507 more superclass of`: one block can hold several
+overflowing rows, and a reader moving by controls has to be able to tell which
+one each disclosure opens (WCAG 2.4.4), while the visible text leading the name
+is what 2.5.3 asks for. This applies to every row of the block, including the
+ones that predate the usage rows. The disclosure is plain HTML, so pages work before
 hydration and nothing is dropped even on `constructs.Construct` (2,332
 descendants) or `IConstruct`.
 
@@ -230,8 +496,10 @@ explicitly** — WebKit strips native list semantics from inline-styled lists,
 and the row must flow as text (`display: inline; list-style: none`) for the
 clamp. The disclosure is the list's final item with the hidden remainder as a
 nested `<ul>` inside it, never inside `<summary>`. Separators live inside each
-item (`', '` between names, bare `','` before the disclosure). Order is
-FQN-sorted for byte-stable output. All relations ship in the HTML (hidden by
+item (`', '` between names, bare `','` before the disclosure). Type rows and
+`obtainable from` are FQN-sorted for byte-stable output; the usage rows sort by
+owner short name first, as their Order bullet above records, which is byte-stable
+too. All relations ship in the HTML (hidden by
 `<details>`); the block carries `data-pagefind-ignore` so type names repeating
 on every page do not pollute search ([search](./2026-10-15-search-and-filter.md)).
 
@@ -396,7 +664,8 @@ HTML VitePress renders.
   The previous reference also appended its experimental/deprecated badge markup
   to the title id; that tail is not reproduced.
 - **Sections:** fixed ids `example`, `initializer`, `properties`, `methods`,
-  `members`, `referenced-by`, `used-as-props-by` and `obtainable-from`. Module
+  `members`, `referenced-by`, `used-as-props-by`, `obtainable-from`,
+  `used-as-argument-in` and `returned-by`. Module
   overview sections are `module-submodules` and `module-types`, because README
   prose above them can carry its own `## Types` heading. Each kind group in the
   type list is `module-types-<kind>` (`typeKindAnchor`), e.g. `module-types-structs`.
@@ -512,9 +781,10 @@ outline, only overview pages suppress it.
   vocabularies; the old `prop-row`/`method-details` markup and markdown props
   tables are gone.
 - Relationship rows ship every entry in the HTML behind native `<details>`, so
-  the four heaviest base-class pages pay in bytes (`constructs.Construct.md`
-  ~211 KB) for completeness; an absolute "… and N more" cap is the lever if
-  those pages are later judged too heavy.
+  the heaviest base-class pages pay in bytes for completeness; the figures, the
+  measurement method and the pages to watch are in the Size and heaviest-pages
+  bullets above. An absolute "… and N more" cap is the lever if those pages are
+  later judged too heavy.
 - Nine badge hues, their contrast pairs, and the per-kind label are this
   project's to maintain; a tenth kind means a new hue and two pinned pairs.
 - The L-level heuristic can misclassify unconventional constructs; it is

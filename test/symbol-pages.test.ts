@@ -44,14 +44,14 @@ describe('usage index', () => {
   test('types know which static members produce them', () => {
     // Static methods returning the type, sorted by owner then member, each once.
     expect(usage.obtainableFrom.get('aws-cdk-lib.aws_s3.IBucket')).toEqual([
-      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketArn', kind: 'method' },
-      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketAttributes', kind: 'method' },
-      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketName', kind: 'method' },
-      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromCfnBucket', kind: 'method' },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketArn', kind: 'method', static: true },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketAttributes', kind: 'method', static: true },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketName', kind: 'method', static: true },
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromCfnBucket', kind: 'method', static: true },
     ]);
     // A static constant counts; an instance member or a struct does not.
     expect(usage.obtainableFrom.get('aws-cdk-lib.JsonNull')).toEqual([
-      { ownerFqn: 'aws-cdk-lib.JsonNull', memberName: 'INSTANCE', kind: 'property', constant: true },
+      { ownerFqn: 'aws-cdk-lib.JsonNull', memberName: 'INSTANCE', kind: 'property', static: true, constant: true },
     ]);
     expect(usage.obtainableFrom.has('aws-cdk-lib.aws_s3.BucketProps')).toBe(false);
     // A protected static is not callable and has no row on its owner page, so it is not a factory:
@@ -98,15 +98,373 @@ describe('usage index', () => {
     } as unknown as spec.Assembly;
     const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
     expect(synthetic.obtainableFrom.get('lib.Version')).toEqual([
-      { ownerFqn: 'lib.Alpha', memberName: 'VER_1', kind: 'property', constant: true },
-      { ownerFqn: 'lib.Alpha', memberName: 'of', kind: 'method' },
-      { ownerFqn: 'lib.Zeta', memberName: 'VER_1', kind: 'property', constant: true },
-      { ownerFqn: 'lib.Zeta', memberName: 'of', kind: 'method' },
+      { ownerFqn: 'lib.Alpha', memberName: 'VER_1', kind: 'property', static: true, constant: true },
+      { ownerFqn: 'lib.Alpha', memberName: 'of', kind: 'method', static: true },
+      { ownerFqn: 'lib.Zeta', memberName: 'VER_1', kind: 'property', static: true, constant: true },
+      { ownerFqn: 'lib.Zeta', memberName: 'of', kind: 'method', static: true },
     ]);
     // The same order on the real catalog: constants first, `of` last.
     const pev = usage.obtainableFrom.get('aws-cdk-lib.aws_rds.PostgresEngineVersion')!;
     expect(pev[0].memberName.startsWith('VER_')).toBe(true);
     expect(pev[pev.length - 1].memberName).toBe('of');
+  });
+
+  test('types know which members take them as an argument and which return them', () => {
+    // A method entry carries the type that DECLARES the member. jsii lists a redeclaration of every overridden or
+    // implemented method on the subtype too, and those are skipped, so grantRead is recorded once on the
+    // interface that declares it rather than again on BucketBase and on every subclass.
+    expect(usage.returnedBy.get('aws-cdk-lib.aws_iam.Grant')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.aws_s3.IBucket', memberName: 'grantRead', kind: 'method' },
+    );
+    expect((index.get('aws-cdk-lib.aws_s3.BucketBase')!.type as spec.ClassType).methods
+      ?.find((m) => m.name === 'grantRead')).toMatchObject({ overrides: 'aws-cdk-lib.aws_s3.IBucket' });
+    expect(usage.returnedBy.get('aws-cdk-lib.aws_iam.Grant')).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'aws-cdk-lib.aws_s3.BucketBase', memberName: 'grantRead' }),
+    );
+    expect(usage.argumentIn.get('aws-cdk-lib.aws_s3.LifecycleRule')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'addLifecycleRule', kind: 'method' },
+    ]);
+    // Every construct initializer opens with `scope`, and so do the `X.fromY(scope, id, …)` and `X.of(scope)`
+    // families, so recording that parameter would list most of the corpus on the Construct and IConstruct pages.
+    // Those entries are the ones the row drops, from an initializer and from a method alike.
+    expect((index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType).initializer?.parameters?.[0])
+      .toMatchObject({ name: 'scope', type: { fqn: 'constructs.Construct' } });
+    expect((index.get('aws-cdk-lib.aws_s3.Bucket')!.type as spec.ClassType).methods
+      ?.find((m) => m.name === 'fromBucketArn')?.parameters?.[0]).toMatchObject({ name: 'scope' });
+    expect(usage.argumentIn.get('constructs.Construct') ?? []).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', kind: 'initializer' }),
+    );
+    expect(usage.argumentIn.get('constructs.Construct') ?? []).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketArn' }),
+    );
+    // A later parameter of the same kind of member is a usage like any other: `Stack.of(construct)` names its
+    // parameter `construct`, so nothing about it is skipped.
+    expect(usage.argumentIn.get('constructs.IConstruct')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.Stack', memberName: 'of', kind: 'method', static: true },
+    );
+    // An instance method carries no static flag, so Go keeps the dot for it; the static entries below are
+    // flagged, because jsii exposes a static in Go as the package-level `Owner_Member`.
+    expect(usage.returnedBy.get('aws-cdk-lib.Duration')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.Duration', memberName: 'minus', kind: 'method' },
+    );
+    // An initializer has no member name of its own, so its entry names the owner and the kind.
+    expect(usage.argumentIn.get('aws-cdk-lib.aws_s3.Bucket')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.aws_lambda_event_sources.S3EventSource', memberName: 'initializer', kind: 'initializer' },
+    ]);
+    // An enum reaches the index through a parameter; a property does not, because an enum page already lists the
+    // properties that reference it.
+    expect(usage.argumentIn.get('aws-cdk-lib.RemovalPolicy')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.IResource', memberName: 'applyRemovalPolicy', kind: 'method' },
+    );
+    expect(usage.argumentIn.has('aws-cdk-lib.aws_s3.BucketEncryption')).toBe(false);
+    expect(usage.returnedBy.has('aws-cdk-lib.aws_s3.BucketEncryption')).toBe(false);
+    // The index records every usage, including the ones a page may not repeat because a more specific row of the
+    // same block already states them: Bucket's initializer taking BucketProps, and the statics returning IBucket.
+    expect(usage.argumentIn.get('aws-cdk-lib.aws_s3.BucketProps')).toEqual([
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'initializer', kind: 'initializer' },
+    ]);
+    expect(usage.returnedBy.get('aws-cdk-lib.aws_s3.IBucket')).toContainEqual(
+      { ownerFqn: 'aws-cdk-lib.aws_s3.Bucket', memberName: 'fromBucketArn', kind: 'method', static: true },
+    );
+    // A protected method is not callable and has no row on its owner page, so it is not a usage:
+    // Resource.getResourceArnAttribute is `protected` and takes ArnComponents.
+    const resource = index.get('aws-cdk-lib.Resource')!.type as spec.ClassType;
+    expect(resource.methods?.find((m) => m.name === 'getResourceArnAttribute')).toMatchObject({ protected: true });
+    expect(usage.argumentIn.get('aws-cdk-lib.ArnComponents') ?? []).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'aws-cdk-lib.Resource', memberName: 'getResourceArnAttribute' }),
+    );
+  });
+
+  test('usage entries unwrap generic types, list each member once, and sort by owner then member', () => {
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const target: spec.InterfaceType = { assembly: 'lib', fqn: 'lib.IThing', name: 'IThing', kind: spec.TypeKind.Interface };
+    const owner = (fqn: string, name: string): spec.ClassType => ({
+      assembly: 'lib',
+      fqn,
+      name,
+      kind: spec.TypeKind.Class,
+      initializer: {
+        parameters: [{ name: 'things', type: { collection: { kind: spec.CollectionKind.Array, elementtype: ref('lib.IThing') } } }],
+      },
+      methods: [
+        // Two parameters of the same type: one entry.
+        { name: 'add', parameters: [{ name: 'a', type: ref('lib.IThing') }, { name: 'b', type: ref('lib.IThing') }] },
+        { name: 'Pick', returns: { type: { union: { types: [ref('lib.IThing'), { primitive: spec.PrimitiveType.String }] } } } },
+      ],
+    });
+    // A protected initializer cannot be called, so it is no more a usage than a protected method is.
+    const hidden: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Base',
+      name: 'Base',
+      kind: spec.TypeKind.Class,
+      initializer: { protected: true, parameters: [{ name: 'thing', type: ref('lib.IThing') }] },
+    };
+    // A leading `scope` of a construct type is the construct tree, so it is not a usage; the second parameter of
+    // the same initializer, a method parameter after it, and a `scope` that is not first all still are.
+    const construct: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Widget',
+      name: 'Widget',
+      kind: spec.TypeKind.Class,
+      initializer: {
+        parameters: [
+          { name: 'scope', type: ref('constructs.IConstruct') },
+          { name: 'config', type: ref('lib.IThing') },
+        ],
+      },
+      methods: [{
+        name: 'from',
+        static: true,
+        parameters: [{ name: 'scope', type: ref('constructs.IConstruct') }, { name: 'thing', type: ref('lib.IThing') }],
+      }, {
+        name: 'attach',
+        parameters: [{ name: 'thing', type: ref('lib.IThing') }, { name: 'scope', type: ref('constructs.IConstruct') }],
+      }],
+    };
+    // A parameter that merely shares the name is an ordinary parameter: the type is part of the test.
+    const named: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Named',
+      name: 'Named',
+      kind: spec.TypeKind.Class,
+      methods: [{ name: 'pick', parameters: [{ name: 'scope', type: ref('lib.IThing') }] }],
+    };
+    // A redeclaration of a member declared OUTSIDE the documented assemblies is kept: nothing else records it.
+    const impl: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Impl',
+      name: 'Impl',
+      kind: spec.TypeKind.Class,
+      methods: [{ name: 'visit', overrides: 'ext.IExternal', parameters: [{ name: 't', type: ref('lib.IThing') }] }],
+    };
+    // Owners whose FQN order differs from their short-name order, which is what pins the sort key. `sub.Beta`
+    // sorts before `Impl` by short name and after `lib.Zeta` by FQN; the two `Same` owners sort by FQN only
+    // because their short names are equal.
+    const other = (fqn: string, name: string, member: string): spec.ClassType => ({
+      assembly: 'lib',
+      fqn,
+      name,
+      kind: spec.TypeKind.Class,
+      methods: [{ name: member, parameters: [{ name: 'thing', type: ref('lib.IThing') }] }],
+    });
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.IThing': target,
+        'lib.Zeta': owner('lib.Zeta', 'Zeta'),
+        'lib.Alpha': owner('lib.Alpha', 'Alpha'),
+        'lib.Base': hidden,
+        'lib.Widget': construct,
+        'lib.Named': named,
+        'lib.Impl': impl,
+        'lib.sub.Beta': other('lib.sub.Beta', 'Beta', 'take'),
+        'lib.b.Same': other('lib.b.Same', 'Same', 'take'),
+        'lib.a.Same': other('lib.a.Same', 'Same', 'take'),
+      },
+    } as unknown as spec.Assembly;
+    const constructs = {
+      name: 'constructs',
+      types: {
+        'constructs.IConstruct': {
+          assembly: 'constructs', fqn: 'constructs.IConstruct', name: 'IConstruct', kind: spec.TypeKind.Interface,
+        },
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly, constructs]));
+    // Arrays and unions count for the named type inside them. The order is by SHORT owner name, then owner FQN,
+    // then member: `Beta` leads although `lib.sub.Beta` is the last FQN, and the two `Same` owners are separated
+    // only by their FQN. The initializer entry leads its owner, because it renders as the owner name. `Base` is
+    // absent: its initializer is protected.
+    expect(synthetic.argumentIn.get('lib.IThing')).toEqual([
+      { ownerFqn: 'lib.Alpha', memberName: 'initializer', kind: 'initializer' },
+      { ownerFqn: 'lib.Alpha', memberName: 'add', kind: 'method' },
+      { ownerFqn: 'lib.sub.Beta', memberName: 'take', kind: 'method' },
+      { ownerFqn: 'lib.Impl', memberName: 'visit', kind: 'method' },
+      { ownerFqn: 'lib.Named', memberName: 'pick', kind: 'method' },
+      { ownerFqn: 'lib.a.Same', memberName: 'take', kind: 'method' },
+      { ownerFqn: 'lib.b.Same', memberName: 'take', kind: 'method' },
+      { ownerFqn: 'lib.Widget', memberName: 'initializer', kind: 'initializer' },
+      { ownerFqn: 'lib.Widget', memberName: 'attach', kind: 'method' },
+      { ownerFqn: 'lib.Widget', memberName: 'from', kind: 'method', static: true },
+      { ownerFqn: 'lib.Zeta', memberName: 'initializer', kind: 'initializer' },
+      { ownerFqn: 'lib.Zeta', memberName: 'add', kind: 'method' },
+    ]);
+    // Only the LEADING `scope` is the construct tree. `Widget.attach(thing, scope)` takes one second, so it is a
+    // usage like any other parameter, and it is the only entry the scope type carries here.
+    expect(synthetic.argumentIn.get('constructs.IConstruct')).toEqual([
+      { ownerFqn: 'lib.Widget', memberName: 'attach', kind: 'method' },
+    ]);
+    expect(synthetic.returnedBy.get('lib.IThing')).toEqual([
+      { ownerFqn: 'lib.Alpha', memberName: 'Pick', kind: 'method' },
+      { ownerFqn: 'lib.Zeta', memberName: 'Pick', kind: 'method' },
+    ]);
+    expect(synthetic.argumentIn.get('lib.IThing')).not.toContainEqual(
+      expect.objectContaining({ ownerFqn: 'lib.Base' }),
+    );
+  });
+
+  test('a covariant override is recorded where the narrowed return type is declared', () => {
+    // jsii allows an override to narrow its return type, and that narrowed type is documented only on the
+    // override. Skipping the redeclaration outright would lose the entry, since the declaration it overrides
+    // returns the wider type.
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const base: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Base',
+      name: 'Base',
+      kind: spec.TypeKind.Class,
+      methods: [
+        { name: 'build', returns: { type: ref('lib.Wide') } },
+        { name: 'name', parameters: [{ name: 'wide', type: ref('lib.Wide') }] },
+      ],
+    };
+    const derived: spec.ClassType = {
+      assembly: 'lib',
+      fqn: 'lib.Derived',
+      name: 'Derived',
+      kind: spec.TypeKind.Class,
+      base: 'lib.Base',
+      methods: [
+        { name: 'build', overrides: 'lib.Base', returns: { type: ref('lib.Narrow') } },
+        { name: 'name', overrides: 'lib.Base', parameters: [{ name: 'wide', type: ref('lib.Wide') }] },
+      ],
+    };
+    const plain = (fqn: string, name: string): spec.ClassType => ({ assembly: 'lib', fqn, name, kind: spec.TypeKind.Class });
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.Base': base, 'lib.Derived': derived, 'lib.Wide': plain('lib.Wide', 'Wide'), 'lib.Narrow': plain('lib.Narrow', 'Narrow'),
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    expect(synthetic.returnedBy.get('lib.Narrow')).toEqual([
+      { ownerFqn: 'lib.Derived', memberName: 'build', kind: 'method' },
+    ]);
+    // The wider type keeps the one entry it had, on the declaring type.
+    expect(synthetic.returnedBy.get('lib.Wide')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'build', kind: 'method' },
+    ]);
+    // A redeclaration that returns the same type adds nothing, and parameters are never doubled: an override
+    // cannot change them.
+    expect(synthetic.argumentIn.get('lib.Wide')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'name', kind: 'method' },
+    ]);
+  });
+
+  test('narrowing a union records only the type the override adds', () => {
+    // An override that narrows `Wide | Narrow` to `Narrow` is still a narrowing, but `Narrow` is already on the
+    // declaration it overrides. Recording the whole return would list one logical member twice in the same row.
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const union: spec.UnionTypeReference = { union: { types: [ref('lib.Wide'), ref('lib.Narrow')] } };
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.Wide': { assembly: 'lib', fqn: 'lib.Wide', name: 'Wide', kind: spec.TypeKind.Class },
+        'lib.Narrow': { assembly: 'lib', fqn: 'lib.Narrow', name: 'Narrow', kind: spec.TypeKind.Class },
+        'lib.Extra': { assembly: 'lib', fqn: 'lib.Extra', name: 'Extra', kind: spec.TypeKind.Class },
+        'lib.Base': {
+          assembly: 'lib',
+          fqn: 'lib.Base',
+          name: 'Base',
+          kind: spec.TypeKind.Class,
+          methods: [{ name: 'build', returns: { type: union } }],
+        },
+        'lib.Derived': {
+          assembly: 'lib',
+          fqn: 'lib.Derived',
+          name: 'Derived',
+          kind: spec.TypeKind.Class,
+          base: 'lib.Base',
+          methods: [{
+            name: 'build',
+            overrides: 'lib.Base',
+            returns: { type: { union: { types: [ref('lib.Narrow'), ref('lib.Extra')] } } },
+          }],
+        },
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    // `Extra` is new in the override, so it is recorded there.
+    expect(synthetic.returnedBy.get('lib.Extra')).toEqual([
+      { ownerFqn: 'lib.Derived', memberName: 'build', kind: 'method' },
+    ]);
+    // `Narrow` and `Wide` stay with the declaration that already names them.
+    expect(synthetic.returnedBy.get('lib.Narrow')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'build', kind: 'method' },
+    ]);
+    expect(synthetic.returnedBy.get('lib.Wide')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'build', kind: 'method' },
+    ]);
+  });
+
+  test('a redeclaration whose overridden method cannot be found is not read as a narrowing', () => {
+    // `overrides` names a documented type, so the member is a redeclaration, but that type declares no method of
+    // the name. Nothing is known to compare the return against, so the entry belongs to whatever declared it
+    // rather than here.
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.Thing': { assembly: 'lib', fqn: 'lib.Thing', name: 'Thing', kind: spec.TypeKind.Class },
+        'lib.Marker': { assembly: 'lib', fqn: 'lib.Marker', name: 'Marker', kind: spec.TypeKind.Interface },
+        'lib.Impl': {
+          assembly: 'lib',
+          fqn: 'lib.Impl',
+          name: 'Impl',
+          kind: spec.TypeKind.Class,
+          methods: [{ name: 'build', overrides: 'lib.Marker', returns: { type: ref('lib.Thing') } }],
+        },
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    expect(synthetic.returnedBy.has('lib.Thing')).toBe(false);
+  });
+
+  test('a static that shadows a base static is its own entry, not a redeclaration', () => {
+    // jsii marks a subclass static that shadows a base static with `overrides`, but it is a separate callable
+    // with its own anchor, so both are listed. `App.of` shadows `Stage.of`, and both return their own type.
+    const app = index.get('aws-cdk-lib.App')!.type as spec.ClassType;
+    expect(app.methods?.find((m) => m.name === 'of'))
+      .toMatchObject({ static: true, overrides: 'aws-cdk-lib.Stage' });
+    expect(usage.argumentIn.get('constructs.IConstruct')).toEqual(expect.arrayContaining([
+      { ownerFqn: 'aws-cdk-lib.App', memberName: 'of', kind: 'method', static: true },
+      { ownerFqn: 'aws-cdk-lib.Stage', memberName: 'of', kind: 'method', static: true },
+    ]));
+    // The same holds for a static whose parameters or return reach the new rows: an instance method is the only
+    // kind a redeclaration hides.
+    const synthetic = buildUsageIndex(buildTypeIndex([{
+      name: 'lib',
+      types: {
+        'lib.IThing': { assembly: 'lib', fqn: 'lib.IThing', name: 'IThing', kind: spec.TypeKind.Interface },
+        'lib.Base': {
+          assembly: 'lib',
+          fqn: 'lib.Base',
+          name: 'Base',
+          kind: spec.TypeKind.Class,
+          methods: [
+            { name: 'make', static: true, parameters: [{ name: 't', type: { fqn: 'lib.IThing' } }] },
+            { name: 'take', parameters: [{ name: 't', type: { fqn: 'lib.IThing' } }] },
+          ],
+        },
+        'lib.Sub': {
+          assembly: 'lib',
+          fqn: 'lib.Sub',
+          name: 'Sub',
+          kind: spec.TypeKind.Class,
+          base: 'lib.Base',
+          methods: [
+            { name: 'make', static: true, overrides: 'lib.Base', parameters: [{ name: 't', type: { fqn: 'lib.IThing' } }] },
+            { name: 'take', overrides: 'lib.Base', parameters: [{ name: 't', type: { fqn: 'lib.IThing' } }] },
+          ],
+        },
+      },
+    } as unknown as spec.Assembly]));
+    expect(synthetic.argumentIn.get('lib.IThing')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'make', kind: 'method', static: true },
+      { ownerFqn: 'lib.Base', memberName: 'take', kind: 'method' },
+      { ownerFqn: 'lib.Sub', memberName: 'make', kind: 'method', static: true },
+    ]);
   });
 
   test('class member collection walks the base-class chain', () => {
@@ -319,8 +677,8 @@ describe('symbol page generation', () => {
       ['Bucket.fromBucketName', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#frombucketname'],
       ['Bucket.fromCfnBucket', '/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#fromcfnbucket'],
     ]);
-    expect(row![1]).toContain('<summary aria-label="Show 2 more">2 more</summary>');
-    // The row is the last one in the block, after `extends`.
+    expect(row![1]).toContain('<summary aria-label="2 more obtainable from">2 more</summary>');
+    // The row follows every type-to-type relation, after `extends`.
     expect(page.indexOf('<span class="chain-label">extends</span>')).toBeLessThan(page.indexOf('id="obtainable-from"'));
   });
 
@@ -332,6 +690,43 @@ describe('symbol page generation', () => {
       '<div class="chain-row" id="obtainable-from"><span class="chain-label">obtainable from</span> '
       + '<ul class="chain-list" role="list"><li role="listitem"><a class="chain-item" href="#instance">JsonNull.<wbr>INSTANCE</a></li></ul></div>',
     );
+  });
+
+  test('the heaviest usage row stays inside its size ceiling', () => {
+    // These rows are the one relation that grows with the number of call sites in the documented assemblies, so
+    // the thing to pin is the cost of an ENTRY, not the number of them: the nightly version refresh bumps the CDK
+    // pin, and a CloudWatch release that adds another family of `metricX(props?: MetricOptions): Metric` methods
+    // would turn that automated PR red for no fault of this repo's. `MetricOptions` is the page with the most
+    // entries in the corpus, and the ceiling is 5 percent above today's 545 bytes an entry, in five languages.
+    // This renders from `aws-cdk-lib` and `constructs` only, which is about two thirds of the shipped row: the
+    // other 41 modules of `docgen.config.json` add call sites, not markup, so the per-entry figure holds.
+    //
+    // If this trips, an entry got bigger. Re-measure the page the way the api-reference-pages ADR's Size bullet
+    // says — built HTML, DOM nodes, chunk, Lighthouse Performance — report it, then move the number.
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const pageIndex = buildTypeIndex([assembly, loadAssembly('constructs')]);
+    const pageUsage = buildUsageIndex(pageIndex);
+    const type = pageIndex.get('aws-cdk-lib.aws_cloudwatch.MetricOptions')!.type as spec.InterfaceType;
+    const page = renderStructPage({
+      type,
+      assembly,
+      index: pageIndex,
+      usage: pageUsage,
+      linkFor,
+      languages: ['ts', 'python', 'java', 'dotnet', 'go'],
+      emitExamples: false,
+    });
+    const start = page.indexOf('<div class="chain-row" id="used-as-argument-in">');
+    expect(start).toBeGreaterThan(-1);
+    const row = page.slice(start, page.indexOf('</nav>', start));
+    const entries = (row.match(/<a class="chain-item"/g) ?? []).length;
+    expect(entries).toBeGreaterThan(400);
+    // Headroom of about double over today's 409, so an upstream release that doubles the call sites points at the
+    // ADR's re-measure rule instead of landing unseen. Tripping either bound means measuring the page and moving
+    // the number, never deleting the assertion.
+    expect(entries).toBeLessThan(800);
+    expect(Buffer.byteLength(row) / entries).toBeLessThanOrEqual(573);
   });
 
   test('entries in the row are language variants; the block is wrapped in language tabs only then', () => {
@@ -367,13 +762,13 @@ describe('symbol page generation', () => {
       assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
     };
     const refs = [
-      { ownerFqn: 'x.Thing', memberName: 'DEFAULT_THING', kind: 'property' as const, constant: true },
-      { ownerFqn: 'x.Thing', memberName: 'defaultThing', kind: 'property' as const },
-      { ownerFqn: 'y.Other', memberName: 'ofThing', kind: 'method' as const },
+      { ownerFqn: 'x.Thing', memberName: 'DEFAULT_THING', kind: 'property' as const, static: true, constant: true },
+      { ownerFqn: 'x.Thing', memberName: 'defaultThing', kind: 'property' as const, static: true },
+      { ownerFqn: 'y.Other', memberName: 'ofThing', kind: 'method' as const, static: true },
     ];
     // Only `x.Thing` has a page: `y.Other` comes from an assembly the site does not document.
     const linkFor = (fqn: string) => (fqn === 'x.Thing' ? '/v2/docs/x.Thing' : undefined);
-    const [nav] = renderExtendsBar(iface, linkFor, [], [], refs, ['ts', 'python', 'go']).filter((l) => l.includes('<nav'));
+    const [nav] = renderExtendsBar(iface, linkFor, [], [], { obtainableFrom: refs }, ['ts', 'python', 'go']).filter((l) => l.includes('<nav'));
     const row = nav.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
     const [first, second, third] = [...row.matchAll(/<li role="listitem">(.*?)<\/li>/g)].map((m) => m[1]);
     // A `const` static keeps its UPPER_SNAKE name in Python, as jsii's bindings do.
@@ -400,6 +795,76 @@ describe('symbol page generation', () => {
     expect(third).not.toContain('<a ');
   });
 
+  test('the same-name note applies to the obtainable-from row too, since the renderer is shared', () => {
+    // `ownerNotes` runs over every member entry of the block, so the rule is not a usage-row rule. Two `Thing`
+    // factories from two submodules get the note; a third owner with its own name does not.
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const refs = [
+      { ownerFqn: 'x.left.Thing', memberName: 'of', kind: 'method' as const, static: true },
+      { ownerFqn: 'x.right.Thing', memberName: 'of', kind: 'method' as const, static: true },
+      { ownerFqn: 'x.Other', memberName: 'of', kind: 'method' as const, static: true },
+    ];
+    const [nav] = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], { obtainableFrom: refs })
+      .filter((l) => l.includes('<nav'));
+    const row = nav.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/x.left.Thing.html#of">Thing.<wbr>of (left)</a>');
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/x.right.Thing.html#of">Thing.<wbr>of (right)</a>');
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/x.Other.html#of">Other.<wbr>of</a>');
+  });
+
+  test('the note falls back to the whole namespace path when one segment still collides', () => {
+    // Two owners can share the segment nearest the type, so the one-segment note would be identical on both and
+    // the row would be back to two links a reader cannot tell apart.
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const refs = [
+      { ownerFqn: 'x.a.mixins.Thing', memberName: 'of', kind: 'method' as const, static: true },
+      { ownerFqn: 'x.b.mixins.Thing', memberName: 'of', kind: 'method' as const, static: true },
+    ];
+    const [nav] = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], { obtainableFrom: refs })
+      .filter((l) => l.includes('<nav'));
+    const texts = [...nav.matchAll(/<a class="chain-item" href="[^"]*">(.*?)<\/a>/g)].map((m) => m[1]);
+    expect(texts).toEqual(['Thing.<wbr>of (x.a.mixins)', 'Thing.<wbr>of (x.b.mixins)']);
+    expect(new Set(texts).size).toBe(texts.length);
+  });
+
+  test('two owners of the same name in DIFFERENT rows of one block are told apart too', () => {
+    // A links list and a tab sequence span the whole block, so the collision the note exists for does not stop at
+    // a row boundary: one `Thing.of` in `obtainable from` and another in `returned by` are two identical link
+    // texts pointing at different pages, and each carries its namespace.
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const [nav] = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], {
+      obtainableFrom: [{ ownerFqn: 'x.left.Thing', memberName: 'of', kind: 'method' as const, static: true }],
+      returnedBy: [{ ownerFqn: 'x.right.Thing', memberName: 'make', kind: 'method' as const }],
+    }).filter((l) => l.includes('<nav'));
+    expect(nav).toContain('<a class="chain-item" href="/v2/docs/x.left.Thing.html#of">Thing.<wbr>of (left)</a>');
+    expect(nav).toContain('<a class="chain-item" href="/v2/docs/x.right.Thing.html#make">Thing.<wbr>make (right)</a>');
+  });
+
+  test('an initializer entry carries the same-name note too', () => {
+    // An initializer entry renders as `Owner (initializer)`, which is as ambiguous as `Owner.member` when two
+    // submodules declare the same name: on `IQueue` three submodules declare an `SqsDestination` whose
+    // initializer takes a queue. The note goes after the suffix, naming the section and then the namespace.
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const [nav] = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], {
+      argumentIn: [
+        { ownerFqn: 'x.left.Thing', memberName: 'initializer', kind: 'initializer' as const },
+        { ownerFqn: 'x.right.Thing', memberName: 'initializer', kind: 'initializer' as const },
+        { ownerFqn: 'x.Other', memberName: 'initializer', kind: 'initializer' as const },
+      ],
+    }).filter((l) => l.includes('<nav'));
+    expect(nav).toContain('href="/v2/docs/x.left.Thing.html#initializer">Thing (initializer) (left)</a>');
+    expect(nav).toContain('href="/v2/docs/x.right.Thing.html#initializer">Thing (initializer) (right)</a>');
+    expect(nav).toContain('href="/v2/docs/x.Other.html#initializer">Other (initializer)</a>');
+  });
+
   test('a const static keeps its name in the Python member row, matching the obtainable-from entry', () => {
     const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
     const assembly = loadAssembly('aws-cdk-lib');
@@ -409,7 +874,8 @@ describe('symbol page generation', () => {
     const page = renderClassPage({ type: jsonNull, assembly, index, usage, linkFor, languages: ['ts', 'python'], emitExamples: false });
     // The property row and the hierarchy entry agree: both read INSTANCE in Python, as jsii's bindings spell it.
     expect(page).toMatch(/<div class="member-row" id="instance"[\s\S]*?data-lang="python"[^>]*><code class="member-name">INSTANCE<\/code>/);
-    expect(page).toMatch(/id="obtainable-from"[\s\S]*?data-lang="python"[^>]*>JsonNull\.<wbr>INSTANCE<\/span>/);
+    // Only the member name varies between the two languages, so the owner and the separator are emitted once.
+    expect(page).toMatch(/id="obtainable-from"[\s\S]*?>JsonNull\.<wbr><span class="lang-variant" data-lang="ts">INSTANCE<\/span><span class="lang-variant" data-lang="python" v-pre>INSTANCE<\/span>/);
     // A non-const property still snake-cases: creationStack -> creation_stack.
     expect(page).toMatch(/data-lang="python"[^>]*><code class="member-name">creation_stack<\/code>/);
   });
@@ -472,5 +938,138 @@ describe('symbol page generation', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
     expect(page).toContain('<span class="chain-label">used as props by</span>');
     expect(page).not.toContain('obtainable from');
+  });
+
+  test('class pages list the members that take the type and the members that return it', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
+    const row = (id: string, label: string) =>
+      page.match(new RegExp(`<div class="chain-row" id="${id}"><span class="chain-label">${label}</span> (.*?)</div>`));
+    // Duration.minus takes a Duration and returns one, so it is an entry of both rows: an entry the page's own
+    // type owns links by fragment alone, like the obtainable-from row.
+    expect(row('used-as-argument-in', 'used as argument in')![1])
+      .toContain('<a class="chain-item" href="#minus">Duration.<wbr>minus</a>');
+    expect(row('returned-by', 'returned by')![1])
+      .toContain('<a class="chain-item" href="#minus">Duration.<wbr>minus</a>');
+    // The static factories stay in the obtainable-from row rather than being repeated as returners.
+    expect(row('returned-by', 'returned by')![1]).not.toContain('Duration.<wbr>days');
+    expect(page).toMatch(/id="obtainable-from"[\s\S]*?<a class="chain-item" href="#days">Duration\.<wbr>days<\/a>/);
+    // A member another type owns links that type's page at the member's row anchor.
+    expect(row('used-as-argument-in', 'used as argument in')![1])
+      .toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.Expiration.html#after">Expiration.<wbr>after</a>');
+    // The three member rows come last, in one order: obtainable from, then the two usage rows.
+    expect(page.indexOf('id="obtainable-from"')).toBeLessThan(page.indexOf('id="used-as-argument-in"'));
+    expect(page.indexOf('id="used-as-argument-in"')).toBeLessThan(page.indexOf('id="returned-by"'));
+  });
+
+  test('two owners of the same name in one row are told apart by their namespace', () => {
+    // Three submodules declare a `Schedule` whose `rate` takes a Duration, so without the qualifier the row would
+    // read `Schedule.rate, Schedule.rate, Schedule.rate`, three identical link texts pointing at three pages.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
+    const row = page.match(/<div class="chain-row" id="used-as-argument-in">(.*?)<\/div>/)![1];
+    expect(row).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.aws_events.Schedule.html#rate">Schedule.<wbr>rate (aws_events)</a>');
+    expect(row).toContain('Schedule.<wbr>rate (aws_synthetics)');
+    // The note is a trailing parenthetical rather than a prefix: a prefix would read as a namespace, and the
+    // jsii submodule is not the namespace Go, Java or C# would use.
+    expect(row).not.toContain('>aws_events.Schedule');
+    // An owner whose name is unique in the row keeps the short name.
+    expect(row).toContain('<a class="chain-item" href="#minus">Duration.<wbr>minus</a>');
+  });
+
+  test('a struct taken by an initializer keeps the props row alone, with no second row saying the same', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
+    // The props row keeps its own label, id and content.
+    expect(page).toContain('<div class="chain-row" id="used-as-props-by"><span class="chain-label">used as props by</span>');
+    // Bucket's initializer is the only member taking the struct, and the row above already names it.
+    expect(page).not.toContain('id="used-as-argument-in"');
+    // Nothing returns the struct, so no row claims otherwise.
+    expect(page).not.toContain('id="returned-by"');
+  });
+
+  test('a page carrying the obtainable-from row does not repeat its statics as returners', () => {
+    // Both statics that return an IBucket are factories, so the row above lists them and no `returned by` row
+    // follows. The index still records them, because what is dropped depends on which rows the page carries: an
+    // enum or mixin page has no obtainable-from row, so there the same entries do render.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
+    expect(page).toContain('id="obtainable-from"');
+    expect(page).not.toContain('id="returned-by"');
+  });
+
+  test('an enum used as an argument gets the relation block it otherwise has no reason to carry', () => {
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.RemovalPolicy.md'), 'utf-8');
+    expect(page).toContain('<nav class="inheritance-chain"');
+    expect(page).toContain('<span class="chain-item chain-current">RemovalPolicy</span>');
+    expect(page).toMatch(
+      /id="used-as-argument-in"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.IResource\.html#applyremovalpolicy">IResource\.<wbr>applyRemovalPolicy<\/a>/,
+    );
+    // The landmark is named for what the block holds, so a block of usage rows promises no hierarchy. That is
+    // every enum, and any other type whose only relations are usages: nothing extends LifecycleRule or takes it
+    // as props, and Duration is a class with no ancestor, interface or subclass.
+    expect(page).toContain('<nav class="inheritance-chain" aria-label="Type relations"');
+    const struct = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.LifecycleRule.md'), 'utf-8');
+    expect(struct).toContain('<nav class="inheritance-chain" aria-label="Type relations"');
+    expect(struct).toContain('id="used-as-argument-in"');
+    const plainClass = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
+    expect(plainClass).toContain('<nav class="inheritance-chain" aria-label="Type relations"');
+    expect(plainClass).toContain('id="obtainable-from"');
+    expect(plainClass).not.toContain('<span class="chain-label">implements</span>');
+    // A block with a type-to-type relation keeps the hierarchy name, on a class as well as an interface.
+    const iface = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
+    expect(iface).toContain('<nav class="inheritance-chain" aria-label="Type hierarchy"');
+    const subclassed = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
+    expect(subclassed).toContain('<nav class="inheritance-chain" aria-label="Type hierarchy"');
+    // An enum no member takes or returns has no relation block at all.
+    const unused = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketEncryption.md'), 'utf-8');
+    expect(unused).not.toContain('<nav class="inheritance-chain"');
+  });
+
+  test('usage entries are language variants, and an initializer entry is language-stable', () => {
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const index = buildTypeIndex([assembly, loadAssembly('constructs')]);
+    const usage = buildUsageIndex(index);
+    const duration = index.get('aws-cdk-lib.Duration')!.type as spec.ClassType;
+    const page = renderClassPage({ type: duration, assembly, index, usage, linkFor, languages: ['ts', 'python', 'go'], emitExamples: false });
+    const row = page.match(/<div class="chain-row" id="returned-by">(.*?)<\/div>/)![1];
+    // An instance method keeps the dot in every language, so the owner and the separator are emitted once and
+    // only the member name varies.
+    expect(row).toContain('Duration.<wbr><span class="lang-variant" data-lang="ts">minus</span>');
+    expect(row).toMatch(/data-lang="python"[^>]*>minus<\/span>/);
+    expect(row).toMatch(/data-lang="go"[^>]*>Minus<\/span>/);
+    // A static in Go is the package-level `Owner_Member`, so its separator differs by language and the whole
+    // entry stays per-language.
+    const factories = page.match(/<div class="chain-row" id="obtainable-from">(.*?)<\/div>/)![1];
+    expect(factories).toContain('<span class="lang-variant" data-lang="ts">Duration.<wbr>days</span>');
+    expect(factories).toMatch(/data-lang="go"[^>]*>Duration_<wbr>Days<\/span>/);
+    expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
+    // An initializer entry has one spelling in every language, so it carries no variants at all, and a block
+    // whose member rows hold only such entries is the bare <nav> with no language tabs. It names the section it
+    // links to, so a row of members does not read as a row of types.
+    const iface: spec.InterfaceType = { assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface };
+    const argumentIn = [{ ownerFqn: 'x.Thing', memberName: 'initializer', kind: 'initializer' as const }];
+    const lines = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], { argumentIn }, ['ts', 'python', 'go']);
+    const [nav] = lines.filter((l) => l.includes('<nav'));
+    expect(nav).toContain(
+      '<div class="chain-row" id="used-as-argument-in"><span class="chain-label">used as argument in</span> '
+      + '<ul class="chain-list" role="list"><li role="listitem">'
+      + '<a class="chain-item" href="/v2/docs/x.Thing.html#initializer">Thing (initializer)</a></li></ul></div>',
+    );
+    expect(nav).not.toContain('lang-variant');
+    expect(lines.join('\n')).not.toContain('<LanguageTabs');
+  });
+
+  test('the agent Markdown twin renders the usage rows as labeled lines', () => {
+    const duration = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8'), SITE_URL).markdown;
+    expect(duration).toMatch(/^Used as argument in: /m);
+    expect(duration).toMatch(/^Returned by: /m);
+    // The shown entries link, as they do in every row. Entries behind the disclosure render as text, because
+    // linking them triples the twin on the pages with the biggest rows and puts that ahead of the API surface
+    // the twin carries. The measured figures are in the SEO ADR.
+    const argumentIn = duration.split('\n').find((l) => l.startsWith('Used as argument in: '))!;
+    const links = (argumentIn.match(/\]\(https:\/\/docs\.example\.com\/cdk\/api\/v2\/docs\//g) ?? []).length;
+    const entries = argumentIn.split(', ').length;
+    expect(links).toBeGreaterThan(0);
+    expect(links).toBeLessThan(10);
+    expect(entries).toBeGreaterThan(links);
+    expect(argumentIn).toContain('Duration.minus');
   });
 });

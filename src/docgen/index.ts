@@ -959,7 +959,7 @@ function renderTypePage(
   if (spec.isClassType(type)) {
     return isConstruct(type.fqn, index)
       ? renderConstructPage({
-        type, assembly, index, linkFor, languages, subclasses, obtainableFrom: usage.obtainableFrom, tablet, emitExamples, history,
+        type, assembly, index, linkFor, languages, subclasses, usage, tablet, emitExamples, history,
       })
       : renderClassPage({
         type,
@@ -980,7 +980,7 @@ function renderTypePage(
   }
   if (spec.isInterfaceType(type)) {
     if (mixins.has(type.fqn)) {
-      return renderMixinPage({ type, assembly, index, mixins, linkFor, languages, history });
+      return renderMixinPage({ type, assembly, index, mixins, linkFor, languages, usage, history });
     }
     return type.datatype
       ? renderStructPage({ type, assembly, index, usage, linkFor, languages, tablet, emitExamples, history })

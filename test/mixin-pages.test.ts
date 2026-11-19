@@ -14,6 +14,7 @@ import {
   renderMixinPage,
 } from '../src/docgen/mixins.js';
 import { inlineMethodSignature, signatureText } from '../src/docgen/signatures.js';
+import { buildUsageIndex } from '../src/docgen/symbols.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -307,6 +308,41 @@ describe('mixin page generation', () => {
     const page = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
     // Explicit `.html`: raw-HTML anchors are not rewritten by VitePress.
     expect(page).toContain('<a class="chain-item" href="/v2/docs/aws-cdk-lib.Mixin.html">Mixin</a>');
+  });
+
+  test('a mixin page lists the members that take it and the members that return it', () => {
+    // IConstruct.with(mixin) takes an IMixin and Shims.asMixin returns one, so both usage rows render here too.
+    // The entry names the interface that declares `with`, not every class that reimplements it.
+    const page = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
+    expect(page).toMatch(
+      /id="used-as-argument-in"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/constructs\.IConstruct\.html#with">IConstruct\.<wbr>with<\/a>/,
+    );
+    expect(page).toMatch(
+      /id="returned-by"[\s\S]*?<a class="chain-item" href="\/v2\/docs\/aws-cdk-lib\.Shims\.html#asmixin">Shims\.<wbr>asMixin<\/a>/,
+    );
+  });
+
+  test('the usage rows on a mixin page follow the page language', () => {
+    // The member names in these rows are language variants, so the enabled languages have to reach the bar; with
+    // one language the output is identical either way, which is what makes this its own case.
+    const index = buildTypeIndex([loadAssembly('aws-cdk-lib'), loadAssembly('constructs')]);
+    const assembly = loadAssembly('constructs');
+    const page = renderMixinPage({
+      type: index.get('constructs.IMixin')!.type as spec.InterfaceType,
+      assembly,
+      index,
+      mixins: buildMixinIndex(index),
+      linkFor: (fqn: string) => `/v2/docs/${fqn}`,
+      languages: ['ts', 'go'],
+      usage: buildUsageIndex(index),
+    });
+    expect(page).toMatch(
+      /id="used-as-argument-in"[\s\S]*?>IConstruct\.<wbr><span class="lang-variant" data-lang="ts">with<\/span><span class="lang-variant" data-lang="go" v-pre>With<\/span>/,
+    );
+    // A static is the package-level `Owner_Member` in Go, so its separator differs by language and the whole
+    // entry stays per-language.
+    expect(page).toMatch(/id="used-as-argument-in"[\s\S]*?data-lang="go"[^>]*>Shims_<wbr>AsAspect<\/span>/);
+    expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
   });
 
   test('a behavioral interface is badged Interface, not Mixin', () => {

@@ -15,12 +15,15 @@ import {
   classMethods,
   classProperties,
   MemberRef,
+  relationsFor,
   renderDescription,
   renderExpandableProps,
   renderExtendsBar,
   renderInheritanceChain,
   renderTypeMetadata,
   renderMethodsSection,
+  renderUsageBar,
+  usageRowsFor,
 } from './layout.js';
 import { collectMethods, collectProperties } from './mixins.js';
 import { RosettaTablet } from './rosetta.js';
@@ -46,17 +49,23 @@ export interface EnumRef {
  * - `propsUsers`: struct FQN -> class FQNs whose initializer takes it as props
  * - `enumRefs`: enum FQN -> property references (with owner FQN for linking)
  * - `obtainableFrom`: type FQN -> static methods and static properties whose declared type is that type
+ * - `argumentIn`: type FQN -> members that take the type as a parameter
+ * - `returnedBy`: type FQN -> methods that return the type
  */
 export interface UsageIndex {
   readonly propsUsers: Map<string, string[]>;
   readonly enumRefs: Map<string, EnumRef[]>;
   readonly obtainableFrom: Map<string, MemberRef[]>;
+  readonly argumentIn: Map<string, MemberRef[]>;
+  readonly returnedBy: Map<string, MemberRef[]>;
 }
 
 export function buildUsageIndex(index: TypeIndex): UsageIndex {
   const propsUsers = new Map<string, Set<string>>();
   const enumRefs = new Map<string, EnumRef[]>();
   const obtainableFrom = new Map<string, MemberRef[]>();
+  const argumentIn = new Map<string, MemberRef[]>();
+  const returnedBy = new Map<string, MemberRef[]>();
 
   const recordEnumRefs = (ownerFqn: string, prop: spec.Property) => {
     for (const fqn of namedFqns(prop.type)) {
@@ -66,6 +75,40 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
         list.push({ ownerFqn, propertyName: prop.name });
         enumRefs.set(fqn, list);
       }
+    }
+  };
+
+  // A member relates to every documented named type its signature mentions, including the types inside a
+  // collection or a union: a `watch(things: IThing[])` is a usage of IThing as much as a bare
+  // parameter would be. A type the site does not document gets no entry, since the row could not link it.
+  const recordUsage = (
+    map: Map<string, MemberRef[]>, ref: spec.TypeReference | undefined, entry: MemberRef,
+  ) => {
+    if (!ref) {
+      return;
+    }
+    for (const fqn of new Set(namedFqns(ref))) {
+      if (!index.has(fqn)) {
+        continue;
+      }
+      const list = map.get(fqn) ?? [];
+      list.push(entry);
+      map.set(fqn, list);
+    }
+  };
+
+  // The parameters a reader passes. A leading `scope` typed exactly `constructs.Construct` or
+  // `constructs.IConstruct` is the construct tree the member attaches to, by the convention `constructs` sets for
+  // initializers and for the `X.fromY(scope, id, …)` family, so it is not recorded: it would list most of the
+  // corpus on the two pages that name those types, repeating what their `superclass of` row already carries. Both
+  // the name and the type are part of the test, so a `scope` of any other type, a subclass included, still counts.
+  const recordParameters = (params: readonly spec.Parameter[] | undefined, entry: MemberRef) => {
+    for (const [position, param] of (params ?? []).entries()) {
+      if (position === 0 && param.name === SCOPE_PARAM
+        && spec.isNamedTypeReference(param.type) && SCOPE_TYPES.has(param.type.fqn)) {
+        continue;
+      }
+      recordUsage(argumentIn, param.type, entry);
     }
   };
 
@@ -84,6 +127,7 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       ownerFqn,
       memberName: member.name,
       kind,
+      static: true,
       ...(kind === 'property' && (member as spec.Property).const ? { constant: true } : {}),
     });
     obtainableFrom.set(ref.type.fqn, list);
@@ -108,10 +152,56 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
       for (const prop of type.properties ?? []) {
         recordFactory(type.fqn, prop, 'property', prop);
       }
+      // A protected initializer cannot be called, so it is no more a usage than a protected method is.
+      const init = type.initializer;
+      if (init && !init.protected) {
+        recordParameters(init.parameters, { ownerFqn: type.fqn, memberName: INITIALIZER_MEMBER, kind: 'initializer' });
+      }
     }
     if (spec.isClassType(type) || spec.isInterfaceType(type)) {
       for (const prop of type.properties ?? []) {
         recordEnumRefs(type.fqn, prop);
+      }
+      // The DECLARING type owns the entry: a jsii type lists its own methods plus a redeclaration of every method
+      // it overrides or implements, so skipping the redeclarations records each member once, where it is declared
+      // (`IBucket.grantRead`, not again on `BucketBase` and on every subclass). A redeclaration of a member
+      // declared outside the documented assemblies is kept, since nothing else would record it. A STATIC is never
+      // a redeclaration: jsii marks a subclass static that shadows a base static with `overrides`, but it is a
+      // separate callable with its own anchor, and in Go its own package-level function.
+      for (const method of type.methods ?? []) {
+        if (method.protected || !method.name) {
+          continue;
+        }
+        const entry: MemberRef = {
+          ownerFqn: type.fqn,
+          memberName: method.name,
+          kind: 'method',
+          ...(method.static ? { static: true } : {}),
+        };
+        const base = method.static || !method.overrides ? undefined : index.get(method.overrides)?.type;
+        if (!base) {
+          recordParameters(method.parameters, entry);
+          recordUsage(returnedBy, method.returns?.type, entry);
+          continue;
+        }
+        // jsii allows a covariant override, so a redeclaration can narrow the return type even though its
+        // parameters are fixed. A type that is new in the narrowed return is documented only here, so it is
+        // recorded even though the declaration this one overrides owns the parameter entries; a type the
+        // overridden return already names is left to that declaration, which keeps one logical member from
+        // filling a row twice when an override narrows `A | B` to `A`. A lookup that finds no overridden method
+        // is not a narrowing: nothing is known to compare against, so the redeclaration is skipped like any other.
+        const overridden = (spec.isClassType(base) || spec.isInterfaceType(base))
+          ? base.methods?.find((m) => m.name === method.name)
+          : undefined;
+        if (!overridden || returnsSameTypes(overridden.returns?.type, method.returns?.type)) {
+          continue;
+        }
+        const inherited = new Set(overridden.returns ? namedFqns(overridden.returns.type) : []);
+        for (const fqn of new Set(method.returns ? namedFqns(method.returns.type) : [])) {
+          if (!inherited.has(fqn)) {
+            recordUsage(returnedBy, { fqn }, entry);
+          }
+        }
       }
     }
   }
@@ -138,14 +228,54 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
   // Each owner+member once, FQN-sorted in code-unit order like `propsUsers` (owner FQN, then member name), so the
   // row reads `Bucket.fromBucketArn, Bucket.fromBucketAttributes, ...` whatever order the assembly listed them in
   // and whatever locale the build host has.
-  const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
   const sortedFactories = new Map<string, MemberRef[]>();
   for (const [fqn, refs] of obtainableFrom) {
     const unique = new Map(refs.map((ref) => [`${ref.ownerFqn}.${ref.memberName}`, ref]));
     sortedFactories.set(fqn, [...unique.values()].sort((a, b) =>
       byCodeUnit(a.ownerFqn, b.ownerFqn) || byCodeUnit(a.memberName, b.memberName)));
   }
-  return { propsUsers: sortedPropsUsers, enumRefs: dedupedEnumRefs, obtainableFrom: sortedFactories };
+  return {
+    propsUsers: sortedPropsUsers,
+    enumRefs: dedupedEnumRefs,
+    obtainableFrom: sortedFactories,
+    argumentIn: sortedUsage(argumentIn),
+    returnedBy: sortedUsage(returnedBy),
+  };
+}
+
+/** The canonical member name of an initializer, which anchors its entry to the owner page's Initializer section. */
+const INITIALIZER_MEMBER = SECTION_ANCHORS.initializer;
+
+/**
+ * First parameter of a construct initializer, and of the `X.fromY(scope, id, …)` and `X.of(scope)` families: the
+ * construct tree the member attaches to, by the convention `constructs` sets.
+ */
+const SCOPE_PARAM = 'scope';
+
+/** The types that convention takes as a scope. A `scope` of any other type is an ordinary parameter. */
+const SCOPE_TYPES: ReadonlySet<string> = new Set(['constructs.Construct', 'constructs.IConstruct']);
+
+/** Byte-stable ordering, so the output does not depend on the build host's locale. */
+function byCodeUnit(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Each owner and member once, in the order the row displays them: by owner short name, then by owner FQN, then by
+ * member, so two owners of the same short name stay adjacent and sort between themselves by namespace. An
+ * initializer entry sorts first within its owner, matching how the row reads.
+ */
+function sortedUsage(usage: Map<string, MemberRef[]>): Map<string, MemberRef[]> {
+  const entryName = (ref: MemberRef) => (ref.kind === 'initializer' ? '' : ref.memberName);
+  const sorted = new Map<string, MemberRef[]>();
+  for (const [fqn, refs] of usage) {
+    const unique = new Map(refs.map((ref) => [`${ref.kind}:${ref.ownerFqn}.${ref.memberName}`, ref]));
+    sorted.set(fqn, [...unique.values()].sort((a, b) =>
+      byCodeUnit(shortName(a.ownerFqn), shortName(b.ownerFqn))
+      || byCodeUnit(a.ownerFqn, b.ownerFqn)
+      || byCodeUnit(entryName(a), entryName(b))));
+  }
+  return sorted;
 }
 
 /** All named-type FQNs appearing anywhere in a type reference. */
@@ -160,6 +290,15 @@ function namedFqns(ref: spec.TypeReference): string[] {
     return ref.union.types.flatMap(namedFqns);
   }
   return [];
+}
+
+/**
+ * Whether two returns name the same documented types. The rows are keyed by named type, so this is exactly the
+ * comparison that decides whether a covariant override would otherwise lose an entry.
+ */
+function returnsSameTypes(a: spec.TypeReference | undefined, b: spec.TypeReference | undefined): boolean {
+  const names = (ref: spec.TypeReference | undefined) => (ref ? [...new Set(namedFqns(ref))].sort().join('|') : '');
+  return names(a) === names(b);
 }
 
 interface SymbolPageOptions<T extends spec.Type> {
@@ -212,7 +351,7 @@ export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): str
   lines.push(...renderDescription(type));
   // Implemented interfaces render inside the hierarchy bar.
   lines.push(...renderInheritanceChain(
-    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
+    type, index, linkFor, options.subclasses?.get(type.fqn) ?? [], relationsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -230,7 +369,7 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-struct" text="Struct" />`, ''];
   lines.push(...renderDescription(type));
   lines.push(...renderExtendsBar(
-    type, linkFor, [], usage.propsUsers.get(type.fqn) ?? [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
+    type, linkFor, [], usage.propsUsers.get(type.fqn) ?? [], relationsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -248,7 +387,7 @@ export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceTyp
   // `implemented by` is a row of the hierarchy bar, not a section of its own: it is the inverse of the class bar's
   // `implements`, so it belongs beside `extends`.
   lines.push(...renderExtendsBar(
-    type, linkFor, options.implementors?.get(type.fqn) ?? [], [], usage.obtainableFrom.get(type.fqn) ?? [], languages));
+    type, linkFor, options.implementors?.get(type.fqn) ?? [], [], relationsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));
@@ -264,6 +403,9 @@ export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): strin
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-enum" text="Enum" />`, ''];
   lines.push(...renderDescription(type));
+  // An enum extends nothing and implements nothing, so its block holds the usage rows alone. Enum pages carry no
+  // `obtainable from` row.
+  lines.push(...renderUsageBar(type, linkFor, usageRowsFor(type.fqn, usage), languages));
   lines.push(...renderTypeMetadata(typeMetadataRows(type, assembly, index, linkFor, options.history)));
   if (options.emitExamples !== false) {
     lines.push(...exampleSection(type, assembly, languages, { linkFor, tablet: options.tablet }));

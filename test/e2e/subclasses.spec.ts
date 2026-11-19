@@ -1,5 +1,20 @@
 import { expect, test } from '@playwright/test';
-import { CONSTRUCT_PAGE, QUEUE_PAGE } from './fixture.js';
+import { CONSTRUCT_PAGE, IQUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
+
+// What a browser announces for one entry of a relation row, given its visible text. Chromium's own computation
+// inserts a space at the `<wbr>`, so every member entry of this block reads `Owner.member` and announces
+// `Owner. member`, in every member row of the block; the ADR records why the `<wbr>` stays.
+// Playwright computes the name without that break but inserts one between a text node and an element, which is
+// the shape of an entry whose owner is written once outside the per-language spans. So the expectation allows one
+// break after the first separator and is exact from there on: a member name splitting inside its own variant
+// span, or a hidden language joining the name, still fails.
+const announcedAs = (visible: string) => {
+  const esc = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sep = visible.search(/[._]/);
+  return sep < 0
+    ? new RegExp(`^${esc(visible)}$`)
+    : new RegExp(`^${esc(visible.slice(0, sep + 1))}\\s?${esc(visible.slice(sep + 1))}$`);
+};
 
 // Type hierarchy block. The unit tests only read the generated markdown, and
 // the design requirement — one block, and at most two lines per relation
@@ -220,5 +235,92 @@ test.describe('type hierarchy block', () => {
     await expect(summary).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(more).toHaveAttribute('open', '');
+  });
+
+  // A usage row clamps to two lines and its disclosure reveals the rest, which
+  // only a rendered page can show. IQueue is passed to initializers across the
+  // corpus, so its row has an overflow to reveal. The entries carry notes
+  // (`Owner (initializer)`, `Owner.member (namespace)`) and write the owner
+  // once outside the per-language spans, so the accessible name and the reflow
+  // are checked at phone widths too: the clamp is a desktop-measured budget,
+  // but no width may leak the row out of the block.
+  test('a usage row clamps to two lines, opens its disclosure and reflows', async ({ page }) => {
+    for (const width of [1280, 375, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(IQUEUE_PAGE);
+
+      const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
+      await expect(row).toBeAttached();
+      await expect(row.locator('.chain-label')).toHaveText('used as argument in');
+      await expect(row.locator('a.chain-item').first()).toBeVisible();
+
+      // The accessible name is what a screen reader reads out and what speech input matches, so it has to be the
+      // visible text: the owner written once outside the variant spans must not change it, and the hidden
+      // language variants must not leak into it.
+      const entries = await row.locator('a.chain-item:visible').all();
+      expect(entries.length).toBeGreaterThan(0);
+      for (const entry of entries) {
+        const visible = ((await entry.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+        expect(visible).not.toBe('');
+        await expect(entry).toHaveAccessibleName(announcedAs(visible));
+      }
+
+      const geometry = await row.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+        const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+        const block = el.closest('.inheritance-chain')!.getBoundingClientRect();
+        return {
+          lines: (el.getBoundingClientRect().height - pad) / lh,
+          overflowRight: el.getBoundingClientRect().right - block.right,
+          pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      // The budget is measured against the desktop content column; narrower viewports wrap further, as every row
+      // of this block already does.
+      if (width === 1280) {
+        expect(geometry.lines).toBeLessThanOrEqual(2);
+      }
+      expect(geometry.overflowRight).toBeLessThanOrEqual(1);
+      expect(geometry.pageOverflow).toBeLessThanOrEqual(0);
+
+      const more = row.locator('.chain-more');
+      await expect(more).toBeAttached();
+      const hidden = more.locator('a.chain-item').first();
+      await expect(hidden).toBeHidden();
+      await more.locator('summary').click();
+      await expect(more).toHaveAttribute('open', '');
+      await expect(hidden).toBeVisible();
+      expect(await row.evaluate(
+        (el) => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      )).toBeLessThanOrEqual(0);
+    }
+  });
+
+  // The entry markup differs by language: an instance entry writes the owner and the separator once outside the
+  // variant spans, while a Go static varies as a whole (`Duration_Days`). So the accessible name has to be read in
+  // each language state, not only the default one.
+  test('an entry announces the active language, whichever shape it takes', async ({ page }) => {
+    for (const [lang, factory, member] of [
+      ['python', 'Queue.from_queue_arn', 'SourceWithDeadLetterTarget.grant_push'],
+      ['go', 'Queue_FromQueueArn', 'SourceWithDeadLetterTarget.GrantPush'],
+    ] as const) {
+      await page.goto(`${IQUEUE_PAGE}?lang=${lang}`);
+      await expect(page.locator('.lang-tabs').first()).toHaveAttribute('data-active', lang);
+
+      // A static: the whole entry is one variant, and Go spells it `Owner_Member`.
+      await expect(page.locator('.inheritance-chain .chain-row#obtainable-from a.chain-item').first())
+        .toHaveAccessibleName(factory);
+
+      // A method entry, whose owner and separator are written once outside the variant spans. The subject is
+      // pinned by its link, so the element and the expected name cannot drift apart, and it sits in the row's
+      // overflow, so the disclosure is opened first. The expected name is spelled out rather than read back from
+      // the same DOM, so a TypeScript member leaking into another language view fails this.
+      const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
+      await row.locator('.chain-more summary').click();
+      const shared = row.locator('a.chain-item[href$="SourceWithDeadLetterTarget.html#grantpush"]');
+      await expect(shared).toBeVisible();
+      await expect(shared).toHaveAccessibleName(announcedAs(member));
+    }
   });
 });

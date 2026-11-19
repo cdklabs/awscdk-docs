@@ -48,12 +48,17 @@ test.describe('obtainable from row', () => {
     await expect(links.nth(0)).toHaveAttribute('href', /#fromqueuearn$/);
   });
 
-  test('the row is the last relation of the block', async ({ page }) => {
+  test('the row leads the member relations that close the block', async ({ page }) => {
     await page.goto(IQUEUE_PAGE);
 
     const labels = await page.locator('.inheritance-chain .chain-row .chain-label').allTextContents();
     expect(labels.length).toBeGreaterThan(1);
-    expect(labels[labels.length - 1]).toBe('obtainable from');
+    // Every type-to-type relation comes first, then the member relations. The two statics that return an IQueue
+    // are the obtainable-from row's own entries, so no `returned by` row repeats them.
+    expect(labels.slice(labels.indexOf('obtainable from'))).toEqual([
+      'obtainable from',
+      'used as argument in',
+    ]);
   });
 
   test('the overflow disclosure opens and closes', async ({ page }) => {

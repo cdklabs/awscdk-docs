@@ -86,7 +86,16 @@ components (`<Badge>` and any PascalCase tag), Pagefind markers and structural
 for `Extends:` only when the type has an ancestor; entries shown without
 opening the row's disclosure keep their cross-page link, folded entries render
 as text, except in the `obtainable from` row, where every factory keeps its
-deep link), the type-metadata table becomes `- Label: value` bullets, `:::`
+deep link, because the link to the factory is the point of that row. The
+`used as argument in` and `returned by` rows fold to text, measured on the
+change that introduced them by running `toAgentMarkdown` over the generated
+page with the fold linked and unlinked: on `aws_cloudwatch.MetricOptions`, the largest rendered
+usage row at 618 entries, the two lines go 28.0 KB to 102.9 KB and the whole
+twin 34.1 KB to 109.1 KB, three times its size, all of it before the first
+`##` heading; `aws_iam.IGrantable` goes 19.8 KB to 67.9 KB and `aws_iam.Grant`
+24.0 KB to 72.1 KB. Tens of kilobytes of URLs, not hundreds, but still several
+times the API surface the twin carries, for a list whose entries a reader of
+the rendered page sees folded away), the type-metadata table becomes `- Label: value` bullets, `:::`
 containers become titled blockquotes. The type-metadata table is the only
 `<table>` the transform parses; every other table-shaped text passes through
 literally. Headings, prose, fenced code and tables pass through. Links keep

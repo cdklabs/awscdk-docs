@@ -16,6 +16,7 @@
  */
 import { DomUtils, ElementType, parseDocument } from 'htmlparser2';
 import { API_ROOT } from '../site-routes.js';
+import { SECTION_ANCHORS } from './anchors.js';
 import { tokenizeFences } from './fences.js';
 import { DEFAULT_LANGUAGE, FENCE_LANG, LANGUAGES } from './languages.js';
 import { TYPE_METADATA_OPEN } from './layout.js';
@@ -455,8 +456,10 @@ function renderInheritance(el: Element): string {
     const cls = classes(child);
     // Entries shown without opening the row's disclosure keep their cross-page link (a same-page `#…` link renders
     // as text like everywhere else in the twin); entries folded inside `.chain-more` render as text, except in the
-    // `obtainable from` row, whose deep links to factories are the point of the row. Recorded in the SEO ADR.
-    const linkFolded = child.attribs.id === 'obtainable-from';
+    // `obtainable from` row, whose deep links to factories are the point of the row. The usage rows fold to text:
+    // linking the folded entries triples the twin on the pages with the biggest rows, tens of kilobytes of URLs
+    // ahead of the API surface the twin exists to carry. Measured in the SEO ADR.
+    const linkFolded = child.attribs.id === SECTION_ANCHORS.obtainableFrom;
     const folded = (n: Element): boolean => {
       for (let p = DomUtils.getParent(n); p && p !== child; p = DomUtils.getParent(p)) {
         if (isElement(p) && classes(p).has('chain-more')) return true;

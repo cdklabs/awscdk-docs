@@ -44,6 +44,13 @@ export const CONSTRUCT_LIBRARY_PAGE = '/v2/docs/aws-construct-library.html';
 // exercise the overflow disclosure.
 export const CONSTRUCT_PAGE = '/v2/docs/constructs.Construct.html';
 export const IMIXIN_PAGE = '/v2/docs/constructs.IMixin.html';
+/** A `returned by` row with no `obtainable from` row above it: `Node.findChild` and its siblings hand out an `IConstruct`. */
+export const ICONSTRUCT_PAGE = '/v2/docs/constructs.IConstruct.html';
+/**
+ * An enum page. Its block comes from the enum path (`renderUsageBar`) and holds member rows alone — `Node.findAll`
+ * takes the enum — so the landmark reads `Type relations`.
+ */
+export const CONSTRUCT_ORDER_PAGE = '/v2/docs/constructs.ConstructOrder.html';
 
 // A spec cannot spell out a content hash, so both helpers below read the emitted directory. Lazily, so the unit
 // suite can import the constants above without a built site.
@@ -88,6 +95,15 @@ export const REPRESENTATIVE_PAGES = [
   // The `obtainable from` row and its overflow disclosure: no page above has a
   // static member returning its own type, so the audits would never see it.
   SUBSCRIPTION_FILTER_PAGE,
+  // Both entry shapes of a `used as argument in` row, with its overflow
+  // disclosure: a method entry, whose member name is a variant span inside the
+  // link, and initializer entries, one of which carries a same-name note
+  // (`SqsDestination (initializer) (aws_appconfig)`).
+  IQUEUE_PAGE,
+  // A `returned by` row, and a block of member rows alone, which is the enum
+  // path (`renderUsageBar`) and the `Type relations` landmark.
+  ICONSTRUCT_PAGE,
+  CONSTRUCT_ORDER_PAGE,
 ] as const;
 
 // Severities that FAIL the accessibility gate. Moderate and minor
