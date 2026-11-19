@@ -331,9 +331,14 @@ assembly. The rules:
   because the de-duplication above drops what a more specific row already
   states: 6,437 and 2,088 entries over 3,941 types. The corpus grew 744.2 MB to
   750.0 MB, +0.79 percent over 29,893 pages, and the Markdown twins 197.6 MB to
-  198.5 MB, +0.45 percent. Docgen wall time is the one figure
+  198.5 MB, +0.45 percent. Docgen wall time end to end is the one figure
   this host measures badly: repeated runs of the same code ranged 103 s to
-  147 s, so the index walk is inside the noise rather than measured.
+  147 s. The new work was timed on its own instead, median of seven runs over
+  the 41,219 types of `docgen.config.json`: `buildUsageIndex` went 179 ms to
+  268 ms, so the extra parameter and return walk costs about **90 ms** for the
+  whole corpus. Per page, the de-duplication and the two rows cost 0.5 ms to
+  12.1 ms on `aws_cloudwatch.MetricOptions`, the page with the most entries in
+  the corpus; a page with no usage entries pays nothing measurable.
 
   Artifact growth depends on which services the fixture keeps. Raw `dist` bytes
   are not what the deploy gate checks: `scripts/package-site.sh`
@@ -356,7 +361,11 @@ assembly. The rules:
   Whoever changes what these rows collect re-measures the same way and reports
   it on the pull request. A growth above **5 percent** of the deployed zip is
   the line at which this presentation has to be reconsidered rather than
-  shipped, well before `MAX_ZIP_MB` becomes the thing that says no.
+  shipped, well before `MAX_ZIP_MB` becomes the thing that says no. One tripwire
+  does fire by itself: `test/symbol-pages.test.ts` pins the byte size of the
+  heaviest row, `aws_cloudwatch.MetricOptions`, 5 percent above today's, so a
+  dependency bump that adds another family of metric methods fails CI instead of
+  landing unmeasured.
 - **The heaviest pages.** Ranking the 29,893 generated pages by size, the
   biggest are catalog types that predate these rows:
   `aws_quicksight.CfnCustomPermissions.CapabilitiesProperty` and

@@ -201,7 +201,7 @@ describe('usage index', () => {
       initializer: { protected: true, parameters: [{ name: 'thing', type: ref('lib.IThing') }] },
     };
     // A leading `scope` of a construct type is the construct tree, so it is not a usage; the second parameter of
-    // the same initializer, and a method parameter after it, still are.
+    // the same initializer, a method parameter after it, and a `scope` that is not first all still are.
     const construct: spec.ClassType = {
       assembly: 'lib',
       fqn: 'lib.Widget',
@@ -217,6 +217,9 @@ describe('usage index', () => {
         name: 'from',
         static: true,
         parameters: [{ name: 'scope', type: ref('constructs.IConstruct') }, { name: 'thing', type: ref('lib.IThing') }],
+      }, {
+        name: 'attach',
+        parameters: [{ name: 'thing', type: ref('lib.IThing') }, { name: 'scope', type: ref('constructs.IConstruct') }],
       }],
     };
     // A parameter that merely shares the name is an ordinary parameter: the type is part of the test.
@@ -282,12 +285,16 @@ describe('usage index', () => {
       { ownerFqn: 'lib.a.Same', memberName: 'take', kind: 'method' },
       { ownerFqn: 'lib.b.Same', memberName: 'take', kind: 'method' },
       { ownerFqn: 'lib.Widget', memberName: 'initializer', kind: 'initializer' },
+      { ownerFqn: 'lib.Widget', memberName: 'attach', kind: 'method' },
       { ownerFqn: 'lib.Widget', memberName: 'from', kind: 'method', static: true },
       { ownerFqn: 'lib.Zeta', memberName: 'initializer', kind: 'initializer' },
       { ownerFqn: 'lib.Zeta', memberName: 'add', kind: 'method' },
     ]);
-    // The scope parameters themselves are recorded nowhere.
-    expect(synthetic.argumentIn.has('constructs.IConstruct')).toBe(false);
+    // Only the LEADING `scope` is the construct tree. `Widget.attach(thing, scope)` takes one second, so it is a
+    // usage like any other parameter, and it is the only entry the scope type carries here.
+    expect(synthetic.argumentIn.get('constructs.IConstruct')).toEqual([
+      { ownerFqn: 'lib.Widget', memberName: 'attach', kind: 'method' },
+    ]);
     expect(synthetic.returnedBy.get('lib.IThing')).toEqual([
       { ownerFqn: 'lib.Alpha', memberName: 'Pick', kind: 'method' },
       { ownerFqn: 'lib.Zeta', memberName: 'Pick', kind: 'method' },
@@ -639,6 +646,36 @@ describe('symbol page generation', () => {
     );
   });
 
+  test('the heaviest usage row stays inside its size ceiling', () => {
+    // These rows are the one relation that grows with the number of call sites in the documented assemblies, so
+    // an `aws-cdk-lib` release that adds another family of `metricX(props?: MetricOptions): Metric` methods grows
+    // the worst page in the corpus without a line changing here. `MetricOptions` is that page: its
+    // `used as argument in` row is 223,128 bytes rendered from the two assemblies this test loads, in five
+    // languages, about 545 bytes an entry across 409 entries. The ceiling is 5 percent above that.
+    //
+    // If a dependency bump trips this, the row is bigger, not broken: re-measure the page the way the
+    // api-reference-pages ADR's Size bullet says — built HTML, DOM nodes, chunk and the Lighthouse Performance
+    // score — report it, then move the number here. It is a tripwire, not a budget.
+    const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
+    const assembly = loadAssembly('aws-cdk-lib');
+    const pageIndex = buildTypeIndex([assembly, loadAssembly('constructs')]);
+    const pageUsage = buildUsageIndex(pageIndex);
+    const type = pageIndex.get('aws-cdk-lib.aws_cloudwatch.MetricOptions')!.type as spec.InterfaceType;
+    const page = renderStructPage({
+      type,
+      assembly,
+      index: pageIndex,
+      usage: pageUsage,
+      linkFor,
+      languages: ['ts', 'python', 'java', 'dotnet', 'go'],
+      emitExamples: false,
+    });
+    const start = page.indexOf('<div class="chain-row" id="used-as-argument-in">');
+    expect(start).toBeGreaterThan(-1);
+    const row = page.slice(start, page.indexOf('</nav>', start));
+    expect(Buffer.byteLength(row)).toBeLessThanOrEqual(234_284);
+  });
+
   test('entries in the row are language variants; the block is wrapped in language tabs only then', () => {
     const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
     const languages = ['ts', 'python', 'dotnet', 'go'] as const;
@@ -706,7 +743,7 @@ describe('symbol page generation', () => {
   });
 
   test('the same-name note applies to the obtainable-from row too, since the renderer is shared', () => {
-    // `ownerNote` runs inside the shared member-row renderer, so the rule is not a usage-row rule. Two `Thing`
+    // `ownerNotes` runs over every member entry of the block, so the rule is not a usage-row rule. Two `Thing`
     // factories from two submodules get the note; a third owner with its own name does not.
     const iface: spec.InterfaceType = {
       assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
@@ -754,6 +791,25 @@ describe('symbol page generation', () => {
     }).filter((l) => l.includes('<nav'));
     expect(nav).toContain('<a class="chain-item" href="/v2/docs/x.left.Thing.html#of">Thing.<wbr>of (left)</a>');
     expect(nav).toContain('<a class="chain-item" href="/v2/docs/x.right.Thing.html#make">Thing.<wbr>make (right)</a>');
+  });
+
+  test('an initializer entry carries the same-name note too', () => {
+    // An initializer entry renders as `Owner (initializer)`, which is as ambiguous as `Owner.member` when two
+    // submodules declare the same name: on `IQueue` three submodules declare an `SqsDestination` whose
+    // initializer takes a queue. The note goes after the suffix, naming the section and then the namespace.
+    const iface: spec.InterfaceType = {
+      assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
+    };
+    const [nav] = renderExtendsBar(iface, (fqn) => `/v2/docs/${fqn}`, [], [], {
+      argumentIn: [
+        { ownerFqn: 'x.left.Thing', memberName: 'initializer', kind: 'initializer' as const },
+        { ownerFqn: 'x.right.Thing', memberName: 'initializer', kind: 'initializer' as const },
+        { ownerFqn: 'x.Other', memberName: 'initializer', kind: 'initializer' as const },
+      ],
+    }).filter((l) => l.includes('<nav'));
+    expect(nav).toContain('href="/v2/docs/x.left.Thing.html#initializer">Thing (initializer) (left)</a>');
+    expect(nav).toContain('href="/v2/docs/x.right.Thing.html#initializer">Thing (initializer) (right)</a>');
+    expect(nav).toContain('href="/v2/docs/x.Other.html#initializer">Other (initializer)</a>');
   });
 
   test('a const static keeps its name in the Python member row, matching the obtainable-from entry', () => {
