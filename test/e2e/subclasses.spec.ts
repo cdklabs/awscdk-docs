@@ -3,7 +3,7 @@ import { CONSTRUCT_PAGE, IQUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
 
 // What a browser announces for one entry of a relation row, given its visible text. Chromium's own computation
 // inserts a space at the `<wbr>`, so every member entry of this block reads `Owner.member` and announces
-// `Owner. member`, which is true of `obtainable from` on main as well; the ADR records why the `<wbr>` stays.
+// `Owner. member`, in every member row of the block; the ADR records why the `<wbr>` stays.
 // Playwright computes the name without that break but inserts one between a text node and an element, which is
 // the shape of an entry whose owner is written once outside the per-language spans. So the expectation allows one
 // break after the first separator and is exact from there on: a member name splitting inside its own variant

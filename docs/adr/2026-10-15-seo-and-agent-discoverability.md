@@ -87,9 +87,9 @@ for `Extends:` only when the type has an ancestor; entries shown without
 opening the row's disclosure keep their cross-page link, folded entries render
 as text, except in the `obtainable from` row, where every factory keeps its
 deep link, because the link to the factory is the point of that row. The
-`used as argument in` and `returned by` rows fold to text, measured at
-`15e0993` by running `toAgentMarkdown` over the generated page with the fold
-linked and unlinked: on `aws_cloudwatch.MetricOptions`, the largest rendered
+`used as argument in` and `returned by` rows fold to text, measured on the
+change that introduced them by running `toAgentMarkdown` over the generated
+page with the fold linked and unlinked: on `aws_cloudwatch.MetricOptions`, the largest rendered
 usage row at 618 entries, the two lines go 28.0 KB to 102.9 KB and the whole
 twin 34.1 KB to 109.1 KB, three times its size, all of it before the first
 `##` heading; `aws_iam.IGrantable` goes 19.8 KB to 67.9 KB and `aws_iam.Grant`

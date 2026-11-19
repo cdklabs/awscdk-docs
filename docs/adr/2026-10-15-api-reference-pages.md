@@ -186,7 +186,7 @@ the `<wbr>` are emitted once outside the variant spans, which is three of the
 five nodes an entry would otherwise cost per language. It does not change what
 a reader hears: Chromium's own name computation inserts a space at the `<wbr>`,
 so **every** member entry is announced `Owner. member` where it reads
-`Owner.member`, the `obtainable from` row included, on this branch and on main.
+`Owner.member`, in every member row of the block.
 Measured on a built page through `Accessibility.getPartialAXTree`, with the
 prefix outside the spans, inside each span and absent: only dropping the `<wbr>`
 removes the space, and moving it before the separator moves the space there
@@ -256,8 +256,14 @@ assembly. The rules:
   callable with its own anchor, and its own package-level function in Go
   (`App.of` over `Stage.of`). One
   further exception, for `returned by` only: jsii allows a covariant override, so a redeclaration can
-  narrow its return type, and that narrowed type is documented nowhere else, so
-  it is recorded on the override. Parameters need no such exception, because an
+  narrow its return type. The types the narrowed return names that the
+  overridden return does not are documented nowhere else, so they are recorded
+  on the override; a type the overridden return already names stays with that
+  declaration, which keeps one logical member from filling a row twice when an
+  override narrows `Wide | Narrow` to `Narrow`. A redeclaration whose
+  overridden method cannot be found on the type its `overrides` names is
+  skipped like any other: nothing is known to compare the return against.
+  Parameters need no such exception, because an
   override cannot change them.
 - **Entry format.** `Owner.member`, the same as `obtainable from`, linked to
   the owner's page at the member's row anchor, and the same-name note the
@@ -319,7 +325,8 @@ assembly. The rules:
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
   the disclosure. Every figure below was measured on one developer host, a
-  16-core arm64 Linux box, base `6052c36` against `15e0993`, with the same
+  16-core arm64 Linux box, base `6052c36` against the change that introduced
+  these rows, with the same
   installed dependencies, and the method is: entry counts from
   `buildUsageIndex` over the assemblies of `docgen.config.json`; corpus size as
   the total bytes of generated `.md` pages under

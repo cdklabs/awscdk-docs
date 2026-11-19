@@ -316,8 +316,10 @@ function relationRow(label: string, fqns: readonly string[], linkFor: LinkResolv
  * static in Go, where the separator is `_` (jsii exposes it as the package-level `Owner_Member`) and the whole
  * entry varies; an instance member keeps the dot in every language, because in Go it is called on a value. The
  * anchor stays on the canonical jsii name; the width budget uses the widest translation, so the two-line clamp
- * holds in every language. A `<wbr>` after the separator lets a long token wrap at narrow widths without changing
- * the accessible name; the agent Markdown twin drops the tag. An initializer entry reads `Owner (initializer)` in
+ * holds in every language. A `<wbr>` after the separator lets a long token wrap at narrow widths; Chromium
+ * announces a space at it, so the entry reads `Owner.member` and is announced `Owner. member`, which still
+ * contains the visible label (WCAG 2.5.3); the agent Markdown twin drops the tag. An initializer entry reads
+ * `Owner (initializer)` in
  * every language, naming the section it links to rather than leaving a bare type name in a row of members, and an
  * entry whose short owner name is not unique in its block carries its namespace the same way,
  * `Owner.member (aws_events)`; the caller computes those notes once for the block and passes them in.
@@ -478,12 +480,15 @@ function landmarkLabel(hasTypeRelation: boolean): string {
  */
 function visibleRelations(usage: UsageRelations, propsUsers: readonly string[]): Required<UsageRelations> {
   const obtainableFrom = usage.obtainableFrom ?? [];
+  // Looked up through sets: a props struct can carry thousands of initializer entries whose owners are all in
+  // `used as props by`, and a linear scan per entry would make one page's cost the product of two row sizes.
+  const props = new Set(propsUsers);
+  const factories = new Set(obtainableFrom.map((factory) => `${factory.ownerFqn}#${factory.memberName}`));
   return {
     obtainableFrom,
     argumentIn: (usage.argumentIn ?? []).filter((ref) =>
-      ref.kind !== 'initializer' || !propsUsers.includes(ref.ownerFqn)),
-    returnedBy: (usage.returnedBy ?? []).filter((ref) => !obtainableFrom
-      .some((factory) => factory.ownerFqn === ref.ownerFqn && factory.memberName === ref.memberName)),
+      ref.kind !== 'initializer' || !props.has(ref.ownerFqn)),
+    returnedBy: (usage.returnedBy ?? []).filter((ref) => !factories.has(`${ref.ownerFqn}#${ref.memberName}`)),
   };
 }
 
