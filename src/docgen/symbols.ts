@@ -79,7 +79,7 @@ export function buildUsageIndex(index: TypeIndex): UsageIndex {
   };
 
   // A member relates to every documented named type its signature mentions, including the types inside a
-  // collection or a union: `grantRead(identity: IGrantable[]): Grant` is a usage of IGrantable as much as a bare
+  // collection or a union: a `watch(things: IThing[])` is a usage of IThing as much as a bare
   // parameter would be. A type the site does not document gets no entry, since the row could not link it.
   const recordUsage = (
     map: Map<string, MemberRef[]>, ref: spec.TypeReference | undefined, entry: MemberRef,

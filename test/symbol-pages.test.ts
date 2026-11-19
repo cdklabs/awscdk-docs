@@ -348,7 +348,7 @@ describe('usage index', () => {
   test('a redeclaration whose overridden method cannot be found is not read as a narrowing', () => {
     // `overrides` names a documented type, so the member is a redeclaration, but that type declares no method of
     // the name. Nothing is known to compare the return against, so the entry belongs to whatever declared it
-    // rather than here: treating the missing lookup as a narrowing would record every such member twice.
+    // rather than here.
     const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
     const assembly = {
       name: 'lib',
@@ -744,7 +744,7 @@ describe('symbol page generation', () => {
   test('two owners of the same name in DIFFERENT rows of one block are told apart too', () => {
     // A links list and a tab sequence span the whole block, so the collision the note exists for does not stop at
     // a row boundary: one `Thing.of` in `obtainable from` and another in `returned by` are two identical link
-    // texts pointing at different pages. Computing the notes per row would leave both bare.
+    // texts pointing at different pages, and each carries its namespace.
     const iface: spec.InterfaceType = {
       assembly: 'x', fqn: 'x.IThing', name: 'IThing', kind: spec.TypeKind.Interface,
     };

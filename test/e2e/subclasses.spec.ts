@@ -1,15 +1,18 @@
 import { expect, test } from '@playwright/test';
 import { CONSTRUCT_PAGE, IQUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
 
-// What a browser announces for one entry of a relation row, given its visible text. Chromium puts a word
-// boundary where one inline child of the link ends and the next begins, so an entry that writes its owner once
-// outside the per-language spans is announced `Owner. member` where it reads `Owner.member`. Both spellings are
-// the visible label, and the pause falls on a `<wbr>`, which is a break opportunity anyway. What must not happen
-// is a hidden language variant joining the name, so the expectation allows a break after a separator and is
-// exact everywhere else.
-const announcedAs = (visible: string) => new RegExp(
-  `^${visible.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\.|_/g, '$&\\s?')}$`,
-);
+// What a browser announces for one entry of a relation row, given its visible text. Chromium puts a word boundary
+// where one inline child of the link ends and the next begins, so an entry that writes its owner once outside the
+// per-language spans is announced `Owner. member` where it reads `Owner.member`. The break is allowed after the
+// first separator only, and the name is exact from there on, so a member name splitting inside its own variant
+// span, or a hidden language joining the name, fails.
+const announcedAs = (visible: string) => {
+  const esc = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sep = visible.search(/[._]/);
+  return sep < 0
+    ? new RegExp(`^${esc(visible)}$`)
+    : new RegExp(`^${esc(visible.slice(0, sep + 1))}\\s?${esc(visible.slice(sep + 1))}$`);
+};
 
 // Type hierarchy block. The unit tests only read the generated markdown, and
 // the design requirement — one block, and at most two lines per relation
@@ -308,11 +311,9 @@ test.describe('type hierarchy block', () => {
         .toHaveAccessibleName(factory);
 
       // A method entry, whose owner and separator are written once outside the variant spans. The subject is
-      // pinned by its link, so the element and the expected name can never drift apart: picking by position, or
-      // by "the first entry with a variant span", lands on whatever sorts first across every assembly, which a
-      // dependency bump can change — and on a Go static, whose separator is `_`. It sits in the row's overflow,
-      // so the disclosure is opened first. The expected name is spelled out rather than read back from the same
-      // DOM, so a TypeScript member leaking into another language view fails this.
+      // pinned by its link, so the element and the expected name cannot drift apart, and it sits in the row's
+      // overflow, so the disclosure is opened first. The expected name is spelled out rather than read back from
+      // the same DOM, so a TypeScript member leaking into another language view fails this.
       const row = page.locator('.inheritance-chain .chain-row#used-as-argument-in');
       await row.locator('.chain-more summary').click();
       const shared = row.locator('a.chain-item[href$="SourceWithDeadLetterTarget.html#grantpush"]');

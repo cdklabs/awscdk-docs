@@ -43,11 +43,11 @@ export const CONSTRUCT_LIBRARY_PAGE = '/v2/docs/aws-construct-library.html';
 // exercise the overflow disclosure.
 export const CONSTRUCT_PAGE = '/v2/docs/constructs.Construct.html';
 export const IMIXIN_PAGE = '/v2/docs/constructs.IMixin.html';
-/** The one fixture page carrying a `returned by` row: `Node.findChild` and its siblings hand out an `IConstruct`. */
+/** A `returned by` row with no `obtainable from` row above it: `Node.findChild` and its siblings hand out an `IConstruct`. */
 export const ICONSTRUCT_PAGE = '/v2/docs/constructs.IConstruct.html';
 /**
- * An enum that a method takes (`Node.findAll(order)`). It has no relation of its own, so its block holds member
- * rows alone, which is the one page shape whose landmark reads `Type relations` rather than `Type hierarchy`.
+ * An enum page. Its block comes from the enum path (`renderUsageBar`) and holds member rows alone — `Node.findAll`
+ * takes the enum — so the landmark reads `Type relations`.
  */
 export const CONSTRUCT_ORDER_PAGE = '/v2/docs/constructs.ConstructOrder.html';
 
@@ -94,15 +94,13 @@ export const REPRESENTATIVE_PAGES = [
   // The `obtainable from` row and its overflow disclosure: no page above has a
   // static member returning its own type, so the audits would never see it.
   SUBSCRIPTION_FILTER_PAGE,
-  // The `used as argument in` row at its fullest: an interface whose members
-  // are spelled per language, so an entry carries variant spans inside a link,
-  // with a same-name note (`SqsDestination (initializer) (aws_appconfig)`) and
-  // an overflow. `CONSTRUCT_PAGE` has that row too, but short and plain.
+  // Both entry shapes of a `used as argument in` row, with its overflow
+  // disclosure: a method entry, whose member name is a variant span inside the
+  // link, and initializer entries, one of which carries a same-name note
+  // (`SqsDestination (initializer) (aws_appconfig)`).
   IQUEUE_PAGE,
-  // The other two shapes the rows take, which no page above renders: a
-  // `returned by` row, and a block of member rows alone, whose landmark reads
-  // `Type relations` and which comes from the enum path rather than the class
-  // or interface one.
+  // A `returned by` row, and a block of member rows alone, which is the enum
+  // path (`renderUsageBar`) and the `Type relations` landmark.
   ICONSTRUCT_PAGE,
   CONSTRUCT_ORDER_PAGE,
 ] as const;

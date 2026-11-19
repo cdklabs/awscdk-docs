@@ -385,8 +385,23 @@ assembly. The rules:
   and `assets/*.css` in the fixture adds 31 KB gzipped, so the heaviest of
   these pages ships about 56 KB of the 400 KB. Raw bytes are what the deploy
   artifact pays and gzipped bytes are what a reader downloads; neither is near
-  its limit, and the gate audits none of these pages
-  (`lighthouse.config.json` names three others).
+  its limit.
+
+  The other half of that gate is the Performance score, and
+  `lighthouse.config.json` audits none of these pages. It was run against them
+  by hand instead, with the gate's own settings — the `lighthouse` CLI,
+  `--only-categories=performance --preset=desktop`, `docs.aws.amazon.com`
+  blocked as `scripts/lighthouse-run.cjs` blocks it, three runs, lower-middle
+  median — on the fixture that keeps `aws-cloudwatch` and `aws-iam`:
+  `aws_cloudwatch.MetricOptions`, the heaviest page in the corpus, scores
+  **0.95** (0.94 to 0.98) and `aws_cloudwatch.Metric` **1.00**, against the
+  gate's 0.9 minimum, with total blocking time of 0 ms on both; on the default
+  fixture `aws_sqs.IQueue` scores 1.00 and `constructs.IConstruct` 0.98. So the
+  rows cost download bytes rather than main-thread time, which is what the
+  clamped, folded markup is for. Blocking the third party matters to the
+  reading: unblocked, the AWS cookie banner is the LCP element on every page
+  and swamps the score, which is why the gate blocks it.
+
   These four are the cases to measure before adding a third such row: the
   disclosure bounds the height a reader sees, not
   the DOM the browser parses or the chunk it downloads.
