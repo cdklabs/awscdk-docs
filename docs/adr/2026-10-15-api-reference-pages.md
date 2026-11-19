@@ -354,9 +354,11 @@ assembly. The rules:
   147 s. The new work was timed on its own instead, median of seven runs over
   the 41,219 types of `docgen.config.json`: `buildUsageIndex` went 179 ms to
   268 ms, so the extra parameter and return walk costs about **90 ms** for the
-  whole corpus. Per page, the de-duplication and the two rows cost 0.5 ms to
-  12.1 ms on `aws_cloudwatch.MetricOptions`, the page with the most entries in
-  the corpus; a page with no usage entries pays nothing measurable.
+  whole corpus. Per page, rendering `aws_cloudwatch.MetricOptions`, the page
+  with the most entries in the corpus, went from 0.5 ms to 12.1 ms with the two
+  rows and the de-duplication, median of seven `renderStructPage` runs in five
+  languages on the same host; a page with no usage entries pays nothing
+  measurable.
 
   Artifact growth depends on which services the fixture keeps. Raw `dist` bytes
   are not what the deploy gate checks: `scripts/package-site.sh`
