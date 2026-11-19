@@ -183,14 +183,20 @@ separator `_` for a static in Go, where jsii exposes it as the package-level
 on a value. Only the member name varies between languages, so wherever the
 separator is the same in every enabled language the owner, the separator and
 the `<wbr>` are emitted once outside the variant spans, which is three of the
-five nodes an entry would otherwise cost per language. The cost of that saving
-is one space in what a reader hears: Chromium puts a word boundary between the
-link's inline children, so such an entry is announced `Owner. member` where it
-reads `Owner.member`. It is kept, because the pause falls where the `<wbr>`
-already allows a line break, the visible label is still what the name contains
-(WCAG 2.5.3), and the alternative is the per-language prefix those nodes paid
-for. The e2e expectation allows that one break and is otherwise exact, so a
-hidden language leaking into the name still fails. In **every** member row,
+five nodes an entry would otherwise cost per language. It does not change what
+a reader hears: Chromium's own name computation inserts a space at the `<wbr>`,
+so **every** member entry is announced `Owner. member` where it reads
+`Owner.member`, the `obtainable from` row included, on this branch and on main.
+Measured on a built page through `Accessibility.getPartialAXTree`, with the
+prefix outside the spans, inside each span and absent: only dropping the `<wbr>`
+removes the space, and moving it before the separator moves the space there
+(`Owner .member`). The `<wbr>` is kept, because the pause falls where a line
+break is already allowed and the visible label is still what the name contains
+(WCAG 2.5.3). Playwright computes the name differently — it ignores the `<wbr>`
+and inserts a space between a text node and an element instead — so the e2e
+expectation allows one break after the first separator and is exact from there
+on, which still fails a member name splitting inside its own span. In **every**
+member row,
 including this one, an entry whose short owner name is not unique in its
 **block** carries its submodule as a trailing note, `Schedule.rate (aws_events)`: two
 identical link texts pointing at different pages cannot be told apart in a
@@ -277,12 +283,16 @@ assembly. The rules:
   already names, and `returned by` drops a member the `obtainable from` row
   above already names. The filter runs per page rather than in the index,
   because whether the more specific row is on the page depends on the page
-  kind: an enum or a mixin page carries no `obtainable from` row, so there the
-  static factories do render as returners.
+  kind: an enum or an INTERFACE mixin page carries no `obtainable from` row, so
+  there the static factories do render as returners. A class-based mixin is
+  rendered by the class path and does carry the row, so its returners are
+  de-duplicated against it like any other class's.
 - **Page kinds.** Classes, structs, interfaces, constructs, mixins and enums.
   An enum has no type-to-type relation of its own, so it gains a block that
   holds these rows alone (`renderUsageBar`); a mixin page gains them in the
-  block it already had. Enum and mixin pages carry no `obtainable from` row.
+  block it already had. Enum and interface mixin pages carry no
+  `obtainable from` row; a class-based mixin goes through the class path and
+  carries it.
 - **Landmark name.** The block's `<nav>` is labeled `Type relations` whenever it
   holds no type-to-type relation, which is every enum and any type whose only
   relations are usage rows, such as `LifecycleRule`, and `Type hierarchy`

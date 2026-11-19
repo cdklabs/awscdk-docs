@@ -352,6 +352,52 @@ describe('usage index', () => {
     ]);
   });
 
+  test('narrowing a union records only the type the override adds', () => {
+    // An override that narrows `Wide | Narrow` to `Narrow` is still a narrowing, but `Narrow` is already on the
+    // declaration it overrides. Recording the whole return would list one logical member twice in the same row.
+    const ref = (fqn: string): spec.NamedTypeReference => ({ fqn });
+    const union: spec.UnionTypeReference = { union: { types: [ref('lib.Wide'), ref('lib.Narrow')] } };
+    const assembly = {
+      name: 'lib',
+      types: {
+        'lib.Wide': { assembly: 'lib', fqn: 'lib.Wide', name: 'Wide', kind: spec.TypeKind.Class },
+        'lib.Narrow': { assembly: 'lib', fqn: 'lib.Narrow', name: 'Narrow', kind: spec.TypeKind.Class },
+        'lib.Extra': { assembly: 'lib', fqn: 'lib.Extra', name: 'Extra', kind: spec.TypeKind.Class },
+        'lib.Base': {
+          assembly: 'lib',
+          fqn: 'lib.Base',
+          name: 'Base',
+          kind: spec.TypeKind.Class,
+          methods: [{ name: 'build', returns: { type: union } }],
+        },
+        'lib.Derived': {
+          assembly: 'lib',
+          fqn: 'lib.Derived',
+          name: 'Derived',
+          kind: spec.TypeKind.Class,
+          base: 'lib.Base',
+          methods: [{
+            name: 'build',
+            overrides: 'lib.Base',
+            returns: { type: { union: { types: [ref('lib.Narrow'), ref('lib.Extra')] } } },
+          }],
+        },
+      },
+    } as unknown as spec.Assembly;
+    const synthetic = buildUsageIndex(buildTypeIndex([assembly]));
+    // `Extra` is new in the override, so it is recorded there.
+    expect(synthetic.returnedBy.get('lib.Extra')).toEqual([
+      { ownerFqn: 'lib.Derived', memberName: 'build', kind: 'method' },
+    ]);
+    // `Narrow` and `Wide` stay with the declaration that already names them.
+    expect(synthetic.returnedBy.get('lib.Narrow')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'build', kind: 'method' },
+    ]);
+    expect(synthetic.returnedBy.get('lib.Wide')).toEqual([
+      { ownerFqn: 'lib.Base', memberName: 'build', kind: 'method' },
+    ]);
+  });
+
   test('a redeclaration whose overridden method cannot be found is not read as a narrowing', () => {
     // `overrides` names a documented type, so the member is a redeclaration, but that type declares no method of
     // the name. Nothing is known to compare the return against, so the entry belongs to whatever declared it
@@ -648,14 +694,15 @@ describe('symbol page generation', () => {
 
   test('the heaviest usage row stays inside its size ceiling', () => {
     // These rows are the one relation that grows with the number of call sites in the documented assemblies, so
-    // an `aws-cdk-lib` release that adds another family of `metricX(props?: MetricOptions): Metric` methods grows
-    // the worst page in the corpus without a line changing here. `MetricOptions` is that page: its
-    // `used as argument in` row is 223,128 bytes rendered from the two assemblies this test loads, in five
-    // languages, about 545 bytes an entry across 409 entries. The ceiling is 5 percent above that.
+    // the thing to pin is the cost of an ENTRY, not the number of them: the nightly version refresh bumps the CDK
+    // pin, and a CloudWatch release that adds another family of `metricX(props?: MetricOptions): Metric` methods
+    // would turn that automated PR red for no fault of this repo's. `MetricOptions` is the page with the most
+    // entries in the corpus, and the ceiling is 5 percent above today's 545 bytes an entry, in five languages.
+    // This renders from `aws-cdk-lib` and `constructs` only, which is about two thirds of the shipped row: the
+    // other 41 modules of `docgen.config.json` add call sites, not markup, so the per-entry figure holds.
     //
-    // If a dependency bump trips this, the row is bigger, not broken: re-measure the page the way the
-    // api-reference-pages ADR's Size bullet says — built HTML, DOM nodes, chunk and the Lighthouse Performance
-    // score — report it, then move the number here. It is a tripwire, not a budget.
+    // If this trips, an entry got bigger. Re-measure the page the way the api-reference-pages ADR's Size bullet
+    // says — built HTML, DOM nodes, chunk, Lighthouse Performance — report it, then move the number.
     const linkFor = (fqn: string) => `/v2/docs/${fqn}`;
     const assembly = loadAssembly('aws-cdk-lib');
     const pageIndex = buildTypeIndex([assembly, loadAssembly('constructs')]);
@@ -673,7 +720,9 @@ describe('symbol page generation', () => {
     const start = page.indexOf('<div class="chain-row" id="used-as-argument-in">');
     expect(start).toBeGreaterThan(-1);
     const row = page.slice(start, page.indexOf('</nav>', start));
-    expect(Buffer.byteLength(row)).toBeLessThanOrEqual(234_284);
+    const entries = (row.match(/<a class="chain-item"/g) ?? []).length;
+    expect(entries).toBeGreaterThan(400);
+    expect(Buffer.byteLength(row) / entries).toBeLessThanOrEqual(573);
   });
 
   test('entries in the row are language variants; the block is wrapped in language tabs only then', () => {

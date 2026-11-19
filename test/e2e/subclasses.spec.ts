@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { CONSTRUCT_PAGE, IQUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
 
-// What a browser announces for one entry of a relation row, given its visible text. Chromium puts a word boundary
-// where one inline child of the link ends and the next begins, so an entry that writes its owner once outside the
-// per-language spans is announced `Owner. member` where it reads `Owner.member`. The break is allowed after the
-// first separator only, and the name is exact from there on, so a member name splitting inside its own variant
-// span, or a hidden language joining the name, fails.
+// What a browser announces for one entry of a relation row, given its visible text. Chromium's own computation
+// inserts a space at the `<wbr>`, so every member entry of this block reads `Owner.member` and announces
+// `Owner. member`, which is true of `obtainable from` on main as well; the ADR records why the `<wbr>` stays.
+// Playwright computes the name without that break but inserts one between a text node and an element, which is
+// the shape of an entry whose owner is written once outside the per-language spans. So the expectation allows one
+// break after the first separator and is exact from there on: a member name splitting inside its own variant
+// span, or a hidden language joining the name, still fails.
 const announcedAs = (visible: string) => {
   const esc = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const sep = visible.search(/[._]/);

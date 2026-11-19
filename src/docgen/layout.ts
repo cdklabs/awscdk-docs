@@ -472,8 +472,9 @@ function landmarkLabel(hasTypeRelation: boolean): string {
  * because reading one `Owner.member` twice in one block tells the reader nothing the first row did not: the
  * `used as props by` row already names the classes whose initializer takes a struct as props, and the
  * `obtainable from` row already names the statics that hand out an instance. Both are filtered here rather than in
- * the index, because whether the more specific row is on the page at all depends on the page kind — an enum or a
- * mixin page carries no `obtainable from` row, so its returners must stay listed.
+ * the index, because whether the more specific row is on the page at all depends on the page kind — an enum or an
+ * INTERFACE mixin page carries no `obtainable from` row, so its returners must stay listed. A class-based mixin is
+ * rendered by the class path, which passes that row in, so there they are de-duplicated as usual.
  */
 function visibleRelations(usage: UsageRelations, propsUsers: readonly string[]): Required<UsageRelations> {
   const obtainableFrom = usage.obtainableFrom ?? [];
