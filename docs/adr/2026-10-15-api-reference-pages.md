@@ -299,7 +299,13 @@ assembly. The rules:
   parameter is a usage like any other, so is a leading `scope` of any other
   type including a `Construct` subclass such as `Stack`, and
   `Stack.of(construct)` keeps its entry because its
-  parameter is named `construct`.
+  parameter is named `construct`. What the rule costs, on the two pages it
+  applies to, is that a factory like `Bucket.fromBucketArn(scope, id, arn)` and
+  a lookup helper whose parameter is named `scope` — `Aspects.of(scope)`,
+  `Tags.of(scope)` — are not listed there, while
+  `Stack.of(construct)` and `Names.uniqueId(construct)`, the same shape with
+  another parameter name, are. The inconsistency is jsii's parameter names, and
+  the alternative is a row that lists most of the corpus.
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
   the disclosure. Every figure below was measured on one developer host, a
