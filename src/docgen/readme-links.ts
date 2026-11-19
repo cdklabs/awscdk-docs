@@ -1,4 +1,4 @@
-import { pageHref } from './links.js';
+import { moduleReadmeLink, pageHref } from './links.js';
 
 /**
  * Type links for README code examples, resolved from each example's own imports so a name is never guessed.
@@ -145,4 +145,21 @@ export function readmeTypeLinksAttr(code: string, options: ReadmeTypeLinkOptions
   const pairs = [...hrefs].filter((pair): pair is [string, string] => pair[1] !== undefined)
     .map(([name, href]) => `${name}:${href}`);
   return pairs.length > 0 ? `type-links=${pairs.join(',')}` : '';
+}
+
+/** An npm package name, optionally scoped: what a README's package reference may name. */
+const NPM_PACKAGE_NAME = '(?:@[a-z0-9][\\w.-]*\\/)?[a-z0-9][\\w.-]*';
+const PACKAGE_REFERENCE = new RegExp(`<span class="package-reference">(${NPM_PACKAGE_NAME})</span>`, 'g');
+
+/**
+ * Turn each `<span class="package-reference">NAME</span>` in README prose into a link named `NAME` in inline code.
+ * A package documented on this site links its readme page; any other package links its npm page. The span is the
+ * aws-cdk READMEs' way of naming a service's alpha package, and would otherwise be escaped into visible markup.
+ * Any other HTML is left for the caller's escaping.
+ */
+export function linkPackageReferences(prose: string, documented: ReadonlySet<string>): string {
+  return prose.replace(PACKAGE_REFERENCE, (_span, name: string) => {
+    const target = documented.has(name) ? moduleReadmeLink(name) : `https://www.npmjs.com/package/${name}`;
+    return `[\`${name}\`](${target})`;
+  });
 }

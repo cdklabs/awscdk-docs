@@ -52,7 +52,7 @@ import {
   parseOverviews,
 } from './overviews.js';
 import { upstreamReadmeUrl, upstreamSourceUrl } from './provenance.js';
-import { ImportModules, importModules, readmeTypeLinksAttr } from './readme-links.js';
+import { ImportModules, importModules, linkPackageReferences, readmeTypeLinksAttr } from './readme-links.js';
 import { ExampleTranslations, importStatements, loadTablet, RosettaTablet } from './rosetta.js';
 import { OVERVIEW_SEARCH_KIND, searchFilterHtml, searchKind, searchModule } from './search.js';
 import {
@@ -320,6 +320,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
   const typeIndex = buildTypeIndex([...assemblies.values()]);
   // Import paths README examples resolve their type names through.
   const readmeModules = importModules(assemblies.values());
+  // Keyed by assembly name, the name readme pages are emitted under, which can differ from the node_modules directory.
+  const documentedPackages: ReadonlySet<string> = new Set([...assemblies.values()].map((a) => a.name));
   // Both mixin shapes, sharing one marker resolution and one closure memo: interface-marked mixins, and the concrete
   // CLASSES extending the marker-carrying abstract base, which the interface-keyed index cannot hold.
   const {
@@ -511,7 +513,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         languages: languageIds,
         tablet: tabletFor(config.modules[0]),
         typeLinks: { linkFor, modules: readmeModules },
-      }), readmeHistory(ledger, primary.name));
+      }, documentedPackages), readmeHistory(ledger, primary.name));
     emitPageFile(options.overviewFile, `${API_ROOT}index.md`, content);
   }
 
@@ -643,6 +645,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
             ...(overview.readme ? { readme: overview.readme } : {}),
             ...(overview.upstream ? { upstreamEditUrl: overview.upstream } : {}),
             examples: overview.examples,
+            packages: documentedPackages,
           }),
         breadcrumb,
       });
@@ -702,6 +705,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         ...(rootOverview.readme ? { readme: rootOverview.readme } : {}),
         ...(rootOverview.upstream ? { upstreamEditUrl: rootOverview.upstream } : {}),
         examples: rootOverview.examples,
+        packages: documentedPackages,
         // Anchored at the module itself, with no synthetic root segment above it — same trail scheme as type pages.
         breadcrumb: renderBreadcrumb([{ label: assembly.name }]),
         // The documented version is a fact the README cannot carry, so it is emitted here. The assembly description
@@ -1154,8 +1158,12 @@ function renderModuleIndex(
  * README's own leading H1 becomes the page title (with an `# API Reference` fallback) and the README body sits in a
  * `<div v-pre>` container so mustache interpolation and template literals never reach the Vue compiler.
  */
-export function renderApiOverviewPage(assembly: spec.Assembly, examples?: ReadmeExampleOptions): string {
-  const body = assembly.readme?.markdown ? prepareReadme(assembly.readme.markdown) : '';
+export function renderApiOverviewPage(
+  assembly: spec.Assembly,
+  examples?: ReadmeExampleOptions,
+  packages?: ReadonlySet<string>,
+): string {
+  const body = assembly.readme?.markdown ? prepareReadme(assembly.readme.markdown, packages) : '';
   const headingMatch = body ? /^#\s+(.*)(?:\n|$)/.exec(body) : null;
   const heading = headingMatch ? headingMatch[0].trimEnd() : '# API Reference';
   const rest = headingMatch ? body.slice(headingMatch[0].length).trim() : body;
@@ -1201,6 +1209,8 @@ export interface OverviewPageOptions {
    * the file a reader can edit. Omitted when there is no such file, and the footer then renders no edit link.
    */
   readonly upstreamEditUrl?: string;
+  /** Packages documented on this site, so a README's package reference can link the package's own readme page. */
+  readonly packages?: ReadonlySet<string>;
 }
 
 /**
@@ -1248,7 +1258,7 @@ export function overviewReadme(
  */
 export function renderOverviewPage(options: OverviewPageOptions): string {
   const { title, types, breadcrumb = [], examples, preamble = [], sections = [] } = options;
-  const body = options.readme ? prepareReadme(options.readme) : '';
+  const body = options.readme ? prepareReadme(options.readme, options.packages) : '';
   if (!body) {
     return overviewPage({
       frontmatter: overviewFrontmatter(['outline: false', ...upstreamKey(options.upstreamEditUrl)]),
@@ -1466,8 +1476,10 @@ function splitReadmeExamples(body: string, options?: ReadmeExampleOptions): Read
 
 /**
  * Prepare a jsii submodule README for embedding in a VitePress page:
- * outside code, strip HTML comments and neutralize repo-relative
- * image/link targets, then escape Vue-hostile characters fence-aware.
+ * outside code, strip HTML comments, neutralize repo-relative image/link
+ * targets and link package references (to this site's readme page for a
+ * package in `packages`, npm otherwise), then escape Vue-hostile characters
+ * fence-aware.
  * Returns '' for effectively-empty READMEs so callers can fall back to
  * the list-only layout.
  *
@@ -1479,10 +1491,10 @@ function splitReadmeExamples(body: string, options?: ReadmeExampleOptions): Read
  * links to their label; absolute URLs, root-absolute paths and anchors
  * are left untouched.
  */
-function prepareReadme(markdown: string): string {
+function prepareReadme(markdown: string, packages: ReadonlySet<string> = new Set()): string {
   const cleaned = mapProse(
     stripInlineToc(closeDanglingFence(markdown)),
-    (prose) => stripRelativeRefs(removeAll(prose, /<!--[\s\S]*?-->/g)),
+    (prose) => linkPackageReferences(stripRelativeRefs(removeAll(prose, /<!--[\s\S]*?-->/g)), packages),
   );
   return labelEmptyTableHeaders(convertMathFences(escapeProse(cleaned))).trim();
 }
