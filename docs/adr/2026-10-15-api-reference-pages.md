@@ -303,7 +303,7 @@ assembly. The rules:
 - **Size.** Both rows are clamped and excluded from the search index like
   every other row of this block, and the whole list ships in the HTML behind
   the disclosure. Every figure below was measured on one developer host, a
-  16-core arm64 Linux box, base `6052c36` against `5f68e72`, with the same
+  16-core arm64 Linux box, base `6052c36` against `15e0993`, with the same
   installed dependencies, and the method is: entry counts from
   `buildUsageIndex` over the assemblies of `docgen.config.json`; corpus size as
   the total bytes of generated `.md` pages under
@@ -314,31 +314,39 @@ assembly. The rules:
   docs`), HTML and `assets/*.js` together, because the per-page hydration chunk
   is the artifact cost that counts against the deploy limit as much as the HTML
   does, with the gzipped chunk reported separately where the performance gate's
-  ceiling is what matters; DOM nodes from
+  ceiling is what matters, and the deflate zip `scripts/package-site.sh`
+  produces from that same `dist`, before the Markdown twins are overlaid, since
+  the twins are the whole corpus on every fixture and would drown the signal;
+  DOM nodes from
   `document.querySelectorAll('*').length` on a built fixture page.
 
-  The index holds 13,342 `used as argument in` entries over 8,376 types and
-  5,804 `returned by` entries over 2,120 types. What the rows RENDER is smaller,
+  The index holds 13,343 `used as argument in` entries over 8,376 types and
+  5,806 `returned by` entries over 2,120 types. What the rows RENDER is smaller,
   because the de-duplication above drops what a more specific row already
-  states: 6,437 and 2,088 entries over 3,941 types. The corpus grew 733.3 MB to
-  739.1 MB, +0.79 percent over 29,893 pages. Docgen wall time is the one figure
+  states: 6,437 and 2,088 entries over 3,941 types. The corpus grew 744.2 MB to
+  750.0 MB, +0.79 percent over 29,893 pages, and the Markdown twins 197.6 MB to
+  198.5 MB, +0.45 percent. Docgen wall time is the one figure
   this host measures badly: repeated runs of the same code ranged 103 s to
   147 s, so the index walk is inside the noise rather than measured.
-  Artifact growth depends on which services the fixture keeps: the
-  default SNS and SQS fixture (84 pages) grew 44.96 MB to 45.11 MB,
-  +0.35 percent, and adding
-  `aws-iam` through `E2E_FIXTURE_SERVICES` (211 pages) grew 72.94 MB to
-  74.71 MB, +2.43 percent,
-  because almost every IAM type is a parameter or a return somewhere.
 
-  Raw `dist` bytes are not what the deploy gate checks: `scripts/package-site.sh`
+  Artifact growth depends on which services the fixture keeps. Raw `dist` bytes
+  are not what the deploy gate checks: `scripts/package-site.sh`
   deflate-zips `dist` and fails above `MAX_ZIP_MB` (900, under the 1 GB
   GitHub Pages limit on compressed bytes), so the zip is the figure that can
-  actually stop a release. On the `aws-iam` fixture it grew 8,004,536 bytes to
-  8,094,630, **+1.13 percent**: the rows are long runs of similar markup and
-  deflate takes most of them back. The full site is not built on a developer
-  host, so its own zip is **not measured**: the corpus figure is the site-wide
-  number and the fixture figures bracket what bundling and compression do to it.
+  actually stop a release, and these rows are long runs of similar markup that
+  deflate takes most of back.
+
+  | fixture | raw `dist` | deploy zip |
+  |---|---|---|
+  | default, SNS and SQS, 77 pages | 44,857,537 B → 45,016,359 B, +0.35% | 4,602,976 B → 4,623,324 B, +0.44% |
+  | plus `aws-cloudwatch` and `aws-iam`, 410 pages | 115,979,238 B → 119,872,457 B, +3.36% | 12,631,707 B → 12,867,022 B, +1.86% |
+
+  The second fixture is the worst case a developer host can build, because
+  almost every IAM type is a parameter or a return somewhere and CloudWatch
+  carries the two heaviest rows in the corpus. The full site is not built on a
+  developer host, so its own zip is **not measured**: the corpus figure is the
+  site-wide number and the fixture figures bracket what bundling and
+  compression do to it.
   Whoever changes what these rows collect re-measures the same way and reports
   it on the pull request. A growth above **5 percent** of the deployed zip is
   the line at which this presentation has to be reconsidered rather than
@@ -360,27 +368,27 @@ assembly. The rules:
   parameter of a family of methods and one class is what they return. Ranking by
   index entries instead would put `CfnPropertyMixinOptions` first with 1,905,
   which is wrong: every one of those is an initializer entry whose owner the
-  props row already names, so its rendered row is empty. Only the
-  IAM pair is in a buildable fixture, so they are the ones with measured built
-  figures, on a fixture extended with `aws-iam`:
+  props row already names, so its rendered row is empty. All four are
+  measured, on the fixture extended with `aws-cloudwatch` and `aws-iam`:
 
   | page | built HTML | DOM nodes | chunk, raw | chunk, gzipped |
   |---|---|---|---|---|
-  | `aws_iam.IGrantable` | 43 KB → 252 KB | 2,346 → 5,938 | 24 KB → 254 KB | 3.2 KB → 14.2 KB |
-  | `aws_iam.Grant` | 74 KB → 283 KB | 2,915 → 6,493 | 59 KB → 289 KB | 6.3 KB → 17.2 KB |
+  | `aws_cloudwatch.MetricOptions` | 83 KB → 410 KB | 3,188 → 8,264 | 69 KB → 426 KB | 5.6 KB → 24.5 KB |
+  | `aws_cloudwatch.Metric` | 110 KB → 419 KB | 3,739 → 8,450 | 101 KB → 436 KB | 8.3 KB → 25.7 KB |
+  | `aws_iam.Grant` | 74 KB → 283 KB | 2,915 → 6,493 | 59 KB → 289 KB | 6.5 KB → 17.6 KB |
+  | `aws_iam.IGrantable` | 43 KB → 252 KB | 2,346 → 5,938 | 24 KB → 254 KB | 3.3 KB → 14.6 KB |
 
   The gzipped column is the one the performance gate's 400 KB combined JS+CSS
   ceiling is measured against (the collect server serves gzipped, so
   `transferSize` is compressed bytes). Those chunks are long runs of similar
   markup, which compresses by about 17 times, and every other `assets/*.js`
   and `assets/*.css` in the fixture adds 31 KB gzipped, so the heaviest of
-  these pages ships about 46 KB of the 400 KB. Raw bytes are what the deploy
+  these pages ships about 56 KB of the 400 KB. Raw bytes are what the deploy
   artifact pays and gzipped bytes are what a reader downloads; neither is near
   its limit, and the gate audits none of these pages
   (`lighthouse.config.json` names three others).
-  Those are the cases to measure before adding a third such row, together with
-  the `Metric`/`MetricOptions` pair, which is the same shape in a service the
-  e2e fixture does not keep: the disclosure bounds the height a reader sees, not
+  These four are the cases to measure before adding a third such row: the
+  disclosure bounds the height a reader sees, not
   the DOM the browser parses or the chunk it downloads.
 
 Each row is clamped to two lines by a **build-time character budget**

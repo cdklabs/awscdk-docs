@@ -952,9 +952,9 @@ describe('symbol page generation', () => {
     const duration = toAgentMarkdown(readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8'), SITE_URL).markdown;
     expect(duration).toMatch(/^Used as argument in: /m);
     expect(duration).toMatch(/^Returned by: /m);
-    // The shown entries link, as they do in every row. Entries behind the disclosure render as text, because a
-    // type used in thousands of places would otherwise put hundreds of kilobytes of links between the
-    // description and the API surface the twin carries.
+    // The shown entries link, as they do in every row. Entries behind the disclosure render as text, because
+    // linking them triples the twin on the pages with the biggest rows and puts that ahead of the API surface
+    // the twin carries. The measured figures are in the SEO ADR.
     const argumentIn = duration.split('\n').find((l) => l.startsWith('Used as argument in: '))!;
     const links = (argumentIn.match(/\]\(https:\/\/docs\.example\.com\/cdk\/api\/v2\/docs\//g) ?? []).length;
     const entries = argumentIn.split(', ').length;

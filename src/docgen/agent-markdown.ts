@@ -448,8 +448,8 @@ function renderInheritance(el: Element): string {
     // Entries shown without opening the row's disclosure keep their cross-page link (a same-page `#…` link renders
     // as text like everywhere else in the twin); entries folded inside `.chain-more` render as text, except in the
     // `obtainable from` row, whose deep links to factories are the point of the row. The usage rows fold to text:
-    // a type used in thousands of places would otherwise put hundreds of kilobytes of links ahead of the API
-    // surface the twin exists to carry. Recorded in the SEO ADR.
+    // linking the folded entries triples the twin on the pages with the biggest rows, tens of kilobytes of URLs
+    // ahead of the API surface the twin exists to carry. Measured in the SEO ADR.
     const linkFolded = child.attribs.id === SECTION_ANCHORS.obtainableFrom;
     const folded = (n: Element): boolean => {
       for (let p = DomUtils.getParent(n); p && p !== child; p = DomUtils.getParent(p)) {
