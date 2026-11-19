@@ -371,11 +371,14 @@ assembly. The rules:
   Whoever changes what these rows collect re-measures the same way and reports
   it on the pull request. A growth above **5 percent** of the deployed zip is
   the line at which this presentation has to be reconsidered rather than
-  shipped, well before `MAX_ZIP_MB` becomes the thing that says no. One tripwire
-  does fire by itself: `test/symbol-pages.test.ts` pins the byte size of the
-  heaviest row, `aws_cloudwatch.MetricOptions`, 5 percent above today's, so a
-  dependency bump that adds another family of metric methods fails CI instead of
-  landing unmeasured.
+  shipped, well before `MAX_ZIP_MB` becomes the thing that says no. One
+  tripwire runs in CI: `test/symbol-pages.test.ts` renders the heaviest row,
+  `aws_cloudwatch.MetricOptions` from `aws-cdk-lib` and `constructs`, and pins
+  its bytes **per entry** 5 percent above today's 545 in five languages. That
+  catches markup growth in the renderer, which is this repo's to control. It
+  deliberately does not pin the row's absolute size: the number of entries
+  follows the pinned CDK version, so the nightly refresh would turn red for a
+  CloudWatch release that this repo did nothing to cause.
 - **The heaviest pages.** Ranking the 29,893 generated pages by size, the
   biggest are catalog types that predate these rows:
   `aws_quicksight.CfnCustomPermissions.CapabilitiesProperty` and
