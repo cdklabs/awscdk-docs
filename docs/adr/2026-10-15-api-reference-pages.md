@@ -386,7 +386,10 @@ assembly. The rules:
   catches markup growth in the renderer, which is this repo's to control. It
   deliberately does not pin the row's absolute size: the number of entries
   follows the pinned CDK version, so the nightly refresh would turn red for a
-  CloudWatch release that this repo did nothing to cause.
+  CloudWatch release that this repo did nothing to cause. It does bound that
+  count loosely, at about double today's 409, so a release that doubles the
+  call sites stops and asks for the re-measure above rather than landing
+  unseen.
 - **The heaviest pages.** Ranking the 29,893 generated pages by size, the
   biggest are catalog types that predate these rows:
   `aws_quicksight.CfnCustomPermissions.CapabilitiesProperty` and

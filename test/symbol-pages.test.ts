@@ -722,6 +722,10 @@ describe('symbol page generation', () => {
     const row = page.slice(start, page.indexOf('</nav>', start));
     const entries = (row.match(/<a class="chain-item"/g) ?? []).length;
     expect(entries).toBeGreaterThan(400);
+    // Headroom of about double over today's 409, so an upstream release that doubles the call sites points at the
+    // ADR's re-measure rule instead of landing unseen. Tripping either bound means measuring the page and moving
+    // the number, never deleting the assertion.
+    expect(entries).toBeLessThan(800);
     expect(Buffer.byteLength(row) / entries).toBeLessThanOrEqual(573);
   });
 
