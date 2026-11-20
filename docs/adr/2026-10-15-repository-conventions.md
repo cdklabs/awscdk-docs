@@ -102,7 +102,10 @@ boundary) covers recurring, machine-authored dependency bumps only:
 - projen's scheduled upgrade PRs from `upgrade-main`, `upgrade-dev-deps-main`
   and `upgrade-cdklabs-projen-project-types-main`, each labeled `auto-approve`
   through `depsUpgradeOptions.workflowOptions.labels`, which the project type
-  passes to all three generated workflows. Their upgrade tasks write
+  passes to all three generated workflows. `auto-approve.yml` approves a
+  labeled PR only when its author is `cdklabs-automation` or
+  `dependabot[bot]`, so these PRs are approved when the account behind
+  `PROJEN_GITHUB_TOKEN` is one of those. Their upgrade tasks write
   `package.json`, the lockfile, the regenerated `THIRD_PARTY_LICENSES`, and
   whatever the following `npx projen` synthesizes; after a projen upgrade that
   can be any projen-managed file, workflows included. The required checks are
@@ -124,10 +127,12 @@ upgrade cannot land while CI is red (see
 
 The scheduled `upgrade` and `upgrade-dev-deps` tasks stay inside each
 package's current major. They run `npm-check-updates --target=minor` on the
-packages projen lists in their filter, then `npm update`, which moves every
-other dependency only within its declared range. Both skip releases younger
-than a short cooldown and pass `--peer`, so they never pick a version that
-breaks a peer range another installed package declares. The documented CDK
+packages projen lists in their filter, then `npm update` on the rest of their
+dependencies, which moves each only within its declared range. Both skip
+releases younger than a short cooldown. The `npm-check-updates` step passes
+`--peer`, which keeps the filtered packages to versions compatible with the
+peer ranges installed packages declare; the `npm update` step relies on npm's
+own peer resolution. The documented CDK
 packages are left out of both tasks; the nightly version check pins those
 instead (see [versions and history](./2026-10-15-versions-and-history.md)).
 For a 0.x package, a change in the first non-zero component is breaking
