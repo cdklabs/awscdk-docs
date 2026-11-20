@@ -45,12 +45,16 @@ overridden, so every default-theme component keeps working.
 The light page background is pure white again. The warm off-white surface and
 the orange-on-squid-ink identity are gone. Links, active states and focus are
 blue. Orange stays only for primary buttons and the home hero: the hero wordmark
-is an orange gradient (`#ff9900` to `#e68a00` light, `#ffb84d` to `#ff9900`
-dark), and the hero glow pairs orange with the new ink.
+is an orange gradient (`#d97000` to `#c45500` light, `#ffb84d` to `#ff9900`
+dark), and the hero glow pairs orange with the new ink. The wordmark is real
+large text painted only by that gradient, so every stop clears the 3:1
+large-text minimum on its page: `#d97000` 3.35:1 and `#c45500` 4.52:1 on white.
+AWS orange `#ff9900` is only 2.14:1 on white, so it stays out of the light
+wordmark.
 
 Linked code in light mode uses the hover blue `#001a99`, not brand-1. Brand-1
-`#006ce0` measures only 3.74 to 4.32:1 on the gray code chips and the tip tint,
-which fails AA; `#001a99` clears 9.81:1 on each of them.
+`#006ce0` measures only 3.88 to 4.37:1 on the gray code chips and the tip tint,
+which fails AA; `#001a99` clears 10.18:1 on each of them.
 
 Hand-written copies follow the palette: the decoupled code-theme chrome in
 `code-theme.css` mirrors the new surfaces and dividers, the signature keyword
@@ -64,7 +68,8 @@ default theme and `:root` matches `<html>` at the same specificity as `.dark`, s
 an unshadowed `:root` value silently wins in dark mode and produces dark-on-dark
 text.
 
-Every text and surface pair meets WCAG AA (>= 4.5:1). Brand-1 measures 4.97:1 on
+Every text and surface pair meets WCAG AA: 4.5:1 for body text, 3:1 for the
+large hero wordmark. Brand-1 measures 4.97:1 on
 the light page and 7.44:1 on the dark page, and body text 18.5:1 and 9.99:1.
 
 ## Consequences
@@ -73,6 +78,7 @@ the light page and 7.44:1 on the dark page, and body text 18.5:1 and 9.99:1.
 - The per-kind badge palette (`--cdk-badge-*`), Shiki token colors, the logo
   filter, the deprecated marker and the type link colors are not part of this
   palette and keep their own values.
-- Contrast pins in the theme and accessibility tests are computed from these
-  tokens, so a future palette change fails the suite until every pair is
-  re-measured.
+- Contrast pins in the theme and accessibility tests read both sides of each
+  pair from these tokens. Composited backgrounds, such as code chips and tints,
+  are computed from the surface tokens and VitePress's gray soft layer, so a
+  surface change re-measures every pair.

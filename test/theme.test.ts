@@ -184,6 +184,21 @@ describe('CDK brand theme', () => {
       ])('dark mode: button %s on %s', (text, bg) => {
         expect(contrast(cssVar(darkBlock, text), cssVar(darkBlock, bg))).toBeGreaterThanOrEqual(AA);
       });
+
+      // The hero wordmark is large text painted only by this gradient, so WCAG's 3:1 large-text
+      // minimum applies to every stop.
+      test.each([
+        ['light', () => lightBlock],
+        ['dark', () => darkBlock],
+      ])('%s mode: every hero wordmark gradient stop clears 3:1 on the page', (_mode, block) => {
+        const gradient = block().match(/--vp-home-hero-name-background:\s*([^;]+);/);
+        expect(gradient).not.toBeNull();
+        const stops = gradient![1].match(/#[0-9a-fA-F]{6}/g) ?? [];
+        expect(stops.length).toBeGreaterThanOrEqual(2);
+        for (const stop of stops) {
+          expect(contrast(stop, cssVar(block(), '--vp-c-bg'))).toBeGreaterThanOrEqual(3);
+        }
+      });
     });
 
     test('only overrides VitePress theme variables (no element selectors)', () => {

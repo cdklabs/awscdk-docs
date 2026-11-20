@@ -26,7 +26,7 @@
   /* Contrast fixes. Each default reaches brand-1 on a surface darker than the page,
      where it falls under AA. The `tip` ramp colors the kind badge on every API page
      as well as tip callouts. `--vp-code-link-color` is the one `.vp-doc a > code` reads:
-     brand-1 is only 3.74-4.32:1 on code chips, the hover blue #001a99 is 9.81:1 or more. */
+     brand-1 is only 3.88-4.37:1 on code chips, the hover blue #001a99 is 10.18:1 or more. */
   --vp-c-tip-1: #001a99;
   --vp-c-tip-2: #000833;
   --vp-code-color: #0f141a;
@@ -55,9 +55,10 @@
   --vp-button-brand-active-text: #0f141a;
   --vp-button-brand-active-border: transparent;
 
-  /* Hero: orange gradient wordmark and glow */
+  /* Hero: orange gradient wordmark and glow. The wordmark is large text, so each stop clears 3:1 on
+     the white page: #d97000 3.35:1, #c45500 4.52:1. #ff9900 is only 2.14:1 there. */
   --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: linear-gradient(120deg, #ff9900 30%, #e68a00);
+  --vp-home-hero-name-background: linear-gradient(120deg, #d97000 30%, #c45500);
   --vp-home-hero-image-background-image: linear-gradient(
     -45deg,
     rgba(255, 153, 0, 0.35) 50%,
