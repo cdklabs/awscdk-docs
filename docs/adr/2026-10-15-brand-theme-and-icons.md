@@ -21,25 +21,8 @@ to display.
 
 Extend the default theme with CSS variable overrides only
 (`docs/.vitepress/theme/index.ts` re-exports the default theme and imports
-`custom.css`). The identity is an AWS orange (`#ff9900`) brand ramp on
-squid-ink (`#232f3e`) accents. Light and dark are tuned independently: `:root`
-carries light mode (orange darkened to brand-1 `#b45309` / brand-2 `#92400e`
-for contrast on light surfaces), `.dark` carries dark mode (full-brightness
-orange on squid-ink surfaces). Every variable in `:root` that sets a text
-color MUST be re-declared in `.dark` with an explicit value — `custom.css`
-loads after the default theme and `:root` matches `<html>` at equal
-specificity, so an unshadowed `:root` value silently wins in dark mode and
-produces dark-on-dark text.
-
-Light surfaces are a warm off-white rather than pure white, which reads as
-glary against high-contrast squid-ink text on large API pages:
-`--vp-c-bg: #faf9f7` for content, `#f5f4f1` for
-`--vp-c-bg-alt`/`--vp-c-bg-soft`/`--vp-c-bg-elv`. Dark surfaces are
-`#161e2d` / `#10161f` / `#1f2a3a` with `#e2e8f0` body text. Brand buttons use
-dark-ink text on orange in both modes (white on `#ff9900` is only 2.1:1).
-Overrides are limited to documented `--vp-*` variables, so VitePress upgrades
-stay low-risk. Every text/surface pair meets AA (>= 4.5:1), enforced by
-`test/theme.test.ts`.
+`custom.css`). The colors themselves, and the rule that keeps dark mode
+readable, are recorded in [Cloudscape palette](./2026-11-20-cloudscape-palette.md).
 
 ### Logo and copyright
 

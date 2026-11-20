@@ -10,14 +10,14 @@
 :root {
   --sig-c-type: #0550ae;
   --sig-c-type-param: #6f42c1;
-  --sig-c-keyword: #92400e;
+  --sig-c-keyword: #001a99;
   --sig-c-muted: #57606a;
 }
 
 .dark {
   --sig-c-type: #79b8ff;
   --sig-c-type-param: #d2a8ff;
-  --sig-c-keyword: #ffb84d;
+  --sig-c-keyword: #75cfff;
   --sig-c-muted: #9aa4b2;
 }
 

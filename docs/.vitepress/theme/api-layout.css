@@ -2,23 +2,23 @@
 
 :root {
   --api-c-type: #0550ae;
-  --api-c-badge-bg: #fff1e0;
-  --api-c-badge-text: #92400e;
+  --api-c-badge-bg: #e6f0fc;
+  --api-c-badge-text: #001a99;
   /* Deprecated marker. Declared here AND shadowed in `.dark`
      below: an unshadowed `:root` color wins in dark mode, a known trap.
      The strikethrough on the identifier carries the deprecation
      independently, so nothing depends on this color alone. */
   --api-c-deprecated: #9a2c2c;
   /* Start of the member-row flash; every text color a row carries stays at AA on it (pinned in tests). */
-  --api-c-flash: #fdf3e3;
+  --api-c-flash: #f2f8fd;
 }
 
 .dark {
   --api-c-type: #79b8ff;
-  --api-c-badge-bg: #3b2c1a;
-  --api-c-badge-text: #ffb84d;
+  --api-c-badge-bg: #1d3549;
+  --api-c-badge-text: #75cfff;
   --api-c-deprecated: #ff9d9d;
-  --api-c-flash: #352d22;
+  --api-c-flash: #1b2a3a;
 }
 
 /* ---------- Type page header bar: breadcrumb + favorite ---------- */

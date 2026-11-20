@@ -63,21 +63,21 @@ describe('CDK brand theme', () => {
       expect(css.toLowerCase()).toContain('#ff9900');
     });
 
-    test('uses the squid-ink accent color', () => {
-      expect(css.toLowerCase()).toContain('#232f3e');
+    test('uses the near-black ink color', () => {
+      expect(css.toLowerCase()).toContain('#0f141a');
     });
 
-    test('light mode darkens the brand ramp for contrast', () => {
-      expect(lightBlock).toContain('--vp-c-brand-1: #b45309');
+    test('light mode uses the link blue brand step', () => {
+      expect(lightBlock).toContain('--vp-c-brand-1: #006ce0');
     });
 
-    test('dark mode uses full-brightness orange', () => {
-      expect(darkBlock).toContain('--vp-c-brand-1: #ff9900');
+    test('dark mode uses the light link blue with orange as brand-3', () => {
+      expect(darkBlock).toContain('--vp-c-brand-1: #42b4ff');
+      expect(darkBlock).toContain('--vp-c-brand-3: #ff9900');
     });
 
-    test('light mode softens the page background: not pure white', () => {
-      expect(lightBlock).toContain('--vp-c-bg: #faf9f7');
-      expect(lightBlock).not.toContain('--vp-c-bg: #ffffff');
+    test('light mode uses a pure white page background', () => {
+      expect(lightBlock).toContain('--vp-c-bg: #ffffff');
     });
 
     test.each(['--vp-c-bg', '--vp-c-bg-alt', '--vp-c-bg-soft', '--vp-c-bg-elv'])(

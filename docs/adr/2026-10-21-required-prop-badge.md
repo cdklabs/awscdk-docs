@@ -28,7 +28,7 @@ leaving which properties are required unchanged.
 The required marker renders as a distinct badge. The marker stays
 `<span class="member-required">required</span>`, and the `.member-required`
 rule in `docs/.vitepress/theme/api-layout.css` styles it as a filled pill: the
-amber `--api-c-badge-bg` / `--api-c-badge-text` token pair (the palette the
+blue `--api-c-badge-bg` / `--api-c-badge-text` token pair (the palette the
 kind chip `.type-tooltip-kind` already uses), uppercase, weight 600, rounded
 corners, small padding. Those tokens are declared for both light and dark mode
 at the top of the stylesheet, so the badge stays legible in both themes and

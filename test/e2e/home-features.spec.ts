@@ -30,8 +30,8 @@ test.describe('feature card glyphs', () => {
     // stroke="currentColor" resolves to the computed color, so the two agree
     // only when the tint went through `color`.
     expect(box.stroke).toBe(box.color);
-    // Light palette brand-1 is #b45309.
-    expect(box.color).toBe('rgb(180, 83, 9)');
+    // Light palette brand-1 is #006ce0.
+    expect(box.color).toBe('rgb(0, 108, 224)');
   });
 
   test('glyphs are decorative', async ({ page }) => {
