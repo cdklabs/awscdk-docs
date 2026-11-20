@@ -46,7 +46,7 @@ Nothing is fetched client-side.
 Each package row shows the `latest` dist-tag with its publish date, a release link, and a `docs` link. The page
 lives at `/versions`, is linked from the navbar, renders as a real `<table>` with scoped headers styled with theme
 variables only, links `versions.json`, links the API stability guide so readers can find out what stable and
-experimental mean for the packages listed, and states the v1 end-of-support date. A "Previous releases" column was
+experimental mean for the APIs this reference documents, and states the v1 end-of-support date. A "Previous releases" column was
 rejected: readers want what is current, and the release-notes link already reaches full history.
 
 `versions.json` is emitted at the site root beside `/versions.html` — swapping the extension on the page URL
