@@ -127,7 +127,10 @@ new sqs.Queue(this, 'Queue', {
 ```python
 sqs.Queue(self, "Queue",
     visibility_timeout=Duration.minutes(5),
-    dead_letter_queue=sqs.DeadLetterQueue(queue=dlq, max_receive_count=5)
+    dead_letter_queue=sqs.DeadLetterQueue(
+        queue=dlq,
+        max_receive_count=5
+    )
 )
 ```
 
