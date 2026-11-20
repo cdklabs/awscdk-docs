@@ -160,6 +160,14 @@ authored TypeScript, because lifting it would break the list structure.
 A package shipping no tablet, or a symbol absent from it, degrades to the
 generated/untranslated form rather than failing the build.
 
+Hand-written pages, such as the construct library overview, are copied
+verbatim and never pass through the tablet, so they author their own
+per-language variants by hand with the same `<LanguageTabs>` markup the
+generator emits. TypeScript comes first and is canonical; every other
+variant is marked `data-pagefind-ignore`, so search indexes only the
+TypeScript code. Example variants are not `v-pre`, so the copy button works
+in every language.
+
 ### Headerless tabs, single navbar control
 
 `LanguageTabs.vue` is a headerless show/hide wrapper: it keeps the

@@ -34,6 +34,9 @@ has not been written, and the L1 is right there to use instead.
 
 Both levels describe the same queue. Here is the L1:
 
+<LanguageTabs :langs="['ts', 'python', 'java', 'dotnet', 'go']">
+<div class="lang-variant" data-lang="ts">
+
 ```ts
 new sqs.CfnQueue(this, 'Queue', {
   queueName: 'my-queue',
@@ -45,10 +48,71 @@ new sqs.CfnQueue(this, 'Queue', {
 });
 ```
 
+</div>
+<div class="lang-variant" data-lang="python" data-pagefind-ignore>
+
+```python
+sqs.CfnQueue(self, "Queue",
+    queue_name="my-queue",
+    visibility_timeout=300,
+    redrive_policy={
+        "deadLetterTargetArn": dlq.attr_arn,
+        "maxReceiveCount": 5
+    }
+)
+```
+
+</div>
+<div class="lang-variant" data-lang="java" data-pagefind-ignore>
+
+```java
+CfnQueue.Builder.create(this, "Queue")
+        .queueName("my-queue")
+        .visibilityTimeout(300)
+        .redrivePolicy(Map.of(
+                "deadLetterTargetArn", dlq.getAttrArn(),
+                "maxReceiveCount", 5))
+        .build();
+```
+
+</div>
+<div class="lang-variant" data-lang="dotnet" data-pagefind-ignore>
+
+```csharp
+new CfnQueue(this, "Queue", new CfnQueueProps {
+    QueueName = "my-queue",
+    VisibilityTimeout = 300,
+    RedrivePolicy = new Dictionary<string, object> {
+        { "deadLetterTargetArn", dlq.AttrArn },
+        { "maxReceiveCount", 5 }
+    }
+});
+```
+
+</div>
+<div class="lang-variant" data-lang="go" data-pagefind-ignore>
+
+```go
+awssqs.NewCfnQueue(this, jsii.String("Queue"), &awssqs.CfnQueueProps{
+	QueueName: jsii.String("my-queue"),
+	VisibilityTimeout: jsii.Number(300),
+	RedrivePolicy: map[string]interface{}{
+		"deadLetterTargetArn": dlq.AttrArn(),
+		"maxReceiveCount": jsii.Number(5),
+	},
+})
+```
+
+</div>
+</LanguageTabs>
+
 Every value is one you supply, in CloudFormation's own vocabulary: seconds as a
 number, the dead-letter queue referenced by ARN, the redrive policy spelled out.
 
 The L2 for the same thing:
+
+<LanguageTabs :langs="['ts', 'python', 'java', 'dotnet', 'go']">
+<div class="lang-variant" data-lang="ts">
 
 ```ts
 new sqs.Queue(this, 'Queue', {
@@ -56,6 +120,55 @@ new sqs.Queue(this, 'Queue', {
   deadLetterQueue: { queue: dlq, maxReceiveCount: 5 },
 });
 ```
+
+</div>
+<div class="lang-variant" data-lang="python" data-pagefind-ignore>
+
+```python
+sqs.Queue(self, "Queue",
+    visibility_timeout=Duration.minutes(5),
+    dead_letter_queue=sqs.DeadLetterQueue(queue=dlq, max_receive_count=5)
+)
+```
+
+</div>
+<div class="lang-variant" data-lang="java" data-pagefind-ignore>
+
+```java
+Queue.Builder.create(this, "Queue")
+        .visibilityTimeout(Duration.minutes(5))
+        .deadLetterQueue(DeadLetterQueue.builder()
+                .queue(dlq)
+                .maxReceiveCount(5)
+                .build())
+        .build();
+```
+
+</div>
+<div class="lang-variant" data-lang="dotnet" data-pagefind-ignore>
+
+```csharp
+new Queue(this, "Queue", new QueueProps {
+    VisibilityTimeout = Duration.Minutes(5),
+    DeadLetterQueue = new DeadLetterQueue { Queue = dlq, MaxReceiveCount = 5 }
+});
+```
+
+</div>
+<div class="lang-variant" data-lang="go" data-pagefind-ignore>
+
+```go
+awssqs.NewQueue(this, jsii.String("Queue"), &awssqs.QueueProps{
+	VisibilityTimeout: awscdk.Duration_Minutes(jsii.Number(5)),
+	DeadLetterQueue: &awssqs.DeadLetterQueue{
+		Queue: dlq,
+		MaxReceiveCount: jsii.Number(5),
+	},
+})
+```
+
+</div>
+</LanguageTabs>
 
 The differences are what an L2 buys you. `Duration.minutes(5)` cannot be
 misread as milliseconds. The dead-letter queue is passed as an object rather than
