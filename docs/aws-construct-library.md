@@ -173,19 +173,20 @@ awssqs.NewQueue(this, jsii.String("Queue"), &awssqs.QueueProps{
 </div>
 </LanguageTabs>
 
-The differences are what an L2 buys you. `Duration.minutes(5)` cannot be
-misread as milliseconds. The dead-letter queue is passed as an object rather than
-an ARN string, so a typo is a compile error instead of a deployment failure. The
+The differences are what an L2 buys you. A duration such as five minutes
+(`Duration.minutes(5)` in TypeScript) cannot be misread as milliseconds. The
+dead-letter queue is passed as an object rather than an ARN string, so a typo
+fails when you build or synthesize the app instead of at deployment. The
 queue name is omitted, because CloudFormation will generate one — and a generated
 name is usually the right choice, since a fixed name prevents replacement.
 
-An L2 also carries methods an L1 has none of. `queue.grantSendMessages(handler)`
-writes the IAM policy for you, which is the single largest source of hand-written
-boilerplate an L2 removes.
+An L2 also carries methods an L1 has none of. The queue's grant method
+(`queue.grantSendMessages(handler)` in TypeScript) writes the IAM policy for you,
+which is the single largest source of hand-written boilerplate an L2 removes.
 
 Reach for the L1 when the L2 does not exist yet, or when it does not expose a
-property you need — `node.defaultChild` gets you the L1 underneath any L2, so
-this is not an either/or choice.
+property you need — the construct's default child (`node.defaultChild` in
+TypeScript) gets you the L1 underneath any L2, so this is not an either/or choice.
 
 - L1: [`CfnQueue`](/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue)
 - L2: [`Queue`](/v2/docs/aws-cdk-lib.aws_sqs.Queue)

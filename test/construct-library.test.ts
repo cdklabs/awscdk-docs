@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { FENCE_LANG, type Language } from '../src/docgen/languages.js';
 import { typePageLink } from '../src/docgen/links.js';
 import { API_DOCS_ROOT, STABILITY_ROUTE } from '../src/site-routes.js';
 
@@ -50,6 +51,11 @@ describe('construct library overview page', () => {
       expect([...declared].sort()).toEqual([...config.languages].sort());
       expect([...variants].sort()).toEqual([...config.languages].sort());
       expect(body.match(/^```\w+/gm)).toHaveLength(config.languages.length);
+      const fences = [...body.matchAll(/<div class="lang-variant" data-lang="(\w+)"[^>]*>\s*```(\w+)/g)];
+      expect(fences).toHaveLength(config.languages.length);
+      for (const [, lang, fence] of fences) {
+        expect([lang, fence]).toEqual([lang, FENCE_LANG[lang as Language]]);
+      }
     }
     const outside = groups.reduce((text, [group]) => text.replace(group, ''), page);
     expect(outside).not.toMatch(/^```/m);
