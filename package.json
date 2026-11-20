@@ -196,6 +196,15 @@
     "extensionsToTreatAsEsm": [
       ".ts",
       ".tsx"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "scripts/**/*.cjs",
+      "projenrc/**/*.ts",
+      "docs/*.data.ts",
+      "docs/.vitepress/**/*.{ts,mts}",
+      "!docs/.vitepress/{cache,dist,.temp}/**",
+      "!**/*.d.ts"
     ]
   },
   "types": "lib/index.d.ts",

@@ -14,7 +14,9 @@ failure. Accessibility work also happens in the browser: the navbar filter,
 language toggle, lazy sidebar, and tooltips mount client-side, so their DOM and
 any ARIA mistake in it only exist after hydration; a checker reading generated
 markup audits a tree those components have not touched. Separately, the project
-needs an automated control over the licenses its dependency tree pulls in.
+needs an automated control over the licenses its dependency tree pulls in. Jest also measured only
+files a test imports, so untested files dropped out of the report, and no coverage number
+failed the build.
 
 Three environment constraints shape the browser gates: the full site is ~21k
 pages built in memory-hungry shards and cannot be audited whole or rebuilt per
@@ -181,6 +183,37 @@ enforcement points, so they cannot drift. Adopting a new license means editing i
 recording why in an ADR, per repository convention
 ([repository conventions](./2026-10-15-repository-conventions.md)).
 
+### Unit coverage floor
+
+The Jest suite measures coverage over every source file, not only the files a test
+imports, so an untested file counts as 0% instead of dropping out of the total. Under V8, a
+file no test imports adds one uncovered function and one uncovered branch, so the lines floor is
+the one that catches new untested files. `collectCoverageFrom` in `.projenrc.ts` lists `src/`, `scripts/`, `projenrc/`,
+`docs/*.data.ts`, and the TypeScript under `docs/.vitepress/`.
+
+Two groups stay out, on purpose:
+
+- **Vue components** (`docs/.vitepress/theme/*.vue`). Jest has no single-file-component
+  transformer here, and adding one means a new dependency plus a DOM test environment the
+  suite does not otherwise need. The browser e2e suite exercises these components.
+- **`.projenrc.ts`**. Projen runs it, not Jest; its output is checked by the tests that
+  read generated files.
+
+The test task passes `--coverageThreshold` to Jest with a floor for lines, statements,
+branches, and functions, so `npx projen test` (and the CI build that runs it) fails when
+coverage drops. The floor is the lower of the CI and local numbers rounded down, minus one more
+point on every metric, because the numbers move between environments. V8 counts functions
+differently across Node versions, so the CI runner's current Node reads functions over a point lower
+than an older local Node does. When the floor was set, the `build` workflow (`node-version: lts/*`, then Node 26) read lines 83.62%,
+branches 93.73% and functions 91.89%, and local Node 22 read lines 83.45%, branches 93.73% and
+functions 93.20%. V8 records one statement per line, so statements equal lines and share the
+lines floor. Re-derive the floor by the same rule when that workflow's Node major version changes. It lives on the task rather than in the Jest config, so a bare
+`npx jest path/to/file` stays a quick local run that is not held to a whole-tree floor. Any
+`projen test` run is held to it, including one narrowed with a path. Raise the floor when tests raise the numbers. Scripts that tests run as child processes
+(for example `e2e-serve.cjs`) read as 0%, because Jest's V8 coverage only sees its own
+workers. A unit test pins that every tracked source file is either measured or in one of
+the two groups above, so a new source directory cannot fall outside the scope unnoticed.
+
 ### Workflows
 
 Each browser gate has its own projen-generated workflow — `docs-e2e`, `docs-a11y`,
@@ -211,6 +244,8 @@ None is a required check unless the team opts in via branch protection.
   pages keeps the job inside a normal PR budget.
 - A dependency under any other license fails the build and the review gate, so adopting one
   is a deliberate decision.
+- Unit coverage cannot quietly drop, and an untested file shows up in the report. A single
+  `npx jest path` run is not held to the floor; any `projen test` run is, including one narrowed with a path.
 
 ### Rejected alternatives
 
