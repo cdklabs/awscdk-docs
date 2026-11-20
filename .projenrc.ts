@@ -93,9 +93,9 @@ const project = new CdkTypeScriptProject({
     ],
   },
 
-  // Auto-approve projen's recurring upgrade-main deps PR using projen's built-in label option — the PR only
-  // touches the lockfile and .projen bookkeeping, matching the 'auto-approve' label's trust boundary. Approval
-  // only grants a review; merge stays gated by the required build check that GitHub auto-merge waits on.
+  // Auto-approve projen's scheduled upgrade PRs (upgrade-main, upgrade-dev-deps-main and
+  // upgrade-cdklabs-projen-project-types-main) using projen's built-in label option. Approval only grants a
+  // review; merge stays gated by the required checks that GitHub auto-merge waits on.
   depsUpgradeOptions: {
     workflowOptions: {
       labels: ['auto-approve'],

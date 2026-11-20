@@ -102,16 +102,18 @@ boundary) covers recurring, machine-authored dependency bumps only:
 - projen's scheduled upgrade PRs from `upgrade-main`, `upgrade-dev-deps-main`
   and `upgrade-cdklabs-projen-project-types-main`, each labeled `auto-approve`
   through `depsUpgradeOptions.workflowOptions.labels`, which the project type
-  passes to all three generated workflows. Their upgrade tasks only ever touch `package.json`, the
-  lockfile, and `.projen/` bookkeeping, so no separate per-push verification is
-  needed.
+  passes to all three generated workflows. Their upgrade tasks write
+  `package.json`, the lockfile, the regenerated `THIRD_PARTY_LICENSES`, and
+  whatever the following `npx projen` synthesizes; after a projen upgrade that
+  can be any projen-managed file, workflows included. The required checks are
+  the verification, so no separate per-push check is needed.
 - the nightly CDK version-bump PR (see
   [versions and history](./2026-10-15-versions-and-history.md)).
 
 Anything touching application or docgen logic stays human-approved, even when
 machine-authored. The nightly module-list sync is deliberately *not* labeled: a
 list change adds or deletes a whole module's pages, so a human merges it. No
-Dependabot/Renovate config is adopted — projen's `upgrade-main` already provides
+Dependabot/Renovate config is adopted — projen's scheduled upgrade workflows provide
 recurring npm upgrades and GitHub Action versions are pinned centrally in
 `.projenrc.ts`. Approval only grants a review; merge stays gated by the required
 `build` check that GitHub auto-merge waits on, so a broken upgrade cannot land
@@ -127,12 +129,17 @@ than a short cooldown and pass `--peer`, so they never pick a version that
 breaks a peer range another installed package declares. The documented CDK
 packages are left out of both tasks; the nightly version check pins those
 instead (see [versions and history](./2026-10-15-versions-and-history.md)).
+For a 0.x package, a change in the first non-zero component is breaking
+under its caret range, but `npm-check-updates` counts it as a minor, so a
+filtered 0.x package can take that step in a scheduled PR. Such a PR still
+needs the required checks to pass.
 
 The one task that targets the newest release is
 `upgrade-cdklabs-projen-project-types`, which moves projen and its project
 type together. It has no cooldown and its PR carries the `auto-approve`
-label, so a projen or project-type major merges unattended once `build` is
-green. It is the one exception to the gate below.
+label, so a projen or project-type major merges unattended once the required
+checks (`build` and `build-docs`) are green. It is the one exception to the
+gate below.
 
 Every other major upgrade is a deliberate change in its own PR, never folded
 into a scheduled bump or into unrelated work. The PR raises the version in
@@ -144,8 +151,8 @@ the new major breaks, and shows the built site is unchanged.
 A major waits until the tools that load the package support it. For the
 compiler that means type-aware linting, the Jest transform, and the
 typechecks in `compile`, synthesis and `docs:typecheck`; for any package it
-means every installed tool that declares it as a peer. The gate is ecosystem support,
-read from those tools' published peer ranges and APIs, not a wish to stay
+means every installed tool that declares it as a peer. The gate is ecosystem
+support, read from those tools' published peer ranges and APIs, not a wish to stay
 current: an upgrade is not forced through by overriding a peer range,
 patching a tool, or swapping a tool out just to admit the new major. While a
 major waits, the repo stays on the current major and keeps taking its minor
@@ -170,8 +177,8 @@ index, which indexes built HTML — can surface them. The markdown files stay in
   tests, and projen synthesis; ESM-only dependencies are no longer blocked.
 - The prod/dev dependency split is a checkable statement of what runs in
   visitors' browsers; content sources and build tooling never creep into it.
-- Routine `upgrade-main` and nightly version-bump PRs merge unattended once CI
-  is green, reserving human review for behavior changes.
+- Routine scheduled upgrade PRs and nightly version-bump PRs merge unattended
+  once CI is green, reserving human review for behavior changes.
 - A major release can sit unadopted for a while after it ships. That lag is
   the cost of keeping lint, tests and typechecks working; the repo still gets
   that package's minor and patch releases in the meantime.
