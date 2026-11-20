@@ -67,7 +67,7 @@ describe('independent code-block theme', () => {
       }
     });
 
-    test('chrome backgrounds mirror custom.css surface stacks, not free-floating literals', () => {
+    test('chrome colors mirror custom.css surfaces, divider and language label, not free-floating literals', () => {
       // The decoupled blocks re-pin the brand SURFACE vars from custom.css.
       // Read that file's own `:root` / `.dark` values (like the 40px test
       // reads the pagefind plugin source) so retuning a surface in
@@ -87,6 +87,8 @@ describe('independent code-block theme', () => {
         ['--vp-code-block-bg', '--vp-c-bg-alt'],
         ['--vp-code-copy-code-bg', '--vp-c-bg-soft'],
         ['--vp-code-copy-code-hover-bg', '--vp-c-bg'],
+        ['--vp-code-lang-color', '--vp-code-lang-color'],
+        ['--vp-code-copy-code-border-color', '--vp-c-divider'],
       ];
       for (const [scheme, brandSelector] of [
         ['light', ':root'],

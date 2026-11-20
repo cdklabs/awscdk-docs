@@ -131,7 +131,7 @@
    properties to beat `.VPBadge.tip` / `.VPBadge.info`.
 
    The hues are this repo's own, not VitePress ramps: the palette needs
-   eight mutually distinct kinds and the theme's amber `--vp-c-brand-*` /
+   eight mutually distinct kinds and the theme's blue `--vp-c-brand-*` /
    `--vp-c-tip-*` override collapses two of the stock ramps into one hue, so
    there were never eight to draw from. Every pair below is pinned for WCAG
    AA in both schemes by `test/theme.test.ts`. */
@@ -443,9 +443,9 @@ a.chain-item:hover {
 /* The source link has to read as a link at rest, not only on hover — a
    deliberate decision, re-homed from `.vp-doc h1 a.header-tag` rather than dropped
    with the chip. brand-2, not brand-1: this sits on `--vp-c-bg-soft`, a
-   surface darker than the page, where brand-1 measures only 4.22:1; brand-2
-   is 5.95:1 light and 8.17:1 dark. The underline carries the affordance on
-   its own, so nothing depends on color alone. */
+   surface darker than the page, where brand-1 clears AA by a thin margin
+   (4.61:1); brand-2 is 12.11:1 light and 9.15:1 dark. The underline carries
+   the affordance on its own, so nothing depends on color alone. */
 .type-metadata-value a {
   color: var(--vp-c-brand-2);
   text-decoration: underline;
@@ -740,7 +740,7 @@ html:not(.member-flash-ready) .member-list .member-row:target {
 
 /* `required` is a distinct badge, not muted text: a reader skimming a long
    props table must be able to spot the mandatory properties at a glance
-   (issue #20). The amber `--api-c-badge-*` pair is the kind-chip palette,
+   (issue #20). The blue `--api-c-badge-*` pair is the kind-chip palette,
    reused here and defined for light AND dark at the top of this file, so the
    badge stays legible in both modes. The rendered markup carries the
    `member-required` span for every non-optional INPUT (struct prop), never an

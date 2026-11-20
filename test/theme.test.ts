@@ -537,7 +537,7 @@ describe('API kind badge palette', () => {
   test('the metadata source link is underlined at rest and the generated marker is not', () => {
     // The affordance lives on the metadata block rather than in the H1, and
     // uses brand-2 rather than brand-1 because the block sits on
-    // `--vp-c-bg-soft`, where brand-1 measures 4.22:1.
+    // `--vp-c-bg-soft`, where brand-1 clears AA by a thin margin.
     // Collect every rule body whose selector mentions the link, so a color
     // deleted from one rule cannot be alibied by a mention in another.
     const linkRule = ruleBody('.type-metadata-value a');
