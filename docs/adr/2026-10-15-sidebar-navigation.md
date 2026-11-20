@@ -411,11 +411,10 @@ collapsed (`v-show`), and the section renders nothing with zero favorites.
   and `interfaces.*`/`*.mixins` structural submodules are invisible in the
   nav. Service name changes require a curated display entry and a pinned
   output test; the resource-stem heuristic still fails readable rather than wrong.
-- Per-page HTML is the shallow "Overview" baseline; the tree is session-
-  cached assets fetched incrementally, so build time, artifact size,
+- Per-page HTML carries only the empty native sidebar shell; the tree is
+  session-cached assets fetched incrementally, so build time, artifact size,
   cold-load transfer, and rendered DOM are all bounded independent of page
-  count. The sidebar beyond "Overview" requires JavaScript — acceptable for
-  this SPA.
+  count. The sidebar tree requires JavaScript — acceptable for this SPA.
 - Native VitePress behavior is retained: SPA navigation, active-state,
   mobile drawer, and light/dark theming inherited from the CDK brand theme
   ([brand theme and icons](./2026-10-15-brand-theme-and-icons.md)).
