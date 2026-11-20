@@ -181,7 +181,7 @@ project.eslint?.allowDevDeps('src/**');
 
 // Projen's ESLint component pins this plugin to an older major. A later request for the same dependency replaces it.
 project.addDevDeps('@stylistic/eslint-plugin@^5');
-// From v5 the space after `catch` before its parameter is checked by this rule instead of keyword-spacing.
+// Requires a space between `catch` and its parameter; the other function-paren cases stay unchecked.
 project.eslint?.addRules({
   '@stylistic/space-before-function-paren': ['error', { anonymous: 'ignore', named: 'ignore', asyncArrow: 'ignore', catch: 'always' }],
 });
