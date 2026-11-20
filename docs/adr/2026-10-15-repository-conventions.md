@@ -144,8 +144,11 @@ The one task that targets the newest release is
 `upgrade-cdklabs-projen-project-types`, which moves projen and its project
 type together. It has no cooldown and its PR carries the `auto-approve`
 label, so a projen or project-type major merges unattended once the required
-checks (`build` and `build-docs`) are green. It is the one exception to the
-gate below.
+checks (`build` and `build-docs`) are green. It is the one upgrade task
+exempt from the gate below. The documented CDK packages are also outside it,
+because the nightly version check moves them to the newest stable release, a
+new major included (see
+[versions and history](./2026-10-15-versions-and-history.md)).
 
 Every other major upgrade is a deliberate change in its own PR, never folded
 into a scheduled bump or into unrelated work. The PR raises the version in

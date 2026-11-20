@@ -157,7 +157,7 @@ const project = new CdkTypeScriptProject({
   ],
 });
 
-// The upgrade tasks hold every dependency to a 3-day release cooldown, but the documented CDK packages must track the
+// The upgrade and upgrade-dev-deps tasks hold dependencies to a 3-day release cooldown, but the documented CDK packages must track the
 // newest release, which the nightly cdk-version-check workflow pins. Keep the upgrade tasks off those packages, so a
 // cooldown-bound upgrade cannot roll a pin back. The option is construction-only and cdklabs-projen-project-types
 // does not forward it, so it is set on the components here; the task steps read it lazily at synth.
