@@ -166,7 +166,9 @@ per-language variants by hand with the same `<LanguageTabs>` markup the
 generator emits. TypeScript comes first and is canonical; every other
 variant is marked `data-pagefind-ignore`, so search indexes only the
 TypeScript code. Example variants are not `v-pre`, so the copy button works
-in every language.
+in every language. Their language set is fixed in the source rather than
+derived from `docgen.config.json`; a unit test keeps it equal to the
+configured `languages`, so changing that list also means editing these pages.
 
 ### Headerless tabs, single navbar control
 
