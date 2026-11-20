@@ -14,7 +14,9 @@ failure. Accessibility work also happens in the browser: the navbar filter,
 language toggle, lazy sidebar, and tooltips mount client-side, so their DOM and
 any ARIA mistake in it only exist after hydration; a checker reading generated
 markup audits a tree those components have not touched. Separately, the project
-needs an automated control over the licenses its dependency tree pulls in.
+needs an automated control over the licenses its dependency tree pulls in. Jest also measured only
+files a test imports, so untested files dropped out of the report, and no coverage number
+failed the build.
 
 Three environment constraints shape the browser gates: the full site is ~21k
 pages built in memory-hungry shards and cannot be audited whole or rebuilt per
@@ -202,10 +204,10 @@ branches, and functions, so `npx projen test` (and the CI build that runs it) fa
 coverage drops. The floor is the lower of the CI and local numbers rounded down, minus one more
 point on every metric, because the numbers move between environments. V8 counts functions
 differently across Node versions, so the CI runner's current Node reads functions over a point lower
-than an older local Node does. When the floor was set, CI on Node 26 (`lts/*`) read lines 83.62%,
+than an older local Node does. When the floor was set, the `build` workflow (`node-version: lts/*`, then Node 26) read lines 83.62%,
 branches 93.73% and functions 91.89%, and local Node 22 read lines 83.45%, branches 93.73% and
 functions 93.20%. V8 records one statement per line, so statements equal lines and share the
-lines floor. Re-derive the floor by the same rule when the CI Node major version changes. It lives on the task rather than in the Jest config, so a bare
+lines floor. Re-derive the floor by the same rule when that workflow's Node major version changes. It lives on the task rather than in the Jest config, so a bare
 `npx jest path/to/file` stays a quick local run that is not held to a whole-tree floor. Any
 `projen test` run is held to it, including one narrowed with a path. Raise the floor when tests raise the numbers. Scripts that tests run as child processes
 (for example `e2e-serve.cjs`) read as 0%, because Jest's V8 coverage only sees its own
