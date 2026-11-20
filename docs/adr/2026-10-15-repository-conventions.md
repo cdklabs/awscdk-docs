@@ -116,8 +116,9 @@ list change adds or deletes a whole module's pages, so a human merges it. No
 Dependabot/Renovate config is adopted — projen's scheduled upgrade workflows provide
 recurring npm upgrades and GitHub Action versions are pinned centrally in
 `.projenrc.ts`. Approval only grants a review; merge stays gated by the required
-`build` check that GitHub auto-merge waits on, so a broken upgrade cannot land
-while CI is red (see [quality gates](./2026-10-15-quality-gates.md)).
+checks (`build` and `build-docs`) that GitHub auto-merge waits on, so a broken
+upgrade cannot land while CI is red (see
+[quality gates](./2026-10-15-quality-gates.md)).
 
 ### Major dependency upgrades move by hand, gated on tool support
 
