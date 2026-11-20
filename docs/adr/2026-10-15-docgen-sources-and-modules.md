@@ -162,7 +162,7 @@ rather than mid-build.
 The dist root holds `build.json` (naming the candidate version and commit) and
 `js/*.tgz` (the `npm pack` tarballs). The release invocation is
 `CDK_DIST_DIR=… npx projen docs:dist:install` followed by the existing
-`docs:build:ci`, which runs `docs:build:sharded` at the CI runner's size (see
+`docs:build:sharded` (see
 [site generator and build](./2026-10-15-site-generator-and-build.md)), with
 `CDK_DIST_DIR` flowing to the build through the environment.
 

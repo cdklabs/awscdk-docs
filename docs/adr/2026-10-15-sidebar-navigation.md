@@ -182,8 +182,9 @@ it applies to. A full ~27.5k-entry tree on every API page is O(n²) HTML, so
 the tree is generated once and loaded on demand, keeping the native
 VitePress sidebar shell:
 
-- `themeConfig.sidebar["/v2/"]` carries only the "Overview" link so the
-  rail still renders. The tree is served as static assets under
+- `themeConfig.sidebar["/v2/"]` carries one empty group so VitePress derives
+  `hasSidebar` and the rail still renders; `api-sidebar.css` hides the empty
+  wrapper. The tree is served as static assets under
   `docs/public/api-sidebar/`.
 - Docgen emits (`splitSidebarChunks`) a **skeleton** (`sidebar.<hash>.js`):
   both roots and every section node with its text, collapse state, and a
