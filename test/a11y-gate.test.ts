@@ -189,16 +189,22 @@ describe('accessibility gate configuration', () => {
     // block, so a `var()` reference there would fail this on purpose.
     const darkBlock = custom.slice(custom.indexOf('.dark {'));
     const DARK_SURFACES = ['--vp-c-bg-alt', '--vp-c-bg', '--vp-c-bg-soft'].map((v) => valueOf(darkBlock, v));
+    // The kind badge and the active sidebar entry sit on the brand tint in dark mode too.
+    const darkTint = (over: string) => composite(rgbaOf(darkBlock, '--vp-c-brand-soft'), over);
     const darkPairs: [string, string[]][] = [
       [valueOf(darkBlock, '--vp-code-color'), DARK_SURFACES],
       [valueOf(darkBlock, '--vp-code-link-color'), DARK_SURFACES],
       [valueOf(darkBlock, '--vp-code-lang-color'), DARK_SURFACES],
-      [valueOf(darkBlock, '--vp-c-tip-1'), DARK_SURFACES],
+      [valueOf(darkBlock, '--vp-c-tip-1'), [...DARK_SURFACES, darkTint(valueOf(darkBlock, '--vp-c-bg'))]],
       // The H1 source chip is a link at rest, so brand-2 has to clear AA on
       // the chip's own tint as well as the page; its light sibling is the first code chip above.
       [
         valueOf(darkBlock, '--vp-c-brand-2'),
-        [...DARK_SURFACES, composite(graySoft[1], valueOf(darkBlock, '--vp-c-bg'))],
+        [
+          ...DARK_SURFACES,
+          composite(graySoft[1], valueOf(darkBlock, '--vp-c-bg')),
+          darkTint(valueOf(darkBlock, '--vp-c-bg-alt')),
+        ],
       ],
     ];
     for (const [foreground, backgrounds] of darkPairs) {
