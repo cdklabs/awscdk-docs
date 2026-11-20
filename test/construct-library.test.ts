@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { FENCE_LANG, type Language } from '../src/docgen/languages.js';
 import { typePageLink } from '../src/docgen/links.js';
 import { API_DOCS_ROOT, STABILITY_ROUTE } from '../src/site-routes.js';
 
@@ -38,6 +39,42 @@ describe('construct library overview page', () => {
 
   test('reference links carry no .html suffix, which VitePress appends', () => {
     expect(page).not.toMatch(/\]\(\/v2\/[^)]*\.html\)/);
+  });
+
+  test('every code example has a variant for each enabled language', () => {
+    const config = JSON.parse(readFileSync(resolve(ROOT, 'docgen.config.json'), 'utf-8')) as { languages: string[] };
+    const groups = [...page.matchAll(/<LanguageTabs :langs="\[([^\]]*)\]">([\s\S]*?)<\/LanguageTabs>/g)];
+    expect(groups.length).toBe(2);
+    for (const [, langs, body] of groups) {
+      const declared = langs.split(',').map((l) => l.trim().replace(/'/g, ''));
+      const variants = [...body.matchAll(/<div class="lang-variant" data-lang="(\w+)"/g)].map((m) => m[1]);
+      expect([...declared].sort()).toEqual([...config.languages].sort());
+      expect([...variants].sort()).toEqual([...config.languages].sort());
+      expect(body.match(/^```\w+/gm)).toHaveLength(config.languages.length);
+      const fences = [...body.matchAll(/<div class="lang-variant" data-lang="(\w+)"[^>]*>\s*```(\w+)/g)];
+      expect(fences).toHaveLength(config.languages.length);
+      for (const [, lang, fence] of fences) {
+        expect([lang, fence]).toEqual([lang, FENCE_LANG[lang as Language]]);
+      }
+    }
+    const outside = groups.reduce((text, [group]) => text.replace(group, ''), page);
+    expect(outside).not.toMatch(/^```/m);
+  });
+
+  test('only the TypeScript example variants are searchable, and none are v-pre', () => {
+    const variants = [...page.matchAll(/<div class="lang-variant" data-lang="(\w+)"([^>]*)>/g)];
+    expect(variants.length).toBeGreaterThan(0);
+    for (const [, lang, attrs] of variants) {
+      expect(attrs.includes('data-pagefind-ignore')).toBe(lang !== 'ts');
+      expect(attrs).not.toContain('v-pre');
+    }
+  });
+
+  test('the Python examples use snake_case keyword arguments', () => {
+    const python = [...page.matchAll(/data-lang="python"[^>]*>\s*```python\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
+    for (const name of ['queue_name', 'visibility_timeout', 'dead_letter_queue', 'max_receive_count']) {
+      expect(python).toContain(`${name}=`);
+    }
   });
 
   test('the construct levels and module naming sections are present', () => {
