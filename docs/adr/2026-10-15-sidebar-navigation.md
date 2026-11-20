@@ -17,7 +17,8 @@ must be served without inflating per-page HTML.
 The sidebar is fully generated. Docgen builds the tree in
 `src/docgen/sidebar.ts`; the theme renders it. Grouping and labeling are a
 data-layer concern — canonical page routes
-(`/v2/docs/<docId>[.<submodule>][.<TypeName>]`), anchors, and
+(`/v2/docs/<docId>[.<submodule>].<TypeName>` and
+`/v2/docs/<docId>[.<submodule>]-readme`), anchors, and
 cross-reference targets are never changed by a navigation decision, only
 *where a type is listed* changes.
 
