@@ -127,8 +127,8 @@ upgrade cannot land while CI is red (see
 
 The scheduled `upgrade` and `upgrade-dev-deps` tasks stay inside each
 package's current major. They run `npm-check-updates --target=minor` on the
-packages projen lists in their filter, then `npm update` on the rest of their
-dependencies, which moves each only within its declared range. Both skip
+packages projen lists in their filter, then `npm install` and `npm update`
+across their dependencies, which moves each only within its declared range. Both skip
 releases younger than a short cooldown. The `npm-check-updates` step passes
 `--peer`, which keeps the filtered packages to versions compatible with the
 peer ranges installed packages declare; the `npm update` step relies on npm's
@@ -145,8 +145,8 @@ The one task that targets the newest release is
 type together. It has no cooldown and its PR carries the `auto-approve`
 label, so a projen or project-type major merges unattended once the required
 checks (`build` and `build-docs`) are green. It is the one upgrade task
-exempt from the gate below. The documented CDK packages are also outside it,
-because the nightly version check moves them to the newest stable release, a
+exempt from the gate below. The documented CDK packages are also outside the
+gate, because the nightly version check moves them to the newest stable release, a
 new major included (see
 [versions and history](./2026-10-15-versions-and-history.md)).
 
