@@ -179,6 +179,9 @@ project.package.addPackageResolutions('@sentry/node@file:projenrc/stubs/sentry-n
 // nothing it imports ships in the site.
 project.eslint?.allowDevDeps('src/**');
 
+// Projen's ESLint component pins this plugin to an older major. A later request for the same dependency replaces it.
+project.addDevDeps('@stylistic/eslint-plugin@^5');
+
 // GitHub Actions version pins
 
 // Generate API docs markdown from jsii assemblies (module list in docgen.config.json).
