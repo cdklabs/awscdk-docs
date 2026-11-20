@@ -169,7 +169,7 @@ imposing license terms on this project's own code (MPL-2.0's copyleft is file-sc
 dependency source is modified here). Strong-copyleft (GPL family) and unlicensed packages
 are excluded. Two enforcement points check the same list:
 
-- **`check-licenses` task**, spawned by `build`: runs `license-checker --summary
+- **`check-licenses` task**, spawned by `build`: runs `license-checker-rseidelsohn --summary
   --onlyAllow <list> --excludePrivatePackages` over the installed tree, failing every build.
   `--excludePrivatePackages` keeps the project's own private, UNLICENSED-reading package from
   failing the gate.

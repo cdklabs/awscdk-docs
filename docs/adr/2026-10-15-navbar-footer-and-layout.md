@@ -347,8 +347,8 @@ viewport while the nav bar above it carries the sidebar-lane inset from the
 geometry section, so the page read as off-center. `/versions` is aligned first
 because the offset is most visible there: its one wide table sits directly
 under the inset nav controls with nothing else on the page. The other no-sidebar
-pages (`/skills`, also linked from the nav bar, `/stability` and
-`/aws-construct-library`) keep the stock full-viewport centering until they are
+pages (`/skills`, also linked from the nav bar, and `/stability`) keep the
+stock full-viewport centering until they are
 aligned as a group by widening the `.Layout.versions-page` selector; nothing
 about them makes the stock centering wrong, so that is a separate decision. The
 sheet mirrors
