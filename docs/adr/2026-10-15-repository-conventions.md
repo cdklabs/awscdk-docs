@@ -99,9 +99,10 @@ hold for a repo whose only artifact is a static site.
 Auto-approval (the `auto-approve` GitHub label, which is the only trust
 boundary) covers recurring, machine-authored dependency bumps only:
 
-- projen's `upgrade-main` deps-upgrade PR, labeled via
-  `depsUpgradeOptions.workflowOptions.labels: ['auto-approve']` generated into
-  `upgrade-main.yml`. `npx projen upgrade` only ever touches `package.json`, the
+- projen's scheduled upgrade PRs from `upgrade-main`, `upgrade-dev-deps-main`
+  and `upgrade-cdklabs-projen-project-types-main`, each labeled `auto-approve`
+  through `depsUpgradeOptions.workflowOptions.labels`, which the project type
+  passes to all three generated workflows. Their upgrade tasks only ever touch `package.json`, the
   lockfile, and `.projen/` bookkeeping, so no separate per-push verification is
   needed.
 - the nightly CDK version-bump PR (see
@@ -119,26 +120,31 @@ while CI is red (see [quality gates](./2026-10-15-quality-gates.md)).
 ### Major dependency upgrades move by hand, gated on tool support
 
 The scheduled `upgrade` and `upgrade-dev-deps` tasks stay inside each
-package's current major. They run `npm-check-updates` with `--target=minor`,
-so a declared range only moves to a newer minor or patch, then `npm update`
-within the declared ranges. Both skip releases younger than a short cooldown
-and pass `--peer`, so they never pick a version that breaks a peer range
-another installed package declares. The documented CDK packages are left out
-of both tasks; the nightly version check pins those instead (see
-[versions and history](./2026-10-15-versions-and-history.md)). The one task
-that targets the newest release is `upgrade-cdklabs-projen-project-types`,
-which moves projen and its project type together; its PR passes the same
-required `build` check as any other.
+package's current major. They run `npm-check-updates --target=minor` on the
+packages projen lists in their filter, then `npm update`, which moves every
+other dependency only within its declared range. Both skip releases younger
+than a short cooldown and pass `--peer`, so they never pick a version that
+breaks a peer range another installed package declares. The documented CDK
+packages are left out of both tasks; the nightly version check pins those
+instead (see [versions and history](./2026-10-15-versions-and-history.md)).
+
+The one task that targets the newest release is
+`upgrade-cdklabs-projen-project-types`, which moves projen and its project
+type together. It has no cooldown and its PR carries the `auto-approve`
+label, so a projen or project-type major merges unattended once `build` is
+green. It is the one exception to the gate below.
 
 Every other major upgrade is a deliberate change in its own PR, never folded
-into a scheduled bump or into unrelated work. The PR raises the range in
-`.projenrc.ts`, resynthesizes, fixes what the new major breaks, and shows the
-built site is unchanged.
+into a scheduled bump or into unrelated work. The PR raises the version in
+`.projenrc.ts` (the `deps`/`devDeps` entry, or, for a package projen
+supplies, the project option that sets its version, such as
+`typescriptVersion` or `jestOptions.jestVersion`), resynthesizes, fixes what
+the new major breaks, and shows the built site is unchanged.
 
 A major waits until the tools that load the package support it. For the
 compiler that means type-aware linting, the Jest transform, and the
-typechecks in `compile` and synthesis; for any package it means every
-installed tool that declares it as a peer. The gate is ecosystem support,
+typechecks in `compile`, synthesis and `docs:typecheck`; for any package it
+means every installed tool that declares it as a peer. The gate is ecosystem support,
 read from those tools' published peer ranges and APIs, not a wish to stay
 current: an upgrade is not forced through by overriding a peer range,
 patching a tool, or swapping a tool out just to admit the new major. While a
