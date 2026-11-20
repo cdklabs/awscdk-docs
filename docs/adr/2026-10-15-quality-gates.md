@@ -184,8 +184,9 @@ recording why in an ADR, per repository convention
 ### Unit coverage floor
 
 The Jest suite measures coverage over every source file, not only the files a test
-imports, so an untested file counts as 0% instead of dropping out of the total.
-`collectCoverageFrom` in `.projenrc.ts` lists `src/`, `scripts/`, `projenrc/`,
+imports, so an untested file counts as 0% instead of dropping out of the total. Under V8, a
+file no test imports adds one uncovered function and one uncovered branch, so the lines floor is
+the one that catches new untested files. `collectCoverageFrom` in `.projenrc.ts` lists `src/`, `scripts/`, `projenrc/`,
 `docs/*.data.ts`, and the TypeScript under `docs/.vitepress/`.
 
 Two groups stay out, on purpose:
@@ -198,10 +199,12 @@ Two groups stay out, on purpose:
 
 The test task passes `--coverageThreshold` to Jest with a floor for lines, statements,
 branches, and functions, so `npx projen test` (and the CI build that runs it) fails when
-coverage drops. The floor is the measured number rounded down, minus one more point for lines
-and statements so run-to-run noise does not fail CI. It lives on the task rather than in the
-Jest config so that `npx jest path/to/file` stays a quick local run that is not held to a
-whole-tree floor. Raise the floor when tests raise the numbers. Scripts that tests run as child processes
+coverage drops. The floor is the lower of the CI and local numbers rounded down, minus one more
+point on every metric, because the numbers move between environments. V8 counts functions
+differently across Node versions, so the CI runner's current Node reads functions over a point lower
+than an older local Node does. It lives on the task rather than in the Jest config, so a bare
+`npx jest path/to/file` stays a quick local run that is not held to a whole-tree floor. Any
+`projen test` run is held to it, including one narrowed with a path. Raise the floor when tests raise the numbers. Scripts that tests run as child processes
 (for example `e2e-serve.cjs`) read as 0%, because Jest's V8 coverage only sees its own
 workers. A unit test pins that every tracked source file is either measured or in one of
 the two groups above, so a new source directory cannot fall outside the scope unnoticed.
@@ -237,7 +240,7 @@ None is a required check unless the team opts in via branch protection.
 - A dependency under any other license fails the build and the review gate, so adopting one
   is a deliberate decision.
 - Unit coverage cannot quietly drop, and an untested file shows up in the report. A single
-  `npx jest` file run is not held to the floor; only the full test task is.
+  `npx jest path` run is not held to the floor; any `projen test` run is, including one narrowed with a path.
 
 ### Rejected alternatives
 
