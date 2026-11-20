@@ -97,8 +97,8 @@ describe('accessibility gate configuration', () => {
     // All five pairs are listed because only the audit finds them: code inside
     // a link, the active sidebar entry and the kind badge each need a rendered
     // page to measure. Backgrounds are the values axe measures, several of them
-    // composites of a soft tint over a surface, which is exactly why they
-    // cannot be re-derived from the stylesheet alone.
+    // composites of a soft tint over a surface; each is computed from the theme
+    // tokens, so a surface change re-measures every pair.
     const luminance = (hex: string) => {
       const channel = (v: number) => {
         const c = v / 255;
@@ -120,21 +120,54 @@ describe('accessibility gate configuration', () => {
       return match![1];
     };
 
+    const rgbaOf = (css: string, variable: string) => {
+      const match = css.match(new RegExp(`${variable}:\\s*rgba\\(([^)]+)\\)`));
+      expect(match).not.toBeNull();
+      return match![1].split(',').map((part) => parseFloat(part.trim()));
+    };
+    // Flatten a translucent layer (r, g, b, a) over an opaque hex surface.
+    const composite = ([r, g, b, a]: number[], over: string) =>
+      `#${[r, g, b]
+        .map((layer, i) => Math.round(a * layer + (1 - a) * parseInt(over.slice(1 + i * 2, 3 + i * 2), 16)))
+        .map((c) => c.toString(16).padStart(2, '0'))
+        .join('')}`;
+    // VitePress declares --vp-c-gray-soft once per scheme, `:root` first. Code chips are this layer.
+    const vpVars = fs.readFileSync(
+      path.join(import.meta.dirname, '..', 'node_modules/vitepress/dist/client/theme-default/styles/vars.css'),
+      'utf-8',
+    );
+    const graySoft = [...vpVars.matchAll(/--vp-c-gray-soft:\s*rgba\(([^)]+)\)/g)].map((m) =>
+      m[1].split(',').map((part) => parseFloat(part.trim())),
+    );
+    expect(graySoft).toHaveLength(2);
+
     const custom = read('custom.css');
-    // Code chips in prose and in tables; the last is a tip's warmer surface.
-    const CODE_CHIPS = ['#ebebec', '#e7e7e7', '#dedfe3', '#fbecd4'];
+    const lightBlock = custom.slice(custom.indexOf(':root {'), custom.indexOf('.dark {'));
+    const page = valueOf(lightBlock, '--vp-c-bg');
+    const chip = composite(graySoft[0], page);
+    const brandTint = (over: string) => composite(rgbaOf(lightBlock, '--vp-c-brand-soft'), over);
+    // Code chips on the page, on shaded cells, on another gray layer, and on a tip's tint.
+    const CODE_CHIPS = [
+      chip,
+      composite(graySoft[0], valueOf(lightBlock, '--vp-c-bg-soft')),
+      composite(graySoft[0], chip),
+      brandTint(page),
+    ];
     const pairs: [string, string[]][] = [
       // Inline code, and code inside a link — a DIFFERENT variable, and the
       // majority of findings, since the module type lists are columns of linked code.
       [valueOf(custom, '--vp-code-color'), CODE_CHIPS],
       [valueOf(custom, '--vp-code-link-color'), CODE_CHIPS],
       // The fenced-block language label, on the code surface.
-      [valueOf(custom, '--vp-code-lang-color'), ['#f5f4f1']],
+      [valueOf(custom, '--vp-code-lang-color'), [valueOf(lightBlock, '--vp-c-bg-alt')]],
       // The `tip` ramp: the kind badge every API page carries, and tip
       // callouts, both on the soft brand tint composited over the page.
-      [valueOf(custom, '--vp-c-tip-1'), ['#fbecd4']],
+      [valueOf(custom, '--vp-c-tip-1'), [brandTint(page)]],
       // Callout links/code and the active sidebar entry both land on brand-2.
-      [valueOf(custom, '--vp-c-brand-2'), ['#dedfe3', '#ebebec', '#f6e7cf']],
+      [
+        valueOf(custom, '--vp-c-brand-2'),
+        [composite(graySoft[0], chip), chip, brandTint(valueOf(lightBlock, '--vp-c-bg-alt'))],
+      ],
     ];
     for (const [foreground, backgrounds] of pairs) {
       for (const background of backgrounds) {
@@ -146,7 +179,7 @@ describe('accessibility gate configuration', () => {
     // a reader picks a code theme, which is why re-pinning them alone did not
     // fix the default page.
     const codeTheme = read('code-theme.css');
-    expect(ratio(valueOf(codeTheme, '--vp-code-lang-color'), '#f5f4f1'))
+    expect(ratio(valueOf(codeTheme, '--vp-code-lang-color'), valueOf(codeTheme, '--vp-code-block-bg')))
       .toBeGreaterThanOrEqual(4.5);
 
     // DARK is pinned too, and this is not symmetry for its own sake: the gate
@@ -155,16 +188,24 @@ describe('accessibility gate configuration', () => {
     // language label at 3.4:1 reached review. Values are read from the `.dark`
     // block, so a `var()` reference there would fail this on purpose.
     const darkBlock = custom.slice(custom.indexOf('.dark {'));
-    const DARK_SURFACES = ['#10161f', '#161e2d', '#1f2a3a'];
+    const DARK_SURFACES = ['--vp-c-bg-alt', '--vp-c-bg', '--vp-c-bg-soft'].map((v) => valueOf(darkBlock, v));
+    // The kind badge and the active sidebar entry sit on the brand tint in dark mode too.
+    const darkTint = (over: string) => composite(rgbaOf(darkBlock, '--vp-c-brand-soft'), over);
     const darkPairs: [string, string[]][] = [
       [valueOf(darkBlock, '--vp-code-color'), DARK_SURFACES],
       [valueOf(darkBlock, '--vp-code-link-color'), DARK_SURFACES],
       [valueOf(darkBlock, '--vp-code-lang-color'), DARK_SURFACES],
-      [valueOf(darkBlock, '--vp-c-tip-1'), DARK_SURFACES],
+      [valueOf(darkBlock, '--vp-c-tip-1'), [...DARK_SURFACES, darkTint(valueOf(darkBlock, '--vp-c-bg'))]],
       // The H1 source chip is a link at rest, so brand-2 has to clear AA on
-      // the chip's own tint as well as the page. `#232c3b` is that composite
-      // in dark (8.17:1); its light sibling `#ebebec` is already above.
-      [valueOf(darkBlock, '--vp-c-brand-2'), [...DARK_SURFACES, '#232c3b']],
+      // the chip's own tint as well as the page; its light sibling is the first code chip above.
+      [
+        valueOf(darkBlock, '--vp-c-brand-2'),
+        [
+          ...DARK_SURFACES,
+          composite(graySoft[1], valueOf(darkBlock, '--vp-c-bg')),
+          darkTint(valueOf(darkBlock, '--vp-c-bg-alt')),
+        ],
+      ],
     ];
     for (const [foreground, backgrounds] of darkPairs) {
       for (const background of backgrounds) {
@@ -176,7 +217,7 @@ describe('accessibility gate configuration', () => {
     // the file opens with `html[data-code-theme='dark'] pre span` rules, so a
     // looser anchor reads the light value and passes for the wrong reason.
     const darkCodeTheme = codeTheme.slice(codeTheme.indexOf("data-code-theme='dark'] {"));
-    expect(ratio(valueOf(darkCodeTheme, '--vp-code-lang-color'), '#10161f'))
+    expect(ratio(valueOf(darkCodeTheme, '--vp-code-lang-color'), valueOf(darkCodeTheme, '--vp-code-block-bg')))
       .toBeGreaterThanOrEqual(4.5);
 
     // Two fixes are rules, not values, so pin that they still point at the

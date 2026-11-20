@@ -323,8 +323,8 @@
 /* Active page: a distinct accent treatment -- brand color on
    a soft brand background -- instead of font-weight, which made the
    selected entry read as a header.
-   The brand-2 step, not brand-1: the soft layer composites to #f6e7cf over
-   the page surface, where brand-1 is only 4.12:1. 5.82:1 here. */
+   The brand-2 step, not brand-1: the soft layer composites to #dde8f7 over
+   the sidebar surface, where brand-1 is only 4.02:1. 10.55:1 here. */
 .api-sidebar-link.active {
   color: var(--vp-c-brand-2);
   background-color: var(--vp-c-brand-soft);

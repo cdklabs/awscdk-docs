@@ -68,7 +68,7 @@ never restarts a CSS animation on its own; the listener that drops the class on
 the row's own `animationend` is aborted when the next jump cuts the fade short.
 
 **What the mark looks like.** The row fades from a new `--api-c-flash` token
-(`#fdf3e3` light, `#352d22` dark) to its own background over 1.5 s, ease-out,
+(`#f2f8fd` light, `#1b2a3a` dark) to its own background over 1.5 s, ease-out,
 and a 2 px dashed brand-1 outline just outside the row fades with it. The token
 is pale on purpose: `--vp-c-brand-soft`, the obvious choice, composites to about
 4.3:1 under brand-1 text, and the row carries brand links, type links, muted

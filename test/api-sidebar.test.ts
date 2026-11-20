@@ -449,7 +449,7 @@ describe('sidebar visual refinements', () => {
     // must use color/background, never font-weight.
     //
     // The accent is brand-2 rather than brand-1: the soft background this sits
-    // on composites to #f6e7cf, where brand-1 measures only 4.12:1. The ratio
+    // on composites to #dde8f7, where brand-1 measures only 4.02:1. The ratio
     // itself is pinned in test/a11y-gate.test.ts.
     const active = css.match(/\.api-sidebar-link\.active \{[^}]*\}/);
     expect(active).not.toBeNull();

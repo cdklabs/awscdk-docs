@@ -63,21 +63,21 @@ describe('CDK brand theme', () => {
       expect(css.toLowerCase()).toContain('#ff9900');
     });
 
-    test('uses the squid-ink accent color', () => {
-      expect(css.toLowerCase()).toContain('#232f3e');
+    test('uses the near-black ink color', () => {
+      expect(lightBlock).toContain('--vp-c-text-1: #0f141a');
     });
 
-    test('light mode darkens the brand ramp for contrast', () => {
-      expect(lightBlock).toContain('--vp-c-brand-1: #b45309');
+    test('light mode uses the link blue brand step', () => {
+      expect(lightBlock).toContain('--vp-c-brand-1: #006ce0');
     });
 
-    test('dark mode uses full-brightness orange', () => {
-      expect(darkBlock).toContain('--vp-c-brand-1: #ff9900');
+    test('dark mode uses the light link blue with orange as brand-3', () => {
+      expect(darkBlock).toContain('--vp-c-brand-1: #42b4ff');
+      expect(darkBlock).toContain('--vp-c-brand-3: #ff9900');
     });
 
-    test('light mode softens the page background: not pure white', () => {
-      expect(lightBlock).toContain('--vp-c-bg: #faf9f7');
-      expect(lightBlock).not.toContain('--vp-c-bg: #ffffff');
+    test('light mode uses a pure white page background', () => {
+      expect(lightBlock).toContain('--vp-c-bg: #ffffff');
     });
 
     test.each(['--vp-c-bg', '--vp-c-bg-alt', '--vp-c-bg-soft', '--vp-c-bg-elv'])(
@@ -95,7 +95,7 @@ describe('CDK brand theme', () => {
       expect(darkBlock).toContain('--vp-c-text-1:');
     });
 
-    describe('WCAG AA contrast (>= 4.5:1)', () => {
+    describe('WCAG AA contrast', () => {
       const cssVar = (block: string, name: string): string => {
         const match = block.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`));
         if (!match) {
@@ -183,6 +183,21 @@ describe('CDK brand theme', () => {
         ['--vp-button-brand-active-text', '--vp-button-brand-active-bg'],
       ])('dark mode: button %s on %s', (text, bg) => {
         expect(contrast(cssVar(darkBlock, text), cssVar(darkBlock, bg))).toBeGreaterThanOrEqual(AA);
+      });
+
+      // The hero wordmark is large text painted only by this gradient, so WCAG's 3:1 large-text
+      // minimum applies to every stop.
+      test.each([
+        ['light', () => lightBlock],
+        ['dark', () => darkBlock],
+      ])('%s mode: every hero wordmark gradient stop clears 3:1 on the page', (_mode, block) => {
+        const gradient = block().match(/--vp-home-hero-name-background:\s*([^;]+);/);
+        expect(gradient).not.toBeNull();
+        const stops = gradient![1].match(/#[0-9a-fA-F]{6}/g) ?? [];
+        expect(stops.length).toBeGreaterThanOrEqual(2);
+        for (const stop of stops) {
+          expect(contrast(stop, cssVar(block(), '--vp-c-bg'))).toBeGreaterThanOrEqual(3);
+        }
       });
     });
 
@@ -522,7 +537,7 @@ describe('API kind badge palette', () => {
   test('the metadata source link is underlined at rest and the generated marker is not', () => {
     // The affordance lives on the metadata block rather than in the H1, and
     // uses brand-2 rather than brand-1 because the block sits on
-    // `--vp-c-bg-soft`, where brand-1 measures 4.22:1.
+    // `--vp-c-bg-soft`, where brand-1 clears AA by a thin margin.
     // Collect every rule body whose selector mentions the link, so a color
     // deleted from one rule cannot be alibied by a mention in another.
     const linkRule = ruleBody('.type-metadata-value a');

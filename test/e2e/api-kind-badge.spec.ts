@@ -239,8 +239,8 @@ test.describe('API kind badge', () => {
   }
 
   test('the metadata link uses the AA-checked brand tone, not the default link tone', async ({ page }) => {
-    // brand-2 is used rather than brand-1, which measures 4.22:1 on
-    // `--vp-c-bg-soft`. Both are amber in this theme, so a string assertion on
+    // brand-2 is used rather than brand-1, which clears AA on `--vp-c-bg-soft`
+    // only by a thin margin. Both are blue in this theme, so a string assertion on
     // the stylesheet cannot tell the two apart on the page -- and the rule
     // competes with VitePress's own `.vp-doc a` at equal specificity, where
     // only source order decides. This asserts the winner by measurement.

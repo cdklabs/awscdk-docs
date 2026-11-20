@@ -113,16 +113,16 @@ test.describe('independent code-block theme', () => {
     await codeGroup(page).getByRole('button', { name: 'Light code blocks' }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
     await expect(span).toHaveCSS('color', palette.light);
-    // Light surface stack (--vp-c-bg-alt #f5f4f1 from custom.css).
-    await expect(block).toHaveCSS('background-color', 'rgb(245, 244, 241)');
+    // Light surface stack (--vp-c-bg-alt #f6f6f9 from custom.css).
+    await expect(block).toHaveCSS('background-color', 'rgb(246, 246, 249)');
 
     // Site light + code DARK: the mirror image.
     await siteGroup(page).getByRole('button', { name: 'Light site theme' }).click();
     await codeGroup(page).getByRole('button', { name: 'Dark code blocks' }).click();
     await expect(page.locator('html')).not.toHaveClass(/dark/);
     await expect(span).toHaveCSS('color', palette.dark);
-    // Dark surface stack (--vp-c-bg-alt #10161f from custom.css).
-    await expect(block).toHaveCSS('background-color', 'rgb(16, 22, 31)');
+    // Dark surface stack (--vp-c-bg-alt #0f141a from custom.css).
+    await expect(block).toHaveCSS('background-color', 'rgb(15, 20, 26)');
   });
 
   test('a decoupled choice persists across reloads with no wrong-theme flash window', async ({ page }) => {

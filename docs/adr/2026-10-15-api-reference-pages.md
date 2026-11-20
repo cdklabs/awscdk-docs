@@ -535,7 +535,7 @@ Indexing is **selective**: the CloudFormation and L1-type values are indexed
 (each names exactly one page, so searching `AWS::S3::Bucket` finds `Bucket`);
 the Source value carries `data-pagefind-ignore` because its file-path text
 would compete with real prose. The link affordance on in-block links is brand-2
-with an at-rest underline (brand-1 on `--vp-c-bg-soft` measures only 4.22:1).
+with an at-rest underline (brand-1 on `--vp-c-bg-soft` clears AA only by a thin margin, 4.61:1; brand-2 is 12.11:1).
 
 ### Uniform member rows
 
