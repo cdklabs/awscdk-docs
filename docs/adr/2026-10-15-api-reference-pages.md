@@ -45,7 +45,7 @@ A module overview lists its types under a `## Types` heading as a list grouped b
 ### One page per type, dispatched by classification
 
 Every jsii type gets a markdown page under
-`docs/api/modules/<pkg>/<submodule>/<Name>` (`core` for module-root types),
+`docs/v2/docs/<docId>[.<submodule>].<Name>.md` (no submodule part for module-root types),
 reachable from the module type lists and indexed by Pagefind. A single
 dispatch in `src/docgen/index.ts` assembles frontmatter, breadcrumb, body,
 and search filters per page, then routes by kind:
@@ -750,7 +750,7 @@ source module's fqn, but keeps the copying module's breadcrumb, sections, and
 type list; relative links inside a copied README are not rewritten.
 
 The API root publishes the authored AWS Construct Library overview; the
-canonical per-module overview stays at its `-readme` URL. The `"/api/"` sidebar
+canonical per-module overview stays at its `-readme` URL. The `"/v2/"` sidebar
 key is retained as a load-bearing non-empty wrapper — VitePress derives
 `hasSidebar` from array length and the generated API tree renders through
 `sidebar-nav-after`, so an empty array would strip the entire API tree from all

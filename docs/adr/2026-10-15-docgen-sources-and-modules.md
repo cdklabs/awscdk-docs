@@ -25,7 +25,7 @@ for loading and typing jsii assemblies; it transparently handles compressed
 `.jsii.gz`). Heavier tools like `jsii-docgen` are deliberately avoided to keep
 full control over VitePress page layout.
 
-Generated markdown is written to `docs/api/modules/`, which is gitignored —
+Generated markdown is written to `docs/v2/`, which is gitignored —
 generated pages are build artifacts, always fresh, never stale in git.
 Generation runs via the projen task `docs:generate`, prepended to `docs:build`
 and `docs:dev`. A generated `sidebar.json` populates the API sidebar; see

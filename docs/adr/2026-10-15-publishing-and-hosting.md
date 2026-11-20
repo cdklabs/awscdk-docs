@@ -184,7 +184,7 @@ budget — are unchanged.
   modules-index address). `<docId>` is the npm name with `/` → `_`
   (`@aws-cdk/aws-glue-alpha` → `@aws-cdk_aws-glue-alpha`); submodules keep their
   jsii identifiers (`aws_s3`); nested types keep dotted names. The generated
-  tree is `docs/api/v2/` (gitignored). Link construction is centralized in
+  tree is `docs/v2/` (gitignored). Link construction is centralized in
   `src/docgen/links.ts` (`typePageLink` / `moduleReadmeLink` / `API_ROOT`).
 - No client-side redirect layer for this fork's interim `/api/modules/ts/…`
   tree: it was never published, so there are no external links to answer.

@@ -9,7 +9,7 @@ Accepted
 The site extends the VitePress 1.6.x default theme rather than forking it. The
 navbar carries custom controls (a language slider, the search box, a version
 badge, and appearance pickers), the site needs one footer on **every** page
-including the tens of thousands of generated `/api/**` reference pages, and the
+including the tens of thousands of generated `/v2/**` reference pages, and the
 whole thing must work on phones. Several defects were only visible across page
 types or across the hydration boundary, so the layout rules are written to hold
 on every page and from the first painted frame, not just in a settled desktop
@@ -50,7 +50,7 @@ loudly.
 
 `themeConfig.footer` is deliberately left unset: the default theme's `VPFooter`
 renders it only on pages **without** a sidebar, which would hide it from every
-generated `/api/**` page. Instead `SiteFooter.vue` mounts in the default theme's
+generated `/v2/**` page. Instead `SiteFooter.vue` mounts in the default theme's
 `layout-bottom` slot (`docs/.vitepress/theme/index.ts`), which renders on every
 layout. It carries community links (GitHub, cdk.dev Slack, Stack Overflow, AWS
 re:Post) and the AWS legal line (Third-party licenses, Privacy, Site terms,
@@ -71,7 +71,7 @@ default theme: the `has-sidebar` offset math and the reason the slot was chosen
 (`VPFooter` hiding on sidebar pages). On a VitePress bump, diff the default
 theme's `VPContent`/`VPSidebar` CSS for `--vp-sidebar-width` and the 960px/1440px
 breakpoints and update the two media queries; a drifted `padding-left`
-mis-aligns silently with no unit-test failure, so check an `/api/**` page at
+mis-aligns silently with no unit-test failure, so check an `/v2/**` page at
 >=960px and >=1440px by eye. If a future release lets the native footer render
 on sidebar pages, prefer deleting `SiteFooter` and returning to
 `themeConfig.footer`.
@@ -197,8 +197,8 @@ states and makes the current one ambiguous.
 
 VitePress keys four geometry rules (`.wrapper` padding, `.container` max-width,
 `.title` positioning, `.content` padding) on its own `has-sidebar` class, which
-is true for `/api/**` and false for both `/` (`layout: home`) and `/skills`
-(`themeConfig.sidebar` is keyed only on `/api/`). That makes the row's left inset
+is true for `/v2/**` and false for both `/` (`layout: home`) and `/skills`
+(`themeConfig.sidebar` is keyed only on `/v2/`). That makes the row's left inset
 `var(--vp-sidebar-width)` on reference pages and `32px + title width` elsewhere
 — a ~97px difference. Because the slider holds the leading slot, that inset
 showed up as controls **moving** between page types.
@@ -374,7 +374,7 @@ keeps its stock 896px container.
 
 ## Consequences
 
-- One consistent footer appears on home, versions, and every `/api/**` page;
+- One consistent footer appears on home, versions, and every `/v2/**` page;
   the legal line cannot drift between page classes. A VitePress upgrade can
   silently break the sidebar offset — the e2e footer spec and the bump checklist
   are the mitigation.
