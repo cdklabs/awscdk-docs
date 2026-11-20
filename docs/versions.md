@@ -6,7 +6,8 @@ editLink: false
 # AWS CDK Versions
 
 Current releases of the AWS CDK packages with links to release notes, docs and
-the release date.
+the release date. See [API Stability](/stability) for what stable and
+experimental mean for the APIs in this reference.
 
 <script setup lang="ts">
 import { computed } from 'vue'

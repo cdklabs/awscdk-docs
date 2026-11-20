@@ -28,6 +28,7 @@ import {
   writeVersionsJson,
   writeVersionSnapshot,
 } from '../src/docgen/versions.js';
+import { STABILITY_ROUTE } from '../src/site-routes.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -422,6 +423,11 @@ describe('versions page wiring', () => {
     expect(page).not.toMatch(/href="\/versions\.json"/);
     expect(page).toContain('end-of-support since {{ data.v1EndOfSupport }}');
     expect(page).toContain('release notes, docs and');
+  });
+
+  test('the intro links the API stability guide by its page title', () => {
+    // A markdown link, so VitePress applies the base and the .html suffix.
+    expect(page).toContain(`[API Stability](${STABILITY_ROUTE})`);
   });
 
   test('page renders a base-aware docs link per package', () => {
