@@ -16,19 +16,27 @@ function lint(source: string): LintMessage[] {
       env: { ...process.env, ESLINT_USE_FLAT_CONFIG: 'false', NODE_NO_WARNINGS: '1' },
     });
   } catch (err) {
-    out = (err as { stdout: string }).stdout;
+    const e = err as { stdout: string; stderr: string };
+    if (!e.stdout) throw new Error(e.stderr);
+    out = e.stdout;
   }
   return JSON.parse(out)[0].messages;
 }
 
+function rulesHit(source: string): Set<string | null> {
+  return new Set(lint(source).map((m) => m.ruleId));
+}
+
+// Each case starts an ESLint process with type-aware parsing, which can take seconds on a busy runner.
+const TIMEOUT = 60_000;
+
 describe('stylistic lint rules', () => {
   test('clean code passes', () => {
     expect(lint("export const a = { b: 'x', c: 1 };\n")).toEqual([]);
-  });
+  }, TIMEOUT);
 
   test('style violations are reported by the stylistic plugin', () => {
-    const rules = new Set(lint('export   const a = {b:"x" ,  c: 1}\n').map((m) => m.ruleId));
-    expect(rules).toEqual(new Set([
+    expect(rulesHit('export   const a = {b:"x" ,  c: 1}\n')).toEqual(new Set([
       '@stylistic/no-multi-spaces',
       '@stylistic/object-curly-spacing',
       '@stylistic/key-spacing',
@@ -36,10 +44,23 @@ describe('stylistic lint rules', () => {
       '@stylistic/comma-spacing',
       '@stylistic/semi',
     ]));
-  });
+  }, TIMEOUT);
 
   test('indentation and trailing commas are enforced', () => {
-    const rules = new Set(lint('export const a = [\n    1,\n    2\n];\n').map((m) => m.ruleId));
-    expect(rules).toEqual(new Set(['@stylistic/indent', '@stylistic/comma-dangle']));
-  });
+    expect(rulesHit('export const a = [\n    1,\n    2\n];\n')).toEqual(new Set(['@stylistic/indent', '@stylistic/comma-dangle']));
+  }, TIMEOUT);
+
+  test('braces of interfaces and enums need inner spaces', () => {
+    expect(rulesHit('export interface A {b: string}\nexport enum E {X, Y}\n')).toEqual(new Set(['@stylistic/object-curly-spacing']));
+  }, TIMEOUT);
+
+  test('type members use semicolon delimiters and consistent brace newlines', () => {
+    expect(rulesHit('export type A = { b: string,\n  c: number };\n'))
+      .toEqual(new Set(['@stylistic/object-curly-newline', '@stylistic/member-delimiter-style']));
+  }, TIMEOUT);
+
+  test('a space is required after catch and before a namespace body', () => {
+    expect(rulesHit('try {\n  JSON.parse(\'\');\n} catch(e) {\n  void e;\n}\nexport namespace N{\n  export const a = 1;\n}\n'))
+      .toEqual(new Set(['@stylistic/space-before-function-paren', '@stylistic/space-before-blocks']));
+  }, TIMEOUT);
 });
