@@ -89,6 +89,7 @@ describe('independent code-block theme', () => {
         ['--vp-code-copy-code-hover-bg', '--vp-c-bg'],
         ['--vp-code-lang-color', '--vp-code-lang-color'],
         ['--vp-code-copy-code-border-color', '--vp-c-divider'],
+        ['--vp-code-copy-code-hover-border-color', '--vp-c-divider'],
       ];
       for (const [scheme, brandSelector] of [
         ['light', ':root'],

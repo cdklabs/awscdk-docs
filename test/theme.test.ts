@@ -64,7 +64,7 @@ describe('CDK brand theme', () => {
     });
 
     test('uses the near-black ink color', () => {
-      expect(css.toLowerCase()).toContain('#0f141a');
+      expect(lightBlock).toContain('--vp-c-text-1: #0f141a');
     });
 
     test('light mode uses the link blue brand step', () => {
@@ -95,7 +95,7 @@ describe('CDK brand theme', () => {
       expect(darkBlock).toContain('--vp-c-text-1:');
     });
 
-    describe('WCAG AA contrast (>= 4.5:1)', () => {
+    describe('WCAG AA contrast', () => {
       const cssVar = (block: string, name: string): string => {
         const match = block.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`));
         if (!match) {

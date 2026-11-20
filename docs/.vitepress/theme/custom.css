@@ -10,8 +10,9 @@
  * Readability: every variable set in `:root` that affects text color MUST
  * be redefined in `.dark`. This file loads after the default theme, and
  * `:root` and `.dark` match <html> at equal specificity, so an unshadowed
- * `:root` value silently wins in dark mode (a well-known VitePress trap). All color
- * pairs below meet WCAG AA (>= 4.5:1), enforced by test/theme.test.ts.
+ * `:root` value silently wins in dark mode (a well-known VitePress trap). All text
+ * pairs below meet WCAG AA (4.5:1, or 3:1 for the large hero wordmark), enforced by
+ * test/theme.test.ts.
  */
 
 /* ---------- Light mode ---------- */
