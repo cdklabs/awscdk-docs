@@ -184,7 +184,9 @@ index, which indexes built HTML — can surface them. The markdown files stay in
 - The prod/dev dependency split is a checkable statement of what runs in
   visitors' browsers; content sources and build tooling never creep into it.
 - Routine scheduled upgrade PRs and nightly version-bump PRs merge unattended
-  once CI is green, reserving human review for behavior changes.
+  once CI is green. Human review is kept for application and docgen logic; a
+  projen or project-type release, which can rewrite projen-managed workflows
+  and tasks, is gated by the required checks alone.
 - A major release can sit unadopted for a while after it ships. That lag is
   the cost of keeping lint, tests and typechecks working; the repo still gets
   that package's minor and patch releases in the meantime.
