@@ -67,15 +67,25 @@ describe('mixin detection', () => {
     // concrete mixin aws-cdk-lib ships is a class extending the abstract
     // `aws-cdk-lib.Mixin` with an empty `interfaces` list of its own — so
     // none of them appeared in the interface-keyed index and they all
-    // rendered as ordinary classes. Pinned against the real assembly.
-    expect([...buildMixinClassIndex(index)].sort()).toEqual([
+    // rendered as ordinary classes. Checked against the real assembly, which gains mixins between releases.
+    const known = [
       'aws-cdk-lib.aws_ecr.mixins.RepositoryAutoDeleteImages',
       'aws-cdk-lib.aws_ecs.mixins.ClusterSettings',
       'aws-cdk-lib.aws_s3.mixins.BucketAutoDeleteObjects',
       'aws-cdk-lib.aws_s3.mixins.BucketBlockPublicAccess',
       'aws-cdk-lib.aws_s3.mixins.BucketPolicyStatements',
       'aws-cdk-lib.aws_s3.mixins.BucketVersioning',
-    ]);
+    ];
+    const detected = [...buildMixinClassIndex(index)];
+    expect(detected).toEqual(expect.arrayContaining(known));
+
+    // A class is a mixin when its base implements the marker; the implementor index computes that separately.
+    const implementors = new Set(mixins.get('constructs.IMixin')!);
+    const expected = [...implementors].filter((fqn) => {
+      const type = index.get(fqn)!.type;
+      return spec.isClassType(type) && type.base !== undefined && implementors.has(type.base);
+    });
+    expect(detected.sort()).toEqual(expected.sort());
   });
 
   test('the abstract base is the mechanism, not a mixin', () => {
