@@ -136,7 +136,10 @@ token or missing source file throws and fails the build. The tint rule lives in
 `home-features.css` (not `custom.css`, which `test/theme.test.ts` constrains to
 variable blocks only): one `color: var(--vp-c-brand-1)` tints all four in both
 palettes. `test/landing-page.test.ts` pins each card's token to its glyph.
-Adding a card is one token plus one pin entry.
+Adding a card is one token plus one pin entry. When a package release redraws a
+glyph in use, the resolver can keep that icon's earlier geometry inline in
+`feature-icons.ts`, so the home page look does not move with the package;
+dropping the entry takes the package's current glyph.
 
 - Rejected: a Vue component importing `?raw` (gives up native `VPFeatures`
   layout); `<img>` from generated `docs/public/` SVGs (cannot inherit

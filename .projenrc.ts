@@ -128,7 +128,7 @@ const project = new CdkTypeScriptProject({
     'vitepress-plugin-pagefind',
     // Generic UI glyphs for the home page feature cards: concept icons no brand set covers. SVGs are inlined
     // into the rendered pages.
-    'lucide-static@^0.542.0',
+    'lucide-static@^1.77.0',
   ],
 
   devDeps: [
