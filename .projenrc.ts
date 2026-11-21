@@ -93,9 +93,9 @@ const project = new CdkTypeScriptProject({
     ],
   },
 
-  // Auto-approve projen's recurring upgrade-main deps PR using projen's built-in label option — the PR only
-  // touches the lockfile and .projen bookkeeping, matching the 'auto-approve' label's trust boundary. Approval
-  // only grants a review; merge stays gated by the required build check that GitHub auto-merge waits on.
+  // Auto-approve projen's scheduled upgrade PRs (upgrade-main, upgrade-dev-deps-main and
+  // upgrade-cdklabs-projen-project-types-main) using projen's built-in label option. Approval only grants a
+  // review; merge stays gated by the required checks that GitHub auto-merge waits on.
   depsUpgradeOptions: {
     workflowOptions: {
       labels: ['auto-approve'],
@@ -157,10 +157,11 @@ const project = new CdkTypeScriptProject({
   ],
 });
 
-// The upgrade tasks hold every dependency to a 3-day release cooldown, but the documented CDK packages must track the
-// newest release, which the nightly cdk-version-check workflow pins. Keep the upgrade tasks off those packages, so a
-// cooldown-bound upgrade cannot roll a pin back. The option is construction-only and cdklabs-projen-project-types
-// does not forward it, so it is set on the components here; the task steps read it lazily at synth.
+// The upgrade and upgrade-dev-deps tasks hold dependencies to a 3-day release cooldown, but the documented CDK
+// packages must track the newest release, which the nightly cdk-version-check workflow pins. Keep the upgrade
+// tasks off those packages, so a cooldown-bound upgrade cannot roll a pin back. The option is construction-only
+// and cdklabs-projen-project-types does not forward it, so it is set on the components here; the task steps read
+// it lazily at synth.
 const CDK_PINNED_PACKAGES = [...DOCUMENTED_ALPHA_MODULES, ...CDK_ALPHA_PACKAGES, ...CDK_LIB_PACKAGES];
 for (const upgrade of project.components.filter((c) => c instanceof javascript.UpgradeDependencies)) {
   const options = (upgrade as unknown as { options: javascript.UpgradeDependenciesOptions }).options;
