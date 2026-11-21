@@ -149,6 +149,7 @@ describe('landing page', () => {
 
     test('an unknown token fails the build', () => {
       expect(() => resolveLucideIcon('lucide:no-such-glyph')).toThrow(/no-such-glyph/);
+      expect(() => resolveLucideIcon('lucide:constructor')).toThrow(/constructor/);
     });
   });
 
