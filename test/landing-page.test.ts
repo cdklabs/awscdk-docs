@@ -113,33 +113,34 @@ describe('landing page', () => {
       expect(indexMd).not.toContain('<svg');
     });
 
-    const PACKAGE_ICONS = Object.entries(ICONS).filter(([, name]) => name !== 'book-open');
+    // The exact shape elements each card renders. A package release that redraws one fails here, so a person
+    // decides whether to pin the earlier geometry in feature-icons.ts or accept the new glyph.
+    const GEOMETRY: Record<string, string> = {
+      'book-open':
+        '<path d="M12 7v14" /> <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1' +
+        ' 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />',
+      'compass':
+        '<circle cx="12" cy="12" r="10" /> <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76' +
+        ' 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />',
+      'bot':
+        '<path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" />' +
+        ' <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" />',
+      'blocks':
+        '<path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2" />' +
+        ' <rect x="14" y="2" width="8" height="8" rx="1" />',
+    };
 
-    test.each(PACKAGE_ICONS)(
-      '%s resolves the %s glyph as the package ships it',
-      (title, name) => {
-        expect(iconFor(title)).toBe(`lucide:${name}`);
-        // The resolved markup carries the treated header and the package
-        // file's own shape elements — the drift pin, applied to what the
-        // resolver actually returns.
-        const svg = resolveLucideIcon(`lucide:${name}`);
-        expect(svg).toContain('viewBox="0 0 24 24"');
-        expect(svg).toContain('fill="none"');
-        expect(svg).toContain('stroke="currentColor"');
-        expect(svg).toContain('stroke-width="1.5"');
-        expect(svg).toContain('aria-hidden="true"');
-        expect(svg).toContain(upstreamGeometry(name));
-      },
-    );
-
-    test('API Reference renders the pinned book-open glyph', () => {
-      expect(iconFor('API Reference')).toBe('lucide:book-open');
-      expect(resolveLucideIcon('lucide:book-open')).toBe(
+    test.each(Object.entries(ICONS))('%s renders the exact %s glyph', (title, name) => {
+      expect(iconFor(title)).toBe(`lucide:${name}`);
+      expect(resolveLucideIcon(`lucide:${name}`)).toBe(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
           ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-          '<path d="M12 7v14" /> <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1' +
-          ' 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></svg>',
+          `${GEOMETRY[name]}</svg>`,
       );
+    });
+
+    test.each(['compass', 'bot', 'blocks'])('%s comes from the installed package', (name) => {
+      expect(resolveLucideIcon(`lucide:${name}`)).toContain(upstreamGeometry(name));
     });
 
     test('no card renders another card\'s glyph', () => {
