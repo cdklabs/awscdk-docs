@@ -79,17 +79,13 @@ describe('mixin detection', () => {
     const detected = [...buildMixinClassIndex(index)];
     expect(detected).toEqual(expect.arrayContaining(known));
 
-    const baseChain = (fqn: string): string[] => {
-      const chain: string[] = [];
-      let type = index.get(fqn)?.type;
-      while (type && spec.isClassType(type) && type.base) {
-        chain.push(type.base);
-        type = index.get(type.base)?.type;
-      }
-      return chain;
-    };
-    const extendingMixin = [...index.keys()].filter((fqn) => baseChain(fqn).includes('aws-cdk-lib.Mixin'));
-    expect(detected.sort()).toEqual(extendingMixin.sort());
+    // A class is a mixin when its base implements the marker; the implementor index computes that separately.
+    const implementors = new Set(mixins.get('constructs.IMixin')!);
+    const expected = [...implementors].filter((fqn) => {
+      const type = index.get(fqn)!.type;
+      return spec.isClassType(type) && type.base !== undefined && implementors.has(type.base);
+    });
+    expect(detected.sort()).toEqual(expected.sort());
   });
 
   test('the abstract base is the mechanism, not a mixin', () => {
