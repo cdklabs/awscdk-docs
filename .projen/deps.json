@@ -338,7 +338,7 @@
     },
     {
       "name": "lucide-static",
-      "version": "^0.542.0",
+      "version": "^1.77.0",
       "type": "runtime"
     },
     {
