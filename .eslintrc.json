@@ -215,6 +215,15 @@
           "method"
         ]
       }
+    ],
+    "@stylistic/space-before-function-paren": [
+      "error",
+      {
+        "anonymous": "ignore",
+        "named": "ignore",
+        "asyncArrow": "ignore",
+        "catch": "always"
+      }
     ]
   },
   "overrides": [
