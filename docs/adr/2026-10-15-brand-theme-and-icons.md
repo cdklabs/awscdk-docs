@@ -132,18 +132,14 @@ string at build time, rewriting the stroke to `stroke-width="1.5"`,
 markup because VitePress reads `features[].icon` from frontmatter (which cannot
 `import`); the icon must be a plain string, not `{ svg }`, since VitePress
 routes an object icon to `VPImage`, which renders an empty slot. An unknown
-token, or an unpinned token whose source file is missing, throws and fails the
-build. The tint rule lives in
+token or missing source file throws and fails the build. The tint rule lives in
 `home-features.css` (not `custom.css`, which `test/theme.test.ts` constrains to
 variable blocks only): one `color: var(--vp-c-brand-1)` tints all four in both
-palettes. `test/landing-page.test.ts` pins each card's token to its glyph and
-asserts each card's exact rendered SVG, so a package release that redraws a
-glyph in use fails the suite. Adding a card is one token in `docs/index.md`
-plus its expected token and SVG geometry in that test. To keep a redrawn
-icon's earlier look, its geometry goes in `PINNED_GEOMETRY` in
-`feature-icons.ts`, and that icon no longer reads the package file. Removing a
-`PINNED_GEOMETRY` entry takes the package's current glyph once the test's
-expected geometry is updated to match.
+palettes. `test/landing-page.test.ts` pins each card's token to its glyph.
+Adding a card is one token plus one pin entry. The glyphs come from the
+library as it ships them, with no copied geometry in the repo, so a library
+release that redraws a glyph in use is a visible change that the upgrade PR
+shows in before and after screenshots.
 
 - Rejected: a Vue component importing `?raw` (gives up native `VPFeatures`
   layout); `<img>` from generated `docs/public/` SVGs (cannot inherit
