@@ -152,10 +152,14 @@ new major included (see
 
 Every other major upgrade is a deliberate change in its own PR, never folded
 into a scheduled bump or into unrelated work. The PR raises the version in
-`.projenrc.ts` (the `deps`/`devDeps` entry, or, for a package projen
-supplies, the project option that sets its version, such as
-`typescriptVersion` or `jestOptions.jestVersion`), resynthesizes, fixes what
-the new major breaks, and shows the built site is unchanged.
+`package.json` and the lockfile only. The `deps`/`devDeps` entry in
+`.projenrc.ts` stays without a version, so projen keeps the `package.json`
+range and the package stays in the scheduled upgrade filter; a version goes in
+`.projenrc.ts` only for a hard constraint, such as holding a peer range. A
+package projen supplies moves through the project option that sets its
+version, such as `typescriptVersion` or `jestOptions.jestVersion`. The PR then
+resynthesizes, fixes what the new major breaks, and shows the built site is
+unchanged.
 
 A major waits until the tools that load the package support it. For the
 compiler that means type-aware linting, the Jest transform, and the
