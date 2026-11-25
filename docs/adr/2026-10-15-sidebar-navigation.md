@@ -157,11 +157,12 @@ buried the handful of modules most readers look for under internals such as
 
 `serviceSubmodule()` normalizes `aws-cdk-lib`'s structural submodules in the
 data layer so they do not surface as garbled branches (`Interfaces.aws S3`,
-`S3.mixins`): `interfaces.<sub>` → `<sub>`, bare `interfaces` → module root
-(Core), `<sub>.mixins` → `<sub>`. Rolled-in types then flow through the
-normal resource/kind grouping. Classification into Framework/Services runs
-on the owner submodule, so these types follow their owner. New reserved
-submodule names in future releases would need adding here.
+`S3.mixins`, `S3.events`): `interfaces.<sub>` → `<sub>`, bare `interfaces` →
+module root (Core), `<sub>.mixins` and `<sub>.events` → `<sub>`. Rolled-in
+types then flow through the normal resource/kind grouping. Classification
+into Framework/Services runs on the owner submodule, so these types follow
+their owner. New reserved submodule names in future releases would need
+adding here.
 
 ### Construct level as a sidebar field
 
@@ -417,9 +418,10 @@ collapsed (`v-show`), and the section renders nothing with zero favorites.
 ## Consequences
 
 - Readers navigate by AWS service and CDK framework feature; package layout
-  and `interfaces.*`/`*.mixins` structural submodules are invisible in the
-  nav. Service name changes require a curated display entry and a pinned
-  output test; the resource-stem heuristic still fails readable rather than wrong.
+  and `interfaces.*`/`*.mixins`/`*.events` structural submodules are invisible
+  in the nav. Service name changes require a curated display entry and a
+  pinned output test; the resource-stem heuristic still fails readable rather
+  than wrong.
 - Per-page HTML carries only the empty native sidebar shell; the tree is
   session-cached assets fetched incrementally, so build time, artifact size,
   cold-load transfer, and rendered DOM are all bounded independent of page

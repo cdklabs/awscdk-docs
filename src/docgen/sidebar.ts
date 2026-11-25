@@ -500,10 +500,10 @@ export function assemblyOwner(assemblyName: string): string {
  * package name.
  *
  * `submodule` is the OWNER submodule ({@link serviceSubmodule} applied to the entry's own name), so the structural
- * `interfaces.*` mirror and `*.mixins` suffix collapse into their owner's heading. The Core section folds the `''`,
- * `core` and `assets` submodules into a single group whose label is the bare package name — `aws-cdk-lib`, never
- * `aws-cdk-lib.core`. `constructs` needs no special case: its assembly name is already `constructs` and its types
- * carry no submodule.
+ * `interfaces.*` mirror and `*.mixins` / `*.events` suffixes collapse into their owner's heading. The Core section
+ * folds the `''`, `core` and `assets` submodules into a single group whose label is the bare package name —
+ * `aws-cdk-lib`, never `aws-cdk-lib.core`. `constructs` needs no special case: its assembly name is already
+ * `constructs` and its types carry no submodule.
  */
 export function frameworkSectionName(assemblyName: string, submodule: string): string {
   if (submodule === '' || isCore(assemblyName, submodule)) {
@@ -593,8 +593,8 @@ export function buildServiceSidebar(
   // Framework section name -> package root overview link, for packages reached only through omitted submodules.
   const packageRoots = new Map<string, string>();
   for (const entry of entries) {
-    // Structural submodules (`interfaces.*`, `*.mixins`) roll into the service that owns their types; root types of
-    // a standalone package group by an owner derived from the package name.
+    // Structural submodules (`interfaces.*`, `*.mixins`, `*.events`) roll into the service that owns their types;
+    // root types of a standalone package group by an owner derived from the package name.
     const submodule = serviceSubmodule(entry.submodule);
     const owner = submodule || assemblyOwner(entry.assemblyName);
     // The `constructs` base library is its own Framework section; aws-cdk-lib core/assets stay in Core.
@@ -873,8 +873,8 @@ function fixedReadmeLabel(e: SidebarEntry): string | undefined {
  * computed by the docgen — so it stays base-aware via the component's `withBase`. A section holding a single
  * (sub)module gets a plain `Overview` entry. In a Framework section folding several (e.g. Core with `aws-cdk-lib`
  * + `assets`), each is `Overview (<module>)`, mirroring the `Type index (...)` convention. Structural submodules
- * (`interfaces.*`, `*.mixins`) never surface an overview of their own — they are internal assembly layout, not
- * navigation.
+ * (`interfaces.*`, `*.mixins`, `*.events`) never surface an overview of their own — they are internal assembly
+ * layout, not navigation.
  *
  * In a Services section folding several readmes (e.g. S3 with `aws_s3` + `aws_s3_deployment`), only the primary
  * `aws-cdk-lib` service module is `Overview`. A few
