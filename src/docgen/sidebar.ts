@@ -570,12 +570,11 @@ function displayToken(token: string): string {
  * `constructs` base library is a group of its own; Framework headings are the package-qualified module names sorted
  * by {@link frameworkSectionCompare}, while Services stay alphabetical.
  *
- * Every section starts with direct readme link(s) to its (sub)module page(s) (see `overviewItems` for their labels),
- * then Core and `constructs` keep a
- * flat kind grouping; every other section groups by resource (derived from construct names). Inside a resource,
- * construct types are listed directly (no "Constructs" heading) and the remaining kind groups start collapsed.
- * Sections and resource groups are collapsible. This is a nav-grouping change only: page URLs and cross-reference
- * links are untouched.
+ * A section starts with direct readme link(s) to the overview page(s) of its own (sub)modules, when it has any (see
+ * `overviewItems` for which and their labels), then Core and `constructs` keep a flat kind grouping; every other
+ * section groups by resource (derived from construct names). Inside a resource, construct types are listed directly (no
+ * "Constructs" heading) and the remaining kind groups start collapsed. Sections and resource groups are collapsible.
+ * This is a nav-grouping change only: page URLs and cross-reference links are untouched.
  *
  * With two or more enabled `languages`, leaf items whose display name is language-variant carry a `labels` field
  * with one entry per differing language; group headings (service, resource, kind) are language-neutral. With a
@@ -684,11 +683,11 @@ export function buildServiceSidebar(
 }
 
 /**
- * Apply the editorial {@link FRAMEWORK_NAV} list to the Framework sections: listed sections form the top level in
- * list order (a friendly `label` changes the display only; `text` stays the module name), and every other section
- * nests under its package root when that root is listed, else under `defaultParent`. A nested section keeps its own
- * Overview link and types, follows its parent's own groups, and its page stems join the parent's `modules`, so the
- * served skeleton still maps every page to the chunk that holds it. A listed section the build does not document is
+ * Apply the editorial {@link FRAMEWORK_NAV} list to the Framework sections: listed sections form the top level in list
+ * order (a friendly `label` changes the display only; `text` stays the module name), and every other section nests
+ * under its package root when that root is listed, else under `defaultParent`. A nested section keeps its own Overview
+ * link (when it has one) and types, follows its parent's own groups, and its page stems join the parent's `modules`, so
+ * the served skeleton still maps every page to the chunk that holds it. A listed section the build does not document is
  * skipped; with no listed parent available, unlisted sections stay on the top level so nothing leaves the nav.
  */
 function curateFramework(

@@ -1362,7 +1362,7 @@ describe('buildServiceSidebar', () => {
       expect(overviews.map((i) => i.text)).toEqual(['Overview (aws-cdk-lib)', 'Overview (assets)']);
       expect(overviews[1].labels).toEqual({ python: 'Overview (aws_cdk.assets)' });
     });
-    test('every section leads with an Overview link to its submodule page', () => {
+    test('a section with its own submodule page leads with an Overview link to it', () => {
       const sidebar = sidebarSections([
         entry({ name: 'Bucket', kind: 'Construct (L2)', link: '/api/modules/aws-cdk-lib/aws-s3/bucket' }),
         entry({
