@@ -185,6 +185,10 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
 
+@types/web-bluetooth@0.0.22
+  License: MIT
+  Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+
 @ungap/structured-clone@1.4.0
   License: ISC
   Repository: https://github.com/ungap/structured-clone
@@ -245,7 +249,7 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/vueuse/vueuse
 
-@vueuse/core@15.0.0
+@vueuse/core@15.1.0
   License: MIT
   Repository: https://github.com/vueuse/vueuse
 
@@ -257,7 +261,7 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/vueuse/vueuse
 
-@vueuse/metadata@15.0.0
+@vueuse/metadata@15.1.0
   License: MIT
   Repository: https://github.com/vueuse/vueuse
 
@@ -265,7 +269,7 @@ The AWS CDK API Reference uses code and assets from the packages listed below.
   License: MIT
   Repository: https://github.com/vueuse/vueuse
 
-@vueuse/shared@15.0.0
+@vueuse/shared@15.1.0
   License: MIT
   Repository: https://github.com/vueuse/vueuse
 

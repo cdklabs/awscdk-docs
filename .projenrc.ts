@@ -115,7 +115,7 @@ const project = new CdkTypeScriptProject({
     'vue',
     // Three-state theme picker shares VitePress's appearance state via useColorMode on the same storage key.
     // Bundled into the theme client code.
-    '@vueuse/core',
+    '@vueuse/core@^15',
     // Renders every code block's highlighted HTML; declared explicitly because config.mts imports it directly
     // to build a JS-regex-engine highlighter. Pinned to the same major VitePress resolves so both share one
     // shiki instance.

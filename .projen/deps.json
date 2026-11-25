@@ -334,6 +334,7 @@
     },
     {
       "name": "@vueuse/core",
+      "version": "^15",
       "type": "runtime"
     },
     {
