@@ -122,13 +122,14 @@ const project = new CdkTypeScriptProject({
     'shiki@^2.1.0',
     '@shikijs/engine-javascript@^2.1.0',
     // Renders GitHub ```math fences in jsii READMEs into the pages' markup.
+    // Held at ^4 because VitePress declares it as a peer at that range.
     'markdown-it-mathjax3@^4',
     // Static local search: the index and the pagefind.js runtime ship in the output.
     'pagefind',
     'vitepress-plugin-pagefind',
     // Generic UI glyphs for the home page feature cards: concept icons no brand set covers. SVGs are inlined
     // into the rendered pages.
-    'lucide-static@^1.77.0',
+    'lucide-static',
   ],
 
   devDeps: [
@@ -140,17 +141,17 @@ const project = new CdkTypeScriptProject({
     '@jsii/spec',
     // Agent-oriented Markdown twins: the generated pages carry their member lists and type hierarchy as inline
     // HTML, which a regex cannot walk safely, so the twin renderer parses it (src/docgen/agent-markdown.ts).
-    'htmlparser2@^12.0.0',
+    'htmlparser2',
     // Under ESM the `jest` object is not a global, so the one suite that stubs a module imports it.
-    '@jest/globals@^30.5.1',
+    '@jest/globals',
     // Browser e2e suite for the interactive theme features.
     '@playwright/test',
     // Automated accessibility audit gate.
     '@axe-core/playwright',
     // Lighthouse performance gate.
-    'lighthouse@^13.4.0',
+    'lighthouse',
     // Agent-readiness gate
-    'botvisibility@^3.0.0',
+    'botvisibility',
     // Generates the third-party license list (src/docgen/third-party-licenses.ts). Same package and major as
     // projen's checkLicenses uses from projen 0.105.
     'license-checker-rseidelsohn@^4',
