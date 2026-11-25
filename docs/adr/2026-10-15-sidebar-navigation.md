@@ -91,12 +91,15 @@ The optional package regrouping of this same data is recorded in
 - **Overview entries.** `buildServiceSidebar()` prepends direct `Overview`
   leaf link(s) to a section, before the resource/kind groups, one per distinct
   overview page of the section's own (sub)modules, reusing the entry's
-  canonical `indexLink`. Structural submodules (`interfaces.*`, `*.mixins`)
-  add none, so a section holding only those has no `Overview` entry. Types
-  whose submodule overview was omitted index their package root, and that
-  page is not the section's `Overview`: it is listed once, in the package's
-  own Framework section, which is created to hold it even when the package
-  has no root types. Section headers stay pure disclosure
+  canonical `indexLink`. Structural submodules (`interfaces.*`, `*.mixins`,
+  `*.events`) add none, so a section holding only those has no `Overview`
+  entry. Types of a synthetic mixin submodule whose overview was omitted
+  index their package root, and that page is not the section's `Overview`:
+  it is listed once, in the package's own Framework section, which is
+  created to hold it even when the package has no root types. Events
+  submodule types index the package root too but surface no overview
+  anywhere ([fold events submodules](./2026-10-22-fold-events-submodules.md)).
+  Section headers stay pure disclosure
   controls (expand/collapse), never navigation — overloading one control
   with navigate-vs-disclose is a touch-device mis-click hazard. A section
   folding one module gets a plain `Overview`; one folding several puts the
