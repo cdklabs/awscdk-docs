@@ -123,7 +123,7 @@
   "dependencies": {
     "@shikijs/engine-javascript": "^2.1.0",
     "@vueuse/core": "^12.8.2",
-    "lucide-static": "^0.542.0",
+    "lucide-static": "^1.77.0",
     "markdown-it-mathjax3": "^4",
     "pagefind": "^1.6.0",
     "shiki": "^2.1.0",

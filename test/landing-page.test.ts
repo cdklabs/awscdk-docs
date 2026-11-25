@@ -117,16 +117,13 @@ describe('landing page', () => {
       '%s resolves the %s glyph as the package ships it',
       (title, name) => {
         expect(iconFor(title)).toBe(`lucide:${name}`);
-        // The resolved markup carries the treated header and the package
-        // file's own shape elements — the drift pin, applied to what the
-        // resolver actually returns.
-        const svg = resolveLucideIcon(`lucide:${name}`);
-        expect(svg).toContain('viewBox="0 0 24 24"');
-        expect(svg).toContain('fill="none"');
-        expect(svg).toContain('stroke="currentColor"');
-        expect(svg).toContain('stroke-width="1.5"');
-        expect(svg).toContain('aria-hidden="true"');
-        expect(svg).toContain(upstreamGeometry(name));
+        const geometry = upstreamGeometry(name);
+        expect(geometry).toMatch(/^<(path|circle|rect|line|polyline|polygon|ellipse) /);
+        expect(resolveLucideIcon(`lucide:${name}`)).toBe(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+            ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            `${geometry}</svg>`,
+        );
       },
     );
 
@@ -137,6 +134,7 @@ describe('landing page', () => {
 
     test('an unknown token fails the build', () => {
       expect(() => resolveLucideIcon('lucide:no-such-glyph')).toThrow(/no-such-glyph/);
+      expect(() => resolveLucideIcon('lucide:constructor')).toThrow(/constructor/);
     });
   });
 
