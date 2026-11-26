@@ -31,6 +31,7 @@ run_shard() {
   local i="$1"
   local ws="$WORK/shard-$i"
   local log="$WORK/shard-$i.log"
+  local start=$SECONDS
   echo "shard $i/$TOTAL: started (log: $log)"
   # Subshell: the cd must not leak into the caller.
   (
@@ -65,15 +66,18 @@ run_shard() {
     SHARD_INDEX="$i" SHARD_TOTAL="$TOTAL" node scripts/shard-prune.cjs
 
     echo "[shard $i] building"
-    node_args=()
+    node_args=(--require "$ROOT/scripts/report-peak-rss.cjs")
     [ -n "${HEAP:-}" ] && node_args+=("--max-old-space-size=$HEAP")
-    SHARD_BUILD=1 node ${node_args[@]+"${node_args[@]}"} ./node_modules/.bin/vitepress build docs
+    SHARD_BUILD=1 node "${node_args[@]}" ./node_modules/.bin/vitepress build docs
 
     echo "[shard $i] verifying shard output"
     node scripts/shard-verify.cjs
   ) >"$log" 2>&1
   touch "$WORK/shard-$i.ok"
-  echo "shard $i/$TOTAL: done"
+  # One greppable line per shard: wall time from setup through verify, and the VitePress process's peak RSS.
+  local rss
+  rss="$(grep -o 'peak_rss_mb=[0-9]*' "$log" | tail -1 || true)"
+  echo "shard $i/$TOTAL: done wall_s=$(( SECONDS - start )) ${rss:-peak_rss_mb=unknown}"
 }
 
 if [ "${1:-}" = "__run-shard" ]; then
@@ -160,8 +164,10 @@ if [ -n "$SINGLE" ]; then
   run_shard "$SHARD_I"
   SOURCES=("$WORK/shard-$SHARD_I")
 else
-  echo "Building $TOTAL shards ($CONCURRENCY in parallel) ..."
-  seq 0 $(( TOTAL - 1 )) | xargs -n1 -P "$CONCURRENCY" "$SELF" __run-shard || true
+  # Heaviest shards start first, so the last wave is not a few slow shards running alone.
+  ORDER="$(SHARD_TOTAL="$TOTAL" node scripts/shard-prune.cjs --dispatch-order)"
+  echo "Building $TOTAL shards ($CONCURRENCY in parallel), heaviest first: $(echo "$ORDER" | tr '\n' ' ')"
+  echo "$ORDER" | xargs -n1 -P "$CONCURRENCY" "$SELF" __run-shard || true
   FAILED=""
   SOURCES=()
   for i in $(seq 0 $(( TOTAL - 1 ))); do

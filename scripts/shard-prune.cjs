@@ -26,7 +26,8 @@
 // generated tree and SHARD_TOTAL. Everything else — hand-written pages, the package overview, and the complete
 // api-sidebar assets, including the type-summary lookup — is left intact in every shard.
 //
-// Env: SHARD_INDEX (0-based), SHARD_TOTAL (>=1).
+// Env: SHARD_INDEX (0-based), SHARD_TOTAL (>=1). With --dispatch-order, prints the shard start order instead
+// (only SHARD_TOTAL is read).
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -119,14 +120,14 @@ function splitOversized(units, cap) {
   return out;
 }
 
-function main() {
-  const index = Number(process.env.SHARD_INDEX);
-  const total = Number(process.env.SHARD_TOTAL);
-  if (!Number.isInteger(index) || !Number.isInteger(total) || total < 1 || index < 0 || index >= total) {
-    throw new Error(`Invalid SHARD_INDEX=${process.env.SHARD_INDEX} / SHARD_TOTAL=${process.env.SHARD_TOTAL}`);
-  }
-  const root = process.cwd();
-  const docsDir = path.join(root, 'docs', 'v2', 'docs');
+/**
+ * The shard plan for a generated docs dir: every prune unit with its files and the shard it is assigned to.
+ *
+ * @param {string} docsDir the flat `docs/v2/docs` dir
+ * @param {number} total number of shards
+ * @returns {{units: {name: string, files: string[]}[], assignment: number[]}}
+ */
+function planShards(docsDir, total) {
   if (!fs.existsSync(path.join(docsDir, 'aws-cdk-lib-readme.md'))) {
     throw new Error(`Generated docs not found at ${docsDir}; run docs:generate first`);
   }
@@ -147,33 +148,66 @@ function main() {
     byUnit.set(unit, list);
   }
 
-  /** @type {{ name: string, pages: number, remove: () => void }[]} */
   const rawUnits = [...byUnit.entries()].map(([name, files]) => ({ name, files: files.sort() }));
   rawUnits.sort((a, b) => a.name.localeCompare(b.name));
 
   const totalPages = rawUnits.reduce((sum, unit) => sum + unit.files.length, 0);
   const cap = Math.max(1, Math.ceil(totalPages / total));
-  const units = splitOversized(rawUnits, cap).map(({ name, files }) => ({
-    name,
-    pages: files.length,
-    remove: () => {
-      for (const file of files) {
-        fs.rmSync(path.join(docsDir, file), { force: true });
-      }
-    },
-  }));
+  const units = splitOversized(rawUnits, cap);
+  const assignment = assignShards(units.map(({ name, files }) => ({ name, pages: files.length })), total);
+  return { units, assignment };
+}
 
-  const assignment = assignShards(units, total);
+/**
+ * Shard indices in the order to start them: most source bytes first, so the slowest shards do not start last
+ * and leave the other slots idle. Pages are balanced across shards but bundle time tracks page content, so bytes
+ * are the cost. Ties go to the lower index.
+ *
+ * @param {string} docsDir the flat `docs/v2/docs` dir
+ * @param {number} total number of shards
+ * @returns {number[]}
+ */
+function dispatchOrder(docsDir, total) {
+  const { units, assignment } = planShards(docsDir, total);
+  const bytes = new Array(total).fill(0);
+  units.forEach((unit, i) => {
+    for (const file of unit.files) {
+      bytes[assignment[i]] += fs.statSync(path.join(docsDir, file)).size;
+    }
+  });
+  return [...bytes.keys()].sort((a, b) => bytes[b] - bytes[a] || a - b);
+}
+
+function main() {
+  const total = Number(process.env.SHARD_TOTAL);
+  if (!Number.isInteger(total) || total < 1) {
+    throw new Error(`Invalid SHARD_TOTAL=${process.env.SHARD_TOTAL}`);
+  }
+  const docsDir = path.join(process.cwd(), 'docs', 'v2', 'docs');
+
+  if (process.argv.includes('--dispatch-order')) {
+    // eslint-disable-next-line no-console
+    console.log(dispatchOrder(docsDir, total).join('\n'));
+    return;
+  }
+
+  const index = Number(process.env.SHARD_INDEX);
+  if (!Number.isInteger(index) || index < 0 || index >= total) {
+    throw new Error(`Invalid SHARD_INDEX=${process.env.SHARD_INDEX} / SHARD_TOTAL=${process.env.SHARD_TOTAL}`);
+  }
+  const { units, assignment } = planShards(docsDir, total);
 
   let kept = 0;
   let keptPages = 0;
   units.forEach((unit, i) => {
     if (assignment[i] === index) {
       kept++;
-      keptPages += unit.pages;
+      keptPages += unit.files.length;
       return;
     }
-    unit.remove();
+    for (const file of unit.files) {
+      fs.rmSync(path.join(docsDir, file), { force: true });
+    }
   });
 
   // eslint-disable-next-line no-console
@@ -186,4 +220,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { assignShards, unitFor, splitOversized };
+module.exports = { assignShards, unitFor, splitOversized, planShards, dispatchOrder };

@@ -96,6 +96,19 @@ plus symlinks to `node_modules`, `src`, `scripts`, `package.json`, and the
 version snapshot — so the in-place prune cannot clobber other shards. Shards run
 in parallel via `xargs -P` (portable to the macOS bash 3.2 baseline).
 
+- **Heaviest first.** The plan balances page counts, but a shard's build time
+  tracks its page content, which still varies widely between shards. Shards
+  start in descending order of their pages' total source bytes
+  (`shard-prune.cjs --dispatch-order`, from the same plan the prune uses), so
+  the slowest shards are not the last to start, leaving the other slots idle
+  while they finish. The order changes only when a shard starts: what each
+  shard builds, and the merge, stay the same.
+- **One line per shard.** Each shard's completion line in the build log carries
+  its wall time (workspace setup, prune, build and verify) and the peak resident
+  memory of its VitePress process (`wall_s=<seconds> peak_rss_mb=<MB>`, read by a
+  `--require` hook), so concurrency and heap sizing can be checked against real
+  readings.
+
 - `--num-shards N` sets the total (default: CPU cores − 2); `--concurrency`
   caps simultaneous builds; `--heap` sets the per-shard old-space cap (unset
   means Node's memory-scaled default). The plan is a pure function of the total,
