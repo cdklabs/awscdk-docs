@@ -4,7 +4,7 @@
 // plain disclosure of two views, not a tablist: each view is a <button> with aria-pressed.
 //
 // Settings opens the same panel the top-bar gear opens with the preview off. That panel is rendered here
-// while the preview is on (and in SettingsMenu.vue otherwise), so exactly one copy is ever in the page.
+// while the preview is on (and in SettingsMenu.vue otherwise), so at most one copy is ever in the page.
 // SettingsMenu.vue keeps the shared open state and the outside-click rule for both copies.
 //
 // Below 960px the rail stays hidden until ExplorerViewsButton.vue unfolds it over a scrim; picking a view,

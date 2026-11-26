@@ -14,7 +14,7 @@ async function dismissConsent(page: Page) {
   if (await accept.count()) await accept.first().click();
 }
 
-async function open(page: Page, stored: Record<string, string> = {}, favorites = false) {
+async function open(page: Page, stored: Record<string, string> = {}, favorites = false, path = QUEUE_PAGE) {
   await page.addInitScript(
     ([entries, fav]) => {
       for (const [key, value] of Object.entries(entries as Record<string, string>)) window.localStorage.setItem(key, value);
@@ -22,7 +22,7 @@ async function open(page: Page, stored: Record<string, string> = {}, favorites =
     },
     [stored, favorites ? FAVORITES : null] as const,
   );
-  await page.goto(QUEUE_PAGE);
+  await page.goto(path);
   await dismissConsent(page);
 }
 
@@ -95,13 +95,13 @@ test.describe('explorer preview on desktop', () => {
     );
   });
 
-  test('the switch and the view survive a reload, and the head script sets both attributes before any module runs', async ({
+  test('the switch and the view the reader chose survive a reload, and the head script sets both attributes first', async ({
     page,
   }) => {
-    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'favorites' }, true);
-    await expect(rail(page).getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
-    // `interactive` comes after inline head scripts and before any module script, so the attributes seen
-    // then can only have come from the head script.
+    await open(page, {}, true);
+    await page.locator('.VPNavBar .settings-trigger').click();
+    await page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true }).click();
+    await rail(page).getByRole('button', { name: 'Favorites' }).click();
     await page.addInitScript(() => {
       document.addEventListener('readystatechange', () => {
         if (document.readyState !== 'interactive') return;
@@ -113,6 +113,8 @@ test.describe('explorer preview on desktop', () => {
       });
     });
     await page.reload();
+    // `interactive` comes after inline head scripts and before any module script, so the attributes seen
+    // then can only have come from the head script.
     expect(await page.evaluate(() => (window as unknown as { __early: string[] }).__early)).toEqual([
       'on',
       'favorites',
@@ -164,7 +166,7 @@ test.describe('explorer preview on desktop', () => {
     for (const width of [960, 1000, 1280]) {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 });
-        await open(page, { [PREVIEW_KEY]: 'on' });
+        await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
         const badge = page.locator('.VPNavBar .content-body > .version-badge');
         await expect(badge).toBeVisible();
         const boxes = [];
@@ -185,6 +187,9 @@ test.describe('explorer preview on desktop', () => {
         expect(last.x + last.width).toBeLessThanOrEqual(width);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
         await expect(page.locator('.VPNavBar .settings-trigger')).toBeHidden();
+        // Only a page with the sidebar gives its 72px to the rail: the title lane elsewhere keeps its width.
+        const title = await page.locator('.VPNavBar .container > .title').boundingBox();
+        expect(title!.width).toBe(pagePath === QUEUE_PAGE && width >= 960 ? 392 : 320);
       });
     }
   }
@@ -223,6 +228,35 @@ test.describe('explorer preview on desktop', () => {
     await expect(page.locator('.VPNavBar .settings-trigger')).toBeFocused();
     await expect(page.locator('.VPSidebar')).toHaveCSS('width', '320px');
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('off');
+  });
+
+  test('at 1600px the rail sits where the sidebar content used to start and the tree keeps its width', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    const box = await rail(page).boundingBox();
+    expect(box!.x).toBe(80);
+    expect(box!.width).toBe(72);
+    await expect(page.locator('.VPSidebar')).toHaveCSS('padding-left', '184px');
+    const tree = await page.locator('.VPSidebar .api-sidebar').boundingBox();
+    expect(tree!.x).toBe(184);
+    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    const panel = await page.locator('#settings-menu-panel').boundingBox();
+    expect(panel!.x).toBe(160);
+  });
+
+  test('on a short desktop window the Settings panel scrolls below the top bar instead of running off', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 400 });
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    const panel = page.locator('#settings-menu-panel');
+    const box = await panel.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(64);
+    expect(box!.y + box!.height).toBe(392);
+    expect(await panel.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   });
 
   test('each rail button is a Tab stop in order', async ({ page }) => {
@@ -313,5 +347,19 @@ test.describe('explorer preview on a phone', () => {
     await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
     await expect(rail(page)).toHaveCount(0);
     await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
+  });
+  test('on a landscape phone the Settings panel stays on screen and scrolls', async ({ page }) => {
+    await page.setViewportSize({ width: 667, height: 375 });
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    await page.getByRole('button', { name: /^Views/ }).click();
+    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    const panel = page.locator('#settings-menu-panel');
+    const box = await panel.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(375);
+    expect(await panel.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await panel.evaluate((el) => el.scrollTo(0, 0));
+    await expect(panel.getByRole('group', { name: 'Site theme' })).toBeInViewport();
   });
 });
