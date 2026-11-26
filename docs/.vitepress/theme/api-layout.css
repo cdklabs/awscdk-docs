@@ -11,11 +11,14 @@
   --api-c-deprecated: #9a2c2c;
   /* Start of the member-row flash; every text color a row carries stays at AA on it (pinned in tests). */
   --api-c-flash: #f2f8fd;
-  /* Type page header. Idle and secondary text clears 7:1 against the page and
-     every control edge clears 4.5:1; both are pinned by hex in tests. */
+  /* Type page header. Secondary text clears 7:1 against the page it sits on,
+     a chip label 7:1 against its own fill, and the chevron and the neutral
+     chip edge the 3:1 a graphic owes; each is pinned by hex in tests. */
   --th-text-2: #424650;
   --th-chevron: #656871;
   --th-chip-edge: #656871;
+  --th-chip-neutral-bg: #f2f3f3;
+  --th-chip-neutral-text: #424650;
   --th-hover-bg: #f0fbff;
   --th-stable-bg: #dcfce7;
   --th-stable-text: #14532d;
@@ -35,6 +38,8 @@
   --th-text-2: #c6c6cd;
   --th-chevron: #a4a4ad;
   --th-chip-edge: #a4a4ad;
+  --th-chip-neutral-bg: #232f3e;
+  --th-chip-neutral-text: #d5dbdb;
   --th-hover-bg: #1b2a3a;
   --th-stable-bg: #052e16;
   --th-stable-text: #86efac;
@@ -229,16 +234,19 @@
   white-space: nowrap;
 }
 
-/* The edge is the ink, so it clears 4.5:1 against the chip fill by
-   construction: the ink/fill pair is pinned at that floor already. */
+/* The edge is the ink, so whatever clears a chip's ink against its fill clears
+   its edge against that fill too. Every chip's pair is pinned by hex. */
 .type-chip-kind {
   border-color: currentColor;
 }
 
-/* A plain class has no kind color of its own and keeps the neutral chip. */
+/* A plain class, and a construct outside the L1/L2/L3 scheme, have no kind
+   color of their own and take the neutral chip. Its fill is an opaque token
+   rather than the translucent `--vp-c-default-soft`, so the label's contrast
+   against it is a pair a test can read rather than a composite. */
 .type-chip-kind:not([class*='api-badge-']) {
-  background-color: var(--vp-c-default-soft);
-  color: var(--th-chip-edge);
+  background-color: var(--th-chip-neutral-bg);
+  color: var(--th-chip-neutral-text);
 }
 
 .type-chip-stability {

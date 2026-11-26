@@ -43,8 +43,8 @@ name alone. Classification is not part of a name, and its natural neighbors
 are the controls that act on the page, not the words of its title. The row is
 emitted by docgen at build time (`renderTypeHeader` in `src/docgen/header.ts`),
 not assembled by client-side JavaScript, so a client-side navigation between
-type pages renders it like any other markup and there is no frame in which the
-header is half-built.
+type pages renders it like any other markup. The action pills do arrive after
+mount, into space the server-rendered row already reserves.
 
 The row is a SIBLING after the H1 rather than a wrapper around it. Wrapping
 would move the heading out of `.vp-doc > h1`, which the theme's rules, the page
@@ -63,11 +63,17 @@ is struck in the deprecation tone, the chip reads "Deprecated", and the reason
 from `docs.deprecated` renders as a left-edged note between the row and the
 divider.
 
-**Both chip edges are `currentColor`.** For the kind chip that is its own ink,
-whose contrast against its own fill is already pinned at 4.5:1 or better, so
-the edge clears the graphics floor by construction rather than by a separate
-tuning pass. The per-kind `-border` tints stay in the palette for the
-hover-preview chip, which still uses the badge.
+**Both chip edges are `currentColor`.** The edge is then the ink, so whatever
+clears a chip's label against its fill clears its edge against that fill too,
+and the edge needs no tuning pass of its own. Every chip's ink/fill pair is
+pinned by hex: the nine kind pairs in the palette, the three stability pairs,
+and the neutral pair a plain class or a level-less construct takes. That last
+one is why the neutral chip has an opaque `--th-chip-neutral-bg` rather than
+the translucent `--vp-c-default-soft` it could have inherited: a translucent
+fill has to be composited against the page before its contrast can be read,
+and a pair a test cannot read is a pair nothing holds. The per-kind `-border`
+tints stay in the palette for the hover-preview chip, which still uses the
+badge.
 
 **The page actions move into the row as outlined pills.** Copy Markdown and the
 favorite star teleport into two fixed mount points, `type-action-copy` then
@@ -111,8 +117,14 @@ an unscoped rule would restyle module overviews and authored pages too.
   `title` frontmatter that guards against leakage is still emitted, because
   the span itself is what VitePress would strip the tags from.
 - Two components teleport into the same row, so both resolve their mount point
-  on every content update. A page with no row keeps its old placement, which
-  means the overview pages' header is untouched by this change.
+  on every content update, and both read a `typeHeader` frontmatter flag to
+  know at server-render time whether a row is coming. The empty actions box
+  reserves the pills' height, so the row's height is final from the first
+  paint.
+- Module and submodule overviews render the same breadcrumb, so they take its
+  restyle: the collapsed join dots and the CSS chevrons. What they keep is
+  their action placements, Copy Markdown in `doc-before` and the star in
+  `breadcrumb-fav`, because they have no chip row to teleport into.
 - The stability chip is a third place stability appears on an alpha type page,
   alongside the banner and the metadata row. That repetition is accepted: the
   chip is what a scanning reader sees, and the banner is what a reader who

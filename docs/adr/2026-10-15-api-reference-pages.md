@@ -157,11 +157,12 @@ widget rather than as a position.
 Segments join on a real `.` with **no surrounding whitespace**, wrapped in a
 `breadcrumb-dot` span and collapsed to `font-size: 0`; what a reader sees
 between segments is a chevron drawn from two borders on each non-final
-segment. Neither the collapsed dot nor the chevron is part of a text
-selection, so the trail reads as a spaced hierarchy yet copies as the exact
-FQN (`aws-cdk-lib.aws_s3.Bucket`) with no JavaScript or `copy`-event
-handling. `font-size: 0` rather than `display: none`: a hidden dot would drop
-out of the selection, which is the whole property being preserved. Only the
+segment. The collapsed dot stays in a text selection and the chevron, being a
+border, is not part of one, so the trail reads as a spaced hierarchy yet
+copies as the exact FQN (`aws-cdk-lib.aws_s3.Bucket`) with no JavaScript or
+`copy`-event handling. `font-size: 0` rather than `display: none` for exactly
+that reason: a hidden dot would drop out of the selection, and the copied
+trail would lose its dots. Only the
 JOINS collapse — a dot inside one segment's own label, as a nested type
 carries (`CfnTopic.SubscriptionProperty` arrives as one segment), is part of
 the name a reader reads and stays visible. Every segment — including unlinked

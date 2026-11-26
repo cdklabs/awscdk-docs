@@ -23,7 +23,9 @@ export interface BreadcrumbSegment {
  */
 const BREADCRUMB_MAX_SEGMENTS = 4;
 
-/** A dot inside one segment's own label, plus a soft-wrap opportunity after it. Shown, because it is part of the name. */
+/**
+ * A dot inside one segment's own label, plus a soft-wrap opportunity after it. Shown, because it is part of the name.
+ */
 const DOT = '.<wbr>';
 
 /**
@@ -142,8 +144,9 @@ const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: strin
  * reader has to decide whether a missing chip means "stable" or "not shown".
  *
  * The row is one raw-HTML block, so markdown-it passes it through whole and the chips need no markdown escape; it is
- * excluded from the Pagefind index, because the kind and the stability are already search filters. A deprecated type
- * strikes its title and carries the reason as a note, matching the three signals a deprecated member already gets.
+ * excluded from the Pagefind index, because the kind is already a `kind:` search filter and the stability is stated
+ * in the indexed metadata row and, on an alpha package, in the banner. A deprecated type strikes its title and
+ * carries the reason as a note, matching the three signals a deprecated member already gets.
  *
  * The reason's whitespace is collapsed before it is escaped, like the member summaries it reads beside: a raw HTML
  * block in markdown ends at a blank line, so a reason carrying a paragraph break would otherwise split this block

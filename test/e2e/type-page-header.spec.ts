@@ -224,7 +224,7 @@ test.describe('type page header', () => {
     await page.emulateMedia({ colorScheme: 'light' });
   });
 
-  test('the server-rendered header already holds its final height', async ({ page, request }) => {
+  test('the server-rendered header already holds its final height', async ({ browser, request }) => {
     // The action pills teleport in after hydration. Docgen writes a
     // `typeHeader` frontmatter flag so neither component paints in its
     // fallback placement first, and the empty actions box carries their
@@ -235,11 +235,25 @@ test.describe('type page header', () => {
     expect(html).not.toContain('copy-markdown-main');
     expect(html).not.toContain('favorite-star-button');
 
+    // The pre-hydration box is read with JavaScript off, so the app script
+    // provably has not run: `page.goto` resolves on `load`, by which time
+    // `onMounted` may already have moved the pills, and then both readings
+    // would be post-hydration and the comparison would hold with the
+    // reserved height deleted.
+    const inert = await browser.newContext({ javaScriptEnabled: false });
+    const staticPage = await inert.newPage();
+    await staticPage.goto(QUEUE_PAGE);
+    const before = (await staticPage.locator('.type-header').boundingBox())!;
+    await inert.close();
+
+    const live = await browser.newContext();
+    const page = await live.newPage();
     await page.goto(QUEUE_PAGE);
-    const before = (await page.locator('.type-header').boundingBox())!;
     await page.locator('.copy-markdown[data-ready]').waitFor();
     await expect(page.locator('.type-header-row .favorite-star-button')).toBeVisible();
     const after = (await page.locator('.type-header').boundingBox())!;
+    await live.close();
+
     expect(after.height).toBeCloseTo(before.height, 0);
     expect(after.y).toBeCloseTo(before.y, 0);
   });

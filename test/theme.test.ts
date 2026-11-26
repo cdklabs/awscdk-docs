@@ -387,10 +387,10 @@ describe('API kind badge palette', () => {
     }
   });
 
-  test('the light inks of the three narrowest kinds are the darkened tones', () => {
-    // Struct, Enum and L1 were the narrowest light pairs in the palette. These
-    // hexes are what lifts each of them to the 7:1 the chips owe as idle text,
-    // so a retune that loosens one fails here rather than only in the audit.
+  test('the Struct, Enum and L1 light inks are pinned by hex', () => {
+    // A chip label is page text, so it owes 7:1 on its own fill; these three
+    // are the light pairs with the least room, and a retune that loosens one
+    // has to fail here rather than only in an audit.
     expect(cssVar(lightBlock, '--cdk-badge-struct-text')).toBe('#831843');
     expect(cssVar(lightBlock, '--cdk-badge-enum-text')).toBe('#7c2d12');
     expect(cssVar(lightBlock, '--cdk-badge-l1-text')).toBe('#713f12');
@@ -403,9 +403,8 @@ describe('API kind badge palette', () => {
   });
 
   test.each(KINDS)('the %s kind chip takes the fill and ink but not the border tint', (kind) => {
-    // The chip's edge is `currentColor`, which is the ink and so clears AA
-    // against the fill by construction. The tinted `--cdk-badge-*-border` the
-    // badge uses measured 1.69:1 light and 1.71:1 dark, invisible as an edge.
+    // The chip's edge is `currentColor`, so it is the ink, whose contrast
+    // against this fill the pair above already pins.
     const chip = exactRuleBody(`.type-chip-kind.api-badge-${kind}`);
     expect(chip).toContain(`background-color: var(--cdk-badge-${kind}-bg)`);
     expect(chip).toContain(`color: var(--cdk-badge-${kind}-text)`);
@@ -601,14 +600,27 @@ describe('API kind badge palette', () => {
     });
 
     test('the chevron and the neutral chip edge clear the 3:1 graphics floor', () => {
-      // Both are non-text graphics (WCAG 1.4.11), not the idle text the 7:1
-      // target covers: the chevron carries no word and the chip edge only
-      // bounds a chip whose own label is already pinned above.
+      // Both are non-text graphics (WCAG 1.4.11): neither carries a word.
       for (const [scheme, block] of [['light', headerLight], ['dark', headerDark]] as const) {
         for (const name of ['--th-chevron', '--th-chip-edge']) {
           expect(contrast(cssVar(block, name), PAGE_BG[scheme])).toBeGreaterThanOrEqual(3);
         }
       }
+    });
+
+    test('the neutral chip label clears 7:1 on its own fill in both schemes', () => {
+      // A plain class and a level-less construct take this chip, and its label
+      // is 13px bold text, so it owes what any other chip label owes. The fill
+      // is an opaque token for exactly this reason: a translucent one would
+      // have to be composited before it could be read.
+      for (const block of [headerLight, headerDark]) {
+        expect(contrast(cssVar(block, '--th-chip-neutral-text'), cssVar(block, '--th-chip-neutral-bg')))
+          .toBeGreaterThanOrEqual(7);
+      }
+      expect(headerDark).toContain('--th-chip-neutral-bg:');
+      expect(headerDark).toContain('--th-chip-neutral-text:');
+      expect(exactRuleBody(".type-chip-kind:not([class*='api-badge-'])"))
+        .toContain('background-color: var(--th-chip-neutral-bg)');
     });
 
     test('each stability chip ink clears 7:1 on its own fill in both schemes', () => {
