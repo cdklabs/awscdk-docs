@@ -211,7 +211,6 @@
     },
     {
       "name": "@jest/globals",
-      "version": "^30.5.1",
       "type": "build"
     },
     {
@@ -252,7 +251,6 @@
     },
     {
       "name": "botvisibility",
-      "version": "^3.0.0",
       "type": "build"
     },
     {
@@ -284,7 +282,6 @@
     },
     {
       "name": "htmlparser2",
-      "version": "^12.0.0",
       "type": "build"
     },
     {
@@ -303,7 +300,6 @@
     },
     {
       "name": "lighthouse",
-      "version": "^13.4.0",
       "type": "build"
     },
     {
@@ -338,7 +334,6 @@
     },
     {
       "name": "lucide-static",
-      "version": "^1.77.0",
       "type": "runtime"
     },
     {
