@@ -1,6 +1,5 @@
 import * as spec from '@jsii/spec';
-import { renderTypeHeader, renderTypeHeaderFor } from '../src/docgen/header.js';
-import { renderBreadcrumb } from '../src/docgen/header.js';
+import { renderTypeHeader, renderTypeHeaderFor, renderBreadcrumb } from '../src/docgen/header.js';
 
 describe('type page header bar', () => {
   beforeEach(() => {

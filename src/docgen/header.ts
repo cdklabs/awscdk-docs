@@ -1,9 +1,9 @@
 import * as spec from '@jsii/spec';
 import { STABILITY_ROUTE } from '../site-routes.js';
-import { typeStability } from './stability.js';
 import { escapeAttr, escapeSummaryHtml, escapeVueText } from './escape.js';
 import { pageHref } from './links.js';
 import { PAGEFIND_IGNORE, weightedTitle } from './search.js';
+import { typeStability } from './stability.js';
 
 /** One segment of the breadcrumb rendered above a type page's H1. */
 export interface BreadcrumbSegment {
@@ -162,7 +162,7 @@ export function renderTypeHeader(options: TypeHeaderOptions): string[] {
       + '<span class="type-actions"><span class="type-action-copy"></span><span class="type-action-fav"></span>'
       + '</span></div>',
     ...(deprecated && reason
-      ? [`<p class="type-deprecated-note"><span class="type-deprecated-label">Deprecated:</span> `
+      ? ['<p class="type-deprecated-note"><span class="type-deprecated-label">Deprecated:</span> '
         + `${escapeSummaryHtml(reason.replace(/\s+/g, ' '))}</p>`]
       : []),
     '</div>',
