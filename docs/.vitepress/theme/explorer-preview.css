@@ -1,9 +1,10 @@
 /*
  * Explorer preview: an opt-in view rail at the sidebar's left edge.
  *
- * Every rule here keys on `html[data-explorer-preview="on"]`, set before first paint by the bootstrap script
- * in config.mts, so with the preview off none of it applies and a reload with it on never jumps by the rail's
- * width. The rail itself (ExplorerRail.vue) is position: fixed. `.VPSidebar` carries a transform that would
+ * Every rule that changes the preview-off layout keys on `html[data-explorer-preview="on"]`, set before first
+ * paint by the bootstrap script in config.mts, so a reload with it on never jumps by the rail's width. The
+ * rail's own classes exist only while the preview is on, and the phone-menu switch row is styled in both
+ * modes. The rail itself (ExplorerRail.vue) is position: fixed. `.VPSidebar` carries a transform that would
  * make it the containing block for fixed children, so the transform is dropped while the preview is on.
  */
 

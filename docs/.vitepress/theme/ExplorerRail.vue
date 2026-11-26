@@ -5,12 +5,14 @@
 //
 // Settings opens the same panel the top-bar gear opens with the preview off. That panel is rendered here
 // while the preview is on (and in SettingsMenu.vue otherwise), so at most one copy is ever in the page.
-// SettingsMenu.vue keeps the shared open state and the outside-click rule for both copies.
+// The open state is shared (explorer-preview.ts). SettingsMenu.vue closes the panel on a click outside the
+// sidebar; the sidebar stops its clicks from reaching the document, so this component closes it on a click
+// inside the sidebar with a capture-phase listener.
 //
 // Below 960px the rail stays hidden until ExplorerViewsButton.vue unfolds it over a scrim; picking a view,
-// Escape or a tap on the scrim folds it again.
+// Escape from anywhere, a route change or a tap on the scrim folds it again.
 import { useRoute } from "vitepress";
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
 import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
 import {
@@ -67,9 +69,11 @@ function swallowEscapeRelease(): void {
   window.addEventListener("keyup", (event) => event.stopPropagation(), { capture: true, once: true });
 }
 
-function onKeydown(event: KeyboardEvent): void {
-  if (event.key !== "Escape") return;
-  if (settingsOpen.value || railOpen.value) swallowEscapeRelease();
+// Escape closes the Settings panel first and then folds the rail, wherever focus is: the Views button and
+// the tree behind the scrim must not leave the rail unfolded when VitePress closes the drawer.
+function onDocumentKeydown(event: KeyboardEvent): void {
+  if (event.key !== "Escape" || !enabled.value || !(settingsOpen.value || railOpen.value)) return;
+  swallowEscapeRelease();
   if (settingsOpen.value) {
     settingsOpen.value = false;
     settingsButton.value?.focus();
@@ -78,13 +82,36 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
+// `.VPSidebar` stops click propagation, so clicks inside it never reach SettingsMenu.vue's document listener.
+function onDocumentClickCapture(event: MouseEvent): void {
+  if (!settingsOpen.value || !enabled.value) return;
+  const path = event.composedPath() as Element[];
+  if (!path.some((el) => el.matches?.("[data-settings-trigger], .explorer-settings-panel"))) {
+    settingsOpen.value = false;
+  }
+}
+
+watch(
+  () => route.path,
+  () => {
+    railOpen.value = false;
+  },
+);
+
 onMounted(() => {
   mounted.value = true;
+  document.addEventListener("keydown", onDocumentKeydown);
+  document.addEventListener("click", onDocumentClickCapture, true);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("keydown", onDocumentKeydown);
+  document.removeEventListener("click", onDocumentClickCapture, true);
 });
 </script>
 
 <template>
-  <div v-if="enabled" class="ExplorerRailRoot" @keydown="onKeydown">
+  <div v-if="enabled" class="ExplorerRailRoot">
     <div v-if="railOpen" class="explorer-rail-scrim" @click="foldRail" />
     <nav id="explorer-rail" class="ExplorerRail" :class="{ open: railOpen }" aria-label="Sidebar views">
       <button

@@ -11,8 +11,9 @@
 // its content (ThemePicker) carries its own group semantics and state.
 //
 // With the Explorer preview on, the gear leaves the bar and the rail's Settings button
-// (ExplorerRail.vue) opens a copy of this panel there. The open state is shared, and this
-// component's outside-click rule also covers the rail's button and panel.
+// (ExplorerRail.vue) opens a copy of this panel there. The open state is shared through
+// explorer-preview.ts. This component's outside-click rule skips the rail's button and panel;
+// ExplorerRail.vue closes the panel for clicks inside the sidebar, which never reach the document.
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
 import { explorerPreview, settingsOpen as open } from "./explorer-preview";

@@ -259,6 +259,32 @@ test.describe('explorer preview on desktop', () => {
     expect(await panel.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   });
 
+  test('a click inside the sidebar closes the rail panel, and a click inside the panel does not', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    const panel = page.locator('#settings-menu-panel');
+    await expect(panel).toBeVisible();
+    await panel.getByText('Site theme').click();
+    await expect(panel).toBeVisible();
+    await page.locator('.VPSidebar .nav-filter-input').click();
+    await expect(panel).toBeHidden();
+  });
+
+  test('scrolling the sidebar leaves the rail and its panel where they are', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 400 });
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    const railBefore = await rail(page).boundingBox();
+    const panelBefore = await page.locator('#settings-menu-panel').boundingBox();
+    const scrolled = await page.locator('.VPSidebar').evaluate((el) => {
+      el.scrollTo(0, 200);
+      return el.scrollTop;
+    });
+    expect(scrolled, 'the sidebar scrolled').toBeGreaterThan(0);
+    expect((await rail(page).boundingBox())!.y).toBe(railBefore!.y);
+    expect((await page.locator('#settings-menu-panel').boundingBox())!.y).toBe(panelBefore!.y);
+  });
+
   test('each rail button is a Tab stop in order', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
     await rail(page).getByRole('button', { name: 'API' }).focus();
@@ -361,5 +387,17 @@ test.describe('explorer preview on a phone', () => {
     expect(await panel.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
     await panel.evaluate((el) => el.scrollTo(0, 0));
     await expect(panel.getByRole('group', { name: 'Site theme' })).toBeInViewport();
+  });
+  test('Escape from the drawer filter folds an unfolded rail and keeps the drawer open', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    const views = page.getByRole('button', { name: /^Views/ });
+    await views.click();
+    await expect(rail(page)).toBeVisible();
+    await page.locator('.VPSidebar .nav-filter-input').focus();
+    await page.keyboard.press('Escape');
+    await expect(rail(page)).toBeHidden();
+    await expect(views).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('.VPSidebar')).toBeInViewport();
   });
 });
