@@ -573,9 +573,9 @@ describe('API kind badge palette', () => {
 
 });
 
-// The checked segment tints its abbreviation box with the brand soft layer over
-// the elevated surface, so neither the page background nor an opaque swatch is
-// the measurement. The accessibility gate audits the default scheme only.
+// The bar's selected option paints its label in brand-1 on the elevated segment
+// fill, so that pair is measured in both schemes. The accessibility gate audits
+// the default scheme only.
 describe('selected language label contrast', () => {
   const themeCss = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
   const navCss = readFileSync(resolve(THEME_DIR, 'nav-controls.css'), 'utf-8');

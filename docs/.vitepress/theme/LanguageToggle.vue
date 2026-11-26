@@ -152,11 +152,11 @@ onMounted(initLanguageState);
   outline-offset: -2px;
 }
 
-/* The sliding "thumb": the checked segment lifts off the track. */
+/* The selected option's base fill only. nav-controls.css marks the selection:
+ * a brand underline in the bar, a brand fill in the phone menu. */
 .language-option.active {
   color: var(--vp-c-text-1);
   background-color: var(--vp-c-bg-elv);
-  box-shadow: var(--vp-shadow-1);
 }
 
 /* nav-controls.css decides when the badge paints (TypeScript's "TS", below

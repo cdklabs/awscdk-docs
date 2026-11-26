@@ -141,8 +141,8 @@ describe('navbar layout', () => {
         /v-if="lang !== activeLanguage" class="visually-hidden">\{\{\s*LANGUAGE_LABELS\[lang\]/,
       );
       expect(toggle).toMatch(/\.visually-hidden \{[^}]*clip: rect\(0 0 0 0\)/);
-      // Active language is programmatically indicated and shown as a text
-      // label, never color-only.
+      // The active language is programmatically indicated (aria-checked);
+      // its visible non-color cue is the bar's inset underline, pinned below.
       expect(toggle).toMatch(/v-if="lang === activeLanguage"[^>]*class="language-label"/);
       // Every option shows its language by name: the badges are not painted
       // in the bar or the menu, and the unchecked options' visually-hidden
