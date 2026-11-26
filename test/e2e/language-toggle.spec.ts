@@ -128,6 +128,18 @@ test.describe('language toggle', () => {
     expect(await rows.nth(0).evaluate(fill)).toBe('rgb(0, 108, 224)');
     expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
     expect(await rows.nth(1).evaluate(fill)).toBe('rgba(0, 0, 0, 0)');
+    // Arrow keys move focus and selection together, so keyboard focus sits
+    // on the filled row. Its ring is drawn in the row's text color so it
+    // stays visible against the fill.
+    const ring = (el: Element) => {
+      const s = getComputedStyle(el);
+      return `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor} ${s.outlineOffset}`;
+    };
+    await rows.nth(0).focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(rows.nth(1)).toBeFocused();
+    await expect(rows.nth(1)).toHaveAttribute('aria-checked', 'true');
+    expect(await rows.nth(1).evaluate(ring)).toBe('solid 2px rgb(255, 255, 255) -4px');
   });
 
   test('renders at the same height as the search box', async ({ page }) => {

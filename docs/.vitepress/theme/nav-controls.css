@@ -526,6 +526,13 @@
     outline: 2px solid var(--tb-focus);
     outline-offset: -4px;
   }
+
+  /* Arrow keys select as they move, so focus usually sits on the filled row,
+   * where a brand-colored ring would vanish into the fill. Draw it in the
+   * row's text color there instead. */
+  .VPNavScreen .language-toggle .language-option.active:focus-visible {
+    outline-color: var(--seg-on-fg);
+  }
 }
 
 /* Mobile nav screen: the navigation style as a full-width row under the
