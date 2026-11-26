@@ -28,6 +28,34 @@ test.describe('Copy Markdown control', () => {
     expect(aboveHeading).toBe(true);
   });
 
+  test('on a type page the control is the first action of the chip row', async ({ page }) => {
+    // Teleported on hydration, so a selector assertion alone could pass
+    // against a copy left behind in `doc-before`.
+    await open(page);
+    await expect(page.locator('.type-header-row .type-action-copy .copy-markdown')).toHaveCount(1);
+    await expect(page.locator('.copy-markdown')).toHaveCount(1);
+    await expect(page.locator('.copy-markdown')).not.toHaveClass(/standalone/);
+    // The split button keeps its two parts adjacent, main part first.
+    const main = (await page.locator('.copy-markdown-main').boundingBox())!;
+    const options = (await page.locator('.copy-markdown-options').boundingBox())!;
+    expect(options.x).toBeGreaterThan(main.x);
+    expect(Math.abs(options.y - main.y)).toBeLessThanOrEqual(1);
+  });
+
+  test('an API page with no chip row keeps the control above the content', async ({ page }) => {
+    await open(page, SQS_OVERVIEW_PAGE);
+    await expect(page.locator('.type-header-row')).toHaveCount(0);
+    await expect(page.locator('.copy-markdown')).toHaveClass(/standalone/);
+  });
+
+  test('a client-side navigation between type pages re-finds the row', async ({ page }) => {
+    await open(page);
+    await page.locator('.vp-doc a[href$="aws-cdk-lib.aws_sqs.Queue.html"]').first().click();
+    await expect(page.locator('.vp-doc h1')).toHaveText('Queue');
+    await expect(page.locator('.type-header-row .type-action-copy .copy-markdown')).toHaveCount(1);
+    await expect(page.locator('.copy-markdown')).toHaveCount(1);
+  });
+
   test('copies the page Markdown and shows Copied, then restores the label', async ({ page, request }) => {
     await open(page);
     const expected = await (await request.get(twin)).text();

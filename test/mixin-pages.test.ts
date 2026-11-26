@@ -304,7 +304,7 @@ describe('mixin page generation', () => {
     expect(page).toMatch(/^# <span data-pagefind-weight="10">IMixin<\/span> \{#/m);
     expect(page).toContain('<span class="type-chip type-chip-kind api-badge-mixin">Mixin</span>');
     // The breadcrumb carries what a metadata table would
-    expect(page).toContain('<a href="/v2/docs/constructs-readme.html">constructs</a>.<wbr><strong>IMixin</strong>');
+    expect(page).toContain('<a href="/v2/docs/constructs-readme.html">constructs</a><span class="breadcrumb-dot">.</span><wbr><strong>IMixin</strong>');
     expect(page).not.toContain('| **Module** |');
     expect(page).not.toContain('| **FQN** |');
     expect(page).toContain('## Methods');

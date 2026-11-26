@@ -50,7 +50,10 @@ about a type, and it costs nothing next to the banner.
 ## Consequences
 
 - Alpha type pages are visibly experimental at a glance, including when
-  entered from a deep link. Stable pages and all overview pages are unchanged.
+  entered from a deep link. Overview pages are unchanged.
+- Every type page states its stability, stable ones included, so the absence
+  of a chip no longer has to carry a meaning. Alpha type pages say it twice,
+  once as a chip and once as the banner.
 - One more block above the fold on every alpha type page. The banner is short
   and the theme's container styling keeps it compact.
 - Any future stability level that needs its own above-title treatment adds a

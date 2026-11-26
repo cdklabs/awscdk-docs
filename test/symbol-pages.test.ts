@@ -506,7 +506,7 @@ describe('symbol page generation', () => {
     // `api-badge-*` class and keeps the neutral fill.
     expect(page).toContain('<span class="type-chip type-chip-kind">Class</span>');
     // Module-root type: breadcrumb links the module page only
-    expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><strong>Duration</strong>');
+    expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><strong>Duration</strong>');
     expect(page).toContain('## Methods');
     expect(page).toContain('<div class="member-row" id="toseconds" data-params="opts?">');
   });
@@ -524,7 +524,7 @@ describe('symbol page generation', () => {
     expect(page).toContain('<span class="type-chip type-chip-kind api-badge-struct">Struct</span>');
     // No metadata table: the breadcrumb carries Module/FQN and the chip row
     // carries the Kind.
-    expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>BucketProps</strong>');
+    expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a><span class="breadcrumb-dot">.</span><wbr><strong>BucketProps</strong>');
     expect(page).not.toContain('| **Kind** |');
     expect(page).toContain('<div class="props-table member-list" v-pre>');
     expect(page).not.toContain('<div class="props-table member-list" v-pre data-pagefind-ignore>');
@@ -546,6 +546,19 @@ describe('symbol page generation', () => {
     expect(page).toContain('| <span id="kms"></span>`KMS` |');
     expect(page).toContain('## Referenced by');
     expect(page).toContain('- [`BucketProps`](/v2/docs/aws-cdk-lib.aws_s3.BucketProps).encryption');
+  });
+
+  test('a deprecated type chips Deprecated, strikes its title and states the reason', () => {
+    // Deprecated MEMBERS already carried all three signals; the type itself
+    // carried none, so a page whose whole subject is superseded read as
+    // current. `Statistic` is `stability: deprecated` in jsii with a reason.
+    const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_cloudwatch.Statistic.md'), 'utf-8');
+    expect(page).toContain(
+      '# <span class="type-title-deprecated"><span data-pagefind-weight="10">Statistic</span></span>',
+    );
+    expect(page).toContain('<span class="type-chip type-chip-stability type-chip-deprecated">Deprecated</span>');
+    expect(page).toContain('<p class="type-deprecated-note"><strong>Deprecated:</strong> Use one of the factory');
+    expect(page).not.toContain('type-chip-stable');
   });
 
   test('deprecated enum members carry the deprecated name style, badge and reason', () => {

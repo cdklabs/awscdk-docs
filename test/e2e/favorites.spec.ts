@@ -38,20 +38,22 @@ test.describe('favorite pages', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(TOPIC_PAGE);
 
-    const inBarButton = page.locator('.type-breadcrumb .favorite-star-button');
-    const inBarIcon = inBarButton.locator('.favorite-star-icon');
-    await expect(inBarIcon).toHaveCSS('font-size', '20px');
-    await expect(inBarIcon).toHaveText('☆');
+    const inRowButton = page.locator('.type-header-row .favorite-star-button');
+    const inRowIcon = inRowButton.locator('.favorite-star-icon');
+    await expect(inRowIcon).toHaveCSS('font-size', '20px');
+    await expect(inRowIcon).toHaveText('☆');
 
+    // On a type page the star sits in the chip row, which is below the trail
+    // rather than at its trailing edge.
     const trailBox = await page.locator('.breadcrumb-trail').boundingBox();
-    const buttonBox = await inBarButton.boundingBox();
+    const buttonBox = await inRowButton.boundingBox();
     expect(trailBox).not.toBeNull();
     expect(buttonBox).not.toBeNull();
-    expect(buttonBox!.x).toBeGreaterThanOrEqual(trailBox!.x + trailBox!.width);
+    expect(buttonBox!.y).toBeGreaterThanOrEqual(trailBox!.y + trailBox!.height);
 
-    await inBarButton.click();
-    await expect(inBarIcon).toHaveText('★');
-    await expect(inBarIcon).toHaveCSS('font-size', '20px');
+    await inRowButton.click();
+    await expect(inRowIcon).toHaveText('★');
+    await expect(inRowIcon).toHaveCSS('font-size', '20px');
 
     await page.goto('/v2/');
     const standaloneButton = page.locator('.favorite-star.standalone .favorite-star-button');
@@ -100,26 +102,66 @@ test.describe('favorite pages', () => {
       };
     });
 
-  test('the star renders at one size in both placements', async ({ page }) => {
+  test('the star renders the same glyph, square and centered, in every placement', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
 
+    // The chip row styles the star as a pill, so its BOX is deliberately
+    // larger there than in the compact placements. The glyph is not: one
+    // typeface, one ink height, centered in whatever box it gets.
     await page.goto(TOPIC_PAGE);
+    const inRow = await starMetrics(page);
+
+    await page.goto(SQS_OVERVIEW_PAGE);
     const inBar = await starMetrics(page);
 
     await page.goto('/v2/');
     const standalone = await starMetrics(page);
 
-    expect(inBar.fontFamily).toBe(standalone.fontFamily);
-    expect(inBar.inkHeight).toBeCloseTo(standalone.inkHeight, 1);
+    for (const metrics of [inRow, inBar]) {
+      expect(metrics.fontFamily).toBe(standalone.fontFamily);
+      expect(metrics.inkHeight).toBeCloseTo(standalone.inkHeight, 1);
+    }
+    // The two compact placements are one size as before.
     expect(inBar.width).toBeCloseTo(standalone.width, 1);
     expect(inBar.height).toBeCloseTo(standalone.height, 1);
+    // ...and the pill is taller, which is the point of the row treatment.
+    expect(inRow.height).toBeGreaterThan(inBar.height);
 
-    for (const metrics of [inBar, standalone]) {
+    for (const metrics of [inRow, inBar, standalone]) {
       expect(metrics.width).toBeGreaterThanOrEqual(24);
       expect(metrics.height).toBeGreaterThanOrEqual(24);
       expect(metrics.width).toBeCloseTo(metrics.height, 1);
       expect(Math.abs(metrics.inkOffset)).toBeLessThanOrEqual(0.5);
     }
+  });
+
+  test('on a type page the star is the last control of the chip row, not a second one', async ({ page }) => {
+    // Teleported, so SSR puts it in `doc-before` and only hydration moves it:
+    // a selector assertion alone would pass against a duplicate left behind.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(TOPIC_PAGE);
+    await expect(page.locator('.type-header-row .type-action-fav .favorite-star')).toHaveCount(1);
+    await expect(page.locator('.favorite-star-button')).toHaveCount(1);
+    await expect(page.locator('.favorite-star.standalone')).toHaveCount(0);
+    // And it still toggles from there, across a reload.
+    const star = page.locator('.type-header-row .favorite-star-button');
+    await star.click();
+    await expect(star).toHaveAttribute('aria-pressed', 'true');
+    await page.reload();
+    await expect(page.locator('.type-header-row .favorite-star-button'))
+      .toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('a client-side navigation between type pages re-finds the row', async ({ page }) => {
+    // The mount point is resolved per content update; without that, SPA
+    // navigation would leave the star teleported to the previous page's row.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(TOPIC_PAGE);
+    await expect(page.locator('.type-header-row .favorite-star-button')).toHaveCount(1);
+    await page.locator('.vp-doc a[href$="aws-cdk-lib.aws_sqs.Queue.html"]').first().click();
+    await expect(page.locator('.vp-doc h1')).toHaveText('Queue');
+    await expect(page.locator('.type-header-row .favorite-star-button')).toHaveCount(1);
+    await expect(page.locator('.favorite-star-button')).toHaveCount(1);
   });
 
   test('the star keeps a 44px target on a narrow viewport', async ({
@@ -137,7 +179,9 @@ test.describe('favorite pages', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto(TOPIC_PAGE);
+    // An overview page is where the star still shares the breadcrumb bar; a
+    // type page moved it to the chip row below.
+    await page.goto(SQS_OVERVIEW_PAGE);
 
     const measured = await page.evaluate(() => {
       const bar = document.querySelector('.type-breadcrumb') as HTMLElement;

@@ -23,8 +23,14 @@ export interface BreadcrumbSegment {
  */
 const BREADCRUMB_MAX_SEGMENTS = 4;
 
-/** The FQN separator plus a soft-wrap opportunity right after it. */
+/** A dot inside one segment's own label, plus a soft-wrap opportunity after it. Shown, because it is part of the name. */
 const DOT = '.<wbr>';
+
+/**
+ * The separator BETWEEN segments: a real `.` so a selection copies the FQN, wrapped so CSS can collapse it to no
+ * size and paint a chevron in its place, plus the same wrap opportunity after it.
+ */
+const JOIN = '<span class="breadcrumb-dot">.</span><wbr>';
 
 /**
  * Breadcrumb-style module hierarchy rendered above the symbol H1:
@@ -33,7 +39,8 @@ const DOT = '.<wbr>';
  * Excluded from the Pagefind index.
  *
  * Segments join on a real `.` with no surrounding whitespace, so selecting the trail copies the type's FQN
- * verbatim; the visual spacing around each dot comes from segment padding, which selection does not see.
+ * verbatim; what a reader sees between segments is a chevron drawn in CSS, which selection does not see. Only the
+ * joins are collapsed that way — a dot inside a segment's own label, as a nested type carries, stays visible.
  *
  * Every dot is followed by a `<wbr>`, so a trail too wide for its line wraps after a dot rather than at the
  * hyphens inside `aws-cdk-lib`, which are otherwise its only natural break points. `<wbr>` is an empty element:
@@ -52,7 +59,7 @@ export function renderBreadcrumb(segments: readonly BreadcrumbSegment[]): string
   return [
     `<nav class="type-breadcrumb" aria-label="Module hierarchy" ${PAGEFIND_IGNORE}>`,
     '',
-    `<span class="breadcrumb-trail">${crumbParts(segments).join(DOT)}</span>`,
+    `<span class="breadcrumb-trail">${crumbParts(segments).join(JOIN)}</span>`,
     '',
     '<span class="breadcrumb-fav"></span>',
     '',

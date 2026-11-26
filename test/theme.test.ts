@@ -636,18 +636,23 @@ describe('API kind badge palette', () => {
       expect(bar).not.toContain('background-color');
     });
 
-    test('the dots are real text at no size, so a copy still gives the FQN', () => {
+    test('the join dots are real text at no size, so a copy still gives the FQN', () => {
       // `display: none` would drop them from the selection, which is the whole
-      // reason the separator a reader sees is drawn rather than written.
-      expect(ruleBody('.breadcrumb-trail')).toContain('font-size: 0');
+      // reason the separator a reader sees is drawn rather than written. Only
+      // the joins collapse: a dot inside one segment's label is part of a
+      // nested type's name and has to stay visible.
+      expect(exactRuleBody('.breadcrumb-dot')).toContain('font-size: 0');
+      expect(bare).not.toMatch(/\.breadcrumb-trail\s*\{[^}]*font-size:\s*0/);
       const chevron = exactRuleBody(
         '.type-breadcrumb a::after',
         '.breadcrumb-segment::after',
-        '.breadcrumb-ellipsis::before',
+        '.breadcrumb-ellipsis::after',
       );
       expect(chevron).toContain("content: ''");
       expect(chevron).toContain('transform: rotate(45deg)');
       expect(chevron).toContain('var(--th-chevron)');
+      // Nothing follows the current page, so the trail's last segment gets none.
+      expect(exactRuleBody('.breadcrumb-trail > :last-child::after')).toContain('content: none');
     });
 
     test('the title is the large bold name and the badge override stays for the Added in badge', () => {

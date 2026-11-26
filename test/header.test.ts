@@ -30,7 +30,7 @@ describe('type page header bar', () => {
       { label: 'Bucket' },
     ]).join('\n');
     expect(block).toContain(
-      '<a href="/api/modules/ts/aws-cdk-lib/">aws-cdk-lib</a>.<wbr><a href="/api/modules/ts/aws-cdk-lib/aws-s3.html">aws_s3</a>.<wbr><strong>Bucket</strong>',
+      '<a href="/api/modules/ts/aws-cdk-lib/">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/api/modules/ts/aws-cdk-lib/aws-s3.html">aws_s3</a><span class="breadcrumb-dot">.</span><wbr><strong>Bucket</strong>',
     );
     // Excluded from the search index, like the table it replaces
     expect(block).toMatch(/<nav class="type-breadcrumb"[^>]*data-pagefind-ignore>/);
@@ -61,7 +61,7 @@ describe('type page header bar', () => {
       { label: 'IBucketRef' },
     ]).join('\n');
     expect(block).toContain(
-      '<a href="/api/modules/ts/aws-cdk-lib/">aws-cdk-lib</a>.<wbr><span class="breadcrumb-segment">interfaces</span>.<wbr><a href="/api/modules/ts/aws-cdk-lib/interfaces-aws-s3.html">aws_s3</a>.<wbr><strong>IBucketRef</strong>',
+      '<a href="/api/modules/ts/aws-cdk-lib/">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><span class="breadcrumb-segment">interfaces</span><span class="breadcrumb-dot">.</span><wbr><a href="/api/modules/ts/aws-cdk-lib/interfaces-aws-s3.html">aws_s3</a><span class="breadcrumb-dot">.</span><wbr><strong>IBucketRef</strong>',
     );
     expect(block).not.toContain('<strong>interfaces</strong>');
   });
@@ -81,7 +81,7 @@ describe('type page header bar', () => {
       .replace(/<span class="breadcrumb-segment">[^<]*<\/span>/g, '')
       .replace(/<a [^>]*>[^<]*<\/a>/g, '')
       .replace(/<strong>[^<]*<\/strong>/g, '');
-    expect(separators).toBe('.<wbr>.<wbr>');
+    expect(separators).toBe('<span class="breadcrumb-dot">.</span><wbr><span class="breadcrumb-dot">.</span><wbr>');
   });
 
   test('collapsed labels stay in the output, so the trail still copies as the whole FQN', () => {
@@ -138,7 +138,7 @@ describe('type page header bar', () => {
       { label: 'Type' },
     ]).join('\n');
     expect(block).toContain('breadcrumb-ellipsis');
-    expect(block).toContain('.<wbr><a href="/pkg/sub/leaf.html">leaf</a>.<wbr><strong>Type</strong>');
+    expect(block).toContain('<span class="breadcrumb-dot">.</span><wbr><a href="/pkg/sub/leaf.html">leaf</a><span class="breadcrumb-dot">.</span><wbr><strong>Type</strong>');
     // The unlinked middle segment is hidden by the collapse, and its
     // label still appears in the ellipsis hover text.
     expect(block).toContain('title="mid-a.grouping"');
@@ -171,7 +171,7 @@ describe('type page header bar', () => {
     // First two (package + submodule) and the segment directly above the
     // current type stay visible; the middle collapses to an ellipsis.
     expect(block).toContain(
-      '<a href="/pkg/">pkg</a>.<wbr><a href="/pkg/sub.html">sub</a>.<wbr><span class="breadcrumb-ellipsis" title="deep-a.deep-b">deep-a.deep-b</span>.<wbr><a href="/pkg/sub/Parent.html">Parent</a>.<wbr><strong>Type</strong>',
+      '<a href="/pkg/">pkg</a><span class="breadcrumb-dot">.</span><wbr><a href="/pkg/sub.html">sub</a><span class="breadcrumb-dot">.</span><wbr><span class="breadcrumb-ellipsis" title="deep-a.deep-b">deep-a.deep-b</span><span class="breadcrumb-dot">.</span><wbr><a href="/pkg/sub/Parent.html">Parent</a><span class="breadcrumb-dot">.</span><wbr><strong>Type</strong>',
     );
     expect(block).not.toContain('>deep-a</a>');
     expect(block).not.toContain('>deep-b</a>');
@@ -186,10 +186,14 @@ describe('type page header bar', () => {
     ]).join('\n');
     const trail = block.match(/<span class="breadcrumb-trail">(.*)<\/span>/)![1];
     expect(trail).toBe(
-      '<a href="/aws-cdk-lib.html">aws-cdk-lib</a>.<wbr><a href="/aws-cdk-lib.aws_sns.html">aws_sns</a>.<wbr><strong>CfnTopic.<wbr>SubscriptionProperty</strong>',
+      '<a href="/aws-cdk-lib.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/aws-cdk-lib.aws_sns.html">aws_sns</a><span class="breadcrumb-dot">.</span><wbr><strong>CfnTopic.<wbr>SubscriptionProperty</strong>',
     );
     // Two joins plus the nested type's own dot; the link targets' dots are not text and get none.
     expect(trail.match(/<wbr>/g)!.length).toBe(3);
+    // Only the JOINS are wrapped for collapsing. The nested type's own dot is
+    // part of the name a reader reads, so it stays a bare, visible character.
+    expect(trail.match(/breadcrumb-dot/g)!.length).toBe(2);
+    expect(trail).toContain('<strong>CfnTopic.<wbr>SubscriptionProperty</strong>');
   });
 });
 

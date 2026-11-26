@@ -787,7 +787,7 @@ describe('docgen generation', () => {
     // README-backed submodule overview: package linked, submodule plain,
     // and the trail sits OUTSIDE the v-pre container so its links render.
     const s3Page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
-    const trail = '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><strong>aws_s3</strong>';
+    const trail = '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><strong>aws_s3</strong>';
     expect(s3Page).toContain(trail);
     expect(s3Page).not.toContain('AWS CDK API');
     expect(s3Page.indexOf(trail)).toBeLessThan(s3Page.indexOf('<div v-pre>'));
@@ -799,7 +799,8 @@ describe('docgen generation', () => {
       'utf-8',
     );
     expect(bare).toContain(
-      '.<wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront-readme.html">aws_cloudfront</a>.<wbr><strong>experimental</strong>',
+      '<span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront-readme.html">aws_cloudfront</a>'
+        + '<span class="breadcrumb-dot">.</span><wbr><strong>experimental</strong>',
     );
     expect(bare).not.toContain('AWS CDK API');
   });
@@ -813,7 +814,7 @@ describe('docgen generation', () => {
       'utf-8',
     );
     expect(typePage).toContain(
-      '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront-readme.html">aws_cloudfront</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront.experimental-readme.html">experimental</a>.<wbr><strong>EdgeFunction</strong>',
+      '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront-readme.html">aws_cloudfront</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront.experimental-readme.html">experimental</a><span class="breadcrumb-dot">.</span><wbr><strong>EdgeFunction</strong>',
     );
     // The single-crumb form appears nowhere.
     expect(typePage).not.toContain('aws_cloudfront.experimental]');
@@ -822,7 +823,7 @@ describe('docgen generation', () => {
     // A plain submodule has no dot, so its trail is untouched.
     const plain = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(plain).toContain(
-      '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>Bucket</strong>',
+      '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a><span class="breadcrumb-dot">.</span><wbr><strong>Bucket</strong>',
     );
 
     // Slugs and links are display-independent: the page filename and the
@@ -1114,6 +1115,26 @@ describe('docgen generation', () => {
     ]) {
       expect(readFileSync(join(outDir, 'docs', file), 'utf-8')).not.toContain('::: warning Experimental');
     }
+  });
+
+  test('every type page states its stability as a chip, stable ones included', () => {
+    // The banner is per-PACKAGE and says nothing on a stable one, so before
+    // the chip row a reader could not tell "stable" from "not shown".
+    const chip = (file: string): string => {
+      const page = readFileSync(join(outDir, 'docs', file), 'utf-8');
+      return page.match(/class="type-chip type-chip-stability type-chip-(\w+)"/)![1];
+    };
+    expect(chip('aws-cdk-lib.aws_s3.Bucket.md')).toBe('stable');
+    expect(chip('@aws-cdk_aws-lambda-python-alpha.PythonFunction.md')).toBe('experimental');
+    // The experimental chip is the only one that links, to the level's own page.
+    const alphaType = readFileSync(
+      join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha.PythonFunction.md'),
+      'utf-8',
+    );
+    expect(alphaType).toContain('<a class="type-chip type-chip-stability type-chip-experimental" href="/stability');
+    // A type marked experimental inside the stable library gets the chip even
+    // though its package-level banner does not fire.
+    expect(chip('aws-cdk-lib.interfaces.aws_s3.IBucketRef.md')).toBe('experimental');
   });
 
   test('type pages mark experimental types in the metadata block and stable ones not at all', () => {

@@ -34,8 +34,14 @@ const PAGE = [
   '',
   '</nav>',
   '',
-  '# <span data-pagefind-weight="10">Bucket</span> <Badge type="tip" class="api-badge api-badge-l2" text="L2" />' +
-    ' <Badge type="tip" class="api-badge" text="Added in v2.200.0" />',
+  '# <span data-pagefind-weight="10">Bucket</span> <Badge type="tip" class="api-badge" text="Added in v2.200.0" />',
+  '',
+  '<div class="type-header">',
+  '<div class="type-header-row" data-pagefind-ignore><span class="type-chip type-chip-kind api-badge-l2">L2'
+    + ' construct</span><span class="type-chip type-chip-stability type-chip-stable">Stable</span>'
+    + '<span class="type-header-gap"></span><span class="type-actions"><span class="type-action-copy"></span>'
+    + '<span class="type-action-fav"></span></span></div>',
+  '</div>',
   '',
   'An S3 bucket with helpers.',
   '',
@@ -96,6 +102,13 @@ describe('toAgentMarkdown', () => {
     expect(markdown).not.toContain('data-pagefind');
     expect(markdown).not.toContain('<div');
     expect(markdown).not.toContain('<span');
+  });
+
+  test('the kind and the stability survive as a line of their own under the title', () => {
+    // The twin has no chips, so the row's words are what carries the
+    // classification an agent would otherwise have to guess from the FQN. The
+    // row's other children are empty action mounts and contribute nothing.
+    expect(markdown).toContain('# Bucket\n\nL2 construct · Stable\n');
   });
 
   test('keeps every language variant, each block after a label line naming its language', () => {

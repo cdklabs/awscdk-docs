@@ -549,7 +549,7 @@ describe('construct page generation', () => {
     expect(example).toBeGreaterThan(metadata);
     expect(page).toMatch(/<td class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener noreferrer"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/td>/);
     // Breadcrumb module hierarchy above the H1
-    expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>Bucket</strong>');
+    expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a><span class="breadcrumb-dot">.</span><wbr><strong>Bucket</strong>');
     // The link text carries no full file path, which would be noise
     expect(page).not.toContain('[aws-s3/lib/bucket.ts');
     expect(page).toContain('## Example');

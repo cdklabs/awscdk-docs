@@ -50,6 +50,34 @@ function rulesInMediaBlock(source: string, query: string): Map<string, string> {
   return rules;
 }
 
+describe('type page header below the tablet breakpoint', () => {
+  const css = readFileSync(resolve(THEME_DIR, 'responsive.css'), 'utf-8');
+  // The stylesheet carries several 767px blocks, so the header's own is found
+  // from its section heading rather than by taking the first match.
+  const tabletRules = rulesInMediaBlock(
+    css.slice(css.indexOf('Type page header below the tablet breakpoint')),
+    '@media (max-width: 767px)',
+  );
+
+  test('the title steps down from its desktop size', () => {
+    expect(tabletRules.get('.vp-doc h1')).toContain('font-size: 32px');
+    expect(tabletRules.get('.vp-doc h1')).toContain('line-height: 1.1');
+  });
+
+  test('the spacer takes the full row, so chips keep one line and the actions take the next', () => {
+    // The wrap is forced by the spacer growing to the row width rather than by
+    // a width query on the groups, which would have to guess the chip count.
+    expect(tabletRules.get('.type-header-gap')).toContain('flex-basis: 100%');
+  });
+
+  test('a breadcrumb link becomes a flex box, so a min-height can bind at all', () => {
+    // An inline anchor's height is its line box, which padding alone does not
+    // grow, so the 44px rule in the 959px block would otherwise do nothing.
+    const mobileRules = rulesInMediaBlock(css, '@media (max-width: 959px)');
+    expect(mobileRules.get('.type-breadcrumb a')).toContain('display: inline-flex');
+  });
+});
+
 describe('responsive mobile layout', () => {
   const cssPath = resolve(THEME_DIR, 'responsive.css');
   const css = readFileSync(cssPath, 'utf-8');
@@ -134,6 +162,10 @@ describe('responsive mobile layout', () => {
       ['.copy-markdown-main', 'Copy Markdown button', ['min-height', 'min-width']],
       ['.copy-markdown-options', 'Markdown options button', ['min-height', 'min-width']],
       ['.copy-markdown-item', 'Markdown menu row', ['min-height']],
+      // Height only: the chevron after each crumb already carries the
+      // horizontal room, and a 44px min-width would stretch a short segment
+      // into a ragged trail.
+      ['.type-breadcrumb a', 'breadcrumb links', ['min-height']],
     ];
 
     // These two guards pin the parse: the block is brace-bounded, and every
@@ -163,6 +195,7 @@ describe('responsive mobile layout', () => {
         '.VPSidebar .api-sidebar-group',
         '.VPSidebar .api-sidebar-link',
         '.copy-markdown-item',
+        '.type-breadcrumb a',
       ]);
     });
 

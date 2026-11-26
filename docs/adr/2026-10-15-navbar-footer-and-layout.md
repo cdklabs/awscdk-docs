@@ -36,7 +36,12 @@ our custom layer:
   padding below 768px; generated initializer signatures wrap rather than scroll);
 - heading/badge wrapping so title badges never widen the page;
 - WCAG 2.5.5 touch targets (>= 44x44px) for the hamburger, TOC dropdown button,
-  sidebar drawer rows, and the breadcrumb favorite star, below 960px;
+  sidebar drawer rows, the favorite star, the Copy Markdown split button and
+  the type page's breadcrumb links, below 960px. The breadcrumb links and the
+  sidebar drawer rows take the height alone: a 44px min-width would stretch a
+  short crumb into a ragged trail, and the drawer rows already span the
+  drawer. A breadcrumb link also becomes `inline-flex` there, because an
+  inline anchor's height is its line box and a min-height would not bind;
 - a full-width Pagefind dialog below 768px with a 16px input font size to stop
   iOS Safari zoom-on-focus.
 

@@ -1,102 +1,182 @@
 import { expect, test } from '@playwright/test';
 import { CFN_QUEUE_PAGE, QUEUE_GRANTS_PAGE, QUEUE_PAGE } from './fixture.js';
 
-// Kind badge presentation on type page headers, and the source link's
-// affordance in the type-metadata block. Both are only observable in a
-// browser: a stylesheet assertion passes against rules that never reach
-// the element.
+/** Computed foreground and background, as one comparable string. */
+const PAINT = (el: Element) => {
+  const style = getComputedStyle(el);
+  return `${style.color}|${style.backgroundColor}`;
+};
+
+// Type page header presentation: the kind and stability chips, the page action
+// pills, and the source link's affordance in the type-metadata block. All of
+// it is only observable in a browser — a stylesheet assertion passes against
+// rules that never reach the element, and the pills are teleported into the
+// row by two components, which no unit test loads.
 //
 // Coverage limit: the fixture builds aws-sns + aws-sqs, so there is no L3
-// pattern construct here. L3 is pinned at the docgen layer in
-// `test/construct-pages.test.ts` and for contrast in `test/theme.test.ts`.
-test.describe('API kind badge', () => {
-  test('the kind badge sits on the H1 text baseline row', async ({ page }) => {
-    // The badge sits alone on the row, so the `api-layout.css` override is
-    // measured against the TITLE TEXT. Without it, VitePress's stock
-    // `vertical-align: top` plus `translateY(-2px)` lifts the badge off the
-    // line the name sits on.
+// pattern construct and no deprecated type here. L3 is pinned at the docgen
+// layer in `test/construct-pages.test.ts` and for contrast in
+// `test/theme.test.ts`; the deprecated title, chip and note are pinned in
+// `test/header.test.ts` and `test/symbol-pages.test.ts`.
+test.describe('type page header', () => {
+  test('the kind and the stability are chips of the row under the title, not of the title', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
-    const badge = page.locator('h1 .VPBadge');
-    const name = page.locator('h1 span[data-pagefind-weight]');
-    await expect(badge).toBeVisible();
-    await expect(name).toBeVisible();
-    // The chip is gone from the title row entirely.
+    const title = page.locator('h1');
+    await expect(title).toHaveText('Queue');
+    // Nothing is left in the H1 to lift off its own baseline.
+    await expect(page.locator('h1 .VPBadge')).toHaveCount(0);
     await expect(page.locator('h1 .header-tag')).toHaveCount(0);
 
-    // A fixed pixel threshold is the wrong instrument here: the badge box is
-    // ~20px against an ~38px H1 line box, and `vertical-align: middle` aligns
-    // the badge's middle with the parent's x-height middle rather than with the
-    // center of the line box, so a CORRECTLY aligned badge still sits a few px
-    // off center (measured: 3.25px). Asserting <= 2px failed on correct CSS,
-    // and relaxing the number until it passed would have pinned nothing.
-    //
-    // So measure the override DIFFERENTIALLY: read the offset as shipped, then
-    // put VitePress's stock declarations back inline and read it again. The
-    // claim being tested is that the override improves the alignment, and this
-    // is the only form of it that cannot be satisfied by the override's absence.
-    const offsets = await badge.evaluate((el, nameSel) => {
-      const nameEl = document.querySelector(nameSel)!;
-      const delta = () => {
-        const b = el.getBoundingClientRect();
-        const n = nameEl.getBoundingClientRect();
-        return Math.abs((b.top + b.height / 2) - (n.top + n.height / 2));
-      };
-      const shipped = delta();
-      // VitePress's own `.vp-doc h1 > .VPBadge` treatment, which the override
-      // in api-layout.css exists to replace.
-      const style = (el as HTMLElement).style;
-      style.verticalAlign = 'top';
-      style.transform = 'translateY(-2px)';
-      const stock = delta();
-      style.verticalAlign = '';
-      style.transform = '';
-      return { shipped, stock, restored: delta() };
-    }, 'h1 span[data-pagefind-weight]');
+    const kind = page.locator('.type-header-row .type-chip-kind');
+    const stability = page.locator('.type-header-row .type-chip-stability');
+    await expect(kind).toHaveText('L2 construct');
+    await expect(stability).toHaveText('Stable');
 
-    // Removing the override moves the badge measurably further off the row.
-    // Measured on this fixture: 3.25px as shipped against 5.5px stock, and
-    // deleting the override's three declarations makes `shipped` read 5.5 too,
-    // which fails this line (verified by mutation, not assumed).
-    expect(offsets.stock).toBeGreaterThan(offsets.shipped + 1.5);
-    // And the shipped offset is a fraction of the line box, not a stagger.
-    const nameBox = await name.boundingBox();
-    expect(offsets.shipped).toBeLessThan(nameBox!.height / 4);
-    // The inline mutation was undone, so the two readings are comparable.
-    expect(offsets.restored).toBeCloseTo(offsets.shipped, 1);
+    // The row sits below the title, and the two chips share its first line.
+    const titleBox = (await title.boundingBox())!;
+    const kindBox = (await kind.boundingBox())!;
+    const stabilityBox = (await stability.boundingBox())!;
+    expect(kindBox.y).toBeGreaterThan(titleBox.y + titleBox.height - 1);
+    expect(Math.abs(kindBox.y - stabilityBox.y)).toBeLessThanOrEqual(1);
+    expect(stabilityBox.x).toBeGreaterThan(kindBox.x);
   });
 
-  test('an L1 badge and an L2 badge are different colors', async ({ page }) => {
+  test('a chip edge is its own ink, so it is visible rather than a pale tint', async ({ page }) => {
+    // The badge this replaces carried `--cdk-badge-*-border`, which measured
+    // 1.69:1 against the chip fill. `currentColor` makes the edge the ink,
+    // whose contrast against that fill is already pinned by the unit suite.
+    await page.goto(QUEUE_PAGE);
+    const measured = await page.locator('.type-header-row .type-chip-kind').evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { color: style.color, border: style.borderTopColor, width: style.borderTopWidth };
+    });
+    expect(measured.border).toBe(measured.color);
+    expect(parseFloat(measured.width)).toBeGreaterThanOrEqual(1);
+  });
+
+  test('an L1 chip and an L2 chip are different colors', async ({ page }) => {
     const colors: string[] = [];
     for (const url of [CFN_QUEUE_PAGE, QUEUE_PAGE]) {
       await page.goto(url);
-      const badge = page.locator('h1 .VPBadge');
-      await expect(badge).toBeVisible();
-      colors.push(await badge.evaluate((el) => {
-        const style = getComputedStyle(el);
-        return `${style.color}|${style.backgroundColor}`;
-      }));
+      const chip = page.locator('.type-header-row .type-chip-kind');
+      await expect(chip).toBeVisible();
+      colors.push(await chip.evaluate(PAINT));
     }
     expect(colors[0]).not.toBe(colors[1]);
   });
 
-  test('a Facade page badges itself Facade, in its own color', async ({ page }) => {
+  test('a Facade page chips itself Facade, in its own color', async ({ page }) => {
     // `buildFacadeIndex` classifies Facades and the module type list and sidebar
-    // label them, so the page header badges `Facade` rather than a plain
-    // `Class`.
+    // label them, so the page header chips `Facade` rather than a plain `Class`.
     await page.goto(QUEUE_GRANTS_PAGE);
-    const badge = page.locator('h1 .VPBadge');
-    await expect(badge).toHaveText('Facade');
-    const facade = await badge.evaluate((el) => {
-      const style = getComputedStyle(el);
-      return `${style.color}|${style.backgroundColor}`;
-    });
+    const chip = page.locator('.type-header-row .type-chip-kind');
+    await expect(chip).toHaveText('Facade');
+    const facade = await chip.evaluate(PAINT);
 
     await page.goto(QUEUE_PAGE);
-    const level = await page.locator('h1 .VPBadge').evaluate((el) => {
-      const style = getComputedStyle(el);
-      return `${style.color}|${style.backgroundColor}`;
-    });
+    const level = await page.locator('.type-header-row .type-chip-kind').evaluate(PAINT);
     expect(facade).not.toBe(level);
+  });
+
+  test('the page actions are outlined pills at the trailing edge of the row', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    await page.locator('.copy-markdown[data-ready]').waitFor();
+    const copy = page.locator('.type-header-row .copy-markdown-main');
+    const star = page.locator('.type-header-row .favorite-star-button');
+    await expect(copy).toBeVisible();
+    await expect(star).toBeVisible();
+
+    // Copy Markdown before the star, both to the right of the chips.
+    const chipBox = (await page.locator('.type-header-row .type-chip-kind').boundingBox())!;
+    const copyBox = (await copy.boundingBox())!;
+    const starBox = (await star.boundingBox())!;
+    expect(copyBox.x).toBeGreaterThan(chipBox.x + chipBox.width);
+    expect(starBox.x).toBeGreaterThan(copyBox.x);
+
+    // A 2px brand edge rather than the hairline divider it replaces, whose
+    // 1.7:1 against the page was the finding. Read as a resolved color so a
+    // token rename cannot alibi it.
+    const brand = await page.evaluate(() => {
+      const probe = document.createElement('span');
+      document.body.appendChild(probe);
+      probe.style.color = 'var(--vp-c-brand-1)';
+      const value = getComputedStyle(probe).color;
+      probe.remove();
+      return value;
+    });
+    for (const pill of [copy, star]) {
+      const style = await pill.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { width: s.borderTopWidth, color: s.borderTopColor, radius: s.borderTopLeftRadius };
+      });
+      expect(parseFloat(style.width)).toBeGreaterThanOrEqual(2);
+      expect(style.color).toBe(brand);
+      expect(parseFloat(style.radius)).toBeGreaterThanOrEqual(20);
+    }
+  });
+
+  test('every control in the row shows a keyboard focus ring', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    await page.locator('.copy-markdown[data-ready]').waitFor();
+    for (const selector of [
+      '.type-breadcrumb a',
+      '.type-header-row .copy-markdown-main',
+      '.type-header-row .copy-markdown-options',
+      '.type-header-row .favorite-star-button',
+    ]) {
+      const control = page.locator(selector).first();
+      const outline = await control.evaluate((el) => {
+        (el as HTMLElement).focus();
+        const style = getComputedStyle(el);
+        return { width: style.outlineWidth, style: style.outlineStyle };
+      });
+      expect(outline.style, selector).not.toBe('none');
+      expect(parseFloat(outline.width), selector).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  test('the Copy Markdown menu still opens from its place in the row', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    await page.locator('.copy-markdown[data-ready]').waitFor();
+    const options = page.locator('.type-header-row .copy-markdown-options');
+    await expect(options).toHaveAttribute('aria-expanded', 'false');
+    await options.click();
+    await expect(options).toHaveAttribute('aria-expanded', 'true');
+    const item = page.locator('.copy-markdown-menu [role="menuitem"]');
+    await expect(item).toBeVisible();
+    // The menu is positioned against its own control, so it opens inside the
+    // viewport from the row rather than off the trailing edge.
+    const box = (await item.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    await page.keyboard.press('Escape');
+    await expect(options).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('the header closes with a divider between the row and the summary', async ({ page }) => {
+    await page.goto(QUEUE_PAGE);
+    const header = page.locator('.type-header');
+    const edge = await header.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { width: style.borderBottomWidth, style: style.borderBottomStyle };
+    });
+    expect(edge.style).toBe('solid');
+    expect(parseFloat(edge.width)).toBeGreaterThanOrEqual(1);
+  });
+
+  test('at 375px the chips keep one line, the actions take the next, and nothing scrolls sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.goto(QUEUE_PAGE);
+    await page.locator('.copy-markdown[data-ready]').waitFor();
+
+    const chip = (await page.locator('.type-header-row .type-chip-kind').boundingBox())!;
+    const stability = (await page.locator('.type-header-row .type-chip-stability').boundingBox())!;
+    const copy = (await page.locator('.type-header-row .copy-markdown-main').boundingBox())!;
+    // Both chips on one row...
+    expect(Math.abs(chip.y - stability.y)).toBeLessThanOrEqual(1);
+    // ...and the actions below them.
+    expect(copy.y).toBeGreaterThan(chip.y + chip.height - 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
   test('the metadata source link reads as a link at rest, the generated marker does not', async ({ page }) => {

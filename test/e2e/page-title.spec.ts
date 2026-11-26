@@ -23,17 +23,18 @@ test.describe('page titles', () => {
   test('a construct page title is the bare type name, without H1 markup', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
     await expect(page).toHaveTitle(/^Queue \| /);
-    // The badge is the H1's remaining raw HTML and its text is exactly what
-    // inference would append; the source affordance is still present, in the
-    // metadata block.
-    await expect(page.locator('h1 .VPBadge')).toHaveText('L2 construct');
+    // The kind is stated as a chip of the row under the title, so it is not in
+    // the H1 for inference to append; the source affordance is still present,
+    // in the metadata block.
+    await expect(page.locator('h1 .VPBadge')).toHaveCount(0);
+    await expect(page.locator('.type-header-row .type-chip-kind')).toHaveText('L2 construct');
     await expect(page.locator('.type-metadata a.type-metadata-source')).toHaveText('aws-sqs/lib/queue.ts');
   });
 
-  test('an L1 page title omits its badge and generated-code marker', async ({ page }) => {
+  test('an L1 page title omits its kind chip and generated-code marker', async ({ page }) => {
     await page.goto(CFN_QUEUE_PAGE);
     await expect(page).toHaveTitle(/^CfnQueue \| /);
-    await expect(page.locator('h1 .VPBadge')).toHaveText('L1 construct');
+    await expect(page.locator('.type-header-row .type-chip-kind')).toHaveText('L1 construct');
     await expect(page.locator('.type-metadata span.type-metadata-generated'))
       .toHaveText('Generated at build time');
   });

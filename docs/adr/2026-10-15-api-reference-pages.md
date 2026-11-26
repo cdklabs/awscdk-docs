@@ -113,17 +113,26 @@ the hierarchy block's `implemented by` row. The heuristic is intentionally
 inclusive: any implemented behavioral interface gets a useful page. Marker
 interfaces get no mixin page but still appear in module type lists as `Interface`.
 
-### Header: breadcrumb, merged description, hierarchy block
+### Header: breadcrumb, title, chip row, merged description, hierarchy block
 
-A type page opens with a navigable breadcrumb above the H1, then an H1 of the
-type name plus its kind badge, then one prose description, one hierarchy
-block, and an optional provenance table. The page has no legacy Module/FQN
-metadata table, no `## Overview` heading, and no package+version badge.
+A type page opens with a navigable breadcrumb, then an H1 of the type name
+alone, then one row carrying the kind chip, the stability chip and the page
+actions, then a divider, then one prose description, one hierarchy block, and
+an optional provenance table. The page has no legacy Module/FQN metadata
+table, no `## Overview` heading, and no package+version badge.
+
+The kind used to share the H1 as a `<Badge>`. It is a chip of the row instead,
+because the heading is what a reader scanned for and the classification is
+not part of the name: a title that reads `Bucket L2 construct` buries the one
+word the reader came for, and the kind's natural neighbors are the controls
+that act on the page rather than the words of its name. Putting the row below
+the H1, as a sibling, keeps the heading a direct child of `.vp-doc` — the
+selector the theme, the page outline and the inferred page title all rely on.
 
 `renderDescription()` (`src/docgen/layout.ts`) folds doc summary and remarks
 into one continuous prose block, which is Pagefind-indexed (remarks read as
-the page lead, where readers look). The H1 carries only the type name and the
-kind badge. The type-name span inserts `<wbr>` at CamelCase boundaries, and
+the page lead, where readers look). The H1 carries only the type name. The
+type-name span inserts `<wbr>` at CamelCase boundaries, and
 after an acronym of two or more capitals that precedes a capitalized word
 (`HTTP<wbr>Server`, `DB<wbr>Instance`). A single leading capital stays attached
 (`IBucket`, `OAuth<wbr>Scope`), so no line ends in a lone `I` or `O`. The
@@ -136,19 +145,29 @@ which would reach the search index, the inferred page title and copied names.
 
 The breadcrumb (`<nav class="type-breadcrumb">`, built in `index.ts`,
 rendered by `renderBreadcrumb` in `header.ts`) replaces the old Module/FQN
-rows with navigable segments: `aws-cdk-lib . aws_s3 . Bucket`. Ancestor
+rows with navigable segments: `aws-cdk-lib › aws_s3 › Bucket`. Ancestor
 segments link to their module/submodule page (as markdown links, so VitePress
 applies site `base` and `.html` resolution); the current segment is unlinked.
 
-Segments join on a real `.` with **no surrounding whitespace**; visual spacing
-is `padding-inline` on each segment. Padding is not part of a text selection,
-so the trail reads as a spaced hierarchy yet copies as the exact FQN
-(`aws-cdk-lib.aws_s3.Bucket`) with no JavaScript or `copy`-event handling.
-This holds because the dot-joined trail *is* the FQN byte-for-byte, including
-nested types (`CfnTopic.SubscriptionProperty` arrives as one segment). Every
-segment — including unlinked structural segments — is wrapped in an element so
-padding reaches it. The copyable region is its own `breadcrumb-trail` element,
-distinct from the paragraph holding the teleported favorite star.
+It is plain text in the body typeface on the page's own background, with no
+fill, radius or padding box, which is how the CDK Developer Guide next door
+renders the same trail; the mono chip it used to be announced itself as a
+widget rather than as a position.
+
+Segments join on a real `.` with **no surrounding whitespace**, wrapped in a
+`breadcrumb-dot` span and collapsed to `font-size: 0`; what a reader sees
+between segments is a chevron drawn from two borders on each non-final
+segment. Neither the collapsed dot nor the chevron is part of a text
+selection, so the trail reads as a spaced hierarchy yet copies as the exact
+FQN (`aws-cdk-lib.aws_s3.Bucket`) with no JavaScript or `copy`-event
+handling. `font-size: 0` rather than `display: none`: a hidden dot would drop
+out of the selection, which is the whole property being preserved. Only the
+JOINS collapse — a dot inside one segment's own label, as a nested type
+carries (`CfnTopic.SubscriptionProperty` arrives as one segment), is part of
+the name a reader reads and stays visible. Every segment — including unlinked
+structural segments — is wrapped in an element so the chevron can hang off it.
+The copyable region is its own `breadcrumb-trail` element, distinct from the
+paragraph holding the favorite star on pages that have no chip row.
 
 Each dot is followed by `<wbr>` so a wide trail wraps after a dot rather than
 inside `aws-cdk-lib`; `overflow-wrap: anywhere` on the trail is the fallback
@@ -676,39 +695,51 @@ HTML VitePress renders.
 
 No anchor carries a numeric `-1` disambiguation suffix.
 
-### Kind badge palette
+### Kind palette
 
-The kind travels as a class merged onto the badge root
-(`class="api-badge api-badge-l2"`) via Vue attribute fallthrough, giving each of
-nine kinds a distinct hue, declared once as `--cdk-badge-<kind>-{bg,text,border}`
+The kind travels as a class on the header row's kind chip
+(`class="type-chip type-chip-kind api-badge-l2"`), giving each of nine kinds a
+distinct hue, declared once as `--cdk-badge-<kind>-{bg,text,border}`
 in `:root` and shadowed in `.dark` (an unshadowed `:root` color wins in dark
-mode). All sixteen contrast pairs clear WCAG AA (narrowest L1 light 6.15:1) and
-are pinned by hex in `test/theme.test.ts`.
+mode). All sixteen contrast pairs clear WCAG AA; the three narrowest light
+pairs — Struct, Enum and L1 — were darkened to clear 7:1, which is what idle
+text on a page owes, leaving the narrowest light pair at 7.15:1. Every pair is
+pinned by hex in `test/theme.test.ts`.
 
 | Kind | Light text / bg | Dark text / bg |
 |---|---|---|
-| L1 | `#854d0e` / `#fef3c7` | `#fcd34d` / `#422006` |
+| L1 | `#713f12` / `#fef3c7` | `#fcd34d` / `#422006` |
 | L2 | `#1e40af` / `#dbeafe` | `#93c5fd` / `#172554` |
 | L3 | `#166534` / `#dcfce7` | `#86efac` / `#052e16` |
 | Mixin | `#6b21a8` / `#f3e8ff` | `#d8b4fe` / `#2e1065` |
 | Facade | `#115e59` / `#ccfbf1` | `#5eead4` / `#042f2e` |
-| Struct | `#9d174d` / `#fce7f3` | `#f9a8d4` / `#500724` |
+| Struct | `#831843` / `#fce7f3` | `#f9a8d4` / `#500724` |
 | Interface | `#3730a3` / `#e0e7ff` | `#a5b4fc` / `#1e1b4b` |
-| Enum | `#9a3412` / `#ffedd5` | `#fdba74` / `#431407` |
+| Enum | `#7c2d12` / `#ffedd5` | `#fdba74` / `#431407` |
 | Class | `--vp-c-default-*` (neutral) | unchanged |
 
 L1 keeps the amber construct pages already wore. Rules live in `api-layout.css`
-(not `custom.css`, which is constrained to pure variable declarations). A badge
-alignment override — `.vp-doc h1 > .VPBadge.api-badge` restating
-`vertical-align: middle; margin-top: 0; transform: none` — keeps the badge on
-the H1 baseline and is scoped to `.api-badge` so hand-written prose badges are
-untouched; any badge reaching an API H1 must opt in. The palette governs three
-surfaces consistently: the H1 badge, a link's hover-preview chip, and the
-sidebar level tag. One label format, `<L> construct` from
+(not `custom.css`, which is constrained to pure variable declarations).
+
+The chip's EDGE is `currentColor`, not the palette's `--cdk-badge-*-border`
+tint, which measured 1.69:1 light and 1.71:1 dark against the chip fill and so
+was not a visible edge at all. As the ink, `currentColor` clears 4.5:1 against
+that fill by construction, because the ink/fill pair is already pinned above.
+The `-border` tokens stay for the badge the hover-preview chip still uses.
+
+The badge alignment override — `.vp-doc h1 > .VPBadge.api-badge` restating
+`vertical-align: middle; margin-top: 0; transform: none` — STAYS even though
+the kind badge has left the H1: the `Added in vX.Y.Z` badge has not, and stock
+`vertical-align: top` plus `translateY(-2px)` lifts it off the baseline the
+name sits on. It remains scoped to `.api-badge` so hand-written prose badges
+are untouched; any badge reaching an API H1 must opt in.
+
+The palette governs three surfaces consistently: the page's kind chip, a
+link's hover-preview chip, and the sidebar level tag. One label format, `<L> construct` from
 `constructLevelLabel()`, is built once at build time and emitted as a `label`
 field on the type's `type-summaries.json` entry (no second browser formatter).
 `TypeEntry.kind` keeps its `Construct (L2)` classification form, because
-`searchKind()` derives the Pagefind `kind:` filter from its first word. The preview chip takes its target page badge's full palette. Leveled constructs
+`searchKind()` derives the Pagefind `kind:` filter from its first word. The preview chip takes its target page chip's full palette. Leveled constructs
 use `.type-tooltip-kind-l{1,2,3}`; page-badged kinds use
 `.type-tooltip-kind-{mixin,facade,struct,interface,enum}`. Both paths keep
 `--api-c-badge-*` unchanged because REQUIRED/STATIC chips share it. The
@@ -774,12 +805,14 @@ outline, only overview pages suppress it.
 - Every jsii type is deep-linkable, cross-referenced, and Pagefind-indexed;
   build output grows to the full type count (~23k pages) and VitePress build
   time scales linearly, the practical ceiling.
-- Type pages open with breadcrumb, H1 + kind badge, one prose description, one
-  hierarchy block, an optional provenance table, then members — no legacy
-  Module/FQN table and no empty shells.
-- Markup consumers must use `member-row`/`type-breadcrumb`/`type-metadata`
-  vocabularies; the old `prop-row`/`method-details` markup and markdown props
-  tables are gone.
+- Type pages open with breadcrumb, H1, a kind + stability chip row carrying the
+  page actions, a divider, one prose description, one hierarchy block, an
+  optional provenance table, then members — no legacy Module/FQN table and no
+  empty shells.
+- Markup consumers must use
+  `member-row`/`type-breadcrumb`/`type-header-row`/`type-metadata`
+  vocabularies; the old `prop-row`/`method-details` markup, the H1 kind
+  `<Badge>` and markdown props tables are gone.
 - Relationship rows ship every entry in the HTML behind native `<details>`, so
   the heaviest base-class pages pay in bytes for completeness; the figures, the
   measurement method and the pages to watch are in the Size and heaviest-pages

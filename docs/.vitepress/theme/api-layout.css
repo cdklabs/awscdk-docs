@@ -82,25 +82,20 @@
   overflow-wrap: anywhere;
 }
 
-/* The dots are real text so a selection copies the FQN, and invisible so the
-   reader sees the chevron instead. Collapsing them to `font-size: 0` is what
-   keeps both true at once: a `display: none` dot would leave the selection. */
-.breadcrumb-trail {
+/* A join dot is real text, so a selection copies the FQN, and takes no space,
+   so the reader sees the chevron instead. `font-size: 0` is what keeps both
+   true at once: `display: none` would drop it from the selection. Scoped to
+   the joins — a dot inside one segment's label, as a nested type carries,
+   is part of the name and stays visible. */
+.breadcrumb-dot {
   font-size: 0;
-}
-
-.type-breadcrumb a,
-.type-breadcrumb strong,
-.breadcrumb-segment,
-.breadcrumb-ellipsis::after {
-  font-size: 14px;
 }
 
 /* Every segment but the last is followed by a chevron drawn from two borders,
    so the separator costs no glyph and no extra element. */
 .type-breadcrumb a::after,
 .breadcrumb-segment::after,
-.breadcrumb-ellipsis::before {
+.breadcrumb-ellipsis::after {
   content: '';
   display: inline-block;
   width: 7px;
@@ -109,6 +104,13 @@
   border-right: 1.5px solid var(--th-chevron);
   transform: rotate(45deg);
   margin: 0 12px 1px 10px;
+}
+
+/* The trail ends on the current page, so nothing follows it to point at. The
+   guard is on the last CHILD rather than on the bold segment, because a
+   linked final segment would otherwise keep its chevron. */
+.breadcrumb-trail > :last-child::after {
+  content: none;
 }
 
 .type-breadcrumb a {
@@ -134,15 +136,17 @@
 }
 
 /* Collapsed middle segments keep their labels as text so a selection still
-   copies the whole FQN; the ellipsis is painted instead of written. */
+   copies the whole FQN; the ellipsis is painted instead of written, as a
+   `::before` so the shared `::after` stays free for the chevron. */
 .breadcrumb-ellipsis {
   color: var(--th-text-2);
   cursor: help;
   font-size: 0;
 }
 
-.breadcrumb-ellipsis::after {
+.breadcrumb-ellipsis::before {
   content: '…';
+  font-size: 14px;
 }
 
 .breadcrumb-fav {

@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { NESTED_TYPE_PAGE, QUEUE_PAGE, SQS_OVERVIEW_PAGE } from './fixture.js';
 
 /**
- * The breadcrumb reads as a spaced trail but must copy as the type's real
- * FQN. Only a browser can answer this: the visual spacing comes from
- * CSS padding, and no unit test on the emitted markdown can tell whether a
- * selection picks the spacing up.
+ * The breadcrumb reads as a chevron-separated trail but must copy as the
+ * type's real FQN. Only a browser can answer this: the separator and its
+ * spacing are drawn in CSS over a dot collapsed to no size, and no unit test
+ * on the emitted markdown can tell what a selection picks up.
  */
 test.describe('breadcrumb copies as the FQN', () => {
   /** Select the trail exactly as a reader dragging across it would, and read what would be copied. */
@@ -30,20 +30,46 @@ test.describe('breadcrumb copies as the FQN', () => {
     expect(await selectTrail(page)).toBe('aws-cdk-lib.aws_sqs.Queue');
   });
 
-  test('the visible trail is spaced even though the copied text is not', async ({ page }) => {
+  test('the visible trail is spaced and chevroned even though the copied text is not', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
 
-    // Spacing must come from padding, not from characters: the gap a reader
-    // sees is real, while the text itself stays tight.
-    const padding = await page.locator('.type-breadcrumb a').first().evaluate(
-      (el) => getComputedStyle(el).paddingLeft,
-    );
-    expect(parseFloat(padding)).toBeGreaterThan(0);
+    // The separator a reader sees is a chevron drawn on each segment, and the
+    // gap around it is that chevron's margin. Neither is a character, so the
+    // text itself stays a tight dotted FQN.
+    const chevron = await page.locator('.type-breadcrumb a').first().evaluate((el) => {
+      const style = getComputedStyle(el, '::after');
+      return {
+        content: style.content,
+        width: parseFloat(style.width),
+        gap: parseFloat(style.marginLeft) + parseFloat(style.marginRight),
+        border: style.borderTopWidth,
+      };
+    });
+    expect(chevron.width).toBeGreaterThan(0);
+    expect(chevron.gap).toBeGreaterThan(0);
+    expect(parseFloat(chevron.border)).toBeGreaterThan(0);
+    // Drawn from borders, so it contributes no text to a selection.
+    expect(chevron.content).toMatch(/^("")|('')|(none)$/);
 
     const rendered = await page.locator('.breadcrumb-trail').innerText();
     expect(rendered).not.toContain('›');
     expect(rendered).not.toContain(' . ');
     expect(rendered).toBe('aws-cdk-lib.aws_sqs.Queue');
+  });
+
+  test('a join dot takes no space while a nested type keeps its own dot visible', async ({ page }) => {
+    // A join dot is collapsed so the chevron reads as the separator; the dot
+    // inside `CfnTopic.SubscriptionProperty` is part of the name and is not.
+    await page.goto(NESTED_TYPE_PAGE);
+    const joinWidth = await page.locator('.breadcrumb-dot').first()
+      .evaluate((el) => el.getBoundingClientRect().width);
+    expect(joinWidth).toBeLessThan(1);
+    const last = await page.locator('.breadcrumb-trail strong').evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { text: (el.textContent ?? '').trim(), fontSize: parseFloat(style.fontSize) };
+    });
+    expect(last.text).toBe('CfnTopic.SubscriptionProperty');
+    expect(last.fontSize).toBeGreaterThan(0);
   });
 
   test('a nested type keeps its enclosing type in the copied FQN', async ({ page }) => {
@@ -62,13 +88,14 @@ test.describe('breadcrumb copies as the FQN', () => {
   });
 
   test('the favorite star does not end up in the copied text', async ({ page }) => {
-    await page.goto(QUEUE_PAGE);
+    // An overview page is where the star still shares the breadcrumb bar as a
+    // sibling of the trail, so a trail selection must not pick up its label.
+    // A type page moved it to the chip row, out of the bar entirely.
+    await page.goto(SQS_OVERVIEW_PAGE);
     await expect(page.locator('.type-breadcrumb .favorite-star-button')).toBeVisible();
 
-    // The star teleports into the bar as a sibling of the trail,
-    // so a trail selection must not pick up its label.
     const copied = await selectTrail(page);
-    expect(copied).toBe('aws-cdk-lib.aws_sqs.Queue');
+    expect(copied).toBe('aws-cdk-lib.aws_sqs');
     expect(copied.toLowerCase()).not.toContain('favorite');
   });
 
