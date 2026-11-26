@@ -124,5 +124,6 @@ describe('shared language state', () => {
 
     expect(mod.LANGUAGE_ORDER).toBe(core.LANGUAGE_ORDER);
     expect(mod.LANGUAGE_LABELS).toBe(core.LANGUAGE_LABELS);
+    expect(mod.LANGUAGE_SHORT_LABELS).toBe(core.LANGUAGE_SHORT_LABELS);
   });
 });

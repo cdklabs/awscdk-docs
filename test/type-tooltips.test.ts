@@ -119,6 +119,13 @@ describe('API type hover tooltips', () => {
     expect(tooltip()!.style.left).toBe(`${1000 - 300 - 8}px`);
   });
 
+  test('the tooltip keeps an 8px margin from the left edge', async () => {
+    await install();
+    await hover(link(`/cdk/api${QUEUE}.html`, 2));
+
+    expect(tooltip()!.style.left).toBe('8px');
+  });
+
   test('the summaries load once and are reused for later hovers', async () => {
     await install();
 

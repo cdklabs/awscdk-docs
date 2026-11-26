@@ -225,6 +225,15 @@ describe('StickyHeadings', () => {
     expect(sticky.headerOffset()).toBe(0);
   });
 
+  test('a browser without ResizeObserver gets no pinned band', () => {
+    delete (globalThis as Record<string, unknown>).ResizeObserver;
+    const sticky = attached();
+
+    expect(STICKY_TOP_VAR in container.style).toBe(false);
+    expect(FakeIntersectionObserver.all).toHaveLength(0);
+    expect(sticky.headerOffset()).toBe(0);
+  });
+
   test('a group with no heading button is never observed', () => {
     const bare = el('li', 'api-sidebar-item', el('a'));
     const sticky = attached();
