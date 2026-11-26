@@ -57,6 +57,15 @@ test.describe('language toggle', () => {
     }
     const java = slider.getByRole('radio', { name: 'Java' });
     await expect(java).toHaveAttribute('title', 'Java');
+    // innerText counts clipped text, so check that every unchecked name is
+    // actually painted at full width rather than visually hidden.
+    const hiddenWidths = await slider
+      .locator('.language-option:not(.active) .visually-hidden')
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    expect(hiddenWidths).toHaveLength(4);
+    for (const width of hiddenWidths) {
+      expect(width).toBeGreaterThan(10);
+    }
     // Selecting it still activates Java through the shared state.
     await java.click();
     await expect(java).toHaveAttribute('aria-checked', 'true');
@@ -154,6 +163,11 @@ test.describe('language toggle', () => {
         expect(box.y).toBeGreaterThanOrEqual(previousBottom - 1);
         previousBottom = box.y + box.height;
       }
+      // The group must grow to hold every row: its overflow is hidden, so a
+      // fixed track height would clip the list to its first row.
+      const groupBottom = await group.evaluate((el) => el.getBoundingClientRect().bottom);
+      const lastBottom = await rows.last().evaluate((el) => el.getBoundingClientRect().bottom);
+      expect(lastBottom).toBeLessThanOrEqual(groupBottom + 0.5);
       // The selected row is filled; the others are not.
       const fill = (el: Element) => getComputedStyle(el).backgroundColor;
       expect(await rows.nth(0).evaluate(fill)).toBe(rowFill);

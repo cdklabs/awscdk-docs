@@ -125,7 +125,7 @@ describe('navbar layout', () => {
   });
 
   describe('language slider', () => {
-    test('is a segmented radio-group slider with per-language text abbreviations', () => {
+    test('is a segmented radio-group picker that names every language', () => {
       expect(toggle).toContain('role="radiogroup"');
       expect(toggle).toContain('aria-label="Select programming language"');
       expect(toggle).toContain('role="radio"');
@@ -144,9 +144,9 @@ describe('navbar layout', () => {
       // The active language is programmatically indicated (aria-checked);
       // its visible non-color cue is the bar's inset underline, pinned below.
       expect(toggle).toMatch(/v-if="lang === activeLanguage"[^>]*class="language-label"/);
-      // Every option shows its language by name: the badges are not painted
-      // in the bar or the menu, and the unchecked options' visually-hidden
-      // labels are brought back into view.
+      // The badges are not painted in the bar or the menu. That the unchecked
+      // names paint at full width is checked in the browser
+      // (language-toggle.spec.ts).
       expect(css).toMatch(
         /:is\(\.VPNavBar, \.VPNavScreen\) \.language-toggle \.language-option \.language-abbr \{\s*display: none;/,
       );

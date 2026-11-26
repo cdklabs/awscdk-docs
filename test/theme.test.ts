@@ -640,6 +640,8 @@ describe('selected language label contrast', () => {
     expect(contrast(hex(nav(), '--seg-on-fg'), hex(palette(), '--vp-c-brand-1'))).toBeGreaterThanOrEqual(AA);
     // Unselected rows: muted text on the menu background.
     expect(contrast(hex(nav(), '--tb-muted'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(7);
+    // Hovered idle rows: muted text on the hover fill.
+    expect(contrast(hex(nav(), '--tb-muted'), hex(nav(), '--tb-hover-bg'))).toBeGreaterThanOrEqual(AA);
     // The group edge is a non-text boundary (WCAG 1.4.11).
     expect(contrast(hex(nav(), '--seg-edge'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(3);
   });
