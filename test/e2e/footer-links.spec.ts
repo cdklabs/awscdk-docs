@@ -3,6 +3,7 @@ import {
   CFN_QUEUE_PAGE,
   CONSTRUCT_LIBRARY_PAGE,
   SKILLS_PAGE,
+  SNS_OVERVIEW_PAGE,
   SQS_OVERVIEW_PAGE,
   TOPIC_PAGE,
   VERSIONS_PAGE,
@@ -120,5 +121,66 @@ test.describe('doc footer contribution links', () => {
     await expect
       .poll(() => reportLink.getAttribute('href'))
       .toMatch(/github\.com\/cdklabs\/awscdk-docs\/issues\/new\?/);
+  });
+
+  test('the report link names the page, its live URL and the documentation label', async ({ page }) => {
+    await page.goto(`${TOPIC_PAGE}#constructor`);
+
+    const reportLink = page.locator('.page-footer-links .footer-link', { hasText: 'Report an issue' });
+    await expect(reportLink).toHaveAttribute('href', /[?&]body=/);
+    const query = new URL((await reportLink.getAttribute('href'))!).searchParams;
+    expect(query.get('title')).toBe('Docs: Topic');
+    expect(query.get('labels')).toBe('documentation');
+    // The live address, fragment included, which only the browser knows.
+    expect(query.get('body')).toContain(`- Page: ${page.url()}`);
+    expect(page.url()).toContain('#constructor');
+  });
+
+  test('a client-side navigation points both links at the new page', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    const footer = page.locator('.page-footer-links');
+    const reportLink = footer.locator('.footer-link', { hasText: 'Report an issue' });
+    await expect(reportLink).toHaveAttribute('href', /[?&]body=/);
+    await page.evaluate(() => {
+      (window as unknown as { samePage: boolean }).samePage = true;
+    });
+
+    await page.locator(`.api-sidebar a.api-sidebar-link[href$="${SNS_OVERVIEW_PAGE}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(`${SNS_OVERVIEW_PAGE.replace(/\./g, '\\.')}$`));
+    // The router swapped the page in; a full reload would have cleared the marker.
+    expect(await page.evaluate(() => (window as unknown as { samePage?: boolean }).samePage)).toBe(true);
+
+    await expect(footer.locator('.footer-link', { hasText: 'Edit this page' })).toHaveAttribute(
+      'href',
+      'https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-sns/README.md',
+    );
+    await expect
+      .poll(async () => new URL((await reportLink.getAttribute('href'))!).searchParams.get('body'))
+      .toContain(`- Page: ${page.url()}`);
+    const title = new URL((await reportLink.getAttribute('href'))!).searchParams.get('title');
+    expect(title).not.toBe('Docs: Topic');
+    expect(title).toMatch(/^Docs: \S/);
+  });
+
+  test('clicking the report link opens the pre-filled issue form in a new tab', async ({ page, context }) => {
+    const requested: string[] = [];
+    // Stub GitHub so the test never reaches it.
+    await context.route('https://github.com/**', (route) => {
+      requested.push(route.request().url());
+      return route.fulfill({ contentType: 'text/html', body: '<title>stub</title>' });
+    });
+    await page.goto(TOPIC_PAGE);
+    const reportLink = page.locator('.page-footer-links .footer-link', { hasText: 'Report an issue' });
+    await expect(reportLink).toHaveAttribute('href', /[?&]body=/);
+
+    const [tab] = await Promise.all([context.waitForEvent('page'), reportLink.click()]);
+    await tab.waitForLoadState();
+
+    const opened = new URL(tab.url());
+    expect(`${opened.origin}${opened.pathname}`).toBe('https://github.com/cdklabs/awscdk-docs/issues/new');
+    expect(opened.searchParams.get('title')).toBe('Docs: Topic');
+    expect(requested).toEqual([tab.url()]);
+    // The docs page stays where it was.
+    await expect(page).toHaveURL(new RegExp(`${TOPIC_PAGE.replace(/\./g, '\\.')}$`));
   });
 });
