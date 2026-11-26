@@ -46,3 +46,9 @@
 .glyph-density-spacious {
   --glyph: url("./icons/density-spacious.svg");
 }
+.glyph-api {
+  --glyph: url("./icons/api.svg");
+}
+.glyph-star {
+  --glyph: url("./icons/star.svg");
+}

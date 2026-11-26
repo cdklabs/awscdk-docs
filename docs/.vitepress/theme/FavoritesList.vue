@@ -8,11 +8,17 @@
   header is a real disclosure button with the same aria contract and caret as the
   nav tree's own groups; the count stays visible while collapsed for
   discoverability.
+
+  With the Explorer preview on, the section moves out of the API view and becomes
+  the Favorites view: always open, its heading plain text, and a one-line prompt
+  when there is nothing to list. The stored collapsed state is kept untouched for
+  the preview-off sidebar.
 -->
 <script setup lang="ts">
 import { useRoute } from "vitepress";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
+import { explorerPreview, explorerView } from "./explorer-preview";
 import {
   favoritesStore,
   readCollapsed,
@@ -29,12 +35,21 @@ const entries = ref<readonly FavoriteEntry[]>([]);
 // there is no localStorage, and a first paint that disagreed with the
 // stored choice would flicker.
 const collapsed = ref(true);
-const visible = computed(
-  () => route.path.includes(API_ROOT) && entries.value.length > 0,
+// Gated on mount, like the entries, so a stored preview choice never disagrees with the server render.
+const mounted = ref(false);
+const viewMode = computed(
+  () => mounted.value && explorerPreview.value === "on" && route.path.includes(API_ROOT),
+);
+const viewShown = computed(() => viewMode.value && explorerView.value === "favorites");
+const visible = computed(() =>
+  viewMode.value
+    ? viewShown.value
+    : route.path.includes(API_ROOT) && entries.value.length > 0,
 );
 
 let unsubscribe: (() => void) | undefined;
 onMounted(() => {
+  mounted.value = true;
   entries.value = favoritesStore().list();
   collapsed.value = readCollapsed(
     typeof localStorage === "undefined" ? undefined : localStorage,
@@ -64,7 +79,12 @@ function toggle(): void {
 
 <template>
   <nav v-if="visible" class="favorites-section" aria-label="Favorites">
+    <p v-if="viewShown && entries.length === 0" class="favorites-empty">
+      No favorites yet. Select the star on an API page to add it.
+    </p>
+    <h2 v-else-if="viewShown" class="favorites-static-heading">★ Favorites ({{ entries.length }})</h2>
     <button
+      v-else
       type="button"
       class="favorites-toggle"
       :aria-expanded="!collapsed"
@@ -79,7 +99,12 @@ function toggle(): void {
       >
       <span class="favorites-heading">★ Favorites ({{ entries.length }})</span>
     </button>
-    <ul v-show="!collapsed" id="favorites-list" class="favorites-list">
+    <ul
+      v-if="!viewShown || entries.length > 0"
+      v-show="viewShown || !collapsed"
+      id="favorites-list"
+      class="favorites-list"
+    >
       <li v-for="entry in entries" :key="entry.path" class="favorites-item">
         <a class="favorites-link" :href="linkFor(entry)">{{ entry.title }}</a>
         <button

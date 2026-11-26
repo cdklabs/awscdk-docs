@@ -326,6 +326,15 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
       {},
       `;(function () { try { var d = localStorage.getItem("cdk-docs-density"); if (d === "compact" || d === "spacious") document.documentElement.setAttribute("data-density", d); if (d === "spacious" && window.MutationObserver) { var s = "details.member-disclosure, details.chain-more"; var open = function (n) { if (n.nodeType !== 1) return; if (n.matches(s)) n.open = true; var all = n.querySelectorAll(s); for (var i = 0; i < all.length; i++) all[i].open = true; }; var o = new MutationObserver(function (ms) { for (var i = 0; i < ms.length; i++) { var a = ms[i].addedNodes; for (var j = 0; j < a.length; j++) open(a[j]); } }); o.observe(document.documentElement, { childList: true, subtree: true }); document.addEventListener("DOMContentLoaded", function () { o.disconnect(); open(document.documentElement); }); } } catch (e) {} })();`,
     ],
+    // Re-apply a stored Explorer preview choice before first paint, so a reload with the preview on already
+    // has the rail's 72px of sidebar width. Storage keys are EXPLORER_PREVIEW_KEY and EXPLORER_VIEW_KEY in
+    // theme/explorer-preview.ts; the preview being off is the absence of both attributes, so only an explicit
+    // "on" applies, and an unknown view falls back to "api".
+    [
+      "script",
+      {},
+      `;(function () { try { if (localStorage.getItem("cdk-docs-explorer-preview") === "on") { var e = document.documentElement; e.setAttribute("data-explorer-preview", "on"); e.setAttribute("data-explorer-view", localStorage.getItem("cdk-docs-explorer-view") === "favorites" ? "favorites" : "api"); } } catch (e) {} })();`,
+    ],
     // The standard AWS docs boot script: cookie-consent banner, footer "Cookie preferences" hook, and
     // consent-gated analytics, which reports the page under the two meta tags.
     ["meta", { name: "guide-name", content: "API Reference" }],

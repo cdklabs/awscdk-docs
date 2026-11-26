@@ -624,10 +624,10 @@ describe('sticky sidebar header', () => {
     const mounted = topLevel
       .map((child) => /^\s*h\(\s*([A-Z]\w*)/.exec(child)?.[1])
       .filter((name): name is string => Boolean(name));
-    expect(mounted).toEqual(['NavFilter', 'FavoritesList']);
-    // Nothing is mounted alongside the wrapper: with the wrapper's own text
-    // removed, no component mount may remain anywhere in the slot body.
-    expect(body.replace(wrapper![0], '')).not.toMatch(/h\(\s*[A-Z]/);
+    expect(mounted).toEqual(['ExplorerViewsButton', 'NavFilter', 'FavoritesList']);
+    // Nothing but the fixed-position view rail is mounted alongside the wrapper: with the wrapper's own
+    // text and the rail removed, no component mount may remain anywhere in the slot body.
+    expect(body.replace(wrapper![0], '').replace(/h\(\s*ExplorerRail\s*\)/, '')).not.toMatch(/h\(\s*[A-Z]/);
   });
 
   test('the wrapper is pinned with an opaque sidebar background', () => {

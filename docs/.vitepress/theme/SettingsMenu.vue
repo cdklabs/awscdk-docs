@@ -9,20 +9,34 @@
 // the trigger, and any click outside closes the panel. Focus is not trapped, so
 // the rest of the navbar stays tabbable. The panel is a plain labeled region;
 // its content (ThemePicker) carries its own group semantics and state.
+//
+// With the Explorer preview on, the gear leaves the bar and the rail's Settings button
+// (ExplorerRail.vue) opens a copy of this panel there. The open state is shared, and this
+// component's outside-click rule also covers the rail's button and panel.
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
+import { explorerPreview, settingsOpen as open } from "./explorer-preview";
 import NavStylePicker from "./NavStylePicker.vue";
 import ThemePicker from "./ThemePicker.vue";
 
-const open = ref(false);
 const root = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLButtonElement | null>(null);
+// The panel moves to the rail while the preview is on. Gated on mount so hydration still matches the server
+// render, which always has the panel here.
+const mounted = ref(false);
 
 function toggle(): void {
   open.value = !open.value;
 }
 
 function onDocumentClick(event: MouseEvent): void {
-  if (open.value && root.value && !root.value.contains(event.target as Node)) {
+  // The composed path is read at dispatch time, so a click on a control that unmounts while handling it
+  // (the preview switch moves the panel to the rail) still counts as inside.
+  const path = event.composedPath() as Element[];
+  const inside =
+    path.includes(root.value as HTMLElement) ||
+    path.some((el) => el.matches?.("[data-settings-trigger], .explorer-settings-panel"));
+  if (open.value && root.value && !inside) {
     open.value = false;
   }
 }
@@ -35,6 +49,7 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 onMounted(() => {
+  mounted.value = true;
   document.addEventListener("click", onDocumentClick);
 });
 
@@ -59,6 +74,7 @@ onBeforeUnmount(() => {
       <span class="glyph glyph-gear settings-gear" aria-hidden="true" />
     </button>
     <div
+      v-if="!mounted || explorerPreview === 'off'"
       v-show="open"
       id="settings-menu-panel"
       class="settings-panel"
@@ -70,6 +86,8 @@ onBeforeUnmount(() => {
       <!-- Navigation style (by service / by package) for the API sidebar: a
            reader preference like the themes, so it lives in the same panel. -->
       <NavStylePicker />
+      <!-- Opt-in sidebar variant with a view rail; the last group so it reads as an experiment. -->
+      <ExplorerPreviewPicker />
     </div>
   </div>
 </template>
@@ -130,7 +148,8 @@ onBeforeUnmount(() => {
 
 /* The navigation group sits 6px under the theme pickers. The child's root
    element carries this component's scope attribute, so a scoped rule reaches it. */
-.settings-panel > .NavStylePicker {
+.settings-panel > .NavStylePicker,
+.settings-panel > .ExplorerPreviewPicker {
   margin-top: 6px;
 }
 </style>
