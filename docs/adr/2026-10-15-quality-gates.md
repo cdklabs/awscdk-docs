@@ -204,10 +204,8 @@ branches, and functions, so `npx projen test` (and the CI build that runs it) fa
 coverage drops. The floor is the lower of the CI and local numbers rounded down, minus one more
 point on every metric, because the numbers move between environments. V8 counts functions
 differently across Node versions, so the CI runner's current Node reads functions over a point lower
-than an older local Node does. When the floor was set, the `build` workflow (`node-version: lts/*`, then Node 26) read lines 86.09%,
-branches 93.71% and functions 92.50%, and local Node 22 read lines 85.93%, branches 93.71% and
-functions 93.80%. V8 records one statement per line, so statements equal lines and share the
-lines floor. Re-derive the floor by the same rule when that workflow's Node major version changes. It lives on the task rather than in the Jest config, so a bare
+than an older local Node does. V8 records one statement per line, so statements equal lines and share the
+lines floor. Re-derive the floor by the same rule when the `build` workflow's Node major version changes. It lives on the task rather than in the Jest config, so a bare
 `npx jest path/to/file` stays a quick local run that is not held to a whole-tree floor. Any
 `projen test` run is held to it, including one narrowed with a path. Raise the floor when tests raise the numbers. Scripts that tests run as child processes
 (for example `e2e-serve.cjs`) read as 0%, because Jest's V8 coverage only sees its own
