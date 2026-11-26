@@ -4,10 +4,11 @@
 // labels — one selection, reflected everywhere, with the URL path unchanged
 // (`?lang=` carries the choice).
 //
-// A segmented slider (WAI-ARIA radio-group pattern) with a per-language text
-// abbreviation per segment, placed right of the search box. The active language
-// shows its full label next to the abbreviation, so the selection is never
-// indicated by color alone.
+// A segmented control (WAI-ARIA radio-group pattern), placed right of the search
+// box. nav-controls.css shows every option by its language name and shortens
+// TypeScript to its abbreviation, "TS", below 1100px; the hidden full name keeps
+// the abbreviation inside the accessible name. The phone menu stacks the options
+// vertically.
 //
 // Renders only when the build enables 2+ languages (enabled-languages.ts,
 // compiled into the bundle — see that module for why it is not themeConfig).

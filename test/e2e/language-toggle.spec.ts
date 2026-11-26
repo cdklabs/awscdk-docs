@@ -16,17 +16,17 @@ test.describe('language toggle', () => {
     // Exactly the build-enabled set, as radio segments, rendered in the
     // LANGUAGES canonical order (ts, python, java, dotnet, go) — NOT
     // docgen.config.json array order. The slider filters the enabled set out
-    // of that list, so Java precedes C# / .NET even though the config array
-    // lists dotnet first, and Golang comes last.
+    // of that list, so Java precedes C# even though the config array
+    // lists dotnet first, and Go comes last.
     const options = slider.getByRole('radio');
     await expect(options).toHaveCount(5);
-    // The visible abbreviation leads the accessible name rather than being
-    // replaced by it, so the name reads "<abbreviation> <language>".
-    await expect(options.nth(0)).toHaveAccessibleName('TS TypeScript');
-    await expect(options.nth(1)).toHaveAccessibleName('Py Python');
-    await expect(options.nth(2)).toHaveAccessibleName('Ja Java');
-    await expect(options.nth(3)).toHaveAccessibleName('C# C# / .NET');
-    await expect(options.nth(4)).toHaveAccessibleName('Go Golang');
+    // Each option is named by its language alone: the badges are not
+    // painted from 1100px, so they are not part of the name either.
+    await expect(options.nth(0)).toHaveAccessibleName('TypeScript');
+    await expect(options.nth(1)).toHaveAccessibleName('Python');
+    await expect(options.nth(2)).toHaveAccessibleName('Java');
+    await expect(options.nth(3)).toHaveAccessibleName('C#');
+    await expect(options.nth(4)).toHaveAccessibleName('Go');
     await expect(options.nth(0)).toHaveAttribute('aria-checked', 'true');
     // Selecting a language reflects into ?lang= without touching the path.
     await slider.getByRole('radio', { name: 'Python' }).click();
@@ -34,7 +34,7 @@ test.describe('language toggle', () => {
     await expect(page).toHaveURL(/[?&]lang=python/);
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sns\.Topic/);
     // Switching to Go does the same: ?lang=go, path untouched.
-    await slider.getByRole('radio', { name: 'Golang' }).click();
+    await slider.getByRole('radio', { name: 'Go', exact: true }).click();
     await expect(options.nth(4)).toHaveAttribute('aria-checked', 'true');
     await expect(page).toHaveURL(/[?&]lang=go/);
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sns\.Topic/);
@@ -42,39 +42,31 @@ test.describe('language toggle', () => {
     await expect(page.locator('.language-switcher')).toHaveCount(0);
   });
 
-  test('every segment shows its abbreviation and keeps its full accessible name', async ({ page }) => {
+  test('every option shows its language by name, with no two-letter badge', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
+    const options = slider.getByRole('radio');
+    await expect(options).toHaveCount(5);
+    // The painted text of every option, checked or not, is its full label.
+    await expect(options).toHaveText(['TypeScript', 'Python', 'Java', 'C#', 'Go'], { useInnerText: true });
+    // No badge is painted anywhere in the bar.
+    const badges = slider.locator('.language-abbr');
+    await expect(badges).toHaveCount(5);
+    for (const display of await badges.evaluateAll((els) => els.map((el) => getComputedStyle(el).display))) {
+      expect(display).toBe('none');
+    }
     const java = slider.getByRole('radio', { name: 'Java' });
-    const badge = java.locator('.language-abbr');
-    await expect(badge).toHaveText('Ja');
-    await expect(badge.locator('*')).toHaveCount(0);
     await expect(java).toHaveAttribute('title', 'Java');
-    const paint = await badge.evaluate((el) => {
-      const s = getComputedStyle(el);
-      return {
-        mask: s.maskImage !== 'none' ? s.maskImage : s.webkitMaskImage,
-        background: s.backgroundImage,
-        before: getComputedStyle(el, '::before').content,
-      };
-    });
-    expect(paint.mask).toBe('none');
-    expect(paint.background).toBe('none');
-    expect(paint.before).toMatch(/^(none|normal|"")$/);
-    const abbrs = await slider.locator('.language-abbr').allInnerTexts();
-    expect(abbrs.length).toBe(await slider.getByRole('radio').count());
-    expect(abbrs.every((a) => a.trim().length > 0)).toBe(true);
-    expect(new Set(abbrs).size).toBe(abbrs.length);
     // Selecting it still activates Java through the shared state.
     await java.click();
     await expect(java).toHaveAttribute('aria-checked', 'true');
     await expect(page).toHaveURL(/[?&]lang=java/);
   });
 
-  test('the checked segment keeps its full accessible name where the label is unpainted', async ({
+  test('under 1100px TypeScript reads TS and keeps its full accessible name', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1000, height: 900 });
+    await page.setViewportSize({ width: 1099, height: 900 });
     await page.goto(TOPIC_PAGE);
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
     const checked = slider.getByRole('radio', { name: 'TypeScript' });
@@ -88,6 +80,54 @@ test.describe('language toggle', () => {
     });
     expect(box.display).not.toBe('none');
     expect(box.width).toBeLessThanOrEqual(1);
+    // The badge text "TS" is what is painted; the other options keep their
+    // full names.
+    await expect(checked.locator('.language-abbr')).toBeVisible();
+    await expect(checked.locator('.language-abbr')).toHaveText('TS');
+    const radios = slider.getByRole('radio');
+    for (const [i, name] of ['Python', 'Java', 'C#', 'Go'].entries()) {
+      await expect(radios.nth(i + 1)).toHaveText(name, { useInnerText: true });
+    }
+    // Unchecked, TypeScript still reads "TS" and keeps its full name.
+    await slider.getByRole('radio', { name: 'Python' }).click();
+    await expect(slider.getByRole('radio').nth(0)).toHaveAccessibleName('TS TypeScript');
+    const ts = slider.getByRole('radio').nth(0);
+    await expect(ts.locator('.language-abbr')).toBeVisible();
+    await expect(ts.locator('.language-abbr')).toHaveText('TS');
+    expect(await ts.locator('.visually-hidden').evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
+  });
+
+  test('the phone menu stacks the languages as one segmented control', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(TOPIC_PAGE);
+    await page.locator('.VPNavBarHamburger').click();
+    const group = page
+      .locator('.VPNavScreen')
+      .getByRole('radiogroup', { name: 'Select programming language' });
+    await expect(group).toBeVisible();
+    const rows = group.getByRole('radio');
+    // The menu always shows the full names, TypeScript included.
+    await expect(rows).toHaveText(['TypeScript', 'Python', 'Java', 'C#', 'Go'], { useInnerText: true });
+    const layout = await group.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { direction: s.flexDirection, radius: s.borderTopLeftRadius, edge: s.borderTopWidth };
+    });
+    expect(layout).toEqual({ direction: 'column', radius: '8px', edge: '1px' });
+    const groupBox = (await group.boundingBox())!;
+    let previousBottom = -Infinity;
+    for (const row of await rows.all()) {
+      const box = (await row.boundingBox())!;
+      // One full-width row per language, stacked top to bottom, each 48px high.
+      expect(box.height).toBeGreaterThanOrEqual(48);
+      expect(box.width).toBeGreaterThanOrEqual(groupBox.width - 2);
+      expect(box.y).toBeGreaterThanOrEqual(previousBottom - 1);
+      previousBottom = box.y + box.height;
+    }
+    // The selected row is filled; the others are not.
+    const fill = (el: Element) => getComputedStyle(el).backgroundColor;
+    expect(await rows.nth(0).evaluate(fill)).toBe('rgb(0, 108, 224)');
+    expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
+    expect(await rows.nth(1).evaluate(fill)).toBe('rgba(0, 0, 0, 0)');
   });
 
   test('renders at the same height as the search box', async ({ page }) => {

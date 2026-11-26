@@ -11,8 +11,8 @@ export const LANGUAGE_LABELS: Record<TabLanguage, string> = {
   ts: 'TypeScript',
   python: 'Python',
   java: 'Java',
-  dotnet: 'C# / .NET',
-  go: 'Golang',
+  dotnet: 'C#',
+  go: 'Go',
 };
 
 /** Badge-width abbreviations for the language slider's segments. */

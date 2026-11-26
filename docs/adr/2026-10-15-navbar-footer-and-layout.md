@@ -147,9 +147,9 @@ item that yields (`flex-shrink: 1`, ellipsis) so the row never overhangs the
 viewport. From 960px the title is the fixed `--vp-sidebar-width` lane and cannot
 yield, so the version badge and the Settings gear drop their 8px gaps across the
 whole band (not just where it binds, so the arrangement does not jump at 960px).
-The slider abbreviates to glyphs-only (active label visually hidden, still
-supplying the accessible name) and the search button compacts to its magnifier
-icon. Every control keeps its place in the row — the version must stay visible,
+The slider keeps every language's name visible; only TypeScript shortens, to
+`TS` below 1100px (the full name stays in the accessible name). The search
+button compacts to its magnifier icon. Every control keeps its place in the row — the version must stay visible,
 and a control a click away is not visible. E2e assertions pin the row fitting
 inside 768px, 800px, 960px, and 1000px viewports, each with a positive control
 that undoes the rule making room at that width.

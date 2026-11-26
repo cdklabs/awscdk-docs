@@ -225,24 +225,72 @@
   }
 }
 
-/* Medium breakpoint (where VitePress itself compacts the navbar into
- * the "extra" flyout): take the active segment's text label out of the
- * painted row so the slider is abbreviations-only and a 3+ language build
- * never overflows. Visually hidden rather than display:none, so the label
- * keeps supplying the checked segment's full accessible name at this width
- * (the .search-tip rule below gets the same treatment for the same reason). */
-@media (min-width: 768px) and (max-width: 1279px) {
-  .VPNavBar .language-toggle .language-label {
+/* --- Language labels --- */
+/* Every option shows its language by name (LANGUAGE_LABELS): TypeScript,
+ * Python, Java, C#, Go. The two-letter badges leave the bar and the menu;
+ * the label is plain text, so the selection is carried by the option's
+ * styling, not by a badge. The width sizers are not needed once every
+ * option shows its own label. */
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option .language-abbr {
+  display: none;
+}
+
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-label-sizer {
+  display: none;
+}
+
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option:not(.active) .visually-hidden,
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option.active .language-label {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: inherit;
+}
+
+/* Under 1100px the bar shortens TypeScript to "TS": the badge text is shown
+ * plain and the full name is visually hidden, so it still reaches assistive
+ * tech. The option's accessible name is then "TS TypeScript", which contains
+ * the visible "TS" (WCAG 2.5.3). The phone menu always shows "TypeScript". */
+@media (max-width: 1099px) {
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]) .language-abbr {
+    display: inline;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    width: auto;
+    height: auto;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    color: inherit;
+  }
+
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]):not(.active) .visually-hidden,
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]).active .language-label {
     position: absolute;
     width: 1px;
     height: 1px;
-    padding: 0;
     margin: -1px;
+    padding: 0;
     overflow: hidden;
     clip-path: inset(50%);
-    white-space: nowrap;
   }
+}
 
+/* Medium breakpoint (where VitePress itself compacts the navbar into
+ * the "extra" flyout): compact the row so a 3+ language build never
+ * overflows. The language labels stay visible here (see the label rules
+ * below); only TypeScript shortens, under 1100px. */
+@media (min-width: 768px) and (max-width: 1279px) {
   .VPNavBar .content-body > .language-toggle {
     margin-left: 4px;
   }
@@ -404,12 +452,80 @@
   }
 }
 
-/* Mobile nav screen: the language slider as a full-width row above the
- * theme picker row (see theme-picker.css for the picker's row). */
-.VPNavScreen .language-toggle {
-  margin-top: 12px;
-  width: 100%;
-  justify-content: center;
+/* --- Language picker in the phone menu --- */
+/* Mobile nav screen: the language picker as one vertical segmented control
+ * above the theme picker row (see theme-picker.css for the picker's row):
+ * one bordered group, a 48px row per language, the selected row filled.
+ * Five full names do not fit a 320px menu side by side; stacked, they do,
+ * and every row stays above the 44px touch-target minimum. */
+@media (max-width: 767px) {
+  :root {
+    --seg-edge: #656871;
+    --seg-on-bg: #006ce0;
+    --seg-on-fg: #ffffff;
+    --tb-muted: #424650;
+    --tb-hover-bg: #e9ebed;
+    --tb-focus: #006ce0;
+  }
+
+  .dark {
+    --seg-edge: #a4a4ad;
+    --seg-on-bg: #42b4ff;
+    --seg-on-fg: #0f141a;
+    --tb-muted: #c6c6cd;
+    --tb-hover-bg: #2a3340;
+    --tb-focus: #42b4ff;
+  }
+
+  .VPNavScreen .language-toggle {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    height: auto;
+    margin-top: 12px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--seg-edge);
+    border-radius: 8px;
+    background: var(--vp-c-bg);
+  }
+
+  .VPNavScreen .language-toggle .language-option {
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 0;
+    border-top: 1px solid var(--vp-c-divider);
+    box-shadow: none;
+    background: transparent;
+    color: var(--tb-muted);
+  }
+
+  .VPNavScreen .language-toggle .language-option:first-child {
+    border-top: 0;
+  }
+
+  .VPNavScreen .language-toggle .language-option.active {
+    background: var(--seg-on-bg);
+    color: var(--seg-on-fg);
+  }
+
+  .VPNavScreen .language-toggle .language-option.active .language-label {
+    color: inherit;
+  }
+
+  .VPNavScreen .language-toggle .language-option:not(.active):hover {
+    background: var(--tb-hover-bg);
+  }
+
+  .VPNavScreen .language-toggle .language-option:focus-visible {
+    outline: 2px solid var(--tb-focus);
+    outline-offset: -4px;
+  }
 }
 
 /* Mobile nav screen: the navigation style as a full-width row under the

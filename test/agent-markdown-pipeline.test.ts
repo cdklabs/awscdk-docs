@@ -305,7 +305,7 @@ describe('agent-oriented Markdown twins with every site language', () => {
       expect(end).toBeGreaterThan(section);
       const initializer = twin.slice(section, end);
       const labels = [
-        'TypeScript:\n\n```ts', 'Python:\n\n```python', 'Java:\n\n```java', 'C# / .NET:\n\n```csharp', 'Golang:\n\n```go',
+        'TypeScript:\n\n```ts', 'Python:\n\n```python', 'Java:\n\n```java', 'C#:\n\n```csharp', 'Go:\n\n```go',
       ];
       const at = labels.map((label) => initializer.indexOf(label));
       expect(at.every((i) => i >= 0)).toBe(true);
