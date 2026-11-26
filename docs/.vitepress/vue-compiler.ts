@@ -1,6 +1,6 @@
 import * as compilerSfc from "vue/compiler-sfc";
 
-// The Vue plugin caches every page's template AST for the whole build; a compiled AST only needs `source` to re-parse.
+// The Vue plugin keeps every page's AST all build; a compiled AST needs only `source` and `transformed` to re-parse.
 export const astReleasingCompiler: typeof compilerSfc = {
   ...compilerSfc,
   compileTemplate(options) {

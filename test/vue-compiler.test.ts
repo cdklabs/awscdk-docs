@@ -27,7 +27,7 @@ export default { name: 'page', data: () => ({ items: ['a', 'b'] }) };
 
 type Compiler = typeof compilerSfc;
 
-/** The page chunk of a client build and of an SSR build, run one after the other in one process as VitePress does. */
+/** The page chunk of a client build and of an SSR build, run one after the other in one process, as VitePress does. */
 async function buildPage(compiler: Compiler): Promise<{ client: string; ssr: string }> {
   const root = mkdtempSync(join(tmpdir(), 'vue-compiler-'));
   try {
@@ -65,10 +65,23 @@ async function buildPage(compiler: Compiler): Promise<{ client: string; ssr: str
 describe('Vue compiler that releases template ASTs', () => {
   let stock: { client: string; ssr: string };
   let releasing: { client: string; ssr: string };
+  // What the Vue plugin hands the wrapped compiler on each call: the AST it passes in, and that AST once compiled.
+  const calls: { compiledBefore: boolean; keysBefore: string[]; keysAfter: string[] }[] = [];
 
   beforeAll(async () => {
     stock = await buildPage(compilerSfc);
-    releasing = await buildPage(astReleasingCompiler);
+    const recording: Compiler = {
+      ...astReleasingCompiler,
+      compileTemplate(options) {
+        const ast = options.ast as unknown as Record<string, unknown> | undefined;
+        const compiledBefore = ast?.transformed === true;
+        const keysBefore = Object.keys(ast ?? {}).sort();
+        const result = astReleasingCompiler.compileTemplate(options);
+        calls.push({ compiledBefore, keysBefore, keysAfter: Object.keys(ast ?? {}).sort() });
+        return result;
+      },
+    };
+    releasing = await buildPage(recording);
   }, 60_000);
 
   test('the client build matches the stock compiler', () => {
@@ -82,10 +95,14 @@ describe('Vue compiler that releases template ASTs', () => {
     expect(releasing.ssr).toBe(stock.ssr);
   });
 
-  test('a compiled template AST keeps only what re-parsing needs', () => {
-    const { descriptor } = compilerSfc.parse(PAGE, { filename: 'Release.vue' });
-    const ast = descriptor.template!.ast!;
-    astReleasingCompiler.compileTemplate({ source: descriptor.template!.content, ast, filename: 'Release.vue', id: 'x' });
-    expect(Object.keys(ast).sort()).toEqual(['source', 'transformed']);
+  test('the plugin hands the SSR build the released AST, and every compiled AST is released', () => {
+    expect(calls).toHaveLength(2);
+    expect(calls[0].compiledBefore).toBe(false);
+    expect(calls[1]).toEqual({
+      compiledBefore: true,
+      keysBefore: ['source', 'transformed'],
+      keysAfter: ['source', 'transformed'],
+    });
+    expect(calls[0].keysAfter).toEqual(['source', 'transformed']);
   });
 });
