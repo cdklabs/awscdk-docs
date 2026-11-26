@@ -50,8 +50,8 @@ test.describe('Copy Markdown control', () => {
 
   test('a client-side navigation between type pages re-finds the row', async ({ page }) => {
     await open(page);
-    await page.locator('.vp-doc a[href$="aws-cdk-lib.aws_sqs.Queue.html"]').first().click();
-    await expect(page.locator('.vp-doc h1')).toHaveText('Queue');
+    await page.locator('.vp-doc a[href$="aws-cdk-lib.aws_sns.TopicBase.html"]').first().click();
+    await expect(page.locator('.vp-doc h1')).toHaveText('TopicBase');
     await expect(page.locator('.type-header-row .type-action-copy .copy-markdown')).toHaveCount(1);
     await expect(page.locator('.copy-markdown')).toHaveCount(1);
   });

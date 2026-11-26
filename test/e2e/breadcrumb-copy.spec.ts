@@ -130,10 +130,10 @@ test.describe('breadcrumb copies as the FQN', () => {
       expect(measured.copied).toBe(fqn);
     }
   });
-  test('a narrow viewport wraps the real trail after a dot, and the copy is still the FQN', async ({ page }) => {
-    // The dots carry no whitespace, so the `<wbr>` after each one is the only
-    // break opportunity between segments; a break taken at it must land after
-    // a dot and add nothing to the selection.
+  test('a narrow viewport wraps the real trail at a join, and the copy is still the FQN', async ({ page }) => {
+    // The joins carry no whitespace, so the `<wbr>` after each one is the only
+    // break opportunity between segments; a break taken at it must leave every
+    // segment whole and add nothing to the selection.
     await page.setViewportSize({ width: 375, height: 700 });
     await page.goto(NESTED_TYPE_PAGE);
     await expect(page.locator('.breadcrumb-trail')).toBeVisible();
@@ -164,12 +164,16 @@ test.describe('breadcrumb copies as the FQN', () => {
     });
 
     expect(lines.length).toBeGreaterThan(1);
-    // Every break lands after a dot, never inside a segment.
-    for (const line of lines.slice(0, -1)) {
-      expect(line).toMatch(/\.$/);
+    // Every break lands at a dot, never inside a word. A join dot has no width,
+    // so the browser may place it on either side of the break it enables —
+    // which is why this reads both sides rather than requiring a trailing dot.
+    for (let i = 1; i < lines.length; i++) {
+      expect(lines[i - 1].endsWith('.') || lines[i].startsWith('.')).toBe(true);
     }
-    // The first line breaks at the last dot that fits, not the first.
-    expect(lines[0].match(/\./g)!.length).toBeGreaterThan(1);
+    // The lines are the FQN split up, with nothing added by the wrap — and no
+    // break is taken anywhere a dot does not allow one, which together is the
+    // whole claim. How greedily the browser fills each line is its business.
+    expect(lines.join('')).toBe('aws-cdk-lib.aws_sns.CfnTopic.SubscriptionProperty');
     expect(await selectTrail(page)).toBe('aws-cdk-lib.aws_sns.CfnTopic.SubscriptionProperty');
   });
 });

@@ -10,8 +10,8 @@ test.describe('favorite pages', () => {
 
     const star = page.locator('.favorite-star-button');
     await expect(star).toBeVisible();
-    // The star teleports into the breadcrumb header bar.
-    await expect(page.locator('.type-breadcrumb .favorite-star-button')).toBeVisible();
+    // The star teleports into the chip row under the title.
+    await expect(page.locator('.type-header-row .favorite-star-button')).toBeVisible();
     await expect(star).toHaveAttribute('aria-pressed', 'false');
     await expect(page.locator('.favorites-section')).toHaveCount(0);
 
@@ -158,8 +158,8 @@ test.describe('favorite pages', () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.type-header-row .favorite-star-button')).toHaveCount(1);
-    await page.locator('.vp-doc a[href$="aws-cdk-lib.aws_sqs.Queue.html"]').first().click();
-    await expect(page.locator('.vp-doc h1')).toHaveText('Queue');
+    await page.locator('.vp-doc a[href$="aws-cdk-lib.aws_sns.TopicBase.html"]').first().click();
+    await expect(page.locator('.vp-doc h1')).toHaveText('TopicBase');
     await expect(page.locator('.type-header-row .favorite-star-button')).toHaveCount(1);
     await expect(page.locator('.favorite-star-button')).toHaveCount(1);
   });
