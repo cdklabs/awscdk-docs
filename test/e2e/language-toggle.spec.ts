@@ -218,6 +218,26 @@ test.describe('language toggle', () => {
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sns\.Topic/);
   });
 
+  for (const [where, width] of [['bar', 1280], ['phone menu', 375]] as const) {
+    test(`forced colors still mark the selected language in the ${where}`, async ({ page }) => {
+      await page.emulateMedia({ forcedColors: 'active' });
+      await page.setViewportSize({ width, height: 812 });
+      await page.goto(TOPIC_PAGE);
+      let scope = page.locator('.VPNavBar');
+      if (where === 'phone menu') {
+        await page.locator('.VPNavBarHamburger').click();
+        scope = page.locator('.VPNavScreen');
+      }
+      const picker = scope.getByRole('radiogroup', { name: 'Select programming language' });
+      await expect(picker).toBeVisible();
+      const decoration = (el: Element) => getComputedStyle(el).textDecorationLine;
+      // Forced colors drops the fill and the inset underline, so the selected
+      // label is underlined in the system text color; the others are not.
+      expect(await picker.getByRole('radio', { name: 'TypeScript' }).evaluate(decoration)).toBe('underline');
+      expect(await picker.getByRole('radio', { name: 'Python' }).evaluate(decoration)).toBe('none');
+    });
+  }
+
   test('the search trigger does not move when the language changes', async ({
     page,
   }) => {

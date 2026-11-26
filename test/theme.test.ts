@@ -576,8 +576,9 @@ describe('API kind badge palette', () => {
 // The checked segment tints its abbreviation box with the brand soft layer over
 // the elevated surface, so neither the page background nor an opaque swatch is
 // the measurement. The accessibility gate audits the default scheme only.
-describe('language abbreviation contrast', () => {
+describe('selected language label contrast', () => {
   const themeCss = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
+  const navCss = readFileSync(resolve(THEME_DIR, 'nav-controls.css'), 'utf-8');
   const toggle = readFileSync(resolve(THEME_DIR, 'LanguageToggle.vue'), 'utf-8');
   const lightBlock = themeCss.slice(themeCss.indexOf(':root {'), themeCss.indexOf('.dark {'));
   const darkBlock = themeCss.slice(themeCss.indexOf('.dark {'));
@@ -588,23 +589,6 @@ describe('language abbreviation contrast', () => {
       throw new Error(`variable ${name} not found as a hex color`);
     }
     return match[1];
-  };
-
-  const rgba = (block: string, name: string): number[] => {
-    const match = block.match(new RegExp(`${name}:\\s*rgba\\(([^)]+)\\)`));
-    if (!match) {
-      throw new Error(`variable ${name} not found as an rgba color`);
-    }
-    return match[1].split(',').map((part) => parseFloat(part.trim()));
-  };
-
-  const composite = (soft: number[], overHex: string): string => {
-    const [r, g, b, a] = soft;
-    const channels = [r, g, b].map((layer, i) => {
-      const base = parseInt(overHex.slice(1 + i * 2, 3 + i * 2), 16);
-      return Math.round(a * layer + (1 - a) * base);
-    });
-    return `#${channels.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
   };
 
   const luminance = (value: string): number => {
@@ -622,32 +606,23 @@ describe('language abbreviation contrast', () => {
 
   const AA = 4.5;
 
-  const surface = (block: string): string =>
-    composite(rgba(block, '--vp-c-brand-soft'), hex(block, '--vp-c-bg-elv'));
-
-  test('light mode: the checked abbreviation clears AA on its tinted box', () => {
-    expect(contrast(hex(lightBlock, '--vp-c-brand-2'), surface(lightBlock))).toBeGreaterThanOrEqual(AA);
+  test.each([
+    ['light', () => lightBlock],
+    ['dark', () => darkBlock],
+  ])('%s mode: the selected language label clears AA on its segment', (_mode, block) => {
+    expect(contrast(hex(block(), '--vp-c-brand-1'), hex(block(), '--vp-c-bg-elv'))).toBeGreaterThanOrEqual(AA);
   });
 
-  test('dark mode: the checked abbreviation clears AA on its tinted box', () => {
-    expect(contrast(hex(darkBlock, '--vp-c-brand-2'), surface(darkBlock))).toBeGreaterThanOrEqual(AA);
-  });
-
-  test('the unused brand step is under AA on that tinted box', () => {
-    expect(contrast(hex(lightBlock, '--vp-c-brand-1'), surface(lightBlock))).toBeLessThan(AA);
-  });
-
-  test('the checked abbreviation is colored by the pinned step on the pinned surface', () => {
+  test('the selected label is colored by the measured step on the measured surface', () => {
     // Holds the measurement to the tokens the rules actually carry.
-    const rule = (selector: string): string => {
-      const start = toggle.indexOf(selector);
+    const rule = (source: string, selector: string): string => {
+      const start = source.indexOf(selector);
       expect(start).toBeGreaterThan(-1);
-      return toggle.slice(start, toggle.indexOf('}', start));
+      return source.slice(start, source.indexOf('}', start));
     };
-    expect(rule('.language-option.active .language-abbr {')).toContain('color: var(--vp-c-brand-2)');
-    expect(rule('.language-option.active .language-abbr {')).toContain(
-      'background-color: var(--vp-c-brand-soft)',
+    expect(rule(navCss, '.VPNavBar .language-toggle .language-option.active {')).toContain(
+      'color: var(--vp-c-brand-1)',
     );
-    expect(rule('.language-option.active {')).toContain('background-color: var(--vp-c-bg-elv)');
+    expect(rule(toggle, '.language-option.active {')).toContain('background-color: var(--vp-c-bg-elv)');
   });
 });

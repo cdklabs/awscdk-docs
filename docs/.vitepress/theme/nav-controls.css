@@ -542,6 +542,17 @@
   }
 }
 
+/* Forced colors (high contrast) replaces the selected option's author colors
+ * and drops its inset underline, which would leave five identical options.
+ * Underline the selected label in the system text color instead, which
+ * survives forced colors and does not change the option's size. */
+@media (forced-colors: active) {
+  :is(.VPNavBar, .VPNavScreen) .language-toggle .language-option.active {
+    text-decoration: underline 3px;
+    text-underline-offset: 4px;
+  }
+}
+
 /* Mobile nav screen: the navigation style as a full-width row under the
  * theme picker row, so the reader can switch the drawer between By service
  * and By package (the Settings dropdown that holds it on desktop is hidden
