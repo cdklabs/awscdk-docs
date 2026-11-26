@@ -379,7 +379,7 @@ describe('mixin page generation', () => {
       'utf-8',
     );
     expect(page).toContain('<span class="type-chip type-chip-kind api-badge-mixin">Mixin</span>');
-    expect(page).not.toContain('text="Class"');
+    expect(page).not.toContain('>Class<');
     // Same badge COLOR as an interface mixin's page, or the sidebar's
     // Mixins group renders one kind as two differently-colored badges.
     const ifacePage = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
@@ -390,7 +390,7 @@ describe('mixin page generation', () => {
     // A plain (non-construct) class in the same build keeps the Class badge.
     const duration = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
     expect(duration).toContain('<span class="type-chip type-chip-kind">Class</span>');
-    expect(duration).not.toContain('text="Mixin"');
+    expect(duration).not.toContain('>Mixin<');
   });
 
   test('type lists link mixins with Mixin kind and structs with Struct kind', () => {

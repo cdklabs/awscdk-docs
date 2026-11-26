@@ -59,9 +59,12 @@ describe('type page header below the tablet breakpoint', () => {
     '@media (max-width: 767px)',
   );
 
-  test('the title steps down from its desktop size', () => {
-    expect(tabletRules.get('.vp-doc h1')).toContain('font-size: 32px');
-    expect(tabletRules.get('.vp-doc h1')).toContain('line-height: 1.1');
+  test('the title steps down from its desktop size, still scoped to type pages', () => {
+    const h1 = tabletRules.get('.vp-doc h1:has(+ .type-header)');
+    expect(h1).toContain('font-size: 32px');
+    expect(h1).toContain('line-height: 1.1');
+    // Unscoped, it would shrink every H1 on the site below 768px.
+    expect(tabletRules.get('.vp-doc h1')).toBeUndefined();
   });
 
   test('the spacer takes the full row, so chips keep one line and the actions take the next', () => {
@@ -166,6 +169,9 @@ describe('responsive mobile layout', () => {
       // horizontal room, and a 44px min-width would stretch a short segment
       // into a ragged trail.
       ['.type-breadcrumb a', 'breadcrumb links', ['min-height']],
+      // The actions box is emitted empty and reserves its children's height,
+      // so its width is the row's to give; only the height binds.
+      ['.type-actions', 'type page actions box', ['min-height']],
     ];
 
     // These two guards pin the parse: the block is brace-bounded, and every
@@ -196,6 +202,7 @@ describe('responsive mobile layout', () => {
         '.VPSidebar .api-sidebar-link',
         '.copy-markdown-item',
         '.type-breadcrumb a',
+        '.type-actions',
       ]);
     });
 

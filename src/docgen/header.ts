@@ -1,7 +1,7 @@
 import * as spec from '@jsii/spec';
 import { STABILITY_ROUTE } from '../site-routes.js';
 import { typeStability } from './stability.js';
-import { escapeAttr, escapeVueText } from './escape.js';
+import { escapeAttr, escapeSummaryHtml, escapeVueText } from './escape.js';
 import { pageHref } from './links.js';
 import { PAGEFIND_IGNORE, weightedTitle } from './search.js';
 
@@ -137,13 +137,17 @@ const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: strin
  * The top of a type page: the H1 carrying the type name alone, then one row holding the kind chip, the stability
  * chip and the mount points the theme's page actions teleport into, then — for a deprecated type — the reason.
  *
- * The kind leaves the H1 and becomes a chip of its own row, so the heading is the name a reader came for and the
- * classification sits beside the controls that act on the page. Every type states its stability, "Stable" included:
- * an absent chip used to mean both "stable" and "not shown", which a reader cannot tell apart.
+ * The kind sits in the row rather than the H1, so the heading is the name a reader came for and the classification
+ * sits beside the controls that act on the page. Every type states its stability, "Stable" included, so that no
+ * reader has to decide whether a missing chip means "stable" or "not shown".
  *
  * The row is one raw-HTML block, so markdown-it passes it through whole and the chips need no markdown escape; it is
  * excluded from the Pagefind index, because the kind and the stability are already search filters. A deprecated type
  * strikes its title and carries the reason as a note, matching the three signals a deprecated member already gets.
+ *
+ * The reason's whitespace is collapsed before it is escaped, like the member summaries it reads beside: a raw HTML
+ * block in markdown ends at a blank line, so a reason carrying a paragraph break would otherwise split this block
+ * and strand its closing tags. `escapeSummaryHtml` also turns a web link in the reason into an anchor.
  */
 export function renderTypeHeader(options: TypeHeaderOptions): string[] {
   const title = weightedTitle(options.name);
@@ -158,7 +162,8 @@ export function renderTypeHeader(options: TypeHeaderOptions): string[] {
       + '<span class="type-actions"><span class="type-action-copy"></span><span class="type-action-fav"></span>'
       + '</span></div>',
     ...(deprecated && reason
-      ? [`<p class="type-deprecated-note"><strong>Deprecated:</strong> ${escapeVueText(reason)}</p>`]
+      ? [`<p class="type-deprecated-note"><span class="type-deprecated-label">Deprecated:</span> `
+        + `${escapeSummaryHtml(reason.replace(/\s+/g, ' '))}</p>`]
       : []),
     '</div>',
     '',

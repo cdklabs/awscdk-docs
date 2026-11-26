@@ -934,7 +934,8 @@ describe('docgen generation', () => {
     // stays the first frontmatter key.
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(bucket.startsWith(
-      '---\ntitle: "Bucket"\nupstreamEditUrl: "https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-s3/lib/bucket.ts"\n',
+      '---\ntitle: "Bucket"\ntypeHeader: true\n'
+        + 'upstreamEditUrl: "https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-s3/lib/bucket.ts"\n',
     )).toBe(true);
     const props = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
     expect(props).toContain(
@@ -1031,9 +1032,8 @@ describe('docgen generation', () => {
       const end = page.indexOf('\n---\n');
       expect(end + 5).toBeLessThan(page.indexOf('<nav class="type-breadcrumb"'));
     }
-    // The weighted-title span is the H1's only raw HTML, and its inner text is
-    // the type name — which is what inference would produce anyway. The kind
-    // and the source link are both outside the heading, so neither can leak.
+    // The kind and the source link are both outside the heading, so neither
+    // can leak into the inferred title.
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     const cfn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
     for (const page of [bucket, cfn]) {
@@ -1118,8 +1118,9 @@ describe('docgen generation', () => {
   });
 
   test('every type page states its stability as a chip, stable ones included', () => {
-    // The banner is per-PACKAGE and says nothing on a stable one, so before
-    // the chip row a reader could not tell "stable" from "not shown".
+    // The banner is keyed on the PACKAGE and says nothing on a stable one, so
+    // the chip is what makes a stable type distinguishable from a page that
+    // does not mention stability.
     const chip = (file: string): string => {
       const page = readFileSync(join(outDir, 'docs', file), 'utf-8');
       return page.match(/class="type-chip type-chip-stability type-chip-(\w+)"/)![1];

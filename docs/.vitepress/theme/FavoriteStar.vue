@@ -4,8 +4,10 @@
   row, so the star sits with the page's other actions. An API page with no chip
   row of its own — a module or submodule overview — keeps the `breadcrumb-fav`
   spot in its breadcrumb bar, and a page with neither keeps the standalone
-  doc-before placement. State is read in onMounted so the SSG-rendered markup
-  never mismatches hydration.
+  doc-before placement. A page whose frontmatter says it has a chip row renders
+  nothing until that mount point resolves, so the star never paints in a
+  fallback placement and then jumps. State is read in onMounted so the
+  SSG-rendered markup never mismatches hydration.
 -->
 <script setup lang="ts">
 import { onContentUpdated, useData, useRoute } from "vitepress";
@@ -23,6 +25,10 @@ const capped = ref(false);
 const barTarget = ref<HTMLElement | null>(null);
 // Whether that mount point is the chip row, which styles the star as a pill.
 const inRow = ref(false);
+// Whether THIS page has a chip row at all, known from frontmatter at
+// server-render time. The mount point can only be queried in the browser, so
+// without this the star would paint in its fallback placement and then move.
+const hasRow = computed(() => page.value.frontmatter?.typeHeader === true);
 
 // `route.path` carries the site base.
 const pagePath = computed(() => apiPathFrom(route.path));
@@ -82,7 +88,7 @@ function toggle(): void {
 
 <template>
   <Teleport
-    v-if="mounted && isApiPage"
+    v-if="mounted && isApiPage && (inRow || !hasRow)"
     :to="barTarget ?? 'body'"
     :disabled="!barTarget"
   >

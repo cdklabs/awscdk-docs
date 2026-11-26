@@ -661,6 +661,15 @@ describe('construct page generation', () => {
     expect(page).not.toContain('CloudFormation resource');
   });
 
+  test('a construct matching no level takes the neutral Construct chip', () => {
+    // `constructLevel` returns nothing for a construct outside the L1/L2/L3
+    // scheme, `constructs.Construct` itself among them, so the chip carries no
+    // `api-badge-*` color class and the row still names the kind.
+    const page = readFileSync(join(outDir, 'docs', 'constructs.Construct.md'), 'utf-8');
+    expect(page).toContain('<span class="type-chip type-chip-kind">Construct</span>');
+    expect(page).not.toMatch(/type-chip-kind api-badge-l[123]/);
+  });
+
   test('L3 pattern construct gets a page in its patterns submodule', () => {
     const page = readFileSync(
       join(outDir, 'docs', 'aws-cdk-lib.aws_ecs_patterns.ApplicationLoadBalancedFargateService.md'),

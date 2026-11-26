@@ -655,13 +655,23 @@ describe('API kind badge palette', () => {
       expect(exactRuleBody('.breadcrumb-trail > :last-child::after')).toContain('content: none');
     });
 
-    test('the title is the large bold name and the badge override stays for the Added in badge', () => {
-      const h1 = exactRuleBody('.vp-doc h1');
+    test('the title treatment is keyed on the header block, so it reaches type pages only', () => {
+      // This stylesheet is imported globally, so an unscoped `.vp-doc h1`
+      // would restyle module overviews and authored pages as well.
+      const h1 = exactRuleBody('.vp-doc h1:has(+ .type-header)');
       expect(h1).toContain('font-size: 42px');
       expect(h1).toContain('font-weight: 700');
-      // The kind badge left the H1, but the `Added in vX.Y.Z` badge did not, so
-      // the alignment override is still the thing holding it on the baseline.
-      expect(css).toContain('.vp-doc h1 > .VPBadge.api-badge');
+      expect(h1).toContain('margin: 0');
+      expect(bare).not.toMatch(/(^|\})\s*\.vp-doc h1\s*\{/);
+    });
+
+    test('the badge alignment override holds the Added in badge on the title baseline', () => {
+      // It is the one badge an API H1 still carries. All three declarations,
+      // since dropping any one hands that property back to VitePress.
+      const rule = exactRuleBody('.vp-doc h1 > .VPBadge.api-badge');
+      expect(rule).toContain('vertical-align: middle');
+      expect(rule).toContain('margin-top: 0');
+      expect(rule).toContain('transform: none');
     });
 
     test('the header block closes with a divider above the summary', () => {
@@ -679,6 +689,11 @@ describe('API kind badge palette', () => {
       const row = exactRuleBody('.type-header-row');
       expect(row).toContain('flex-wrap: wrap');
       expect(row).toContain('gap: 8px');
+    });
+
+    test('the actions box reserves the pills height, so the row does not grow on mount', () => {
+      // Docgen emits the box empty; the buttons teleport in after hydration.
+      expect(exactRuleBody('.type-actions')).toContain('min-height: 32px');
     });
 
     test('the page actions are outlined pills with a visible focus ring', () => {
@@ -717,7 +732,7 @@ describe('API kind badge palette', () => {
       const note = exactRuleBody('.type-deprecated-note');
       expect(note).toContain('border-left: 4px solid var(--th-dep-edge)');
       expect(note).toContain('background-color: var(--th-dep-bg)');
-      expect(exactRuleBody('.type-deprecated-note strong')).toContain('var(--th-dep-text)');
+      expect(exactRuleBody('.type-deprecated-label')).toContain('var(--th-dep-text)');
     });
   });
 

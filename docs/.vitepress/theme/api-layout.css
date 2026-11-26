@@ -156,8 +156,13 @@
 }
 
 /* The title carries the type name alone. Its kind and stability are chips of
-   the row below, so the heading is the one thing a reader scanned for. */
-.vp-doc h1 {
+   the row below, so the heading is the one thing a reader scanned for.
+
+   Keyed on the H1 that the header block follows, so the treatment reaches type
+   pages only: this stylesheet is imported globally, and an unscoped `.vp-doc
+   h1` would restyle module overviews and authored pages too. `margin: 0` in
+   particular belongs to a title with a chip row under it. */
+.vp-doc h1:has(+ .type-header) {
   margin: 0;
   font-size: 42px;
   font-weight: 700;
@@ -198,10 +203,15 @@
   flex: 1 1 16px;
 }
 
+/* Docgen emits this box empty and two components teleport their buttons into
+   it after mount, so it reserves the pills' height up front: without that the
+   row would grow from the chips' 24px to the pills' 32px on every type-page
+   load, shifting everything below it. */
 .type-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 32px;
 }
 
 /* One geometry for both chips; the color comes from the kind or stability
@@ -219,8 +229,8 @@
   white-space: nowrap;
 }
 
-/* The kind chip's edge is its own ink, which clears 4.5:1 against the chip
-   fill by construction; the previous badge edge was a pale tint at 1.69:1. */
+/* The edge is the ink, so it clears 4.5:1 against the chip fill by
+   construction: the ink/fill pair is pinned at that floor already. */
 .type-chip-kind {
   border-color: currentColor;
 }
@@ -271,7 +281,7 @@
   color: var(--vp-c-text-1);
 }
 
-.type-deprecated-note strong {
+.type-deprecated-label {
   color: var(--th-dep-text);
   font-weight: 700;
 }
@@ -279,8 +289,8 @@
 /* ---------- Page action pills: Copy Markdown and the favorite star ---------- */
 
 /* Both controls read as one family of outlined pills on the chip row. The 2px
-   brand edge replaces a `--vp-c-divider` hairline that measured 1.7:1 against
-   the page, and 1.32:1 for the star in dark mode. */
+   brand edge is what makes the boundary visible: these are controls, and a
+   control boundary owes 3:1 against the page it sits on. */
 .vp-doc .type-actions .copy-markdown-main,
 .vp-doc .type-actions .copy-markdown-options,
 .vp-doc .type-actions .favorite-star-button {
@@ -345,14 +355,15 @@
 
 /* VitePress 1.6.4 ships `.vp-doc h1 > .VPBadge { margin-top: 4px;
    vertical-align: top }` on top of `.VPBadge { transform: translateY(-2px) }`.
-   The kind badge has left the H1 for the chip row, but the `Added in vX.Y.Z`
-   badge has not, and it is the badge this override now holds on the title's
-   baseline: stock alignment lifts it off the line the name sits on. Measured,
-   not assumed — the e2e alignment assertion is what holds it.
+   The `Added in vX.Y.Z` badge is the one badge an API H1 still carries, and
+   this override is what holds it on the title's baseline: stock alignment
+   lifts it off the line the name sits on. No fixture page in the e2e build
+   carries that badge, so the guard here is the stylesheet assertion in
+   `test/theme.test.ts`, not a browser measurement.
 
    The selector carries `.api-badge` for two reasons: it outranks
    VitePress's own `.vp-doc h1 > .VPBadge` whatever order the stylesheets
-   land in, and it confines the override to API type pages — a `<Badge>` in
+   land in, and it confines the override to API pages — a `<Badge>` in
    hand-written prose keeps the stock treatment. */
 .vp-doc h1 > .VPBadge.api-badge {
   margin-top: 0;
@@ -475,10 +486,10 @@
   border-color: var(--cdk-badge-enum-border);
 }
 
-/* The kind CHIP borrows each kind's fill and ink but not its border tint: the
+/* The kind CHIP borrows each kind's fill and ink, but not its border tint: the
    chip's edge is `currentColor`, which is the ink and so clears 4.5:1 against
-   the fill by construction. The tinted `--cdk-badge-*-border` it replaces
-   measured 1.69:1 light and 1.71:1 dark, invisible as an edge. */
+   the fill by construction. The `-border` tokens stay for the badge the
+   hover-preview chip uses. */
 .type-chip-kind.api-badge-l1 {
   background-color: var(--cdk-badge-l1-bg);
   color: var(--cdk-badge-l1-text);

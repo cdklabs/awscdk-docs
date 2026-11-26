@@ -1062,11 +1062,15 @@ const OVERVIEW_FRONTMATTER = ['---', 'outline: false', '---', ''];
  *
  * - It must be the file's FIRST bytes. VitePress parses a frontmatter block only at the very top and silently
  *   ignores it anywhere else, so anything inserted above this silently restores H1 inference.
- * - The type name is stated explicitly because the H1 carries a source chip whose inner text would otherwise leak
- *   into VitePress's inferred title.
+ * - The type name is stated explicitly because the H1 carries a weighted-title span whose inner text would
+ *   otherwise leak into VitePress's inferred title.
+ *
+ * `typeHeader` tells the theme, at server-render time, that this page has a chip row for the page actions to
+ * teleport into. Without it the actions would have to render in their fallback placement first and move on mount,
+ * which shifts the whole header on every type-page load.
  */
 function typePageFrontmatter(name: string, upstreamEditUrl: string | undefined): readonly string[] {
-  return ['---', `title: ${JSON.stringify(name)}`, ...upstreamKey(upstreamEditUrl), '---', ''];
+  return ['---', `title: ${JSON.stringify(name)}`, 'typeHeader: true', ...upstreamKey(upstreamEditUrl), '---', ''];
 }
 
 /** The recorded history as frontmatter keys, one per known value; a page with no history is returned untouched. */

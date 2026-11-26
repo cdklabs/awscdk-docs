@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { CFN_QUEUE_PAGE, QUEUE_GRANTS_PAGE, QUEUE_PAGE } from './fixture.js';
+import {
+  CFN_QUEUE_PAGE,
+  DEPRECATED_TYPE_PAGE,
+  EXPERIMENTAL_TYPE_PAGE,
+  QUEUE_GRANTS_PAGE,
+  QUEUE_PAGE,
+} from './fixture.js';
 
 /** Computed foreground and background, as one comparable string. */
 const PAINT = (el: Element) => {
@@ -13,11 +19,9 @@ const PAINT = (el: Element) => {
 // rules that never reach the element, and the pills are teleported into the
 // row by two components, which no unit test loads.
 //
-// Coverage limit: the fixture builds aws-sns + aws-sqs, so there is no L3
-// pattern construct and no deprecated type here. L3 is pinned at the docgen
-// layer in `test/construct-pages.test.ts` and for contrast in
-// `test/theme.test.ts`; the deprecated title, chip and note are pinned in
-// `test/header.test.ts` and `test/symbol-pages.test.ts`.
+// Coverage limit: the fixture carries no L3 pattern construct, which is pinned
+// at the docgen layer in `test/construct-pages.test.ts` and for contrast in
+// `test/theme.test.ts`.
 test.describe('type page header', () => {
   test('the kind and the stability are chips of the row under the title, not of the title', async ({ page }) => {
     await page.goto(QUEUE_PAGE);
@@ -42,9 +46,9 @@ test.describe('type page header', () => {
   });
 
   test('a chip edge is its own ink, so it is visible rather than a pale tint', async ({ page }) => {
-    // The badge this replaces carried `--cdk-badge-*-border`, which measured
-    // 1.69:1 against the chip fill. `currentColor` makes the edge the ink,
-    // whose contrast against that fill is already pinned by the unit suite.
+    // `currentColor` makes the edge the ink, whose contrast against the chip
+    // fill the unit suite already pins. Only a browser can confirm the edge
+    // resolves to that ink rather than to a tint lower in the cascade.
     await page.goto(QUEUE_PAGE);
     const measured = await page.locator('.type-header-row .type-chip-kind').evaluate((el) => {
       const style = getComputedStyle(el);
@@ -116,10 +120,11 @@ test.describe('type page header', () => {
   });
 
   test('every control in the row shows a keyboard focus ring', async ({ page }) => {
-    await page.goto(QUEUE_PAGE);
+    await page.goto(EXPERIMENTAL_TYPE_PAGE);
     await page.locator('.copy-markdown[data-ready]').waitFor();
     for (const selector of [
       '.type-breadcrumb a',
+      '.type-header-row a.type-chip-stability',
       '.type-header-row .copy-markdown-main',
       '.type-header-row .copy-markdown-options',
       '.type-header-row .favorite-star-button',
@@ -151,6 +156,92 @@ test.describe('type page header', () => {
     expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
     await page.keyboard.press('Escape');
     await expect(options).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('the experimental chip links to the stability guide and keeps its own ink', async ({ page }) => {
+    // The only interactive element the header adds. Its ink has to beat
+    // VitePress's own `.vp-doc a`, which only a measurement can settle.
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto(EXPERIMENTAL_TYPE_PAGE);
+      const chip = page.locator('.type-header-row a.type-chip-stability');
+      await expect(chip).toHaveText('Experimental');
+      await expect(chip).toHaveAttribute('href', /stability/);
+      const measured = await chip.evaluate((el) => {
+        const probe = document.createElement('span');
+        document.body.appendChild(probe);
+        probe.style.color = 'var(--th-exp-text)';
+        const token = getComputedStyle(probe).color;
+        probe.remove();
+        const style = getComputedStyle(el);
+        return { color: style.color, token, decoration: style.textDecorationLine, border: style.borderTopColor };
+      });
+      expect(measured.color, scheme).toBe(measured.token);
+      expect(measured.border, scheme).toBe(measured.token);
+      expect(measured.decoration, scheme).toContain('underline');
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+  });
+
+  test('a deprecated type strikes its title, chips Deprecated and announces its name', async ({ page }) => {
+    await page.goto(DEPRECATED_TYPE_PAGE);
+    const title = page.locator('.vp-doc h1 .type-title-deprecated');
+    await expect(title).toHaveText('Default');
+    expect(await title.evaluate((el) => getComputedStyle(el).textDecorationLine)).toContain('line-through');
+    await expect(page.locator('.type-header-row .type-chip-deprecated')).toHaveText('Deprecated');
+    await expect(page.locator('.type-deprecated-note')).toContainText('Deprecated:');
+    // The struck title wraps the weighted span in one more element, which the
+    // permalink's accessible name has to see through.
+    await expect(page.locator('.vp-doc h1 a.header-anchor')).toHaveAttribute('aria-label', 'Permalink to "Default"');
+  });
+
+  test('the deprecation note reads at contrast in both themes', async ({ page }) => {
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto(DEPRECATED_TYPE_PAGE);
+      const measured = await page.locator('.type-deprecated-note').evaluate((el) => {
+        const read = (node: Element) => {
+          const style = getComputedStyle(node);
+          return { color: style.color, background: style.backgroundColor };
+        };
+        const srgb = (value: string) => value.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+        const luminance = (value: string) => srgb(value)
+          .map((c) => c / 255)
+          .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+          .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+        const note = read(el);
+        const label = read(el.querySelector('.type-deprecated-label')!);
+        const ratio = (fg: string, bg: string) => {
+          const [a, b] = [luminance(fg), luminance(bg)];
+          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        };
+        return { body: ratio(note.color, note.background), label: ratio(label.color, note.background) };
+      });
+      // Body text owes 4.5:1; the label is the note's own heading and clears 7.
+      expect(measured.body, scheme).toBeGreaterThanOrEqual(4.5);
+      expect(measured.label, scheme).toBeGreaterThanOrEqual(7);
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+  });
+
+  test('the server-rendered header already holds its final height', async ({ page, request }) => {
+    // The action pills teleport in after hydration. Docgen writes a
+    // `typeHeader` frontmatter flag so neither component paints in its
+    // fallback placement first, and the empty actions box carries their
+    // height, so nothing below the header moves on load.
+    const html = await (await request.get(QUEUE_PAGE)).text();
+    expect(html).toContain('type-action-copy');
+    expect(html).toContain('type-action-fav');
+    expect(html).not.toContain('copy-markdown-main');
+    expect(html).not.toContain('favorite-star-button');
+
+    await page.goto(QUEUE_PAGE);
+    const before = (await page.locator('.type-header').boundingBox())!;
+    await page.locator('.copy-markdown[data-ready]').waitFor();
+    await expect(page.locator('.type-header-row .favorite-star-button')).toBeVisible();
+    const after = (await page.locator('.type-header').boundingBox())!;
+    expect(after.height).toBeCloseTo(before.height, 0);
+    expect(after.y).toBeCloseTo(before.y, 0);
   });
 
   test('the header closes with a divider between the row and the summary', async ({ page }) => {

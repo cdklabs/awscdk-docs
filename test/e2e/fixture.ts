@@ -21,6 +21,16 @@ export const NESTED_TYPE_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.CfnTopic.Subscript
 /** A Facade class: the fixture surfaces `QueueGrants`. */
 export const QUEUE_GRANTS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueGrants.html';
 /**
+ * A type whose OWN stability is `deprecated`, inside a stable package: its header strikes the title, chips
+ * `Deprecated` and carries the reason as a note. The fixture keeps `region-info` for this one page.
+ */
+export const DEPRECATED_TYPE_PAGE = '/v2/docs/aws-cdk-lib.region_info.Default.html';
+/**
+ * A type page of an experimental package: it carries the experimental banner above the title and the only
+ * interactive element the header adds, the Experimental chip linking to the stability guide.
+ */
+export const EXPERIMENTAL_TYPE_PAGE = '/v2/docs/@aws-cdk_aws-codestar-alpha.GitHubRepository.html';
+/**
  * A class with four static factories of its own type (`existsFilter`, `notExistsFilter`, `numericFilter`,
  * `stringFilter`): the only fixture type whose `obtainable from` row overflows its two-line budget.
  */
@@ -104,6 +114,12 @@ export const REPRESENTATIVE_PAGES = [
   // path (`renderUsageBar`) and the `Type relations` landmark.
   ICONSTRUCT_PAGE,
   CONSTRUCT_ORDER_PAGE,
+  // The two header states no page above renders: a struck title with its
+  // deprecation note, and the Experimental chip, which is the only link the
+  // header adds and so the only part of it with a contrast and target-size
+  // obligation of its own.
+  DEPRECATED_TYPE_PAGE,
+  EXPERIMENTAL_TYPE_PAGE,
 ] as const;
 
 // Severities that FAIL the accessibility gate. Moderate and minor

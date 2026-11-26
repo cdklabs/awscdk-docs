@@ -1,4 +1,5 @@
 import { toAgentMarkdown, withFrontmatterKey } from '../src/docgen/agent-markdown.js';
+import { renderTypeHeader } from '../src/docgen/header.js';
 import { renderOverviewPage } from '../src/docgen/index.js';
 import { renderTypeMetadata } from '../src/docgen/layout.js';
 import type { RosettaTablet } from '../src/docgen/rosetta.js';
@@ -109,6 +110,40 @@ describe('toAgentMarkdown', () => {
     // classification an agent would otherwise have to guess from the FQN. The
     // row's other children are empty action mounts and contribute nothing.
     expect(markdown).toContain('# Bucket\n\nL2 construct · Stable\n');
+  });
+
+  test('a deprecated type keeps its reason and brings no markup with it', () => {
+    // The note's label has to be a tag the module knows, or `protectCode`
+    // treats it as author text and restores it verbatim into the twin.
+    const page = renderTypeHeader({
+      name: 'Statistic',
+      kind: { text: 'Enum', kindClass: 'api-badge-enum' },
+      stability: 'deprecated',
+      deprecationReason: 'Use one of the factory methods on `Stats`.',
+    }).join('\n');
+    const twin = toAgentMarkdown(page).markdown;
+    expect(twin).toContain('Deprecated: Use one of the factory methods on `Stats`.');
+    expect(twin).toContain('Enum · Deprecated');
+    expect(twin).not.toContain('<strong');
+    expect(twin).not.toContain('<span');
+    expect(twin).not.toContain('<p');
+    expect(twin).not.toContain('type-deprecated');
+  });
+
+  test('a deprecation reason with a paragraph break stays inside its note', () => {
+    // A raw HTML block in markdown ends at a blank line, so an uncollapsed
+    // reason would split the header block and strand its closing tags.
+    const page = renderTypeHeader({
+      name: 'Statistic',
+      kind: { text: 'Enum' },
+      stability: 'deprecated',
+      deprecationReason: 'Superseded.\n\nUse `Stats` instead.',
+    }).join('\n');
+    expect(page).toContain('Superseded. Use `Stats` instead.');
+    // No blank line between the block's opening tag and its close.
+    const block = page.slice(page.indexOf('<div class="type-header">'), page.lastIndexOf('</div>')).trim();
+    expect(block.split('\n').some((line) => line.trim() === '')).toBe(false);
+    expect(toAgentMarkdown(page).markdown).toContain('Deprecated: Superseded. Use `Stats` instead.');
   });
 
   test('keeps every language variant, each block after a label line naming its language', () => {

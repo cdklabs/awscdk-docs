@@ -249,7 +249,7 @@ describe('type page header', () => {
     });
     expect(block).toContain('# <span class="type-title-deprecated"><span data-pagefind-weight="10">Statistic</span></span>');
     expect(block).toContain('<span class="type-chip type-chip-stability type-chip-deprecated">Deprecated</span>');
-    expect(block).toContain('<p class="type-deprecated-note"><strong>Deprecated:</strong> Use `Stats` instead.</p>');
+    expect(block).toContain('<p class="type-deprecated-note"><span class="type-deprecated-label">Deprecated:</span> Use `Stats` instead.</p>');
     // The note sits inside the header block, so the divider closes below it.
     expect(block.indexOf('type-deprecated-note')).toBeLessThan(block.lastIndexOf('</div>'));
   });

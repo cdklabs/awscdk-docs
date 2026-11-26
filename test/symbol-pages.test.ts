@@ -503,7 +503,7 @@ describe('symbol page generation', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
     expect(page).toMatch(/^# <span data-pagefind-weight="10">Duration<\/span> \{#/m);
     // A plain class has no kind color of its own, so its chip carries no
-    // `api-badge-*` class and keeps the neutral fill.
+    // `api-badge-*` class and takes the neutral fill.
     expect(page).toContain('<span class="type-chip type-chip-kind">Class</span>');
     // Module-root type: breadcrumb links the module page only
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><strong>Duration</strong>');
@@ -549,15 +549,15 @@ describe('symbol page generation', () => {
   });
 
   test('a deprecated type chips Deprecated, strikes its title and states the reason', () => {
-    // Deprecated MEMBERS already carried all three signals; the type itself
-    // carried none, so a page whose whole subject is superseded read as
-    // current. `Statistic` is `stability: deprecated` in jsii with a reason.
+    // The same three signals a deprecated member row carries, on the type
+    // whose whole subject is superseded. `Statistic` is `stability:
+    // deprecated` in jsii and states a reason.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_cloudwatch.Statistic.md'), 'utf-8');
     expect(page).toContain(
       '# <span class="type-title-deprecated"><span data-pagefind-weight="10">Statistic</span></span>',
     );
     expect(page).toContain('<span class="type-chip type-chip-stability type-chip-deprecated">Deprecated</span>');
-    expect(page).toContain('<p class="type-deprecated-note"><strong>Deprecated:</strong> Use one of the factory');
+    expect(page).toContain('<p class="type-deprecated-note"><span class="type-deprecated-label">Deprecated:</span> Use one of the factory');
     expect(page).not.toContain('type-chip-stable');
   });
 

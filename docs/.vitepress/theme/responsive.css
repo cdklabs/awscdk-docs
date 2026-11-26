@@ -144,6 +144,12 @@ pre.signature {
     min-width: 44px;
   }
 
+  /* The actions box reserves the taller touch-target height here, for the same
+     reason it reserves 32px on desktop: the pills arrive after mount. */
+  .type-actions {
+    min-height: 44px;
+  }
+
   /* Breadcrumb links above the title. `inline-flex` so a min-height binds at
      all: an inline anchor's height is its line box, which padding alone does
      not grow. Height only — the chevron after each link already carries the
@@ -164,7 +170,8 @@ pre.signature {
  * to the full row width, which is what forces the wrap.
  * ------------------------------------------------------------------ */
 @media (max-width: 767px) {
-  .vp-doc h1 {
+  /* Scoped to the type page title, like its desktop rule. */
+  .vp-doc h1:has(+ .type-header) {
     font-size: 32px;
     line-height: 1.1;
   }

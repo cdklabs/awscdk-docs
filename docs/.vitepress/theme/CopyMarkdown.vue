@@ -1,6 +1,8 @@
 <!-- "Copy Markdown" split button (a labeled region, so landmark navigation reaches it). On a type page it
      teleports into the `type-action-copy` mount point of the docgen-emitted chip row, beside the favorite star;
-     every other API page keeps the doc-before slot at the top of the page. The main button copies the page's
+     every other API page keeps the doc-before slot at the top of the page. A page whose frontmatter says it has a
+     chip row renders nothing until that mount point resolves, so the control never paints in the fallback
+     placement and then jumps. The main button copies the page's
      Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page without a
      twin (no `agentMarkdown` frontmatter) renders nothing. -->
 <script setup lang="ts">
@@ -28,6 +30,11 @@ const root = ref<HTMLElement | null>(null);
 // The chip row's copy mount point, re-resolved on every content update: SPA
 // navigation replaces the rendered page and its row element.
 const rowTarget = ref<HTMLElement | null>(null);
+// Whether THIS page has a chip row, known from frontmatter at server-render
+// time. The mount point itself can only be queried in the browser, so without
+// this the control would paint in `doc-before` first and move on mount,
+// shifting the whole header on every type-page load.
+const hasRow = computed(() => page.value.frontmatter?.typeHeader === true);
 const optionsButton = ref<HTMLButtonElement | null>(null);
 const viewLink = ref<HTMLAnchorElement | null>(null);
 let resetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -152,10 +159,10 @@ onUnmounted(() => {
 <template>
   <Teleport :to="rowTarget ?? 'body'" :disabled="!rowTarget">
   <section
-    v-if="markdownUrl"
+    v-if="markdownUrl && (rowTarget || !hasRow)"
     ref="root"
     class="copy-markdown"
-    :class="rowTarget ? 'in-row' : 'standalone'"
+    :class="hasRow ? 'in-row' : 'standalone'"
     @focusout="onFocusOut"
     aria-label="Page Markdown"
     :data-ready="ready ? '' : undefined"

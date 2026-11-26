@@ -91,9 +91,14 @@ idle text on a page owes; the narrowest light pair is now 7.15:1. L3 and Facade
 are left alone: both sit between those floors, and moving a hue that no
 reported problem names is a change without an argument.
 
-**The H1 badge alignment override stays.** It was added for the kind badge, but
-the `Added in vX.Y.Z` badge still lives in the H1, and stock VitePress
-alignment lifts it off the baseline the name sits on.
+**The H1 badge alignment override stays.** The `Added in vX.Y.Z` badge lives in
+the H1, and stock VitePress alignment lifts it off the baseline the name sits
+on. No page in the e2e fixture carries that badge, so a stylesheet assertion
+holds it rather than a browser measurement.
+
+The title treatment itself is keyed on the H1 that the header block follows
+(`.vp-doc h1:has(+ .type-header)`). `api-layout.css` is imported globally, so
+an unscoped rule would restyle module overviews and authored pages too.
 
 ## Consequences
 
