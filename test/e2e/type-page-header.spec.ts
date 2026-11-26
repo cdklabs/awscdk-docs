@@ -97,9 +97,8 @@ test.describe('type page header', () => {
     expect(copyBox.x).toBeGreaterThan(chipBox.x + chipBox.width);
     expect(starBox.x).toBeGreaterThan(copyBox.x);
 
-    // A 2px brand edge rather than the hairline divider it replaces, whose
-    // 1.7:1 against the page was the finding. Read as a resolved color so a
-    // token rename cannot alibi it.
+    // A 2px brand edge makes the control boundary visible, and is read as a
+    // resolved color so a token rename cannot alibi it.
     const brand = await page.evaluate(() => {
       const probe = document.createElement('span');
       document.body.appendChild(probe);

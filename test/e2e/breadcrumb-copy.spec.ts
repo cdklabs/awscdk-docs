@@ -88,9 +88,9 @@ test.describe('breadcrumb copies as the FQN', () => {
   });
 
   test('the favorite star does not end up in the copied text', async ({ page }) => {
-    // An overview page is where the star still shares the breadcrumb bar as a
-    // sibling of the trail, so a trail selection must not pick up its label.
-    // A type page moved it to the chip row, out of the bar entirely.
+    // An overview page is where the star shares the breadcrumb bar as a sibling
+    // of the trail, so a trail selection must not pick up its label. On a type
+    // page the star lives in the chip row, outside the bar.
     await page.goto(SQS_OVERVIEW_PAGE);
     await expect(page.locator('.type-breadcrumb .favorite-star-button')).toBeVisible();
 

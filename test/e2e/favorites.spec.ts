@@ -43,8 +43,8 @@ test.describe('favorite pages', () => {
     await expect(inRowIcon).toHaveCSS('font-size', '20px');
     await expect(inRowIcon).toHaveText('☆');
 
-    // On a type page the star sits in the chip row, which is below the trail
-    // rather than at its trailing edge.
+    // The star sits in the chip row, which is below the trail rather than at
+    // its trailing edge.
     const trailBox = await page.locator('.breadcrumb-trail').boundingBox();
     const buttonBox = await inRowButton.boundingBox();
     expect(trailBox).not.toBeNull();
@@ -121,7 +121,7 @@ test.describe('favorite pages', () => {
       expect(metrics.fontFamily).toBe(standalone.fontFamily);
       expect(metrics.inkHeight).toBeCloseTo(standalone.inkHeight, 1);
     }
-    // The two compact placements are one size as before.
+    // The two compact placements render at one size.
     expect(inBar.width).toBeCloseTo(standalone.width, 1);
     expect(inBar.height).toBeCloseTo(standalone.height, 1);
     // ...and the pill is taller, which is the point of the row treatment.
@@ -179,8 +179,8 @@ test.describe('favorite pages', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    // An overview page is where the star still shares the breadcrumb bar; a
-    // type page moved it to the chip row below.
+    // An overview page is where the star shares the breadcrumb bar; on a type
+    // page it lives in the chip row.
     await page.goto(SQS_OVERVIEW_PAGE);
 
     const measured = await page.evaluate(() => {

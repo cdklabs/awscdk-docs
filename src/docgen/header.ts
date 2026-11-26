@@ -48,8 +48,10 @@ const JOIN = '<span class="breadcrumb-dot">.</span><wbr>';
  * hyphens inside `aws-cdk-lib`, which are otherwise its only natural break points. `<wbr>` is an empty element:
  * it adds nothing to a selection or to `innerText`, so the copied FQN is unchanged.
  *
- * The bar also carries a trailing `breadcrumb-fav` mount point: the theme's icon-only FavoriteStar teleports into
- * it so breadcrumb and favorite share a single row. Over-long trails collapse their middle segments: the labels
+ * The bar also carries a trailing `breadcrumb-fav` mount point: on an API page with no chip row of its own, a
+ * module or submodule overview, the theme's icon-only FavoriteStar teleports into it so breadcrumb and favorite
+ * share a single row. A type page's star goes to the chip row instead. Over-long trails collapse their middle
+ * segments: the labels
  * stay in the DOM as text, so a selection still copies the whole FQN, and CSS paints the ellipsis in their place.
  */
 export function renderBreadcrumb(segments: readonly BreadcrumbSegment[]): string[] {
@@ -85,8 +87,7 @@ function crumbParts(segments: readonly BreadcrumbSegment[]): string[] {
     if (s.link) {
       return `<a href="${escapeAttr(pageHref(s.link))}">${escapeVueText(s.label)}</a>`;
     }
-    // Wrapped so the segment carries the same padding as a linked or bold one:
-    // the spacing between segments is padding, and a bare text node has none.
+    // Wrapped so the chevron `::after` has an element to attach to, which a bare text node would not give it.
     // A nested type arrives as one label carrying its enclosing type (`CfnBucket.PolicyProperty`), so its own
     // dot needs the same wrap opportunity as the joins.
     return i === last
@@ -144,9 +145,10 @@ const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: strin
  * reader has to decide whether a missing chip means "stable" or "not shown".
  *
  * The row is one raw-HTML block, so markdown-it passes it through whole and the chips need no markdown escape; it is
- * excluded from the Pagefind index, because the kind is already a `kind:` search filter and the stability is stated
- * in the indexed metadata row and, on an alpha package, in the banner. A deprecated type strikes its title and
- * carries the reason as a note, matching the three signals a deprecated member already gets.
+ * excluded from the Pagefind index, because the kind is already a `kind:` search filter and the stability is not a
+ * search term at all — the experimental metadata row's value is excluded too. A deprecated type strikes its title
+ * and carries the reason as a note, matching the three signals a deprecated member already gets; that note sits
+ * outside the row and stays indexed.
  *
  * The reason's whitespace is collapsed before it is escaped, like the member summaries it reads beside: a raw HTML
  * block in markdown ends at a blank line, so a reason carrying a paragraph break would otherwise split this block

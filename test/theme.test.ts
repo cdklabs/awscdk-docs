@@ -577,16 +577,17 @@ describe('API kind badge palette', () => {
   });
 
   describe('type page header', () => {
-    // The header's own tokens. Idle and secondary text owes 7:1 against the
-    // page it sits on; a control edge owes 4.5:1. Both schemes are pinned by
-    // hex, because the a11y audit runs the default color scheme only.
+    // The header's own tokens. Secondary text owes 7:1 against the page it sits
+    // on, a chip label 7:1 against its own fill, and a non-text graphic such as
+    // the chevron 3:1 against the page. Both schemes are pinned by hex, because
+    // the a11y audit runs the default color scheme only.
     const headerStart = css.indexOf('--th-text-2');
     const headerDarkStart = css.indexOf('.dark {', headerStart);
     const headerLight = css.slice(headerStart, headerDarkStart);
     const headerDark = css.slice(headerDarkStart, css.indexOf('}', headerDarkStart));
     const PAGE_BG = { light: '#ffffff', dark: '#161d26' } as const;
 
-    test.each(['--th-text-2', '--th-chevron', '--th-chip-edge'] as const)(
+    test.each(['--th-text-2', '--th-chevron'] as const)(
       '%s is shadowed in dark mode, so the light value cannot win there',
       (name) => {
         expect(headerDark).toContain(`${name}:`);
@@ -599,12 +600,10 @@ describe('API kind badge palette', () => {
       }
     });
 
-    test('the chevron and the neutral chip edge clear the 3:1 graphics floor', () => {
-      // Both are non-text graphics (WCAG 1.4.11): neither carries a word.
+    test('the chevron clears the 3:1 graphics floor', () => {
+      // A non-text graphic (WCAG 1.4.11): it carries no word.
       for (const [scheme, block] of [['light', headerLight], ['dark', headerDark]] as const) {
-        for (const name of ['--th-chevron', '--th-chip-edge']) {
-          expect(contrast(cssVar(block, name), PAGE_BG[scheme])).toBeGreaterThanOrEqual(3);
-        }
+        expect(contrast(cssVar(block, '--th-chevron'), PAGE_BG[scheme])).toBeGreaterThanOrEqual(3);
       }
     });
 
@@ -629,6 +628,20 @@ describe('API kind badge palette', () => {
           expect(contrast(cssVar(block, `--th-${kind}-text`), cssVar(block, `--th-${kind}-bg`)))
             .toBeGreaterThanOrEqual(7);
         }
+      }
+    });
+
+    test('a link in the deprecation note clears 4.5:1 on the note fill', () => {
+      // A reason can carry a web link, which `escapeSummaryHtml` renders as an
+      // anchor. `--vp-c-brand-1` on this tint is under what body text owes, so
+      // the note re-points its links to brand-2 as the callouts do.
+      const themeCss = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
+      const themeLight = themeCss.slice(themeCss.indexOf(':root {'), themeCss.indexOf('.dark {'));
+      const themeDark = themeCss.slice(themeCss.indexOf('.dark {'));
+      expect(ruleBody('.vp-doc .type-deprecated-note a')).toContain('var(--vp-c-brand-2)');
+      for (const [header, theme] of [[headerLight, themeLight], [headerDark, themeDark]] as const) {
+        expect(contrast(cssVar(theme, '--vp-c-brand-2'), cssVar(header, '--th-dep-bg')))
+          .toBeGreaterThanOrEqual(4.5);
       }
     });
 

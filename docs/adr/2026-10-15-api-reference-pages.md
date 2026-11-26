@@ -702,9 +702,9 @@ The kind travels as a class on the header row's kind chip
 (`class="type-chip type-chip-kind api-badge-l2"`), giving each of nine kinds a
 distinct hue, declared once as `--cdk-badge-<kind>-{bg,text,border}`
 in `:root` and shadowed in `.dark` (an unshadowed `:root` color wins in dark
-mode). All sixteen contrast pairs clear WCAG AA; the three narrowest light
-pairs — Struct, Enum and L1 — were darkened to clear 7:1, which is what idle
-text on a page owes, leaving the narrowest light pair at 7.15:1. Every pair is
+mode). All sixteen contrast pairs clear WCAG AA. Struct, Enum and L1 also clear
+the 7:1 that text on a page owes, the narrowest of the three at 7.15:1; L3
+(about 6.5:1) and Facade (about 6.7:1) clear AA but not 7:1. Every pair is
 pinned by hex in `test/theme.test.ts`.
 
 | Kind | Light text / bg | Dark text / bg |
@@ -717,16 +717,19 @@ pinned by hex in `test/theme.test.ts`.
 | Struct | `#831843` / `#fce7f3` | `#f9a8d4` / `#500724` |
 | Interface | `#3730a3` / `#e0e7ff` | `#a5b4fc` / `#1e1b4b` |
 | Enum | `#7c2d12` / `#ffedd5` | `#fdba74` / `#431407` |
-| Class | `--vp-c-default-*` (neutral) | unchanged |
+| Class | `#424650` / `#f2f3f3` (neutral) | `#d5dbdb` / `#232f3e` |
 
 L1 keeps the amber construct pages already wore. Rules live in `api-layout.css`
 (not `custom.css`, which is constrained to pure variable declarations).
 
 The chip's EDGE is `currentColor`, not the palette's `--cdk-badge-*-border`
 tint, which measured 1.69:1 light and 1.71:1 dark against the chip fill and so
-was not a visible edge at all. As the ink, `currentColor` clears 4.5:1 against
-that fill by construction, because the ink/fill pair is already pinned above.
-The `-border` tokens stay for the badge the hover-preview chip still uses.
+was not a visible edge at all. As the ink, `currentColor` clears whatever the
+chip's label clears against that fill, because the ink/fill pair is already
+pinned above. The `-border` tokens stay for the badge the hover-preview chip
+still uses. The neutral Class chip carries its own opaque pair rather than the
+translucent `--vp-c-default-soft` it once inherited, so that pair can be read
+and pinned like the others.
 
 The badge alignment override — `.vp-doc h1 > .VPBadge.api-badge` restating
 `vertical-align: middle; margin-top: 0; transform: none` — STAYS even though

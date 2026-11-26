@@ -12,11 +12,11 @@
   /* Start of the member-row flash; every text color a row carries stays at AA on it (pinned in tests). */
   --api-c-flash: #f2f8fd;
   /* Type page header. Secondary text clears 7:1 against the page it sits on,
-     a chip label 7:1 against its own fill, and the chevron and the neutral
-     chip edge the 3:1 a graphic owes; each is pinned by hex in tests. */
+     a chip label 7:1 against its own fill, and the chevron the 3:1 a non-text
+     graphic owes; each is pinned by hex in tests. A chip's edge is its own
+     ink, so it needs no token and no separate check. */
   --th-text-2: #424650;
   --th-chevron: #656871;
-  --th-chip-edge: #656871;
   --th-chip-neutral-bg: #f2f3f3;
   --th-chip-neutral-text: #424650;
   --th-hover-bg: #f0fbff;
@@ -37,7 +37,6 @@
   --api-c-flash: #1b2a3a;
   --th-text-2: #c6c6cd;
   --th-chevron: #a4a4ad;
-  --th-chip-edge: #a4a4ad;
   --th-chip-neutral-bg: #232f3e;
   --th-chip-neutral-text: #d5dbdb;
   --th-hover-bg: #1b2a3a;
@@ -292,6 +291,14 @@
 .type-deprecated-label {
   color: var(--th-dep-text);
   font-weight: 700;
+}
+
+/* A deprecation reason can carry a web link, which `escapeSummaryHtml` renders
+   as an anchor. brand-1 on the note's tint is 4.07:1 in light mode, under what
+   body text owes, so the note re-points its links the way the info and note
+   callouts do in callouts.css. Three classes, so it beats `.vp-doc a`. */
+.vp-doc .type-deprecated-note a {
+  color: var(--vp-c-brand-2);
 }
 
 /* ---------- Page action pills: Copy Markdown and the favorite star ---------- */
