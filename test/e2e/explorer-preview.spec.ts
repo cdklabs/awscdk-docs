@@ -70,6 +70,18 @@ test.describe('explorer preview on desktop', () => {
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('on');
   });
 
+  test('turning the preview on still places focus in a browser without checkVisibility', async ({ page }) => {
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(Element.prototype, 'checkVisibility');
+    });
+    await open(page);
+    expect(await page.evaluate(() => typeof document.body.checkVisibility)).toBe('undefined');
+    await page.locator('.VPNavBar .settings-trigger').click();
+    await page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true }).click();
+    await expect(rail(page)).toBeVisible();
+    await expect(page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true })).toBeFocused();
+  });
+
   test('the API view keeps the filter and tree and drops the favorites section; Favorites shows only the list', async ({
     page,
   }) => {
@@ -413,6 +425,25 @@ test.describe('explorer preview on a phone', () => {
     await page.keyboard.up('Escape');
     await expect(rail(page)).toBeHidden();
     await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+  });
+
+  test('an Escape release that never arrives does not leave a swallow listener behind', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    await page.getByRole('button', { name: /^Views/ }).click();
+    await page.locator('.VPSidebar .nav-filter-input').focus();
+    await page.evaluate(() => {
+      (window as unknown as { releases: number }).releases = 0;
+      window.addEventListener('keyup', (event) => {
+        if (event.key === 'Escape') (window as unknown as { releases: number }).releases += 1;
+      });
+    });
+    await page.keyboard.down('Escape');
+    await expect(rail(page)).toBeHidden();
+    // The window loses focus before the key comes up, so the release is sent after the blur.
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await page.keyboard.up('Escape');
+    expect(await page.evaluate(() => (window as unknown as { releases: number }).releases)).toBe(1);
   });
 
   test('a client-side route change folds an unfolded rail', async ({ page }) => {

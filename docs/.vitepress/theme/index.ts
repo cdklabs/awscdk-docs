@@ -61,8 +61,8 @@ const theme: Theme = {
   Layout: () =>
     h(DefaultTheme.Layout, null, {
       // The symbol filter belongs in the sidebar rather than the nav header:
-      // it is a navigation aid for the API tree beside it. Both children share
-      // one wrapper so the block can be made sticky together — see
+      // it is a navigation aid for the API tree beside it. The Views button, the filter and the
+      // favorites list share one wrapper so the block can be made sticky together — see
       // `.sidebar-header` in api-sidebar.css.
       // With the Explorer preview on, the view rail comes first in the DOM and the Views button
       // (below 960px) heads the pinned block; both render nothing while the preview is off.

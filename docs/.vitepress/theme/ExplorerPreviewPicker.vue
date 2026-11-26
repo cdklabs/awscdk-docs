@@ -27,7 +27,9 @@ onMounted(() => {
 function focusFirstVisible(selectors: string[]): void {
   for (const selector of selectors) {
     const el = document.querySelector<HTMLElement>(selector);
-    if (el && el.checkVisibility()) {
+    // checkVisibility() is missing from older browsers; fall back to "has a layout box".
+    const shown = el && (typeof el.checkVisibility === "function" ? el.checkVisibility() : el.getClientRects().length > 0);
+    if (el && shown) {
       el.focus();
       return;
     }
