@@ -109,6 +109,6 @@ describe('Vue compiler that releases template ASTs', () => {
   // Config shape: the memory the wrapper frees has no build output to assert, so pin that the site config passes it.
   test('the VitePress config passes the AST-releasing compiler to the Vue plugin', () => {
     const config = readFileSync(resolve(import.meta.dirname, '..', 'docs/.vitepress/config.mts'), 'utf-8');
-    expect(config).toContain('vue: { compiler: astReleasingCompiler }');
+    expect(config).toMatch(/^\s*vue: \{ compiler: astReleasingCompiler \},$/m);
   });
 });
