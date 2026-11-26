@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { QUEUE_PAGE } from './fixture.js';
+import { CFN_QUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
 
 const PREVIEW_KEY = 'cdk-docs-explorer-preview';
 const VIEW_KEY = 'cdk-docs-explorer-view';
@@ -399,5 +399,36 @@ test.describe('explorer preview on a phone', () => {
     await expect(rail(page)).toBeHidden();
     await expect(views).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('.VPSidebar')).toBeInViewport();
+  });
+
+  test('a modifier released before Escape does not let the Escape release close the drawer', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    const views = page.getByRole('button', { name: /^Views/ });
+    await views.click();
+    await page.locator('.VPSidebar .nav-filter-input').focus();
+    await page.keyboard.down('Shift');
+    await page.keyboard.down('Escape');
+    await page.keyboard.up('Shift');
+    await page.keyboard.up('Escape');
+    await expect(rail(page)).toBeHidden();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+  });
+
+  test('a client-side route change folds an unfolded rail', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    const views = page.getByRole('button', { name: /^Views/ });
+    await views.click();
+    await expect(rail(page)).toBeVisible();
+    // A programmatic click on a sidebar link is a VitePress client-side navigation; the scrim covers the tree
+    // on a phone, so a pointer click cannot reach it.
+    await page.evaluate((href) => {
+      (document.querySelector(`.VPSidebar a[href$="${href}"]`) as HTMLAnchorElement).click();
+    }, CFN_QUEUE_PAGE);
+    await expect(page).toHaveURL(new RegExp(`${CFN_QUEUE_PAGE}$`));
+    await page.locator('.VPLocalNav button.menu').click();
+    await expect(views).toHaveAttribute('aria-expanded', 'false');
+    await expect(rail(page)).toBeHidden();
   });
 });

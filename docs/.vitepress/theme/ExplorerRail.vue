@@ -63,10 +63,16 @@ function toggleSettings(): void {
   settingsOpen.value = !settingsOpen.value;
 }
 
-// VitePress closes the whole drawer when Escape is released. Focus has moved by then, so the keyup is
-// stopped at the window, in the capture phase, ahead of VitePress's own listener.
+// VitePress closes the whole drawer when Escape is released. Focus has moved by then, so the Escape keyup is
+// stopped at the window, in the capture phase, ahead of VitePress's own listener. Other keys (a modifier
+// released first, say) pass through and leave the listener in place for the Escape release.
 function swallowEscapeRelease(): void {
-  window.addEventListener("keyup", (event) => event.stopPropagation(), { capture: true, once: true });
+  const onKeyup = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape") return;
+    event.stopPropagation();
+    window.removeEventListener("keyup", onKeyup, { capture: true });
+  };
+  window.addEventListener("keyup", onKeyup, { capture: true });
 }
 
 // Escape closes the Settings panel first and then folds the rail, wherever focus is: the Views button and
