@@ -23,17 +23,30 @@ onMounted(() => {
   mounted.value = true;
 });
 
+// First control in the list that is rendered and visible; a hidden one cannot take focus.
+function focusFirstVisible(selectors: string[]): void {
+  for (const selector of selectors) {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (el && el.checkVisibility()) {
+      el.focus();
+      return;
+    }
+  }
+}
+
 async function choose(value: ExplorerPreview): Promise<void> {
   if (explorerPreview.value === value) return;
   setExplorerPreview(value);
-  // The Settings panel changes host (bar and rail) when the switch flips, so keyboard focus is placed again:
-  // on the new copy of the segment just pressed when turning on, on the gear when turning off.
+  // The Settings panel changes host (bar and rail) when the switch flips, so keyboard focus is placed again.
+  // Preferred: the segment just pressed in the panel's new copy when turning on, the gear when turning off.
+  // Where that control is not rendered (a phone, a page without the rail), the next best visible control in
+  // the same area takes focus so it never falls to the page body.
   await nextTick();
-  if (value === "on") {
-    document.querySelector<HTMLElement>(".explorer-settings-panel [data-value='on']")?.focus();
-  } else {
-    document.querySelector<HTMLElement>(".VPNavBar .settings-trigger")?.focus();
-  }
+  focusFirstVisible(
+    value === "on"
+      ? [".explorer-settings-panel [data-value='on']", ".VPNavBarHamburger", ".VPNavBar .nav-search-btn-wait"]
+      : [".VPNavBar .settings-trigger", ".VPSidebar .nav-filter-input", ".VPLocalNav button.menu", ".VPNavBarHamburger"],
+  );
 }
 </script>
 
@@ -60,7 +73,7 @@ async function choose(value: ExplorerPreview): Promise<void> {
 
 <style scoped>
 /* Same track, caption and segment rules as NavStylePicker.vue. The root sets no outer margin: each host
-   places it (SettingsMenu.vue under the navigation group, nav-controls.css as a mobile nav-screen row). */
+   places it (SettingsMenu.vue under the navigation group, explorer-preview.css as a mobile nav-screen row). */
 .ExplorerPreviewPicker {
   display: flex;
   flex-direction: column;

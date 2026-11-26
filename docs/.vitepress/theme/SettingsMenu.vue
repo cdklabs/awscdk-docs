@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
            reader preference like the themes, so it lives in the same panel. -->
       <NavStylePicker />
       <!-- Opt-in sidebar variant with a view rail; the last group so it reads as an experiment. -->
-      <ExplorerPreviewPicker />
+      <ExplorerPreviewPicker v-if="mounted" />
     </div>
   </div>
 </template>
