@@ -486,7 +486,9 @@
 }
 
 @media (max-width: 767px) {
-  .VPNavScreen .language-toggle {
+  /* [role] lifts this above the component's scoped .language-toggle rule, so
+   * the group height does not depend on stylesheet order. */
+  .VPNavScreen .language-toggle[role="radiogroup"] {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;

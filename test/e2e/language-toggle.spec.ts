@@ -132,9 +132,9 @@ test.describe('language toggle', () => {
     });
   }
 
-  for (const [theme, rowFill, rowText] of [
-    ['light', 'rgb(0, 108, 224)', 'rgb(255, 255, 255)'],
-    ['dark', 'rgb(66, 180, 255)', 'rgb(15, 20, 26)'],
+  for (const [theme, rowFill, rowText, hoverFill] of [
+    ['light', 'rgb(0, 108, 224)', 'rgb(255, 255, 255)', 'rgb(233, 235, 237)'],
+    ['dark', 'rgb(66, 180, 255)', 'rgb(15, 20, 26)', 'rgb(42, 51, 64)'],
   ] as const) {
     test(`the phone menu stacks the languages as one segmented control (${theme})`, async ({ page }) => {
       await page.addInitScript((t) => localStorage.setItem('vitepress-theme-appearance', t), theme);
@@ -173,6 +173,9 @@ test.describe('language toggle', () => {
       expect(await rows.nth(0).evaluate(fill)).toBe(rowFill);
       expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).color)).toBe(rowText);
       expect(await rows.nth(1).evaluate(fill)).toBe('rgba(0, 0, 0, 0)');
+      // Hovering an idle row paints the hover fill.
+      await rows.nth(2).hover();
+      await expect.poll(() => rows.nth(2).evaluate(fill)).toBe(hoverFill);
       // Arrow keys move focus and selection together, so keyboard focus sits
       // on the filled row. Its ring is drawn in the row's text color so it
       // stays visible against the fill.

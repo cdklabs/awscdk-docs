@@ -142,7 +142,8 @@ reads the plugin's source.
 
 #### Fitting the medium breakpoint (768–1279px)
 
-The compacted controls need ~623px of row. Below 960px the site title is a flex
+The compacted controls fill most of the row (the e2e row-fit widths below pin
+that they fit). Below 960px the site title is a flex
 item that yields (`flex-shrink: 1`, ellipsis) so the row never overhangs the
 viewport. From 960px the title is the fixed `--vp-sidebar-width` lane and cannot
 yield, so the version badge and the Settings gear drop their 8px gaps across the
@@ -387,8 +388,8 @@ keeps its stock 896px container.
   the full-width bar. That is intended: gating the geometry on the slider would
   reinstate the cross-page jump for every multi-language build.
 - The search trigger has two no-movement invariants that belong together: it
-  must not move when the language changes (the stable-label-width sizers in the
-  slider) and must not move when the page changes (the geometry mirror). Both are
+  must not move when the language changes (every option paints its own name in
+  the same typesetting, checked or not) and must not move when the page changes (the geometry mirror). Both are
   the same defect at different scales; off-center is acceptable, *moving* is the
   bug.
 - The e2e suite carries the first cross-page navbar assertion; any future navbar

@@ -172,8 +172,8 @@ describe('navbar layout', () => {
     test('the phone menu stacks the languages as one segmented control', () => {
       const phone = css.slice(css.lastIndexOf('@media (max-width: 767px)'));
       const group = phone.slice(
-        phone.indexOf('.VPNavScreen .language-toggle {'),
-        phone.indexOf('}', phone.indexOf('.VPNavScreen .language-toggle {')),
+        phone.indexOf('.VPNavScreen .language-toggle[role="radiogroup"] {'),
+        phone.indexOf('}', phone.indexOf('.VPNavScreen .language-toggle[role="radiogroup"] {')),
       );
       expect(group).toContain('flex-direction: column');
       expect(group).toContain('border: 1px solid var(--seg-edge)');
