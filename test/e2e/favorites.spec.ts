@@ -136,8 +136,8 @@ test.describe('favorite pages', () => {
   });
 
   test('on a type page the star is the last control of the chip row, not a second one', async ({ page }) => {
-    // Teleported, so SSR puts it in `doc-before` and only hydration moves it:
-    // a selector assertion alone would pass against a duplicate left behind.
+    // Teleported after mount, so the star exists only on the hydrated page;
+    // the count guards against a second copy landing outside the row.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(TOPIC_PAGE);
     await expect(page.locator('.type-header-row .type-action-fav .favorite-star')).toHaveCount(1);

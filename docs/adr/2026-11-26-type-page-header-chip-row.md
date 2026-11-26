@@ -93,9 +93,10 @@ one segment's own label, as a nested type carries, is part of the name.
 
 **Three light inks darken.** Struct `#9d174d` to `#831843`, Enum `#9a3412` to
 `#7c2d12`, L1 `#854d0e` to `#713f12`. Each had cleared AA but not the 7:1 that
-idle text on a page owes; the narrowest light pair is now 7.15:1. L3 and Facade
-are left alone: both sit between those floors, and moving a hue that no
-reported problem names is a change without an argument.
+text on a page owes; all three now clear it, L1 the narrowest of them at
+7.79:1. That leaves L3 (6.49:1) and Facade (6.73:1) as the only light pairs
+clearing AA but not 7:1, and they are left alone deliberately: moving a hue
+that no reported problem names is a change without an argument behind it.
 
 **The H1 badge alignment override stays.** The `Added in vX.Y.Z` badge lives in
 the H1, and stock VitePress alignment lifts it off the baseline the name sits

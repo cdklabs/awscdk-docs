@@ -231,7 +231,11 @@ test.describe('type page header', () => {
     const html = await (await request.get(QUEUE_PAGE)).text();
     expect(html).toContain('type-action-copy');
     expect(html).toContain('type-action-fav');
-    expect(html).not.toContain('copy-markdown-main');
+    // Copy Markdown is in the served HTML, so a reader that runs no JavaScript
+    // still gets the link to the twin, but it is `pending` and so takes no
+    // space until the row's mount point resolves.
+    expect(html).toMatch(/class="[^"]*\bpending\b[^"]*copy-markdown|class="[^"]*copy-markdown[^"]*\bpending\b/);
+    expect(html).toContain('View as Markdown');
     expect(html).not.toContain('favorite-star-button');
 
     // The pre-hydration box is read with JavaScript off, so the app script
@@ -255,6 +259,31 @@ test.describe('type page header', () => {
 
     expect(after.height).toBeCloseTo(before.height, 0);
     expect(after.y).toBeCloseTo(before.y, 0);
+  });
+
+  test('a type page links its Markdown twin in the served HTML', async ({ request, browser }) => {
+    // The in-page link the SEO ADR promises alongside the `<head>` alternate.
+    // It is teleported into the row on mount, so without a server-rendered
+    // copy an agent reading the body without JavaScript would lose it.
+    const html = await (await request.get(QUEUE_PAGE)).text();
+    const twin = QUEUE_PAGE.replace(/\.html$/, '.md');
+    expect(html).toContain(`href="${twin}"`);
+
+    // And that copy is out of the layout, which is what lets it exist without
+    // moving the header. Read with JavaScript off, so it is still pending.
+    const inert = await browser.newContext({ javaScriptEnabled: false });
+    const staticPage = await inert.newPage();
+    await staticPage.goto(QUEUE_PAGE);
+    const control = staticPage.locator('.copy-markdown');
+    await expect(control).toHaveCount(1);
+    const box = await control.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return { width: rect.width, height: rect.height, position: getComputedStyle(el).position };
+    });
+    await inert.close();
+    expect(box.position).toBe('absolute');
+    expect(box.width).toBeLessThanOrEqual(1);
+    expect(box.height).toBeLessThanOrEqual(1);
   });
 
   test('the header closes with a divider between the row and the summary', async ({ page }) => {

@@ -388,9 +388,9 @@ describe('API kind badge palette', () => {
   });
 
   test('the Struct, Enum and L1 light inks are pinned by hex', () => {
-    // A chip label is page text, so it owes 7:1 on its own fill; these three
-    // are the light pairs with the least room, and a retune that loosens one
-    // has to fail here rather than only in an audit.
+    // A chip label is page text, so it owes 7:1 on its own fill. With these
+    // inks the only light pairs under 7:1 are L3 and Facade, which clear AA.
+    // A retune that loosens one of the three has to fail here, not in an audit.
     expect(cssVar(lightBlock, '--cdk-badge-struct-text')).toBe('#831843');
     expect(cssVar(lightBlock, '--cdk-badge-enum-text')).toBe('#7c2d12');
     expect(cssVar(lightBlock, '--cdk-badge-l1-text')).toBe('#713f12');

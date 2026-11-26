@@ -702,10 +702,11 @@ The kind travels as a class on the header row's kind chip
 (`class="type-chip type-chip-kind api-badge-l2"`), giving each of nine kinds a
 distinct hue, declared once as `--cdk-badge-<kind>-{bg,text,border}`
 in `:root` and shadowed in `.dark` (an unshadowed `:root` color wins in dark
-mode). All sixteen contrast pairs clear WCAG AA. Struct, Enum and L1 also clear
-the 7:1 that text on a page owes, the narrowest of the three at 7.15:1; L3
-(about 6.5:1) and Facade (about 6.7:1) clear AA but not 7:1. Every pair is
-pinned by hex in `test/theme.test.ts`.
+mode). All eighteen contrast pairs clear WCAG AA, and every dark pair clears
+7:1 (narrowest 8.02:1). In light mode every pair clears 7:1 except L3 (6.49:1)
+and Facade (6.73:1): darkening Struct, Enum and L1 is what closed the last
+three, leaving L1 the narrowest of those at 7.79:1. Every pair is pinned by hex
+in `test/theme.test.ts`.
 
 | Kind | Light text / bg | Dark text / bg |
 |---|---|---|

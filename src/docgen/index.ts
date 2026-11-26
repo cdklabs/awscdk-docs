@@ -140,8 +140,8 @@ export interface TypeEntry {
   /** The underlying jsii type, for page generation. */
   readonly type: spec.Type;
   /**
-   * Construct level, from {@link constructLevel} — the same determination that badges the page H1. Carried here so
-   * the sidebar generator reuses this classification instead of re-deriving it (or parsing it back out of
+   * Construct level, from {@link constructLevel} — the same determination that chips the page header row. Carried
+   * here so the sidebar generator reuses this classification instead of re-deriving it (or parsing it back out of
    * {@link kind}); absent for everything that is not a leveled construct.
    */
   readonly level?: ConstructLevel;
@@ -532,9 +532,10 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           name: entry.name,
           kind: entry.kind,
           summary: entry.summary,
-          // Reader-facing label and level for the preview's kind chip, from the SAME helper the H1 badge uses so
-          // the two surfaces cannot drift. `kind` is left alone because it is a classification value, not a label:
-          // `searchKind` derives the Pagefind filter from its first word. `level` is the canonical `ConstructLevel`
+          // Reader-facing label and level for the preview's kind chip, from the SAME helper the page's kind chip
+          // uses, so the two surfaces cannot drift. `kind` is left alone because it is a classification value, not
+          // a label: `searchKind` derives the Pagefind filter from its first word. `level` is the canonical
+          // `ConstructLevel`
           // — the same form the sidebar nav data emits — so one field name never means two things. Emitted only for
           // leveled constructs.
           ...(entry.level
@@ -908,9 +909,9 @@ function typeKind(type: spec.Type): string {
 }
 
 /**
- * Heading badge for a classification that differs from the jsii kind. `Mixin` is overridden so a class-based mixin
- * badges itself the same way an interface mixin does; `Facade` is classified and labeled everywhere else, so its
- * page badges itself `Facade` rather than a plain `Class`. Any kind absent here keeps the neutral `Class` badge.
+ * Kind chip for a classification that differs from the jsii kind. `Mixin` is overridden so a class-based mixin
+ * chips itself the same way an interface mixin does; `Facade` is classified and labeled everywhere else, so its
+ * page chips itself `Facade` rather than a plain `Class`. Any kind absent here takes the neutral `Class` chip.
  */
 const KIND_BADGE: Readonly<Record<string, { text: string; type: string; kindClass: string } | undefined>> = {
   Mixin: { text: 'Mixin', type: 'tip', kindClass: 'api-badge-mixin' },
@@ -973,8 +974,8 @@ function renderTypePage(
         emitExamples,
         history,
         // A class-based mixin is grouped as `Mixin` in the module type list, the sidebar and the search filter, so its
-        // own page badges itself the same way, in the same color renderMixinPage gives an interface mixin. A Facade
-        // is classified by `buildFacadeIndex` and labeled Facade elsewhere, so its page badges itself Facade too.
+        // own page chips itself the same way, in the same color renderMixinPage gives an interface mixin. A Facade
+        // is classified by `buildFacadeIndex` and labeled Facade elsewhere, so its page chips itself Facade too.
         badge: KIND_BADGE[entry.kind],
       });
   }

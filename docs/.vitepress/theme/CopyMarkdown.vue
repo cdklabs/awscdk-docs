@@ -1,8 +1,9 @@
 <!-- "Copy Markdown" split button (a labeled region, so landmark navigation reaches it). On a type page it
      teleports into the `type-action-copy` mount point of the docgen-emitted chip row, beside the favorite star;
-     every other API page keeps the doc-before slot at the top of the page. A page whose frontmatter says it has a
-     chip row renders nothing until that mount point resolves, so the control never paints in the fallback
-     placement and then jumps. The main button copies the page's
+     every other API page keeps the doc-before slot at the top of the page. On a page whose frontmatter says it has
+     a chip row, the control waits in `doc-before` taking no space until that mount point resolves, so it never
+     paints in the fallback placement and then jumps, and the served HTML still carries the link to the twin.
+     The main button copies the page's
      Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page without a
      twin (no `agentMarkdown` frontmatter) renders nothing. -->
 <script setup lang="ts">
@@ -159,10 +160,10 @@ onUnmounted(() => {
 <template>
   <Teleport :to="rowTarget ?? 'body'" :disabled="!rowTarget">
   <section
-    v-if="markdownUrl && (rowTarget || !hasRow)"
+    v-if="markdownUrl"
     ref="root"
     class="copy-markdown"
-    :class="hasRow ? 'in-row' : 'standalone'"
+    :class="hasRow ? (rowTarget ? 'in-row' : 'pending') : 'standalone'"
     @focusout="onFocusOut"
     aria-label="Page Markdown"
     :data-ready="ready ? '' : undefined"
@@ -222,6 +223,21 @@ onUnmounted(() => {
 
 .copy-markdown.standalone {
   margin-bottom: 8px;
+}
+
+/* A type page renders the control in `doc-before` until the chip row's mount
+   point resolves, then teleports it. While it waits it must take no space:
+   the row reserves its own room for the pills, and painting them above the
+   breadcrumb first would shift the whole page. Hidden this way rather than
+   left unrendered so the served HTML still carries the link to the Markdown
+   twin for a reader that runs no JavaScript. */
+.copy-markdown.pending {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .copy-markdown-split {
