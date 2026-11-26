@@ -176,6 +176,9 @@ test.describe('language toggle', () => {
       // Hovering an idle row paints the hover fill.
       await rows.nth(2).hover();
       await expect.poll(() => rows.nth(2).evaluate(fill)).toBe(hoverFill);
+      // The hovered row keeps the muted text the contrast suite measures on that fill.
+      const idleText = await rows.nth(3).evaluate((el) => getComputedStyle(el).color);
+      expect(await rows.nth(2).evaluate((el) => getComputedStyle(el).color)).toBe(idleText);
       // Arrow keys move focus and selection together, so keyboard focus sits
       // on the filled row. Its ring is drawn in the row's text color so it
       // stays visible against the fill.

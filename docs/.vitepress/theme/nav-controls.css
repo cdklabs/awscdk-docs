@@ -531,6 +531,7 @@
 
   .VPNavScreen .language-toggle .language-option:not(.active):hover {
     background: var(--tb-hover-bg);
+    color: var(--tb-muted);
   }
 
   .VPNavScreen .language-toggle .language-option:focus-visible {

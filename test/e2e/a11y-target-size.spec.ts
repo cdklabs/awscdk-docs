@@ -113,6 +113,7 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
       expect(detail, `target-size violations in the bar's language picker at ${width}px:\n${detail}`).toBe('');
       // axe passes a target it could not measure, so check the narrowest option directly too.
       const widths = await picker.getByRole('radio').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+      expect(widths).toHaveLength(5);
       expect(Math.min(...widths)).toBeGreaterThanOrEqual(24);
     });
   }
