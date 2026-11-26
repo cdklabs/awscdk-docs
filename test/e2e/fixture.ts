@@ -26,8 +26,8 @@ export const QUEUE_GRANTS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueGrants.html'
  */
 export const DEPRECATED_TYPE_PAGE = '/v2/docs/aws-cdk-lib.region_info.Default.html';
 /**
- * A type page of an experimental package: it carries the experimental banner above the title and the only
- * interactive element the header adds, the Experimental chip linking to the stability guide.
+ * A type page of an experimental package: it carries the experimental banner above the title and the only link in
+ * the chip row, the Experimental chip, which points at the stability guide.
  */
 export const EXPERIMENTAL_TYPE_PAGE = '/v2/docs/@aws-cdk_aws-codestar-alpha.GitHubRepository.html';
 /**
@@ -115,9 +115,9 @@ export const REPRESENTATIVE_PAGES = [
   ICONSTRUCT_PAGE,
   CONSTRUCT_ORDER_PAGE,
   // The two header states no page above renders: a struck title with its
-  // deprecation note, and the Experimental chip, which is the only link the
-  // header adds and so the only part of it with a contrast and target-size
-  // obligation of its own.
+  // deprecation note, and the Experimental chip, the chip row's only link and
+  // so the only part of the row with a contrast and target-size obligation of
+  // its own.
   DEPRECATED_TYPE_PAGE,
   EXPERIMENTAL_TYPE_PAGE,
 ] as const;

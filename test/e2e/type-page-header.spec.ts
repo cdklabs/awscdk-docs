@@ -158,8 +158,8 @@ test.describe('type page header', () => {
   });
 
   test('the experimental chip links to the stability guide and keeps its own ink', async ({ page }) => {
-    // The only interactive element the header adds. Its ink has to beat
-    // VitePress's own `.vp-doc a`, which only a measurement can settle.
+    // The chip row's only link. Its ink has to beat VitePress's own
+    // `.vp-doc a`, which only a measurement can settle.
     for (const scheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto(EXPERIMENTAL_TYPE_PAGE);
@@ -267,15 +267,19 @@ test.describe('type page header', () => {
     // copy an agent reading the body without JavaScript would lose it.
     const html = await (await request.get(QUEUE_PAGE)).text();
     const twin = QUEUE_PAGE.replace(/\.html$/, '.md');
-    expect(html).toContain(`href="${twin}"`);
+    expect(html).toContain('View as Markdown');
 
-    // And that copy is out of the layout, which is what lets it exist without
-    // moving the header. Read with JavaScript off, so it is still pending.
+    // Read with JavaScript off, so the control is still pending: the menu item
+    // is the in-page link itself, and the box is out of the layout, which is
+    // what lets it exist without moving the header. Asserting on the menu item
+    // rather than on the href anywhere in the HTML, because the `<head>`
+    // alternate carries the same href and would satisfy that on its own.
     const inert = await browser.newContext({ javaScriptEnabled: false });
     const staticPage = await inert.newPage();
     await staticPage.goto(QUEUE_PAGE);
     const control = staticPage.locator('.copy-markdown');
     await expect(control).toHaveCount(1);
+    await expect(staticPage.locator('.copy-markdown a[role="menuitem"]')).toHaveAttribute('href', twin);
     const box = await control.evaluate((el) => {
       const rect = el.getBoundingClientRect();
       return { width: rect.width, height: rect.height, position: getComputedStyle(el).position };

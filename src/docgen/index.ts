@@ -913,9 +913,9 @@ function typeKind(type: spec.Type): string {
  * chips itself the same way an interface mixin does; `Facade` is classified and labeled everywhere else, so its
  * page chips itself `Facade` rather than a plain `Class`. Any kind absent here takes the neutral `Class` chip.
  */
-const KIND_BADGE: Readonly<Record<string, { text: string; type: string; kindClass: string } | undefined>> = {
-  Mixin: { text: 'Mixin', type: 'tip', kindClass: 'api-badge-mixin' },
-  Facade: { text: 'Facade', type: 'tip', kindClass: 'api-badge-facade' },
+const KIND_BADGE: Readonly<Record<string, { text: string; kindClass: string } | undefined>> = {
+  Mixin: { text: 'Mixin', kindClass: 'api-badge-mixin' },
+  Facade: { text: 'Facade', kindClass: 'api-badge-facade' },
 };
 
 /** Dispatch a type to its page renderer based on classification. */
@@ -996,7 +996,7 @@ function renderTypePage(
 /**
  * Experimental banner for every type page of an experimental (alpha) package, emitted above the H1 so the level is
  * the first thing a reader sees. A VitePress `warning` custom container — the same block the separate-install alert
- * uses, so the two read as one family. Empty for a stable package: the absence of the banner is the stable indicator.
+ * uses, so the two read as one family. Empty for a stable package, whose stability the header's Stable chip states.
  *
  * Type pages only: the module overview already opens with the package README's own experimental notice and the
  * separate-install alert, so a third box there would repeat them.

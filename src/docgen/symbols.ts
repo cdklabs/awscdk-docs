@@ -311,16 +311,15 @@ interface SymbolPageOptions<T extends spec.Type> {
   /** Enabled documentation languages; variant regions embed one per language. */
   readonly languages?: readonly Language[];
   /**
-   * Heading badge, when the type's classification differs from its jsii kind: a class-based mixin is grouped as
-   * `Mixin` in the module type list, the sidebar and the search filter, so its own page must badge itself the same way,
-   * in the same color the interface mixin page uses. Defaults to the plain kind, `info`/`Class`.
+   * Kind chip text and color class, when the type's classification differs from its jsii kind: a class-based mixin
+   * is grouped as `Mixin` in the module type list, the sidebar and the search filter, so its own page must chip
+   * itself the same way, in the same color the interface mixin page uses. Defaults to the plain kind, `Class`.
    */
   readonly badge?: {
     readonly text: string;
-    readonly type: string;
     /**
-     * Kind class appended to the badge, so a classification that differs from the jsii kind also gets its own
-     * color. Omitted for a plain class, which keeps the neutral badge so `Struct` stays distinguishable from `Class`.
+     * Per-kind color class, so a classification that differs from the jsii kind also gets its own color. Omitted
+     * for a plain class, which takes the neutral chip so `Struct` stays distinguishable from `Class`.
      */
     readonly kindClass?: string;
   };
@@ -346,7 +345,7 @@ interface SymbolPageOptions<T extends spec.Type> {
 export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): string {
   const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const badge = options.badge ?? { text: 'Class', type: 'info' };
+  const badge = options.badge ?? { text: 'Class' };
   const lines = renderTypeHeaderFor(type, assembly, {
     text: badge.text,
     ...(badge.kindClass ? { kindClass: badge.kindClass } : {}),

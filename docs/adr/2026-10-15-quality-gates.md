@@ -49,8 +49,8 @@ client-side assets (`sidebar.json`, `symbols.json`, `type-summaries.json`,
 production-identical data. `region-info` and `aws-cdk-aws-codestar-alpha` each earn
 their place with one page the other services cannot supply: `region_info.Default` is
 a type whose own stability is `deprecated`, and the alpha package is what renders the
-experimental banner and the Experimental stability chip, the only link a type page
-header carries. Both are small, and the suite builds under a hundred pages in well
+experimental banner and the Experimental stability chip, the only link in the chip
+row. Both are small, and the suite builds under a hundred pages in well
 under a minute and needs no special memory settings.
 
 **The suite owns its server; never reuses one.** Playwright boots

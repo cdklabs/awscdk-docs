@@ -238,6 +238,10 @@ onUnmounted(() => {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+  /* Out of the tab order and the accessibility tree as well as out of the
+     layout: the buttons do nothing until the handlers are attached, and a
+     keyboard user must not land on two invisible ones before the breadcrumb. */
+  visibility: hidden;
 }
 
 .copy-markdown-split {
