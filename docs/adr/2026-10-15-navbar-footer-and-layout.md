@@ -151,7 +151,7 @@ The slider keeps every language's name visible; only TypeScript shortens, to
 `TS` below 1100px (the full name stays in the accessible name). The search
 button compacts to its magnifier icon. Every control keeps its place in the row — the version must stay visible,
 and a control a click away is not visible. E2e assertions pin the row fitting
-inside 768px, 800px, 960px, and 1000px viewports, each with a positive control
+inside 768px, 800px, 960px, 1000px, 1100px, and 1279px viewports, each with a positive control
 that undoes the rule making room at that width.
 
 ### Tri-state theme pickers behind the Settings gear

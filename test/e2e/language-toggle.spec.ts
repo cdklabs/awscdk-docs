@@ -97,50 +97,82 @@ test.describe('language toggle', () => {
     expect(await ts.locator('.visually-hidden').evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
   });
 
-  test('the phone menu stacks the languages as one segmented control', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto(TOPIC_PAGE);
-    await page.locator('.VPNavBarHamburger').click();
-    const group = page
-      .locator('.VPNavScreen')
-      .getByRole('radiogroup', { name: 'Select programming language' });
-    await expect(group).toBeVisible();
-    const rows = group.getByRole('radio');
-    // The menu always shows the full names, TypeScript included.
-    await expect(rows).toHaveText(['TypeScript', 'Python', 'Java', 'C#', 'Go'], { useInnerText: true });
-    const layout = await group.evaluate((el) => {
-      const s = getComputedStyle(el);
-      return { direction: s.flexDirection, radius: s.borderTopLeftRadius, edge: s.borderTopWidth };
+  for (const [theme, brand] of [
+    ['light', 'rgb(0, 108, 224)'],
+    ['dark', 'rgb(66, 180, 255)'],
+  ] as const) {
+    test(`the bar marks the selected language in the brand color (${theme})`, async ({ page }) => {
+      await page.addInitScript((t) => localStorage.setItem('vitepress-theme-appearance', t), theme);
+      await page.goto(TOPIC_PAGE);
+      const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
+      const selected = slider.getByRole('radio', { name: 'TypeScript' });
+      await expect(selected).toHaveAttribute('aria-checked', 'true');
+      const paint = (el: Element) => {
+        const s = getComputedStyle(el);
+        return { color: s.color, shadow: s.boxShadow };
+      };
+      // The fill matches the track in light mode, so the cue is the brand
+      // text color plus a 2px inset underline in the same color.
+      expect(await selected.evaluate(paint)).toEqual({
+        color: brand,
+        shadow: `${brand} 0px -2px 0px 0px inset`,
+      });
+      const idle = await slider.getByRole('radio', { name: 'Python' }).evaluate(paint);
+      expect(idle.color).not.toBe(brand);
+      expect(idle.shadow).not.toContain('inset');
     });
-    expect(layout).toEqual({ direction: 'column', radius: '8px', edge: '1px' });
-    const groupBox = (await group.boundingBox())!;
-    let previousBottom = -Infinity;
-    for (const row of await rows.all()) {
-      const box = (await row.boundingBox())!;
-      // One full-width row per language, stacked top to bottom, each 48px high.
-      expect(box.height).toBeGreaterThanOrEqual(48);
-      expect(box.width).toBeGreaterThanOrEqual(groupBox.width - 2);
-      expect(box.y).toBeGreaterThanOrEqual(previousBottom - 1);
-      previousBottom = box.y + box.height;
-    }
-    // The selected row is filled; the others are not.
-    const fill = (el: Element) => getComputedStyle(el).backgroundColor;
-    expect(await rows.nth(0).evaluate(fill)).toBe('rgb(0, 108, 224)');
-    expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
-    expect(await rows.nth(1).evaluate(fill)).toBe('rgba(0, 0, 0, 0)');
-    // Arrow keys move focus and selection together, so keyboard focus sits
-    // on the filled row. Its ring is drawn in the row's text color so it
-    // stays visible against the fill.
-    const ring = (el: Element) => {
-      const s = getComputedStyle(el);
-      return `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor} ${s.outlineOffset}`;
-    };
-    await rows.nth(0).focus();
-    await page.keyboard.press('ArrowDown');
-    await expect(rows.nth(1)).toBeFocused();
-    await expect(rows.nth(1)).toHaveAttribute('aria-checked', 'true');
-    expect(await rows.nth(1).evaluate(ring)).toBe('solid 2px rgb(255, 255, 255) -4px');
-  });
+  }
+
+  for (const [theme, rowFill, rowText] of [
+    ['light', 'rgb(0, 108, 224)', 'rgb(255, 255, 255)'],
+    ['dark', 'rgb(66, 180, 255)', 'rgb(15, 20, 26)'],
+  ] as const) {
+    test(`the phone menu stacks the languages as one segmented control (${theme})`, async ({ page }) => {
+      await page.addInitScript((t) => localStorage.setItem('vitepress-theme-appearance', t), theme);
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto(TOPIC_PAGE);
+      await page.locator('.VPNavBarHamburger').click();
+      const group = page
+        .locator('.VPNavScreen')
+        .getByRole('radiogroup', { name: 'Select programming language' });
+      await expect(group).toBeVisible();
+      const rows = group.getByRole('radio');
+      // The menu always shows the full names, TypeScript included.
+      await expect(rows).toHaveText(['TypeScript', 'Python', 'Java', 'C#', 'Go'], { useInnerText: true });
+      const layout = await group.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { direction: s.flexDirection, radius: s.borderTopLeftRadius, edge: s.borderTopWidth };
+      });
+      expect(layout).toEqual({ direction: 'column', radius: '8px', edge: '1px' });
+      const groupBox = (await group.boundingBox())!;
+      let previousBottom = -Infinity;
+      for (const row of await rows.all()) {
+        const box = (await row.boundingBox())!;
+        // One full-width row per language, stacked top to bottom, each 48px high.
+        expect(Math.round(box.height)).toBeGreaterThanOrEqual(48);
+        expect(box.width).toBeGreaterThanOrEqual(groupBox.width - 2);
+        expect(box.y).toBeGreaterThanOrEqual(previousBottom - 1);
+        previousBottom = box.y + box.height;
+      }
+      // The selected row is filled; the others are not.
+      const fill = (el: Element) => getComputedStyle(el).backgroundColor;
+      expect(await rows.nth(0).evaluate(fill)).toBe(rowFill);
+      expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).color)).toBe(rowText);
+      expect(await rows.nth(1).evaluate(fill)).toBe('rgba(0, 0, 0, 0)');
+      // Arrow keys move focus and selection together, so keyboard focus sits
+      // on the filled row. Its ring is drawn in the row's text color so it
+      // stays visible against the fill.
+      const ring = (el: Element) => {
+        const s = getComputedStyle(el);
+        return `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor} ${s.outlineOffset}`;
+      };
+      await rows.nth(0).focus();
+      await page.keyboard.press('ArrowDown');
+      await expect(rows.nth(1)).toBeFocused();
+      await expect(rows.nth(1)).toHaveAttribute('aria-checked', 'true');
+      expect(await rows.nth(1).evaluate(ring)).toBe(`solid 2px ${rowText} -4px`);
+    });
+  }
 
   test('renders at the same height as the search box', async ({ page }) => {
     await page.goto(TOPIC_PAGE);

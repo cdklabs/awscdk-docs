@@ -105,21 +105,9 @@ onMounted(initLanguageState);
       <span v-if="lang !== activeLanguage" class="visually-hidden">{{
         LANGUAGE_LABELS[lang]
       }}</span>
-      <span v-if="lang === activeLanguage" class="language-label">
-        <span class="language-label-text">{{ LANGUAGE_LABELS[lang] }}</span>
-        <!-- Width sizers: every enabled label, overlapped in the same grid cell,
-             so the column is as wide as the widest one and the slider width does
-             not track the active language. Rendering all of them lets the browser
-             measure. Hidden from paint, assistive tech, and the search index. -->
-        <span
-          v-for="sizer in enabled"
-          :key="`sizer-${sizer}`"
-          class="language-label-sizer"
-          aria-hidden="true"
-          data-pagefind-ignore
-          >{{ LANGUAGE_LABELS[sizer] }}</span
-        >
-      </span>
+      <span v-if="lang === activeLanguage" class="language-label">{{
+        LANGUAGE_LABELS[lang]
+      }}</span>
     </button>
   </div>
 </template>
@@ -207,26 +195,10 @@ onMounted(initLanguageState);
 }
 
 .language-label {
-  /* Overlapping single-cell grid: the visible text and one sizer per enabled
-   * language all occupy 1 / 1, so the cell's width is the widest label's width
-   * whatever the selection. Costs ~50px of nav-row width, only at >=1280px where
-   * the label renders. */
-  display: inline-grid;
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
-  color: var(--vp-c-text-1);
-}
-
-.language-label-text,
-.language-label-sizer {
-  grid-area: 1 / 1;
   white-space: nowrap;
-}
-
-.language-label-sizer {
-  /* visibility, not display:none — a removed box measures nothing. */
-  visibility: hidden;
-  pointer-events: none;
+  color: var(--vp-c-text-1);
 }
 </style>

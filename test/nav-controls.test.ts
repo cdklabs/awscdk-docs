@@ -144,26 +144,16 @@ describe('navbar layout', () => {
       // Active language is programmatically indicated and shown as a text
       // label, never color-only.
       expect(toggle).toMatch(/v-if="lang === activeLanguage"[^>]*class="language-label"/);
-      // The label area reserves the widest enabled label's width so the
-      // slider does not track the ACTIVE label and the centered search
-      // trigger does not shift when the language changes. The sizers
-      // must stay hidden from assistive technology and from the search
-      // index, and must use visibility rather than display:none — a removed
-      // box measures nothing, which would silently reinstate the jump.
-      expect(toggle).toContain('class="language-label-text"');
-      expect(toggle).toMatch(
-        /class="language-label-sizer"\s+aria-hidden="true"\s+data-pagefind-ignore/,
-      );
-      expect(toggle).toMatch(/\.language-label \{[^}]*display: inline-grid/);
-      expect(toggle).toMatch(/\.language-label-sizer \{[^}]*visibility: hidden/);
-      // Every option shows its language by name: the badges and the width
-      // sizers are not painted in the bar or the menu, and the unchecked
-      // options' visually-hidden labels are brought back into view.
+      // Every option shows its language by name: the badges are not painted
+      // in the bar or the menu, and the unchecked options' visually-hidden
+      // labels are brought back into view.
       expect(css).toMatch(
         /:is\(\.VPNavBar, \.VPNavScreen\) \.language-toggle \.language-option \.language-abbr \{\s*display: none;/,
       );
+      // The bar marks the selected option with the brand color and an inset
+      // underline, not with the fill alone.
       expect(css).toMatch(
-        /:is\(\.VPNavBar, \.VPNavScreen\) \.language-toggle \.language-label-sizer \{\s*display: none;/,
+        /\.VPNavBar \.language-toggle \.language-option\.active \{\s*color: var\(--vp-c-brand-1\);\s*box-shadow: inset 0 -2px 0 var\(--vp-c-brand-1\);/,
       );
       // Under 1100px only TypeScript shortens, to its badge text "TS"; the
       // full name is taken out of flow rather than removed, so it still
