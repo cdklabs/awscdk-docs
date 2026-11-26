@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { pathToFileURL } from 'url';
 import type { Rollup } from 'vite';
 import * as compilerSfc from 'vue/compiler-sfc';
@@ -104,5 +104,11 @@ describe('Vue compiler that releases template ASTs', () => {
       keysAfter: ['source', 'transformed'],
     });
     expect(calls[0].keysAfter).toEqual(['source', 'transformed']);
+  });
+
+  // Config shape: the memory the wrapper frees has no build output to assert, so pin that the site config passes it.
+  test('the VitePress config passes the AST-releasing compiler to the Vue plugin', () => {
+    const config = readFileSync(resolve(import.meta.dirname, '..', 'docs/.vitepress/config.mts'), 'utf-8');
+    expect(config).toContain('vue: { compiler: astReleasingCompiler }');
   });
 });
