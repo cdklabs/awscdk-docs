@@ -9,13 +9,13 @@ interface Box {
 }
 
 /** One simple selector: `tag`, `.class`, `[attr]`, or a tag with classes, such as `li.api-sidebar-item`. */
-function matchesOne(el: FakeElement, selector: string): boolean {
+function matchesOne(node: FakeElement, selector: string): boolean {
   const attr = /^\[([\w-]+)\]$/.exec(selector);
   if (attr) {
-    return el.hasAttribute(attr[1]);
+    return node.hasAttribute(attr[1]);
   }
   const [tag, ...classes] = selector.split('.');
-  return (tag === '' || el.tagName === tag.toUpperCase()) && classes.every((name) => el.classList.contains(name));
+  return (tag === '' || node.tagName === tag.toUpperCase()) && classes.every((name) => node.classList.contains(name));
 }
 
 export class FakeElement {
@@ -62,11 +62,11 @@ export class FakeElement {
   }
 
   get isConnected(): boolean {
-    let el: FakeElement | null = this;
-    while (el.parentElement) {
-      el = el.parentElement;
+    let root: FakeElement = this;
+    while (root.parentElement) {
+      root = root.parentElement;
     }
-    return el.tagName === 'HTML';
+    return root.tagName === 'HTML';
   }
 
   setAttribute(name: string, value: string): void {
@@ -105,8 +105,8 @@ export class FakeElement {
   }
 
   contains(other: FakeElement | null): boolean {
-    for (let el = other; el; el = el.parentElement) {
-      if (el === this) {
+    for (let node = other; node; node = node.parentElement) {
+      if (node === this) {
         return true;
       }
     }
@@ -116,9 +116,9 @@ export class FakeElement {
   /** `closest` for a comma-separated list of simple selectors. */
   closest(selectors: string): FakeElement | null {
     const list = selectors.split(',').map((s) => s.trim());
-    for (let el: FakeElement | null = this; el; el = el.parentElement) {
-      if (list.some((selector) => matchesOne(el!, selector))) {
-        return el;
+    for (let node: FakeElement | null = this; node; node = node.parentElement) {
+      if (list.some((selector) => matchesOne(node!, selector))) {
+        return node;
       }
     }
     return null;
