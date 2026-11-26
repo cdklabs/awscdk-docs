@@ -17,8 +17,8 @@ export function scratchDir(prefix: string): string {
 /**
  * Run a CLI module in this process, so coverage sees it and its network modules can be mocked.
  *
- * The module runs `main()` on import, from `cwd` and `argv`. It does not export the promise, so the run waits for
- * the event loop to drain the mocked I/O.
+ * The module runs `main()` on import, from `cwd` and `argv`. It does not export the promise, so the run waits a fixed
+ * 50 event-loop turns, enough for mocked I/O that settles as promises.
  */
 export async function runCli(
   modulePath: string,
