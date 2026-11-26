@@ -500,10 +500,10 @@ export function assemblyOwner(assemblyName: string): string {
  * package name.
  *
  * `submodule` is the OWNER submodule ({@link serviceSubmodule} applied to the entry's own name), so the structural
- * `interfaces.*` mirror and `*.mixins` suffix collapse into their owner's heading. The Core section folds the `''`,
- * `core` and `assets` submodules into a single group whose label is the bare package name — `aws-cdk-lib`, never
- * `aws-cdk-lib.core`. `constructs` needs no special case: its assembly name is already `constructs` and its types
- * carry no submodule.
+ * `interfaces.*` mirror and `*.mixins` / `*.events` suffixes collapse into their owner's heading. The Core section
+ * folds the `''`, `core` and `assets` submodules into a single group whose label is the bare package name —
+ * `aws-cdk-lib`, never `aws-cdk-lib.core`. `constructs` needs no special case: its assembly name is already
+ * `constructs` and its types carry no submodule.
  */
 export function frameworkSectionName(assemblyName: string, submodule: string): string {
   if (submodule === '' || isCore(assemblyName, submodule)) {
@@ -570,12 +570,11 @@ function displayToken(token: string): string {
  * `constructs` base library is a group of its own; Framework headings are the package-qualified module names sorted
  * by {@link frameworkSectionCompare}, while Services stay alphabetical.
  *
- * Every section starts with direct readme link(s) to its (sub)module page(s) (see `overviewItems` for their labels),
- * then Core and `constructs` keep a
- * flat kind grouping; every other section groups by resource (derived from construct names). Inside a resource,
- * construct types are listed directly (no "Constructs" heading) and the remaining kind groups start collapsed.
- * Sections and resource groups are collapsible. This is a nav-grouping change only: page URLs and cross-reference
- * links are untouched.
+ * A section starts with direct readme link(s) to the overview page(s) of its own (sub)modules, when it has any (see
+ * `overviewItems` for which and their labels), then Core and `constructs` keep a flat kind grouping; every other
+ * section groups by resource (derived from construct names). Inside a resource, construct types are listed directly (no
+ * "Constructs" heading) and the remaining kind groups start collapsed. Sections and resource groups are collapsible.
+ * This is a nav-grouping change only: page URLs and cross-reference links are untouched.
  *
  * With two or more enabled `languages`, leaf items whose display name is language-variant carry a `labels` field
  * with one entry per differing language; group headings (service, resource, kind) are language-neutral. With a
@@ -593,8 +592,8 @@ export function buildServiceSidebar(
   // Framework section name -> package root overview link, for packages reached only through omitted submodules.
   const packageRoots = new Map<string, string>();
   for (const entry of entries) {
-    // Structural submodules (`interfaces.*`, `*.mixins`) roll into the service that owns their types; root types of
-    // a standalone package group by an owner derived from the package name.
+    // Structural submodules (`interfaces.*`, `*.mixins`, `*.events`) roll into the service that owns their types;
+    // root types of a standalone package group by an owner derived from the package name.
     const submodule = serviceSubmodule(entry.submodule);
     const owner = submodule || assemblyOwner(entry.assemblyName);
     // The `constructs` base library is its own Framework section; aws-cdk-lib core/assets stay in Core.
@@ -684,11 +683,11 @@ export function buildServiceSidebar(
 }
 
 /**
- * Apply the editorial {@link FRAMEWORK_NAV} list to the Framework sections: listed sections form the top level in
- * list order (a friendly `label` changes the display only; `text` stays the module name), and every other section
- * nests under its package root when that root is listed, else under `defaultParent`. A nested section keeps its own
- * Overview link and types, follows its parent's own groups, and its page stems join the parent's `modules`, so the
- * served skeleton still maps every page to the chunk that holds it. A listed section the build does not document is
+ * Apply the editorial {@link FRAMEWORK_NAV} list to the Framework sections: listed sections form the top level in list
+ * order (a friendly `label` changes the display only; `text` stays the module name), and every other section nests
+ * under its package root when that root is listed, else under `defaultParent`. A nested section keeps its own Overview
+ * link (when it has one) and types, follows its parent's own groups, and its page stems join the parent's `modules`, so
+ * the served skeleton still maps every page to the chunk that holds it. A listed section the build does not document is
  * skipped; with no listed parent available, unlisted sections stay on the top level so nothing leaves the nav.
  */
 function curateFramework(
@@ -873,8 +872,8 @@ function fixedReadmeLabel(e: SidebarEntry): string | undefined {
  * computed by the docgen — so it stays base-aware via the component's `withBase`. A section holding a single
  * (sub)module gets a plain `Overview` entry. In a Framework section folding several (e.g. Core with `aws-cdk-lib`
  * + `assets`), each is `Overview (<module>)`, mirroring the `Type index (...)` convention. Structural submodules
- * (`interfaces.*`, `*.mixins`) never surface an overview of their own — they are internal assembly layout, not
- * navigation.
+ * (`interfaces.*`, `*.mixins`, `*.events`) never surface an overview of their own — they are internal assembly
+ * layout, not navigation.
  *
  * In a Services section folding several readmes (e.g. S3 with `aws_s3` + `aws_s3_deployment`), only the primary
  * `aws-cdk-lib` service module is `Overview`. A few

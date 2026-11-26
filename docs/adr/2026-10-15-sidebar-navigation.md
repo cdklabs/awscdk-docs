@@ -89,8 +89,17 @@ The optional package regrouping of this same data is recorded in
   design. New facades and traits classify automatically; there is no curated
   list.
 - **Overview entries.** `buildServiceSidebar()` prepends direct `Overview`
-  leaf link(s) to each section, before the resource/kind groups, reusing the
-  entry's canonical `indexLink`. Section headers stay pure disclosure
+  leaf link(s) to a section, before the resource/kind groups, one per distinct
+  overview page of the section's own (sub)modules, reusing the entry's
+  canonical `indexLink`. Structural submodules (`interfaces.*`, `*.mixins`,
+  `*.events`) add none, so a section holding only those has no `Overview`
+  entry. Types of a synthetic mixin submodule whose overview was omitted
+  index their package root, and that page is not the section's `Overview`:
+  it is listed once, in the package's own Framework section, which is
+  created to hold it even when the package has no root types. Events
+  submodule types index the package root too but surface no overview
+  anywhere ([fold events submodules](./2026-10-22-fold-events-submodules.md)).
+  Section headers stay pure disclosure
   controls (expand/collapse), never navigation — overloading one control
   with navigate-vs-disclose is a touch-device mis-click hazard. A section
   folding one module gets a plain `Overview`; one folding several puts the
@@ -133,8 +142,8 @@ buried the handful of modules most readers look for under internals such as
   `defaultParent` (`aws-cdk-lib`, which adopts the `@aws-cdk/*` framework
   packages). Nested modules follow the parent's own kind groups, sorted
   unscoped-alphabetical with `@`-scoped packages last, and keep their own
-  Overview link and types, so no page leaves the nav. Their page stems join
-  the parent's `modules`, so the served skeleton still finds the chunk for
+  Overview link (when they have one) and types, so no page leaves the nav.
+  Their page stems join the parent's `modules`, so the served skeleton still finds the chunk for
   every page. A listed module the build does not document is skipped; with
   no listed parent available, an unlisted module stays on the top level.
 - A friendly label is display only: `text` stays the package-qualified
@@ -148,11 +157,12 @@ buried the handful of modules most readers look for under internals such as
 
 `serviceSubmodule()` normalizes `aws-cdk-lib`'s structural submodules in the
 data layer so they do not surface as garbled branches (`Interfaces.aws S3`,
-`S3.mixins`): `interfaces.<sub>` → `<sub>`, bare `interfaces` → module root
-(Core), `<sub>.mixins` → `<sub>`. Rolled-in types then flow through the
-normal resource/kind grouping. Classification into Framework/Services runs
-on the owner submodule, so these types follow their owner. New reserved
-submodule names in future releases would need adding here.
+`S3.mixins`, `S3.events`): `interfaces.<sub>` → `<sub>`, bare `interfaces` →
+module root (Core), `<sub>.mixins` and `<sub>.events` → `<sub>`. Rolled-in
+types then flow through the normal resource/kind grouping. Classification
+into Framework/Services runs on the owner submodule, so these types follow
+their owner. New reserved submodule names in future releases would need
+adding here.
 
 ### Construct level as a sidebar field
 
@@ -408,9 +418,10 @@ collapsed (`v-show`), and the section renders nothing with zero favorites.
 ## Consequences
 
 - Readers navigate by AWS service and CDK framework feature; package layout
-  and `interfaces.*`/`*.mixins` structural submodules are invisible in the
-  nav. Service name changes require a curated display entry and a pinned
-  output test; the resource-stem heuristic still fails readable rather than wrong.
+  and `interfaces.*`/`*.mixins`/`*.events` structural submodules are invisible
+  in the nav. Service name changes require a curated display entry and a
+  pinned output test; the resource-stem heuristic still fails readable rather
+  than wrong.
 - Per-page HTML carries only the empty native sidebar shell; the tree is
   session-cached assets fetched incrementally, so build time, artifact size,
   cold-load transfer, and rendered DOM are all bounded independent of page

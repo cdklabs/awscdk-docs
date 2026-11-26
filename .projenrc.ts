@@ -106,7 +106,8 @@ const project = new CdkTypeScriptProject({
 
   // The package is private and never published, so npm attaches no meaning to the prod/dev split. This repo
   // gives it one: `deps` holds packages whose code or assets ship in the built site or that render its HTML,
-  // so `license-checker --production` (and anyone reading package.json) sees exactly what the site is made of.
+  // so `license-checker-rseidelsohn` in production mode (and anyone reading package.json) sees exactly what the
+  // site is made of.
   // Everything that only generates content, tests, or automates the repo is a devDep.
   deps: [
     // Static site generator: renders every page and ships its client theme runtime in the output.
