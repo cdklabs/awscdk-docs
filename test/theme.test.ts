@@ -625,4 +625,22 @@ describe('selected language label contrast', () => {
     );
     expect(rule(toggle, '.language-option.active {')).toContain('background-color: var(--vp-c-bg-elv)');
   });
+
+  // The phone menu's picker copies its row colors into nav-controls.css, so the
+  // pairs it paints are measured here from its own :root and .dark blocks.
+  const navLight = navCss.slice(navCss.indexOf('\n:root {'), navCss.indexOf('\n.dark {'));
+  const navDark = navCss.slice(navCss.indexOf('\n.dark {'));
+  const navDarkBlock = navDark.slice(0, navDark.indexOf('}'));
+
+  test.each([
+    ['light', () => navLight, () => lightBlock],
+    ['dark', () => navDarkBlock, () => darkBlock],
+  ])('%s mode: the phone menu rows clear their contrast targets', (_mode, nav, palette) => {
+    // Selected row: its text on the brand fill.
+    expect(contrast(hex(nav(), '--seg-on-fg'), hex(palette(), '--vp-c-brand-1'))).toBeGreaterThanOrEqual(AA);
+    // Unselected rows: muted text on the menu background.
+    expect(contrast(hex(nav(), '--tb-muted'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(7);
+    // The group edge is a non-text boundary (WCAG 1.4.11).
+    expect(contrast(hex(nav(), '--seg-edge'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(3);
+  });
 });

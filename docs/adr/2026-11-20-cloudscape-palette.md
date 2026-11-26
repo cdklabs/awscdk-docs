@@ -60,7 +60,9 @@ Hand-written copies follow the palette: the decoupled code-theme chrome in
 `code-theme.css` mirrors the new surfaces and dividers, the signature keyword
 color and the API badge pair use the hover blue (`#001a99` / `#75cfff` on
 `#e6f0fc` / `#1d3549`), and the member-row flash starts at `#f2f8fd` light and
-`#1b2a3a` dark.
+`#1b2a3a` dark. The phone-menu language picker in `nav-controls.css` copies
+its edge, row text, hover fill and selected-row text from the palette; each
+copy notes the token it mirrors, or that it has none.
 
 Every variable in `:root` that sets a text color MUST be re-declared in `.dark`
 with an explicit value, not a `var()` reference. `custom.css` loads after the

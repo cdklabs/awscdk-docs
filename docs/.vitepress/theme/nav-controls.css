@@ -466,21 +466,23 @@
  * one bordered group, a 48px row per language, the selected row filled.
  * Five full names do not fit a 320px menu side by side; stacked, they do,
  * and every row stays above the 44px touch-target minimum. The fill and the
- * focus ring use the palette's brand color, so they follow custom.css. */
+ * focus ring use the palette's brand color, so they follow custom.css. The
+ * other values are hand-written copies of the palette; each notes the
+ * custom.css value it mirrors, and test/theme.test.ts measures their contrast. */
 :root {
-  --seg-edge: #656871;
+  --seg-edge: #656871; /* no custom.css token */
   --seg-on-bg: var(--vp-c-brand-1);
-  --seg-on-fg: #ffffff;
-  --tb-muted: #424650;
-  --tb-hover-bg: #e9ebed;
+  --seg-on-fg: #ffffff; /* = light --vp-c-bg */
+  --tb-muted: #424650; /* = light --vp-code-lang-color */
+  --tb-hover-bg: #e9ebed; /* no custom.css token */
   --tb-focus: var(--vp-c-brand-1);
 }
 
 .dark {
-  --seg-edge: #a4a4ad;
-  --seg-on-fg: #0f141a;
-  --tb-muted: #c6c6cd;
-  --tb-hover-bg: #2a3340;
+  --seg-edge: #a4a4ad; /* = dark --vp-code-lang-color */
+  --seg-on-fg: #0f141a; /* = light --vp-c-text-1 */
+  --tb-muted: #c6c6cd; /* = dark --vp-c-text-1 */
+  --tb-hover-bg: #2a3340; /* no custom.css token */
 }
 
 @media (max-width: 767px) {

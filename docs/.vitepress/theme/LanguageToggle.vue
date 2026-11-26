@@ -138,8 +138,8 @@ onMounted(initLanguageState);
   border-radius: 6px;
   color: var(--vp-c-text-2);
   transition: color 0.25s, background-color 0.25s;
-  /* Segments stretch to fill the 40px track so the active "thumb"
-   * highlight spans the control's full inner height. */
+  /* Options stretch to fill the 40px track so the selected fill and the
+   * bar's inset underline span its full inner height. */
   align-self: stretch;
 }
 
