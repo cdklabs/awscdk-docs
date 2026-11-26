@@ -1,6 +1,9 @@
+import * as spec from '@jsii/spec';
+import { STABILITY_ROUTE } from '../site-routes.js';
+import { typeStability } from './stability.js';
 import { escapeAttr, escapeVueText } from './escape.js';
 import { pageHref } from './links.js';
-import { PAGEFIND_IGNORE } from './search.js';
+import { PAGEFIND_IGNORE, weightedTitle } from './search.js';
 
 /** One segment of the breadcrumb rendered above a type page's H1. */
 export interface BreadcrumbSegment {
@@ -94,4 +97,94 @@ function crumbParts(segments: readonly BreadcrumbSegment[]): string[] {
     `<span class="breadcrumb-ellipsis" title="${escapeAttr(hidden)}">${escapeVueText(hidden)}</span>`,
     ...rendered.slice(-2),
   ];
+}
+
+/** The kind chip shown first in a type page's header row. */
+export interface TypeKindChip {
+  /** Chip text, e.g. `L2 construct`, `Struct`, `Mixin`. */
+  readonly text: string;
+  /** Per-kind color class, e.g. `api-badge-l2`. Omitted for a plain class, which keeps the neutral chip. */
+  readonly kindClass?: string;
+}
+
+/** What a type page's header needs beyond its name. */
+export interface TypeHeaderOptions {
+  /** Type name, rendered as the H1. */
+  readonly name: string;
+  /** Kind chip; always present. */
+  readonly kind: TypeKindChip;
+  /** jsii stability of the type. A type with none shows no stability chip. */
+  readonly stability?: 'stable' | 'experimental' | 'deprecated' | 'external';
+  /** The `@deprecated` reason, shown as a note under the row when the type is deprecated. */
+  readonly deprecationReason?: string;
+}
+
+/** Stability chips, keyed by jsii stability. `external` and an absent stability show no chip. */
+const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: string; link?: string } | undefined>> = {
+  stable: { label: 'Stable', chipClass: 'type-chip-stable' },
+  experimental: { label: 'Experimental', chipClass: 'type-chip-experimental', link: STABILITY_ROUTE },
+  deprecated: { label: 'Deprecated', chipClass: 'type-chip-deprecated' },
+};
+
+/**
+ * The top of a type page: the H1 carrying the type name alone, then one row holding the kind chip, the stability
+ * chip and the mount points the theme's page actions teleport into, then — for a deprecated type — the reason.
+ *
+ * The kind leaves the H1 and becomes a chip of its own row, so the heading is the name a reader came for and the
+ * classification sits beside the controls that act on the page. Every type states its stability, "Stable" included:
+ * an absent chip used to mean both "stable" and "not shown", which a reader cannot tell apart.
+ *
+ * The row is one raw-HTML block, so markdown-it passes it through whole and the chips need no markdown escape; it is
+ * excluded from the Pagefind index, because the kind and the stability are already search filters. A deprecated type
+ * strikes its title and carries the reason as a note, matching the three signals a deprecated member already gets.
+ */
+export function renderTypeHeader(options: TypeHeaderOptions): string[] {
+  const title = weightedTitle(options.name);
+  const deprecated = options.stability === 'deprecated';
+  const chips = [kindChip(options.kind), stabilityChip(options.stability)].filter((c) => c !== undefined);
+  const reason = options.deprecationReason?.trim();
+  return [
+    `# ${deprecated ? `<span class="type-title-deprecated">${title}</span>` : title}`,
+    '',
+    '<div class="type-header">',
+    `<div class="type-header-row" ${PAGEFIND_IGNORE}>${chips.join('')}<span class="type-header-gap"></span>`
+      + '<span class="type-actions"><span class="type-action-copy"></span><span class="type-action-fav"></span>'
+      + '</span></div>',
+    ...(deprecated && reason
+      ? [`<p class="type-deprecated-note"><strong>Deprecated:</strong> ${escapeVueText(reason)}</p>`]
+      : []),
+    '</div>',
+    '',
+  ];
+}
+
+function kindChip(kind: TypeKindChip): string {
+  const color = kind.kindClass ? ` ${kind.kindClass}` : '';
+  return `<span class="type-chip type-chip-kind${color}">${escapeVueText(kind.text)}</span>`;
+}
+
+function stabilityChip(stability: TypeHeaderOptions['stability']): string | undefined {
+  const chip = stability ? STABILITY_CHIPS[stability] : undefined;
+  if (!chip) {
+    return undefined;
+  }
+  const cls = `type-chip type-chip-stability ${chip.chipClass}`;
+  return chip.link
+    ? `<a class="${cls}" href="${escapeAttr(pageHref(chip.link))}">${chip.label}</a>`
+    : `<span class="${cls}">${chip.label}</span>`;
+}
+
+/**
+ * {@link renderTypeHeader} for a jsii type: the stability is the type's own when set, otherwise its package's, and
+ * the deprecation reason comes from the type's own docs. One entry point for all six page renderers, so no page kind
+ * can read stability differently from another.
+ */
+export function renderTypeHeaderFor(type: spec.Type, assembly: spec.Assembly, kind: TypeKindChip): string[] {
+  const stability = typeStability(type, assembly);
+  return renderTypeHeader({
+    name: type.name,
+    kind,
+    ...(stability ? { stability } : {}),
+    ...(type.docs?.deprecated ? { deprecationReason: type.docs.deprecated } : {}),
+  });
 }

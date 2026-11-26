@@ -1,3 +1,5 @@
+import * as spec from '@jsii/spec';
+import { renderTypeHeader, renderTypeHeaderFor } from '../src/docgen/header.js';
 import { renderBreadcrumb } from '../src/docgen/header.js';
 
 describe('type page header bar', () => {
@@ -64,9 +66,10 @@ describe('type page header bar', () => {
     expect(block).not.toContain('<strong>interfaces</strong>');
   });
 
-  test('every segment is an element, so padding can space them all alike', () => {
-    // The trail's separator is a bare `.` and the visual gaps are padding, so
-    // a segment emitted as a raw text node would render with no gap around it.
+  test('every segment is an element, so the chevron separator can hang off it', () => {
+    // The trail's separator in the DOM is a bare `.`, collapsed to no size and
+    // replaced visually by a chevron drawn on each segment. A segment emitted
+    // as a raw text node could carry neither.
     const block = renderBreadcrumb([
       { label: 'pkg', link: '/pkg/' },
       { label: 'grouping' },
@@ -187,5 +190,101 @@ describe('type page header bar', () => {
     );
     // Two joins plus the nested type's own dot; the link targets' dots are not text and get none.
     expect(trail.match(/<wbr>/g)!.length).toBe(3);
+  });
+});
+
+describe('type page header', () => {
+  beforeEach(() => {
+    delete process.env.DOCS_BASE;
+  });
+
+  const header = (options: Parameters<typeof renderTypeHeader>[0]): string =>
+    renderTypeHeader(options).join('\n');
+
+  test('the H1 carries the type name alone and the kind becomes a chip of the row below it', () => {
+    const block = header({ name: 'Bucket', kind: { text: 'L2 construct', kindClass: 'api-badge-l2' } });
+    expect(block.split('\n')[0]).toBe('# <span data-pagefind-weight="10">Bucket</span>');
+    expect(block).toContain('<span class="type-chip type-chip-kind api-badge-l2">L2 construct</span>');
+    // The row is one raw-HTML block, so markdown-it hands it through whole.
+    expect(block).toContain('<div class="type-header-row" data-pagefind-ignore>');
+    // Two mount points in a fixed order, so the copy button always precedes
+    // the star however the two components happen to mount.
+    const actions = block.indexOf('<span class="type-actions">');
+    expect(block.indexOf('type-action-copy')).toBeGreaterThan(actions);
+    expect(block.indexOf('type-action-fav')).toBeGreaterThan(block.indexOf('type-action-copy'));
+  });
+
+  test('the kind chip comes before the stability chip, and the actions after both', () => {
+    const block = header({ name: 'Bucket', kind: { text: 'Class' }, stability: 'stable' });
+    const kind = block.indexOf('type-chip-kind');
+    const stability = block.indexOf('type-chip-stability');
+    expect(kind).toBeGreaterThan(-1);
+    expect(stability).toBeGreaterThan(kind);
+    expect(block.indexOf('type-header-gap')).toBeGreaterThan(stability);
+    expect(block.indexOf('type-actions')).toBeGreaterThan(block.indexOf('type-header-gap'));
+  });
+
+  test('a stable type says so, rather than leaving the absence of a chip to mean two things', () => {
+    expect(header({ name: 'Bucket', kind: { text: 'Class' }, stability: 'stable' }))
+      .toContain('<span class="type-chip type-chip-stability type-chip-stable">Stable</span>');
+  });
+
+  test('the experimental chip links to the page that explains the level', () => {
+    const block = header({ name: 'Service', kind: { text: 'Class' }, stability: 'experimental' });
+    expect(block).toContain(
+      '<a class="type-chip type-chip-stability type-chip-experimental" href="/stability.html">Experimental</a>',
+    );
+  });
+
+  test('a deprecated type strikes its title and carries the reason under the row', () => {
+    const block = header({
+      name: 'Statistic',
+      kind: { text: 'Enum', kindClass: 'api-badge-enum' },
+      stability: 'deprecated',
+      deprecationReason: 'Use `Stats` instead.',
+    });
+    expect(block).toContain('# <span class="type-title-deprecated"><span data-pagefind-weight="10">Statistic</span></span>');
+    expect(block).toContain('<span class="type-chip type-chip-stability type-chip-deprecated">Deprecated</span>');
+    expect(block).toContain('<p class="type-deprecated-note"><strong>Deprecated:</strong> Use `Stats` instead.</p>');
+    // The note sits inside the header block, so the divider closes below it.
+    expect(block.indexOf('type-deprecated-note')).toBeLessThan(block.lastIndexOf('</div>'));
+  });
+
+  test('a deprecated type with no stated reason shows the chip and no empty note', () => {
+    const block = header({ name: 'Statistic', kind: { text: 'Enum' }, stability: 'deprecated' });
+    expect(block).toContain('type-chip-deprecated');
+    expect(block).not.toContain('type-deprecated-note');
+  });
+
+  test('a stability with no chip of its own renders the kind alone', () => {
+    for (const block of [
+      header({ name: 'T', kind: { text: 'Class' } }),
+      header({ name: 'T', kind: { text: 'Class' }, stability: 'external' }),
+    ]) {
+      expect(block).toContain('type-chip-kind');
+      expect(block).not.toContain('type-chip-stability');
+    }
+  });
+
+  test('chip text and the deprecation reason are text, never markup or Vue syntax', () => {
+    const block = header({
+      name: 'T',
+      kind: { text: '<img src=x> {{ x }}' },
+      stability: 'deprecated',
+      deprecationReason: 'see <b>docs</b> {{ y }}',
+    });
+    expect(block).toContain('&lt;img src=x&gt; &#123;&#123; x &#125;&#125;');
+    expect(block).toContain('see &lt;b&gt;docs&lt;/b&gt; &#123;&#123; y &#125;&#125;');
+    expect(block).not.toContain('<img');
+    expect(block).not.toContain('<b>');
+  });
+
+  test('the stability is the type\'s own when set, otherwise its package\'s', () => {
+    const assembly = { name: 'pkg', docs: { stability: spec.Stability.Experimental } } as unknown as spec.Assembly;
+    const kind = { text: 'Class' };
+    const untagged = { name: 'T', fqn: 'pkg.T' } as unknown as spec.Type;
+    const tagged = { name: 'T', fqn: 'pkg.T', docs: { stability: spec.Stability.Stable } } as unknown as spec.Type;
+    expect(renderTypeHeaderFor(untagged, assembly, kind).join('\n')).toContain('type-chip-experimental');
+    expect(renderTypeHeaderFor(tagged, assembly, kind).join('\n')).toContain('type-chip-stable');
   });
 });

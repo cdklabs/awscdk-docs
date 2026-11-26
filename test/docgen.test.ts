@@ -570,7 +570,7 @@ describe('docgen generation', () => {
       join(outDir, 'docs', '@aws-cdk_cfn-property-mixins.aws_lambda.CfnFunctionPropsMixin.md'),
       'utf-8',
     );
-    expect(page).toContain('class="api-badge api-badge-mixin" text="Mixin"');
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-mixin">Mixin</span>');
     expect(page).toContain('href="/v2/docs/constructs.IMixin.html">IMixin</a>');
     expect(page).toContain('## Initializer');
     expect(page).toContain('## Methods');
@@ -586,7 +586,7 @@ describe('docgen generation', () => {
     );
     const propertyMixinPages = packagePages.filter((name) => name.endsWith('PropsMixin.md'));
     const classifiedPages = packagePages.filter((name) =>
-      readFileSync(join(outDir, 'docs', name), 'utf-8').includes('class="api-badge api-badge-'),
+      readFileSync(join(outDir, 'docs', name), 'utf-8').includes('class="type-chip type-chip-kind api-badge-'),
     );
     expect(propertyMixinPages.length).toBeGreaterThan(1000);
     expect(classifiedPages).toEqual(propertyMixinPages);
@@ -1030,17 +1030,20 @@ describe('docgen generation', () => {
       const end = page.indexOf('\n---\n');
       expect(end + 5).toBeLessThan(page.indexOf('<nav class="type-breadcrumb"'));
     }
-    // The visible chip itself is untouched — it is a deliberate feature
-    // and only the inferred title is at stake here.
+    // The weighted-title span is the H1's only raw HTML, and its inner text is
+    // the type name — which is what inference would produce anyway. The kind
+    // and the source link are both outside the heading, so neither can leak.
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     const cfn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
-    // The badge is the H1's remaining raw HTML, and its text is exactly what
-    // inference would otherwise append to the title.
-    expect(bucket.split('\n').find((l) => l.startsWith('# '))).toContain('text="L2 construct"');
-    expect(cfn.split('\n').find((l) => l.startsWith('# '))).toContain('text="L1 construct"');
-    // The source-link chip is not in the H1 at all.
-    expect(bucket.split('\n').find((l) => l.startsWith('# '))).not.toContain('header-tag');
-    expect(cfn.split('\n').find((l) => l.startsWith('# '))).not.toContain('header-tag');
+    for (const page of [bucket, cfn]) {
+      // Without the explicit anchor, which is not part of the rendered heading.
+      const h1 = page.split('\n').find((l) => l.startsWith('# '))!.replace(/ \{#[^}]*\}$/, '');
+      expect(h1).not.toContain('construct');
+      expect(h1).not.toContain('header-tag');
+    }
+    // The kind is still stated, as a chip of the row under the title.
+    expect(bucket).toContain('<span class="type-chip type-chip-kind api-badge-l2">L2 construct</span>');
+    expect(cfn).toContain('<span class="type-chip type-chip-kind api-badge-l1">L1 construct</span>');
   });
 
   test('generates pages for standalone packages under the standard path convention', () => {

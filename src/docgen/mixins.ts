@@ -4,6 +4,7 @@ import {
   typeMetadataRows,
   TypeIndex,
 } from './constructs.js';
+import { renderTypeHeaderFor } from './header.js';
 import { PageHistory } from './history.js';
 import { classLineage, interfaceClosures } from './interfaces.js';
 import {
@@ -19,7 +20,6 @@ import {
   usageRowsFor,
   UsageRelationIndex,
 } from './layout.js';
-import { weightedTitle } from './search.js';
 
 /**
  * Mixin FQN -> FQNs of classes implementing it, sorted.
@@ -285,7 +285,7 @@ export interface MixinPageOptions {
 export function renderMixinPage(options: MixinPageOptions): string {
   const { type, assembly, index, mixins, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const lines: string[] = [`# ${weightedTitle(type.name)} <Badge type="tip" class="api-badge api-badge-mixin" text="Mixin" />`, ''];
+  const lines: string[] = renderTypeHeaderFor(type, assembly, { text: 'Mixin', kindClass: 'api-badge-mixin' });
 
   // Merged description: tagline + remarks, no `## Overview`.
   lines.push(...renderDescription(type));

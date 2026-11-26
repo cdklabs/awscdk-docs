@@ -143,6 +143,35 @@ pre.signature {
     min-height: 44px;
     min-width: 44px;
   }
+
+  /* Breadcrumb links above the title. `inline-flex` so a min-height binds at
+     all: an inline anchor's height is its line box, which padding alone does
+     not grow. Height only — the chevron after each link already carries the
+     horizontal room, and a 44px min-width would stretch short segments into
+     a ragged trail. */
+  .type-breadcrumb a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Type page header below the tablet breakpoint
+ *
+ * The title steps down, and the chip row splits into two lines: chips
+ * first, page actions under them. The gap between the two groups grows
+ * to the full row width, which is what forces the wrap.
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .vp-doc h1 {
+    font-size: 32px;
+    line-height: 1.1;
+  }
+
+  .type-header-gap {
+    flex-basis: 100%;
+  }
 }
 
 /* ------------------------------------------------------------------ *

@@ -387,6 +387,32 @@ describe('API kind badge palette', () => {
     }
   });
 
+  test('the light inks of the three narrowest kinds are the darkened tones', () => {
+    // Struct, Enum and L1 were the narrowest light pairs in the palette. These
+    // hexes are what lifts each of them to the 7:1 the chips owe as idle text,
+    // so a retune that loosens one fails here rather than only in the audit.
+    expect(cssVar(lightBlock, '--cdk-badge-struct-text')).toBe('#831843');
+    expect(cssVar(lightBlock, '--cdk-badge-enum-text')).toBe('#7c2d12');
+    expect(cssVar(lightBlock, '--cdk-badge-l1-text')).toBe('#713f12');
+  });
+
+  test.each(['struct', 'enum', 'l1'] as const)('light mode: the %s ink clears 7:1 on its own fill', (kind) => {
+    expect(
+      contrast(cssVar(lightBlock, `--cdk-badge-${kind}-text`), cssVar(lightBlock, `--cdk-badge-${kind}-bg`)),
+    ).toBeGreaterThanOrEqual(7);
+  });
+
+  test.each(KINDS)('the %s kind chip takes the fill and ink but not the border tint', (kind) => {
+    // The chip's edge is `currentColor`, which is the ink and so clears AA
+    // against the fill by construction. The tinted `--cdk-badge-*-border` the
+    // badge uses measured 1.69:1 light and 1.71:1 dark, invisible as an edge.
+    const chip = exactRuleBody(`.type-chip-kind.api-badge-${kind}`);
+    expect(chip).toContain(`background-color: var(--cdk-badge-${kind}-bg)`);
+    expect(chip).toContain(`color: var(--cdk-badge-${kind}-text)`);
+    expect(chip).not.toContain('border-color');
+    expect(exactRuleBody('.type-chip-kind')).toContain('border-color: currentColor');
+  });
+
   test('every kind has a distinct color in both schemes', () => {
     // The whole point of the issue: L1/L2/L3 were one amber and
     // Struct/Class one gray. A pair that collides again fails here.
@@ -549,6 +575,145 @@ describe('API kind badge palette', () => {
     const generated = ruleBody('.type-metadata-generated');
     expect(generated).toContain('var(--vp-c-text-2)');
     expect(generated).not.toContain('text-decoration: underline');
+  });
+
+  describe('type page header', () => {
+    // The header's own tokens. Idle and secondary text owes 7:1 against the
+    // page it sits on; a control edge owes 4.5:1. Both schemes are pinned by
+    // hex, because the a11y audit runs the default color scheme only.
+    const headerStart = css.indexOf('--th-text-2');
+    const headerDarkStart = css.indexOf('.dark {', headerStart);
+    const headerLight = css.slice(headerStart, headerDarkStart);
+    const headerDark = css.slice(headerDarkStart, css.indexOf('}', headerDarkStart));
+    const PAGE_BG = { light: '#ffffff', dark: '#161d26' } as const;
+
+    test.each(['--th-text-2', '--th-chevron', '--th-chip-edge'] as const)(
+      '%s is shadowed in dark mode, so the light value cannot win there',
+      (name) => {
+        expect(headerDark).toContain(`${name}:`);
+      },
+    );
+
+    test('the breadcrumb current segment clears 7:1 on the page', () => {
+      for (const [scheme, block] of [['light', headerLight], ['dark', headerDark]] as const) {
+        expect(contrast(cssVar(block, '--th-text-2'), PAGE_BG[scheme])).toBeGreaterThanOrEqual(7);
+      }
+    });
+
+    test('the chevron and the neutral chip edge clear the 3:1 graphics floor', () => {
+      // Both are non-text graphics (WCAG 1.4.11), not the idle text the 7:1
+      // target covers: the chevron carries no word and the chip edge only
+      // bounds a chip whose own label is already pinned above.
+      for (const [scheme, block] of [['light', headerLight], ['dark', headerDark]] as const) {
+        for (const name of ['--th-chevron', '--th-chip-edge']) {
+          expect(contrast(cssVar(block, name), PAGE_BG[scheme])).toBeGreaterThanOrEqual(3);
+        }
+      }
+    });
+
+    test('each stability chip ink clears 7:1 on its own fill in both schemes', () => {
+      for (const block of [headerLight, headerDark]) {
+        for (const kind of ['stable', 'exp', 'dep']) {
+          expect(contrast(cssVar(block, `--th-${kind}-text`), cssVar(block, `--th-${kind}-bg`)))
+            .toBeGreaterThanOrEqual(7);
+        }
+      }
+    });
+
+    test('the deprecation edge clears 4.5:1 on the note it bounds', () => {
+      for (const block of [headerLight, headerDark]) {
+        expect(contrast(cssVar(block, '--th-dep-edge'), cssVar(block, '--th-dep-bg')))
+          .toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    test('the breadcrumb is plain text in the body typeface, with no box of its own', () => {
+      const bar = exactRuleBody('.type-breadcrumb');
+      expect(bar).toContain('font-family: var(--vp-font-family-base)');
+      expect(bar).toContain('font-size: 14px');
+      expect(bar).toContain('padding: 0');
+      expect(bar).not.toContain('border-radius');
+      expect(bar).not.toContain('background-color');
+    });
+
+    test('the dots are real text at no size, so a copy still gives the FQN', () => {
+      // `display: none` would drop them from the selection, which is the whole
+      // reason the separator a reader sees is drawn rather than written.
+      expect(ruleBody('.breadcrumb-trail')).toContain('font-size: 0');
+      const chevron = exactRuleBody(
+        '.type-breadcrumb a::after',
+        '.breadcrumb-segment::after',
+        '.breadcrumb-ellipsis::before',
+      );
+      expect(chevron).toContain("content: ''");
+      expect(chevron).toContain('transform: rotate(45deg)');
+      expect(chevron).toContain('var(--th-chevron)');
+    });
+
+    test('the title is the large bold name and the badge override stays for the Added in badge', () => {
+      const h1 = exactRuleBody('.vp-doc h1');
+      expect(h1).toContain('font-size: 42px');
+      expect(h1).toContain('font-weight: 700');
+      // The kind badge left the H1, but the `Added in vX.Y.Z` badge did not, so
+      // the alignment override is still the thing holding it on the baseline.
+      expect(css).toContain('.vp-doc h1 > .VPBadge.api-badge');
+    });
+
+    test('the header block closes with a divider above the summary', () => {
+      const block = exactRuleBody('.type-header');
+      expect(block).toContain('border-bottom: 1px solid var(--vp-c-divider)');
+      expect(block).toContain('padding-bottom: 16px');
+      expect(block).toContain('margin: 20px 0 32px');
+    });
+
+    test('both chips share one geometry and the row wraps rather than scrolls', () => {
+      const chip = exactRuleBody('.type-chip');
+      expect(chip).toContain('height: 24px');
+      expect(chip).toContain('border-radius: 12px');
+      expect(chip).toContain('white-space: nowrap');
+      const row = exactRuleBody('.type-header-row');
+      expect(row).toContain('flex-wrap: wrap');
+      expect(row).toContain('gap: 8px');
+    });
+
+    test('the page actions are outlined pills with a visible focus ring', () => {
+      const pills = ruleBody('.vp-doc .type-actions .copy-markdown-main');
+      expect(pills).toContain('border: 2px solid var(--vp-c-brand-1)');
+      expect(pills).toContain('height: 32px');
+      const star = ruleBody('.vp-doc .type-actions .favorite-star-button');
+      expect(star).toContain('border-radius: 20px');
+      // One ring treatment for every new control, the site's own.
+      const ring = ruleBody(':focus-visible');
+      expect(ring).toContain('outline: 2px solid var(--vp-c-brand-1)');
+      for (const selector of [
+        '.vp-doc .type-actions .copy-markdown-main:focus-visible',
+        '.vp-doc .type-actions .favorite-star-button:focus-visible',
+        '.type-breadcrumb a:focus-visible',
+        '.vp-doc a.type-chip-stability:focus-visible',
+      ]) {
+        expect(bare).toContain(selector);
+      }
+    });
+
+    test('the experimental chip keeps its chip ink against the prose link color', () => {
+      // `.vp-doc a` would otherwise paint it as a link; the chip rule carries
+      // `.vp-doc` too, so it wins on specificity rather than on source order.
+      expect(bare).toContain('.vp-doc a.type-chip-experimental');
+      expect(ruleBody('.vp-doc a.type-chip-stability')).toContain('text-decoration: underline');
+    });
+
+    test('a deprecated title is struck in the deprecation tone', () => {
+      const title = exactRuleBody('.vp-doc h1 .type-title-deprecated');
+      expect(title).toContain('line-through');
+      expect(title).toContain('var(--th-dep-edge)');
+    });
+
+    test('the deprecation note is a left-edged block carrying the reason', () => {
+      const note = exactRuleBody('.type-deprecated-note');
+      expect(note).toContain('border-left: 4px solid var(--th-dep-edge)');
+      expect(note).toContain('background-color: var(--th-dep-bg)');
+      expect(exactRuleBody('.type-deprecated-note strong')).toContain('var(--th-dep-text)');
+    });
   });
 
   test('the metadata table uses the body typeface', () => {

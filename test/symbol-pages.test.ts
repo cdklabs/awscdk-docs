@@ -495,13 +495,16 @@ describe('symbol page generation', () => {
     // badged a plain `Class` while every other surface disagrees. Same shape
     // as the Mixin pin in mixin-pages.test.ts.
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_sqs.QueueGrants.md'), 'utf-8');
-    expect(page).toContain('<Badge type="tip" class="api-badge api-badge-facade" text="Facade" />');
-    expect(page).not.toContain('text="Class"');
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-facade">Facade</span>');
+    expect(page).not.toContain('>Class<');
   });
 
   test('plain classes get a dedicated page with hierarchy, methods, and properties', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">Duration</span> <Badge type="info" class="api-badge" text="Class" />');
+    expect(page).toMatch(/^# <span data-pagefind-weight="10">Duration<\/span> \{#/m);
+    // A plain class has no kind color of its own, so its chip carries no
+    // `api-badge-*` class and keeps the neutral fill.
+    expect(page).toContain('<span class="type-chip type-chip-kind">Class</span>');
     // Module-root type: breadcrumb links the module page only
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><strong>Duration</strong>');
     expect(page).toContain('## Methods');
@@ -517,8 +520,9 @@ describe('symbol page generation', () => {
 
   test('structs get a page with breadcrumb, expandable props, and props-users list', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">Bucket<wbr>Props</span> <Badge type="info" class="api-badge api-badge-struct" text="Struct" />');
-    // No metadata table: the breadcrumb carries Module/FQN and the H1 badge
+    expect(page).toMatch(/^# <span data-pagefind-weight="10">Bucket<wbr>Props<\/span> \{#/m);
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-struct">Struct</span>');
+    // No metadata table: the breadcrumb carries Module/FQN and the chip row
     // carries the Kind.
     expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>BucketProps</strong>');
     expect(page).not.toContain('| **Kind** |');
@@ -536,7 +540,8 @@ describe('symbol page generation', () => {
 
   test('enums get a page with a members table and referencing properties', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketEncryption.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">Bucket<wbr>Encryption</span> <Badge type="info" class="api-badge api-badge-enum" text="Enum" />');
+    expect(page).toMatch(/^# <span data-pagefind-weight="10">Bucket<wbr>Encryption<\/span> \{#/m);
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-enum">Enum</span>');
     expect(page).toContain('| Member | Description |');
     expect(page).toContain('| <span id="kms"></span>`KMS` |');
     expect(page).toContain('## Referenced by');
@@ -556,9 +561,9 @@ describe('symbol page generation', () => {
 
   test('constructs and mixins keep their dedicated templates', () => {
     const construct = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
-    expect(construct).toContain('construct" />');
+    expect(construct).toContain('class="type-chip type-chip-kind api-badge-l2">L2 construct<');
     const mixin = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
-    expect(mixin).toContain('text="Mixin" />');
+    expect(mixin).toContain('class="type-chip type-chip-kind api-badge-mixin">Mixin<');
   });
 
   test('every type in a submodule list is linked to a dedicated page', () => {
@@ -610,7 +615,8 @@ describe('symbol page generation', () => {
   test('behavioral interfaces without implementors still get a page', () => {
     // ILocalBundling declares tryBundle() but no class in the assemblies implements it
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.ILocalBundling.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">ILocal<wbr>Bundling</span> <Badge type="info" class="api-badge api-badge-interface" text="Interface" />');
+    expect(page).toMatch(/^# <span data-pagefind-weight="10">ILocal<wbr>Bundling<\/span> \{#/m);
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-interface">Interface</span>');
     expect(page).not.toContain('| **Kind** |');
     expect(page).toContain('<div class="member-row" id="trybundle" data-params="outputDir,options">');
   });

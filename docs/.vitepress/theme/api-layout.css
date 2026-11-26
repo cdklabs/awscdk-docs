@@ -11,6 +11,19 @@
   --api-c-deprecated: #9a2c2c;
   /* Start of the member-row flash; every text color a row carries stays at AA on it (pinned in tests). */
   --api-c-flash: #f2f8fd;
+  /* Type page header. Idle and secondary text clears 7:1 against the page and
+     every control edge clears 4.5:1; both are pinned by hex in tests. */
+  --th-text-2: #424650;
+  --th-chevron: #656871;
+  --th-chip-edge: #656871;
+  --th-hover-bg: #f0fbff;
+  --th-stable-bg: #dcfce7;
+  --th-stable-text: #14532d;
+  --th-exp-bg: #fef3c7;
+  --th-exp-text: #713f12;
+  --th-dep-bg: #fee2e2;
+  --th-dep-text: #7f1d1d;
+  --th-dep-edge: #b91c1c;
 }
 
 .dark {
@@ -19,33 +32,44 @@
   --api-c-badge-text: #75cfff;
   --api-c-deprecated: #ff9d9d;
   --api-c-flash: #1b2a3a;
+  --th-text-2: #c6c6cd;
+  --th-chevron: #a4a4ad;
+  --th-chip-edge: #a4a4ad;
+  --th-hover-bg: #1b2a3a;
+  --th-stable-bg: #052e16;
+  --th-stable-text: #86efac;
+  --th-exp-bg: #422006;
+  --th-exp-text: #fcd34d;
+  --th-dep-bg: #450a0a;
+  --th-dep-text: #fca5a5;
+  --th-dep-edge: #f87171;
 }
 
-/* ---------- Type page header bar: breadcrumb + favorite ---------- */
+/* ---------- Type page header: breadcrumb, title, chip row ---------- */
 
-/* One horizontal bar styled like the inheritance chain: module
-   breadcrumb on the left, the icon-only favorite control (teleported
-   in by FavoriteStar.vue) on the right. */
+/* Plain breadcrumb in the body typeface, matching the CDK Developer Guide
+   the API pages sit beside: no fill, no radius, no padding box. The
+   separator a reader sees is a CSS chevron; the real `.` joins stay in the
+   DOM at `font-size: 0`, so selecting the trail still copies the FQN. */
 .type-breadcrumb {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 16px;
-  padding: 6px 14px;
-  border-radius: 8px;
-  background-color: var(--vp-c-bg-soft);
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.8125rem;
-  color: var(--vp-c-text-2);
+  margin: 0 0 8px;
+  padding: 0;
+  font-family: var(--vp-font-family-base);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--th-text-2);
 }
 
 .type-breadcrumb p {
   margin: 0;
-  line-height: 1.6;
+  line-height: 20px;
 }
 
-/* The favorite mount point sits at the right edge of the bar. */
+/* The breadcrumb's own favorite mount point, kept for API pages that have no
+   chip row of their own (the module and submodule overviews). */
 .type-breadcrumb > :last-child {
   margin-left: auto;
 }
@@ -58,43 +82,67 @@
   overflow-wrap: anywhere;
 }
 
-/* The separator in the DOM is a bare `.` with no whitespace, so the gaps a
-   reader sees are padding: selection copies the dots, not the spacing. Every
-   segment kind needs it, including an unlinked structural one. */
+/* The dots are real text so a selection copies the FQN, and invisible so the
+   reader sees the chevron instead. Collapsing them to `font-size: 0` is what
+   keeps both true at once: a `display: none` dot would leave the selection. */
+.breadcrumb-trail {
+  font-size: 0;
+}
+
 .type-breadcrumb a,
 .type-breadcrumb strong,
 .breadcrumb-segment,
-.breadcrumb-ellipsis {
-  padding-inline: 3px;
+.breadcrumb-ellipsis::after {
+  font-size: 14px;
+}
+
+/* Every segment but the last is followed by a chevron drawn from two borders,
+   so the separator costs no glyph and no extra element. */
+.type-breadcrumb a::after,
+.breadcrumb-segment::after,
+.breadcrumb-ellipsis::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-top: 1.5px solid var(--th-chevron);
+  border-right: 1.5px solid var(--th-chevron);
+  transform: rotate(45deg);
+  margin: 0 12px 1px 10px;
 }
 
 .type-breadcrumb a {
-  color: var(--vp-c-text-2);
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
+  color: var(--vp-c-brand-1);
+  text-decoration: underline;
+  text-decoration-style: solid;
+  text-underline-offset: 3.5px;
 }
 
 .type-breadcrumb a:hover {
-  color: var(--vp-c-brand-1);
-  text-decoration-style: solid;
+  color: var(--vp-c-brand-2);
+}
+
+/* The chevron is a separator, not part of the link, so it keeps the chevron
+   tone and never takes the link's underline. */
+.type-breadcrumb a::after {
+  text-decoration: none;
 }
 
 .type-breadcrumb strong {
-  color: var(--vp-c-text-1);
-  font-weight: 600;
+  color: var(--th-text-2);
+  font-weight: 700;
 }
 
 /* Collapsed middle segments keep their labels as text so a selection still
    copies the whole FQN; the ellipsis is painted instead of written. */
 .breadcrumb-ellipsis {
-  color: var(--vp-c-text-3);
+  color: var(--th-text-2);
   cursor: help;
   font-size: 0;
 }
 
 .breadcrumb-ellipsis::after {
   content: '…';
-  font-size: 0.8125rem;
 }
 
 .breadcrumb-fav {
@@ -103,17 +151,200 @@
   vertical-align: middle;
 }
 
+/* The title carries the type name alone. Its kind and stability are chips of
+   the row below, so the heading is the one thing a reader scanned for. */
+.vp-doc h1 {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--vp-c-text-1);
+}
+
+/* A deprecated type strikes its name, the same signal a deprecated member row
+   carries, in the deprecation tone rather than the title's own. */
+.vp-doc h1 .type-title-deprecated {
+  text-decoration: line-through 2px;
+  text-decoration-color: var(--th-dep-edge);
+}
+
+/* The block under the title: the chip row, an optional deprecation note, and
+   the divider that closes the header off from the summary. The divider is this
+   block's own bottom edge, so it falls below the note when there is one and
+   below the row when there is not. */
+.type-header {
+  margin: 20px 0 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.type-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Pushes the page actions to the trailing edge, and collapses to a full-width
+   line break below 768px so the chips keep one row and the buttons take the
+   next. `1 1 16px` rather than `1 1 0`: at any width the two groups keep a
+   gap wider than the chip gap, so they never read as one run. */
+.type-header-gap {
+  flex: 1 1 16px;
+}
+
+.type-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* One geometry for both chips; the color comes from the kind or stability
+   class. `nowrap` keeps `L2 construct` on one line at every width. */
+.type-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* The kind chip's edge is its own ink, which clears 4.5:1 against the chip
+   fill by construction; the previous badge edge was a pale tint at 1.69:1. */
+.type-chip-kind {
+  border-color: currentColor;
+}
+
+/* A plain class has no kind color of its own and keeps the neutral chip. */
+.type-chip-kind:not([class*='api-badge-']) {
+  background-color: var(--vp-c-default-soft);
+  color: var(--th-chip-edge);
+}
+
+.type-chip-stability {
+  border-color: currentColor;
+}
+
+/* The Experimental chip is the only chip that links. It keeps the chip's own
+   ink rather than the link color `.vp-doc a` would give it. */
+.vp-doc a.type-chip-stability {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.type-chip-stable {
+  background-color: var(--th-stable-bg);
+  color: var(--th-stable-text);
+}
+
+.vp-doc a.type-chip-experimental,
+.type-chip-experimental {
+  background-color: var(--th-exp-bg);
+  color: var(--th-exp-text);
+}
+
+.type-chip-deprecated {
+  background-color: var(--th-dep-bg);
+  color: var(--th-dep-text);
+}
+
+/* The deprecation reason, in the same left-edged note shape the site's
+   callouts use. Sits under the row and above the header divider. */
+.type-deprecated-note {
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  border-left: 4px solid var(--th-dep-edge);
+  border-radius: 0 8px 8px 0;
+  background-color: var(--th-dep-bg);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--vp-c-text-1);
+}
+
+.type-deprecated-note strong {
+  color: var(--th-dep-text);
+  font-weight: 700;
+}
+
+/* ---------- Page action pills: Copy Markdown and the favorite star ---------- */
+
+/* Both controls read as one family of outlined pills on the chip row. The 2px
+   brand edge replaces a `--vp-c-divider` hairline that measured 1.7:1 against
+   the page, and 1.32:1 for the star in dark mode. */
+.vp-doc .type-actions .copy-markdown-main,
+.vp-doc .type-actions .copy-markdown-options,
+.vp-doc .type-actions .favorite-star-button {
+  height: 32px;
+  border: 2px solid var(--vp-c-brand-1);
+  background-color: var(--vp-c-bg);
+  color: var(--vp-c-brand-1);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+}
+
+.vp-doc .type-actions .copy-markdown-main,
+.vp-doc .type-actions .copy-markdown-options {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px;
+}
+
+.vp-doc .type-actions .copy-markdown-main {
+  border-radius: 20px 0 0 20px;
+}
+
+.vp-doc .type-actions .copy-markdown-options {
+  border-left: 0;
+  border-radius: 0 20px 20px 0;
+  padding: 0 12px;
+}
+
+.vp-doc .type-actions .favorite-star-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  padding: 0;
+  border-radius: 20px;
+}
+
+.vp-doc .type-actions .copy-markdown-main:hover,
+.vp-doc .type-actions .copy-markdown-options:hover,
+.vp-doc .type-actions .favorite-star-button:hover {
+  background-color: var(--th-hover-bg);
+  border-color: var(--vp-c-brand-2);
+  color: var(--vp-c-brand-2);
+}
+
+/* The site's own focus ring, so a keyboard user meets one treatment across
+   the page rather than a per-control invention. */
+.vp-doc .type-actions .copy-markdown-main:focus-visible,
+.vp-doc .type-actions .copy-markdown-options:focus-visible,
+.vp-doc .type-actions .favorite-star-button:focus-visible,
+.type-breadcrumb a:focus-visible,
+.vp-doc a.type-chip-stability:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
 /* ---------- API kind badge: one row, one color per kind ---------- */
 
 /* VitePress 1.6.4 ships `.vp-doc h1 > .VPBadge { margin-top: 4px;
    vertical-align: top }` on top of `.VPBadge { transform: translateY(-2px) }`.
-   This override was added when the badge shared the H1 with the source chip
-   under `vertical-align: middle`, ~9px apart otherwise; that chip later moved
-   into the type-metadata block, so the badge is now alone in the line
-   box. The override STAYS, and not by inertia: dropping it hands the badge
-   back VitePress's `translateY(-2px)` + `vertical-align: top`, which lifts it
-   off the text baseline it now has to sit on by itself. Measured, not assumed
-   — the e2e badge-alignment assertion is what holds it.
+   The kind badge has left the H1 for the chip row, but the `Added in vX.Y.Z`
+   badge has not, and it is the badge this override now holds on the title's
+   baseline: stock alignment lifts it off the line the name sits on. Measured,
+   not assumed — the e2e alignment assertion is what holds it.
 
    The selector carries `.api-badge` for two reasons: it outranks
    VitePress's own `.vp-doc h1 > .VPBadge` whatever order the stylesheets
@@ -137,7 +368,7 @@
    AA in both schemes by `test/theme.test.ts`. */
 :root {
   --cdk-badge-l1-bg: #fef3c7;
-  --cdk-badge-l1-text: #854d0e;
+  --cdk-badge-l1-text: #713f12;
   --cdk-badge-l1-border: #fcd34d;
   --cdk-badge-l2-bg: #dbeafe;
   --cdk-badge-l2-text: #1e40af;
@@ -152,13 +383,13 @@
   --cdk-badge-facade-text: #115e59;
   --cdk-badge-facade-border: #5eead4;
   --cdk-badge-struct-bg: #fce7f3;
-  --cdk-badge-struct-text: #9d174d;
+  --cdk-badge-struct-text: #831843;
   --cdk-badge-struct-border: #f9a8d4;
   --cdk-badge-interface-bg: #e0e7ff;
   --cdk-badge-interface-text: #3730a3;
   --cdk-badge-interface-border: #a5b4fc;
   --cdk-badge-enum-bg: #ffedd5;
-  --cdk-badge-enum-text: #9a3412;
+  --cdk-badge-enum-text: #7c2d12;
   --cdk-badge-enum-border: #fdba74;
 }
 
@@ -239,6 +470,51 @@
   color: var(--cdk-badge-enum-text);
   border-color: var(--cdk-badge-enum-border);
 }
+
+/* The kind CHIP borrows each kind's fill and ink but not its border tint: the
+   chip's edge is `currentColor`, which is the ink and so clears 4.5:1 against
+   the fill by construction. The tinted `--cdk-badge-*-border` it replaces
+   measured 1.69:1 light and 1.71:1 dark, invisible as an edge. */
+.type-chip-kind.api-badge-l1 {
+  background-color: var(--cdk-badge-l1-bg);
+  color: var(--cdk-badge-l1-text);
+}
+
+.type-chip-kind.api-badge-l2 {
+  background-color: var(--cdk-badge-l2-bg);
+  color: var(--cdk-badge-l2-text);
+}
+
+.type-chip-kind.api-badge-l3 {
+  background-color: var(--cdk-badge-l3-bg);
+  color: var(--cdk-badge-l3-text);
+}
+
+.type-chip-kind.api-badge-mixin {
+  background-color: var(--cdk-badge-mixin-bg);
+  color: var(--cdk-badge-mixin-text);
+}
+
+.type-chip-kind.api-badge-facade {
+  background-color: var(--cdk-badge-facade-bg);
+  color: var(--cdk-badge-facade-text);
+}
+
+.type-chip-kind.api-badge-struct {
+  background-color: var(--cdk-badge-struct-bg);
+  color: var(--cdk-badge-struct-text);
+}
+
+.type-chip-kind.api-badge-interface {
+  background-color: var(--cdk-badge-interface-bg);
+  color: var(--cdk-badge-interface-text);
+}
+
+.type-chip-kind.api-badge-enum {
+  background-color: var(--cdk-badge-enum-bg);
+  color: var(--cdk-badge-enum-text);
+}
+
 
 /* ---------- Type hierarchy bar (extends chain + implemented interfaces) ---------- */
 

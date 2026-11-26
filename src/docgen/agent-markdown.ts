@@ -365,6 +365,9 @@ function render(node: Node): string {
   if (cls.has('inheritance-chain')) {
     return renderInheritance(el);
   }
+  if (cls.has('type-header-row')) {
+    return renderHeaderRow(el);
+  }
   if (cls.has('member-row')) {
     return renderMemberRow(el);
   }
@@ -446,6 +449,17 @@ const KNOWN_TAGS = new Set([
 function literalTag(el: Element): string {
   const attrs = Object.entries(el.attribs).map(([k, v]) => (v === '' ? ` ${k}` : ` ${k}="${v}"`)).join('');
   return `<${el.name}${attrs}>${children(el)}`;
+}
+
+/**
+ * The type page's chip row: the kind and the stability, joined so the twin still names both. The row's other
+ * children are empty mount points the theme teleports its buttons into, which have no text and no twin.
+ */
+function renderHeaderRow(el: Element): string {
+  const chips = DomUtils.findAll((n) => classes(n).has('type-chip'), el.children)
+    .map((chip) => textOf(chip).trim())
+    .filter((text) => text.length > 0);
+  return chips.length > 0 ? `\n${chips.join(' · ')}\n` : '';
 }
 
 /** Type hierarchy `<nav>`: one line for the chain above the type, one per relation row (implements, …). */

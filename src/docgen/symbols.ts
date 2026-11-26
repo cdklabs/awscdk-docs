@@ -9,6 +9,7 @@ import {
 } from './constructs.js';
 import { escapeVueText } from './escape.js';
 import { exampleSection } from './examples.js';
+import { renderTypeHeaderFor } from './header.js';
 import { PageHistory } from './history.js';
 import { DEFAULT_LANGUAGE, Language, translatePropertyName } from './languages.js';
 import {
@@ -27,7 +28,7 @@ import {
 } from './layout.js';
 import { collectMethods, collectProperties } from './mixins.js';
 import { RosettaTablet } from './rosetta.js';
-import { ignoreBlock, weightedTitle } from './search.js';
+import { ignoreBlock } from './search.js';
 import { CONSTRUCTS_SECTION, CORE_SECTION, isConstructsPackage, isCore, sectionName, serviceSubmodule, SidebarEntry } from './sidebar.js';
 import { LinkResolver } from './signatures.js';
 import { initializerSignatureVariants, languageVariantSpans, wrapLanguageTabs } from './variants.js';
@@ -346,8 +347,10 @@ export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): str
   const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const badge = options.badge ?? { text: 'Class', type: 'info' };
-  const kindClass = badge.kindClass ? ` ${badge.kindClass}` : '';
-  const lines = [`# ${weightedTitle(type.name)} <Badge type="${badge.type}" class="api-badge${kindClass}" text="${badge.text}" />`, ''];
+  const lines = renderTypeHeaderFor(type, assembly, {
+    text: badge.text,
+    ...(badge.kindClass ? { kindClass: badge.kindClass } : {}),
+  });
   lines.push(...renderDescription(type));
   // Implemented interfaces render inside the hierarchy bar.
   lines.push(...renderInheritanceChain(
@@ -366,7 +369,7 @@ export function renderClassPage(options: SymbolPageOptions<spec.ClassType>): str
 export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>): string {
   const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-struct" text="Struct" />`, ''];
+  const lines = renderTypeHeaderFor(type, assembly, { text: 'Struct', kindClass: 'api-badge-struct' });
   lines.push(...renderDescription(type));
   lines.push(...renderExtendsBar(
     type, linkFor, [], usage.propsUsers.get(type.fqn) ?? [], relationsFor(type.fqn, usage), languages));
@@ -382,7 +385,7 @@ export function renderStructPage(options: SymbolPageOptions<spec.InterfaceType>)
 export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceType>): string {
   const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-interface" text="Interface" />`, ''];
+  const lines = renderTypeHeaderFor(type, assembly, { text: 'Interface', kindClass: 'api-badge-interface' });
   lines.push(...renderDescription(type));
   // `implemented by` is a row of the hierarchy bar, not a section of its own: it is the inverse of the class bar's
   // `implements`, so it belongs beside `extends`.
@@ -401,7 +404,7 @@ export function renderInterfacePage(options: SymbolPageOptions<spec.InterfaceTyp
 export function renderEnumPage(options: SymbolPageOptions<spec.EnumType>): string {
   const { type, assembly, index, usage, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
-  const lines = [`# ${weightedTitle(type.name)} <Badge type="info" class="api-badge api-badge-enum" text="Enum" />`, ''];
+  const lines = renderTypeHeaderFor(type, assembly, { text: 'Enum', kindClass: 'api-badge-enum' });
   lines.push(...renderDescription(type));
   // An enum extends nothing and implements nothing, so its block holds the usage rows alone. Enum pages carry no
   // `obtainable from` row.

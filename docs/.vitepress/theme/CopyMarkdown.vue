@@ -1,9 +1,10 @@
-<!-- "Copy Markdown" split button (a labeled region, so landmark navigation reaches it), rendered from the
-     doc-before slot at the top of the page, above the breadcrumb bar. The main button copies the page's
+<!-- "Copy Markdown" split button (a labeled region, so landmark navigation reaches it). On a type page it
+     teleports into the `type-action-copy` mount point of the docgen-emitted chip row, beside the favorite star;
+     every other API page keeps the doc-before slot at the top of the page. The main button copies the page's
      Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page without a
      twin (no `agentMarkdown` frontmatter) renders nothing. -->
 <script setup lang="ts">
-import { useData } from "vitepress";
+import { onContentUpdated, useData } from "vitepress";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { agentMarkdownHref } from "../agent-markdown";
 import { copyMarkdownFrom, type CopyResult } from "../copy-markdown";
@@ -24,6 +25,9 @@ const menuOpen = ref(false);
 // Set once hydration has run, so a test (or any script) can tell a live button from the server-rendered shell.
 const ready = ref(false);
 const root = ref<HTMLElement | null>(null);
+// The chip row's copy mount point, re-resolved on every content update: SPA
+// navigation replaces the rendered page and its row element.
+const rowTarget = ref<HTMLElement | null>(null);
 const optionsButton = ref<HTMLButtonElement | null>(null);
 const viewLink = ref<HTMLAnchorElement | null>(null);
 let resetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -126,8 +130,17 @@ watch(
   }
 );
 
+function resolveRowTarget(): void {
+  rowTarget.value =
+    typeof document === "undefined"
+      ? null
+      : document.querySelector<HTMLElement>(".vp-doc .type-header-row .type-action-copy");
+}
+onContentUpdated(resolveRowTarget);
+
 onMounted(() => {
   ready.value = true;
+  resolveRowTarget();
   document.addEventListener("pointerdown", onDocumentPointerDown);
 });
 onUnmounted(() => {
@@ -137,10 +150,12 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <Teleport :to="rowTarget ?? 'body'" :disabled="!rowTarget">
   <section
     v-if="markdownUrl"
     ref="root"
     class="copy-markdown"
+    :class="rowTarget ? 'in-row' : 'standalone'"
     @focusout="onFocusOut"
     aria-label="Page Markdown"
     :data-ready="ready ? '' : undefined"
@@ -188,6 +203,7 @@ onUnmounted(() => {
     </div>
     <span class="copy-markdown-status" role="status" aria-live="polite">{{ announcement }}</span>
   </section>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -195,6 +211,9 @@ onUnmounted(() => {
 .copy-markdown {
   position: relative;
   display: inline-block;
+}
+
+.copy-markdown.standalone {
   margin-bottom: 8px;
 }
 
