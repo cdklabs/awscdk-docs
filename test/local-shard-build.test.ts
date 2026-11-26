@@ -110,6 +110,8 @@ describe('local-shard-build.sh', () => {
       "const d = 'docs/v2/docs';",
       'const bytes = fs.readdirSync(d).reduce((s, f) => s + fs.statSync(d + "/" + f).size, 0);',
       'globalThis.keep = Buffer.alloc(bytes * 4096, 1);',
+      // Runs past one whole second, so the shell's SECONDS difference is at least 1.
+      'Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1100);',
     ].join('\n'));
     const stubs = join(dir, 'stub-bin');
     mkdirSync(stubs);
@@ -140,6 +142,7 @@ describe('local-shard-build.sh', () => {
     // The reading is in MB: at least the stand-in's own allocation, plus no more than Node's own footprint.
     const bytes = shardBytes(join(dir, 'docs', 'v2', 'docs'), 3);
     for (const m of done) {
+      expect(Number(m[2])).toBeGreaterThanOrEqual(1);
       const allocatedMb = (bytes[Number(m[1])] * 4096) / 2 ** 20;
       expect(Number(m[3])).toBeGreaterThanOrEqual(Math.floor(allocatedMb));
       expect(Number(m[3])).toBeLessThan(allocatedMb + 512);
