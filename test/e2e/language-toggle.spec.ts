@@ -221,11 +221,10 @@ test.describe('language toggle', () => {
   test('the search trigger does not move when the language changes', async ({
     page,
   }) => {
-    // A slider that renders the full label only for the ACTIVE segment tracks
-    // whichever label is selected. The search trigger is centered in the region
-    // between the slider and the fixed-width right controls, so a large
-    // label-width delta ("TypeScript" vs "Java") shifts the button by half of
-    // it. Only visible at >=1280px, where the label is shown at all.
+    // Every option paints its own label, so the slider's width must not
+    // depend on which one is selected. The search trigger is centered in the
+    // region between the slider and the fixed-width right controls, so any
+    // width change there would shift the button by half of it.
     //
     // Off-center is acceptable; MOVING is the bug. So this measures the
     // trigger's bounding-box x across a switch rather than its centeredness.
@@ -243,10 +242,10 @@ test.describe('language toggle', () => {
     );
     const before = await search.boundingBox();
 
-    // Java is the shortest label in the enabled set, so switching to it from
+    // Go is the shortest label in the enabled set, so switching to it from
     // TypeScript is the widest swing the row can produce.
-    await slider.getByRole('radio', { name: 'Java' }).click();
-    await expect(slider.getByRole('radio', { name: 'Java' })).toHaveAttribute(
+    await slider.getByRole('radio', { name: 'Go', exact: true }).click();
+    await expect(slider.getByRole('radio', { name: 'Go', exact: true })).toHaveAttribute(
       'aria-checked',
       'true',
     );

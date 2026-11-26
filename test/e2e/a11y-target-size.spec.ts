@@ -90,6 +90,33 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
     expect(detail, `target-size violations with the mobile menu open:\n${detail}`).toBe('');
   });
 
+  // Across 768-1279px the bar's language options keep only 4px side padding, and below 1100px TypeScript paints
+  // just "TS", so the narrowest option there is two letters wide. The page scans above run at the default width,
+  // where neither applies. Scan the bar's picker in both states.
+  for (const width of [1000, 1100]) {
+    test(`the bar's language options meet the 24px floor at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      const picker = page.locator('.VPNavBar .language-toggle');
+      await expect(picker).toBeVisible();
+
+      const results = await new AxeBuilder({ page })
+        .include('.VPNavBar .language-toggle')
+        .options({ rules: { 'target-size': { enabled: true } } })
+        .withRules(['target-size'])
+        .analyze();
+      const detail = results.violations
+        .flatMap((violation) => violation.nodes)
+        .map((node) => `${node.target.join(' ')} — ${node.failureSummary ?? ''}`)
+        .join('\n');
+
+      expect(detail, `target-size violations in the bar's language picker at ${width}px:\n${detail}`).toBe('');
+      // axe passes a target it could not measure, so check the narrowest option directly too.
+      const widths = await picker.getByRole('radio').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+      expect(Math.min(...widths)).toBeGreaterThanOrEqual(24);
+    });
+  }
+
   // The sidebar filter's hint button exists only while a query is active and the symbol index has loaded, so the
   // scans above (empty filter) never evaluate it.
   test('the filter hint button meets target size and contrast while a query is active', async ({ page }) => {

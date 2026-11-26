@@ -239,6 +239,14 @@
   box-shadow: inset 0 -2px 0 var(--vp-c-brand-1);
 }
 
+/* Two-letter labels ("C#", "Go", and "TS" below 1100px) under the medium
+ * breakpoint's 4px padding render just under 24px wide: hold every option at
+ * the WCAG 2.5.8 floor. */
+.VPNavBar .language-toggle .language-option {
+  min-width: 24px;
+  justify-content: center;
+}
+
 :is(.VPNavBar, .VPNavScreen) .language-toggle .language-option:not(.active) .visually-hidden,
 :is(.VPNavBar, .VPNavScreen) .language-toggle .language-option.active .language-label {
   position: static;

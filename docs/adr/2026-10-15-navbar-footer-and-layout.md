@@ -109,7 +109,7 @@ specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.
 - **Language slider leads** (`.language-toggle { order: -2 }`), taking the slot
   the search box used to occupy and the leading gap the search's `padding-left`
   used to provide (now a 10px margin). It is the primary control on a
-  multi-language docs site. Its segmented radio-group behavior and glyphs are
+  multi-language docs site. Its segmented radio-group behavior and labels are
   owned by [multi-language](./2026-10-15-multi-language.md).
 - **Search is centered** (`.search { order: -1; justify-content: center;
   padding-left: 0 }`), keeping the pagefind plugin's `flex: 1` so it owns the
@@ -151,8 +151,8 @@ The slider keeps every language's name visible; only TypeScript shortens, to
 `TS` below 1100px (the full name stays in the accessible name). The search
 button compacts to its magnifier icon. Every control keeps its place in the row — the version must stay visible,
 and a control a click away is not visible. E2e assertions pin the row fitting
-inside 768px, 800px, 960px, 1000px, 1100px, and 1279px viewports, each with a positive control
-that undoes the rule making room at that width.
+inside 768px, 800px, 960px, 1000px, 1100px, and 1279px viewports; the 768px case
+has a positive control that widens the title and expects the row to overflow.
 
 ### Tri-state theme pickers behind the Settings gear
 
