@@ -104,9 +104,10 @@ in parallel via `xargs -P` (portable to the macOS bash 3.2 baseline).
   while they finish. The order changes only when a shard starts: what each
   shard builds, and the merge, stay the same.
 - **One line per shard.** Each shard's completion line in the build log carries
-  its build time and the peak resident memory of its VitePress process
-  (`wall_s=<seconds> peak_rss_mb=<MB>`, read by a `--require` hook), so
-  concurrency and heap sizing can be checked against real readings.
+  its wall time (workspace setup, prune, build and verify) and the peak resident
+  memory of its VitePress process (`wall_s=<seconds> peak_rss_mb=<MB>`, read by a
+  `--require` hook), so concurrency and heap sizing can be checked against real
+  readings.
 
 - `--num-shards N` sets the total (default: CPU cores − 2); `--concurrency`
   caps simultaneous builds; `--heap` sets the per-shard old-space cap (unset

@@ -137,7 +137,12 @@ describe('local-shard-build.sh', () => {
     const out = run(3);
     const done = [...out.matchAll(/^shard (\d+)\/3: done wall_s=(\d+) peak_rss_mb=(\d+)$/gm)];
     expect(done.map((m) => Number(m[1])).sort()).toEqual([0, 1, 2]);
-    // Each stand-in holds at least its allocation, so the reading is the process peak, not zero.
-    for (const m of done) expect(Number(m[3])).toBeGreaterThan(20);
+    // The reading is in MB: at least the stand-in's own allocation, plus no more than Node's own footprint.
+    const bytes = shardBytes(join(dir, 'docs', 'v2', 'docs'), 3);
+    for (const m of done) {
+      const allocatedMb = (bytes[Number(m[1])] * 4096) / 2 ** 20;
+      expect(Number(m[3])).toBeGreaterThanOrEqual(Math.floor(allocatedMb));
+      expect(Number(m[3])).toBeLessThan(allocatedMb + 512);
+    }
   });
 });

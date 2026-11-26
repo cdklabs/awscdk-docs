@@ -74,7 +74,7 @@ run_shard() {
     node scripts/shard-verify.cjs
   ) >"$log" 2>&1
   touch "$WORK/shard-$i.ok"
-  # One greppable line per shard in the job log: build wall time and the VitePress process's peak RSS.
+  # One greppable line per shard: wall time from setup through verify, and the VitePress process's peak RSS.
   local rss
   rss="$(grep -o 'peak_rss_mb=[0-9]*' "$log" | tail -1 || true)"
   echo "shard $i/$TOTAL: done wall_s=$(( SECONDS - start )) ${rss:-peak_rss_mb=unknown}"
