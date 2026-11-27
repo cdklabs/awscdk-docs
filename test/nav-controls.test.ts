@@ -171,7 +171,9 @@ describe('navbar layout', () => {
         /\.VPNavBar \.language-toggle \.language-option\.active \{\s*color: var\(--tb-tab-on\);\s*border-bottom-color: var\(--tb-tab-on\);\s*background-color: transparent;/,
       );
       expect(css).toMatch(/--tb-tab-on: var\(--vp-c-brand-1\);/);
-      // No track chrome is left in the component for either placement to undo.
+      // No track chrome is left in the component for either placement to undo:
+      // its only rule is the flex structure.
+      expect(toggle).toMatch(/\.language-toggle \{\s*display: inline-flex;\s*align-items: stretch;\s*\}/);
       expect(toggle).not.toMatch(/\.language-toggle\s*\{[^}]*(border|border-radius|background-color|height):/);
       expect(toggle).not.toMatch(/\.language-option\.active\s*\{/);
       // Under 1100px only TypeScript shortens, to its badge text "TS"; the
@@ -387,6 +389,7 @@ describe('navbar layout', () => {
       expect(css).toMatch(
         /\.VPNavBar \.content-body > \.language-toggle \{\s*align-self: stretch;\s*\}/,
       );
+      expect(toggle).toMatch(/\.language-toggle \{\s*display: inline-flex;\s*align-items: stretch;\s*\}/);
       expect(toggle).not.toMatch(/\.language-toggle\s*\{[^}]*height:/);
       expect(css).toMatch(/\.version-badge \{[^}]*height: 40px/);
     });

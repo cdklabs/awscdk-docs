@@ -351,6 +351,11 @@ test.describe('navbar layout', () => {
     for (const width of [959, 800, 768, 375]) {
       await page.setViewportSize({ width, height: 800 });
       await page.goto(TOPIC_PAGE);
+      // Remove the toggle only after hydration, or Vue re-creates it. The
+      // pickers set aria-pressed only once mounted.
+      await expect(
+        page.locator('.VPNavBar .SettingsMenu .theme-picker-option[aria-pressed="true"]'),
+      ).not.toHaveCount(0);
       await page.locator('.VPNavBar .language-toggle').evaluateAll((els) => els.forEach((el) => el.remove()));
       await expect(page.locator('.VPNavBar .language-toggle')).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth), `scroll width at ${width}px`).toBe(
