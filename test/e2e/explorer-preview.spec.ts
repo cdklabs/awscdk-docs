@@ -69,7 +69,7 @@ test.describe('explorer preview on desktop', () => {
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('on');
   });
 
-  test('turning the preview off from the gear panel moves focus back to the gear and removes the rail', async ({
+  test('turning the preview off from the gear panel removes the rail and leaves focus on the Off segment', async ({
     page,
   }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
@@ -188,29 +188,33 @@ test.describe('explorer preview on desktop', () => {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 });
         await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
-        const badge = page.locator('.VPNavBar .content-body > .version-badge');
-        await expect(badge).toBeVisible();
-        const boxes = [];
-        for (const selector of [
+        const controls = [
           '.VPNavBar .language-toggle',
           '.VPNavBar .content-body > .search',
           '.VPNavBar .content-body > .VPNavBarMenu',
           '.VPNavBar .content-body > .version-badge',
           '.VPNavBar .settings-trigger',
-        ]) {
-          const box = await page.locator(selector).first().boundingBox();
-          if (box) boxes.push(box);
+        ];
+        const boxes = [];
+        for (const selector of controls) {
+          const control = page.locator(selector).first();
+          await expect(control, `${selector} is visible`).toBeVisible();
+          const box = await control.boundingBox();
+          expect(box, `${selector} has a box`).not.toBeNull();
+          boxes.push(box!);
         }
-        expect(boxes.length).toBeGreaterThanOrEqual(4);
+        const title = await page.locator('.VPNavBar .container > .title').boundingBox();
+        expect(boxes[0].x, 'the first control starts after the title lane').toBeGreaterThanOrEqual(title!.x + title!.width);
+        // The search button keeps at least its icon width where the row is tightest.
+        expect(boxes[1].width, 'the search button keeps its icon width').toBeGreaterThanOrEqual(40);
         for (let i = 1; i < boxes.length; i++) {
           expect(boxes[i].x, 'controls do not overlap').toBeGreaterThanOrEqual(boxes[i - 1].x + boxes[i - 1].width - 1);
         }
         const last = boxes[boxes.length - 1];
-        expect(last.x + last.width).toBeLessThanOrEqual(width);
+        expect(last.x + last.width, 'the gear ends at least 8px inside the viewport').toBeLessThanOrEqual(width - 8);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
         await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
         // Only a page with the sidebar gives its 72px to the rail: the title lane elsewhere keeps its width.
-        const title = await page.locator('.VPNavBar .container > .title').boundingBox();
         expect(title!.width).toBe(pagePath === QUEUE_PAGE && width >= 960 ? 392 : 320);
       });
     }
@@ -369,7 +373,7 @@ test.describe('explorer preview on a phone', () => {
     await expect(screen.getByRole('group', { name: 'Navigation' })).toBeVisible();
     await expect(group.getByRole('button', { name: 'On', exact: true })).toBeFocused();
   });
-  test('at 800px the gear is in the bar with the preview on, and turning it off from there returns focus to the gear', async ({
+  test('at 800px the gear is in the bar with the preview on, and turning it off from there leaves focus on the Off segment', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 800, height: 700 });
@@ -389,11 +393,11 @@ test.describe('explorer preview on a phone', () => {
     await views.click();
     await expect(rail(page)).toBeVisible();
     await rail(page).getByRole('button', { name: 'Favorites' }).focus();
-    // The Views button is the rail's own toggle, so focus may rest there with the rail unfolded.
+    // The Views button sits under the rail and the scrim, so tabbing onto it folds the rail and focus stays there.
     await page.keyboard.press('Tab');
     await expect(views).toBeFocused();
-    await expect(rail(page)).toBeVisible();
-    // The next stop is the filter behind the scrim; the rail folds and focus stays where the reader put it.
+    await expect(rail(page)).toBeHidden();
+    // The next stop is the filter; the rail stays folded.
     await page.keyboard.press('Tab');
     await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
     await expect(rail(page)).toBeHidden();

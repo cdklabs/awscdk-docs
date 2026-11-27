@@ -66,12 +66,13 @@ function onDocumentKeydown(event: KeyboardEvent): void {
   foldRail();
 }
 
-// While the rail is unfolded, focus may sit in the rail or on the Views button. Anywhere else
-// (the filter and tree behind the scrim) folds it. Focus is already where the reader put it, so it is not moved.
+// While the rail is unfolded, focus stays in the rail. Anywhere else (the Views button, the filter and the tree
+// behind the scrim) folds it: the rail and scrim cover those controls. Focus is already where the reader put it,
+// so it is not moved.
 function onDocumentFocusin(event: FocusEvent): void {
   if (!railOpen.value || !enabled.value) return;
   const target = event.target as Element | null;
-  if (!target?.closest || target.closest(".ExplorerRailRoot, .explorer-views-button")) return;
+  if (!target?.closest || target.closest(".ExplorerRailRoot")) return;
   railOpen.value = false;
 }
 
