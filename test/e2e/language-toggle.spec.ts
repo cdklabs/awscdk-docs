@@ -131,17 +131,34 @@ test.describe('language toggle', () => {
       await expect(selected).toHaveAttribute('aria-checked', 'true');
       const paint = (el: Element) => {
         const s = getComputedStyle(el);
-        return { color: s.color, shadow: s.boxShadow };
+        return {
+          color: s.color,
+          underline: `${s.borderBottomWidth} ${s.borderBottomStyle} ${s.borderBottomColor}`,
+          fill: s.backgroundColor,
+        };
       };
-      // The fill matches the track in light mode, so the cue is the brand
-      // text color plus a 2px inset underline in the same color.
+      // The tabs sit on the bar with no track, so the cue is the brand text
+      // color plus a 3px underline in the same color; the idle tabs carry the
+      // same border transparent, so selecting never changes a tab's size.
       expect(await selected.evaluate(paint)).toEqual({
         color: brand,
-        shadow: `${brand} 0px -2px 0px 0px inset`,
+        underline: `3px solid ${brand}`,
+        fill: 'rgba(0, 0, 0, 0)',
       });
       const idle = await slider.getByRole('radio', { name: 'Python' }).evaluate(paint);
       expect(idle.color).not.toBe(brand);
-      expect(idle.shadow).not.toContain('inset');
+      expect(idle.underline).toBe('3px solid rgba(0, 0, 0, 0)');
+      expect(idle.fill).toBe('rgba(0, 0, 0, 0)');
+      // Hovering the selected tab keeps it as is; hovering an idle one fills it.
+      // The fill transitions, so read it only once any transition has ended.
+      await selected.hover();
+      await selected.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+      expect((await selected.evaluate(paint)).fill).toBe('rgba(0, 0, 0, 0)');
+      const python = slider.getByRole('radio', { name: 'Python' });
+      await python.hover();
+      await expect.poll(() => python.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
+        'rgba(0, 0, 0, 0)',
+      );
     });
   }
 
@@ -207,22 +224,33 @@ test.describe('language toggle', () => {
     });
   }
 
-  test('renders at the same height as the search box', async ({ page }) => {
+  test('the tabs span the bar and center on the search box', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
     await expect(slider).toBeVisible();
     const search = page.locator('.VPNavBar .blog-search .nav-search-btn-wait');
     await expect(search).toBeVisible();
-    const sliderBox = await slider.boundingBox();
-    const searchBox = await search.boundingBox();
-    expect(sliderBox).not.toBeNull();
-    expect(searchBox).not.toBeNull();
-    // Same rendered height, sitting on a common horizontal center line.
-    expect(sliderBox!.height).toBeCloseTo(searchBox!.height, 0);
-    expect(sliderBox!.y + sliderBox!.height / 2).toBeCloseTo(
-      searchBox!.y + searchBox!.height / 2,
-      0,
-    );
+    const row = page.locator('.VPNavBar .content-body');
+    const sliderBox = (await slider.boundingBox())!;
+    const searchBox = (await search.boundingBox())!;
+    const rowBox = (await row.boundingBox())!;
+    // The tab group is as tall as the control row, so the selected underline
+    // sits on the bar's bottom edge, while the search keeps its own 40px.
+    expect(sliderBox.height).toBeCloseTo(rowBox.height, 0);
+    expect(sliderBox.y).toBeCloseTo(rowBox.y, 0);
+    expect(searchBox.height).toBeLessThan(sliderBox.height);
+    // Both still share one horizontal center line, and so does the painted
+    // label: the unpainted top border balances the 3px underline.
+    expect(sliderBox.y + sliderBox.height / 2).toBeCloseTo(searchBox.y + searchBox.height / 2, 0);
+    const label = (await slider.getByRole('radio', { name: 'TypeScript' }).locator('.language-label').boundingBox())!;
+    expect(Math.abs(label.y + label.height / 2 - (searchBox.y + searchBox.height / 2))).toBeLessThanOrEqual(0.5);
+    // Every tab fills the group's height, so the underline reaches the edge.
+    for (const box of await slider.getByRole('radio').evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect()),
+    )) {
+      expect(box.height).toBeCloseTo(sliderBox.height, 0);
+      expect(box.bottom).toBeCloseTo(sliderBox.y + sliderBox.height, 0);
+    }
   });
 
   test('canonical /v2/docs/ deep links resolve (zero link breakage)', async ({ page }) => {
@@ -264,10 +292,29 @@ test.describe('language toggle', () => {
       const picker = scope.getByRole('radiogroup', { name: 'Select programming language' });
       await expect(picker).toBeVisible();
       const decoration = (el: Element) => getComputedStyle(el).textDecorationLine;
-      // Forced colors drops the fill and the inset underline, so the selected
+      // Forced colors drops the fill and recolors the borders, so the selected
       // label is underlined in the system text color; the others are not.
       expect(await picker.getByRole('radio', { name: 'TypeScript' }).evaluate(decoration)).toBe('underline');
       expect(await picker.getByRole('radio', { name: 'Python' }).evaluate(decoration)).toBe('none');
+      if (where === 'bar') {
+        // Transparent borders paint in the system text color under forced
+        // colors, so the idle tabs' bottom border takes the canvas color: only
+        // the selected tab's border differs from the bar behind it.
+        const border = (el: Element) => getComputedStyle(el).borderBottomColor;
+        const canvas = await page.evaluate(() => {
+          const probe = document.createElement('span');
+          probe.style.color = 'Canvas';
+          document.body.appendChild(probe);
+          const resolved = getComputedStyle(probe).color;
+          probe.remove();
+          return resolved;
+        });
+        const selectedBorder = await picker.getByRole('radio', { name: 'TypeScript' }).evaluate(border);
+        expect(selectedBorder).not.toBe(canvas);
+        for (const name of ['Python', 'Java', 'C#', 'Go']) {
+          expect(await picker.getByRole('radio', { name, exact: true }).evaluate(border), name).toBe(canvas);
+        }
+      }
     });
   }
 

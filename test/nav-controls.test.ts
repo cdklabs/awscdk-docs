@@ -10,7 +10,7 @@ const THEME_DIR = resolve(ROOT, 'docs/.vitepress/theme');
 const PAGEFIND_SEARCH_TRIGGER_HEIGHT_PX = 40;
 
 // Navbar layout:
-// - the language slider takes the LEADING slot, right after the site title,
+// - the language tabs take the LEADING slot, right after the site title,
 //   where the stock theme puts search,
 // - the search box moves to the CENTER of the nav row,
 // - the two tri-state theme groups (Site + Code) sit behind the gear-icon
@@ -37,7 +37,7 @@ describe('navbar layout', () => {
       expect(menu).toContain('import ThemePicker from "./ThemePicker.vue"');
       expect(menu).toContain('<ThemePicker');
       expect(entry).toContain('import SettingsMenu from "./SettingsMenu.vue"');
-      // The slider still leads and the gear still closes the row; the
+      // The tabs still lead and the gear still closes the row; the
       // aws-cdk-lib version badge sits between them.
       expect(entry).toMatch(
         /"nav-bar-content-after":\s*\(\)\s*=>\s*\[\s*h\(LanguageToggle\),(?:\s*h\(\w+\),)*\s*h\(SettingsMenu\)\s*\]/,
@@ -68,7 +68,7 @@ describe('navbar layout', () => {
       expect(menu).toContain('removeEventListener("click", onDocumentClick)');
     });
 
-    test('the trigger sits level with the 40px search trigger and slider', () => {
+    test('the trigger sits level with the 40px search trigger', () => {
       // Inside the popover the picker's groups need not match the nav row's
       // baseline, but the gear trigger standing in for them does.
       const menu = readFileSync(menuPath, 'utf-8');
@@ -124,7 +124,7 @@ describe('navbar layout', () => {
     });
   });
 
-  describe('language slider', () => {
+  describe('language tabs', () => {
     test('is a segmented radio-group picker that names every language', () => {
       expect(toggle).toContain('role="radiogroup"');
       expect(toggle).toContain('aria-label="Select programming language"');
@@ -142,7 +142,7 @@ describe('navbar layout', () => {
       );
       expect(toggle).toMatch(/\.visually-hidden \{[^}]*clip: rect\(0 0 0 0\)/);
       // The active language is programmatically indicated (aria-checked);
-      // its visible non-color cue is the bar's inset underline, pinned below.
+      // its visible non-color cue is the bar's underline, pinned below.
       expect(toggle).toMatch(/v-if="lang === activeLanguage"[^>]*class="language-label"/);
       // The badges are not painted in the bar or the menu. That the unchecked
       // names paint at full width is checked in the browser
@@ -150,11 +150,32 @@ describe('navbar layout', () => {
       expect(css).toMatch(
         /:is\(\.VPNavBar, \.VPNavScreen\) \.language-toggle \.language-option \.language-abbr \{\s*display: none;/,
       );
-      // The bar marks the selected option with the brand color and an inset
-      // underline, not with the fill alone.
+      // The bar draws the options as text tabs: a 3px bottom border on every
+      // option, transparent when idle and brand-colored on the selected one,
+      // which also takes the brand text color and no fill. The border is part
+      // of every tab's box, so selecting never changes a tab's size.
       expect(css).toMatch(
-        /\.VPNavBar \.language-toggle \.language-option\.active \{\s*color: var\(--vp-c-brand-1\);\s*box-shadow: inset 0 -2px 0 var\(--vp-c-brand-1\);/,
+        /\.VPNavBar \.language-toggle \.language-option \{[^}]*border-top: 3px solid transparent;\s*border-bottom: 3px solid transparent;/,
       );
+      // Forced colors paints transparent borders in the system text color, so
+      // the never-painted top border and the idle bottom borders take the
+      // canvas color there (checked in the browser in language-toggle.spec.ts).
+      const forced = css.slice(css.indexOf('@media (forced-colors: active)'));
+      expect(forced).toMatch(
+        /\.VPNavBar \.language-toggle \.language-option \{\s*border-top-color: Canvas;/,
+      );
+      expect(forced).toMatch(
+        /\.VPNavBar \.language-toggle \.language-option:not\(\.active\) \{\s*border-bottom-color: Canvas;/,
+      );
+      expect(css).toMatch(
+        /\.VPNavBar \.language-toggle \.language-option\.active \{\s*color: var\(--tb-tab-on\);\s*border-bottom-color: var\(--tb-tab-on\);\s*background-color: transparent;/,
+      );
+      expect(css).toMatch(/--tb-tab-on: var\(--vp-c-brand-1\);/);
+      // No track chrome is left in the component for either placement to undo:
+      // its only rule is the flex structure.
+      expect(toggle).toMatch(/\.language-toggle \{\s*display: inline-flex;\s*align-items: stretch;\s*\}/);
+      expect(toggle).not.toMatch(/\.language-toggle\s*\{[^}]*(border|border-radius|background-color|height):/);
+      expect(toggle).not.toMatch(/\.language-option\.active\s*\{/);
       // Under 1100px only TypeScript shortens, to its badge text "TS"; the
       // full name is taken out of flow rather than removed, so it still
       // names the option there.
@@ -239,11 +260,11 @@ describe('navbar layout', () => {
     });
 
     test('leads the nav row while the search centers', () => {
-      // The slider takes the leading slot via flex ordering, where the stock
+      // The tab group takes the leading slot via flex ordering, where the stock
       // theme puts search;
       // the search keeps the pagefind plugin's flex-grow and centers its
       // trigger inside the middle region. Both overrides only fire when
-      // the slider actually renders (`:has()`), so the single-language
+      // the tabs actually render (`:has()`), so the single-language
       // build keeps the stock layout. The selector is the `.search`
       // passthrough class, NOT .VPNavBarSearch — the pagefind plugin
       // aliases that component away.
@@ -264,7 +285,7 @@ describe('navbar layout', () => {
       // which in this repo is set on /api/** but not on / (layout: home) or
       // /skills (themeConfig.sidebar is keyed only on /api/). Bringing the
       // non-sidebar pages onto the same full-width geometry is what stops
-      // the leading slider and the centered search trigger moving between
+      // the leading tabs and the centered search trigger moving between
       // page types.
       //
       // The pin is a MIRROR of VitePress's own has-sidebar declarations,
@@ -342,7 +363,7 @@ describe('navbar layout', () => {
       // the sidebar width.
       expect(rules).not.toMatch(/\.VPNavBar:not\(\.has-sidebar\) \.title\s*\{/);
 
-      // Page geometry, so NOT gated on the slider's presence the way the
+      // Page geometry, so NOT gated on the tabs' presence the way the
       // control-arrangement rules above are: the single-language build gets
       // the same one-shape-everywhere bar. A gated selector would not match
       // the pattern the mirror comparison above uses, so that comparison
@@ -361,19 +382,85 @@ describe('navbar layout', () => {
       );
     });
 
-    test('matches the search trigger height', () => {
-      // The slider must render at the same height as the search box it
-      // now sits level with. LanguageToggle.vue pins the same literal
-      // value the pagefind plugin hard-codes for its search trigger.
-      const toggleHeight = toggle.match(
-        /\.language-toggle\s*\{[^}]*?height:\s*(\d+)px/,
+    test('spans the full height of the control row', () => {
+      // The tabs stretch to the bar's full height so the selected underline
+      // sits on the bar's bottom edge; no fixed height competes with that.
+      // The search trigger, version and gear keep their 40px baseline.
+      expect(css).toMatch(
+        /\.VPNavBar \.content-body > \.language-toggle \{\s*align-self: stretch;\s*\}/,
       );
-      expect(toggleHeight).not.toBeNull();
-      expect(Number(toggleHeight![1])).toBe(PAGEFIND_SEARCH_TRIGGER_HEIGHT_PX);
-      // border-box sizing so the 1px border doesn't add to the height.
-      expect(toggle).toMatch(
-        /\.language-toggle\s*\{[^}]*box-sizing:\s*border-box/,
+      expect(toggle).toMatch(/\.language-toggle \{\s*display: inline-flex;\s*align-items: stretch;\s*\}/);
+      expect(toggle).not.toMatch(/\.language-toggle\s*\{[^}]*height:/);
+      expect(css).toMatch(/\.version-badge \{[^}]*height: 40px/);
+    });
+
+    test('the tabs trade padding for width down to 960px, then their minimum', () => {
+      // One variable carries the side padding so each tier changes one number:
+      // 14px on desktop, 10px under 1280px, 8px in the 960-1023px band, where
+      // the fixed title lane leaves the least room and the 44px tab floor also
+      // yields. Below 960px the title is logo-only, so the band reuses 10px.
+      const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+      expect(stripped).toMatch(/\n:root \{[^}]*--tab-pad: 14px;/);
+      expect(stripped).toMatch(
+        /@media \(max-width: 1279px\) \{\s*:root \{\s*--tab-pad: 10px;/,
       );
+      const tightStart = stripped.indexOf('@media (min-width: 960px) and (max-width: 1023px) {');
+      expect(tightStart).toBeGreaterThan(-1);
+      const tight = stripped.slice(tightStart, stripped.indexOf('\n}\n', tightStart));
+      expect(tight).toContain('--tab-pad: 8px;');
+      expect(tight).toMatch(/\.language-option \{\s*min-width: 0;/);
+      expect(stripped).toMatch(
+        /\.VPNavBar \.language-toggle \.language-option \{[^}]*min-width: 44px;[^}]*padding: 0 var\(--tab-pad\);/,
+      );
+      // Nothing else sets a padding on the bar's options, or the tiers would
+      // not be the only knob.
+      const barOptionRules = [...stripped.matchAll(/\.VPNavBar \.language-toggle \.language-option \{([^}]*)\}/g)]
+        .map((m) => m[1]);
+      expect(barOptionRules.filter((r) => /padding/.test(r))).toHaveLength(1);
+    });
+
+    test('the search trigger is outlined on the bar, bare on the phone row', () => {
+      const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+      expect(stripped).toMatch(
+        /\.VPNavBar \.content-body > \.search \.nav-search-btn-wait \{\s*background-color: var\(--vp-c-bg\);\s*border: 1px solid var\(--tb-input-border\);\s*border-radius: 20px;\s*color: var\(--tb-muted\);/,
+      );
+      expect(stripped).toMatch(
+        /\.nav-search-btn-wait:hover \{\s*border-color: var\(--tb-focus\);\s*box-shadow: 0 0 0 1px var\(--tb-focus\);/,
+      );
+      expect(stripped).toMatch(
+        /\.nav-search-btn-wait:focus-visible \{\s*outline: 2px solid var\(--tb-focus\);\s*outline-offset: 2px;/,
+      );
+      // 768-959px drops the padding only when the tabs render, because only
+      // then are the label and hint out of flow; a single-language build keeps
+      // its label and its padding.
+      expect(stripped).toMatch(
+        /@media \(min-width: 768px\) and \(max-width: 959px\) \{\s*\.VPNavBar \.content-body:has\(> \.language-toggle\) > \.search \.nav-search-btn-wait \{\s*padding: 0;\s*border-radius: 50%;/,
+      );
+      // Below 768px the plugin's bare icon returns: no edge, no fill, no radius.
+      const phone = stripped.slice(stripped.indexOf('@media (max-width: 767px)'));
+      expect(phone).toMatch(
+        /\.nav-search-btn-wait \{\s*width: 48px;\s*height: 100%;\s*border: 0;\s*border-radius: 0;\s*box-shadow: none;\s*background-color: transparent;/,
+      );
+    });
+
+    test('every bar, dropdown and menu control has a 44px floor below 960px', () => {
+      const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+      const start = stripped.indexOf('@media (max-width: 959px)');
+      expect(start).toBeGreaterThan(-1);
+      const block = stripped.slice(start, stripped.indexOf('\n}\n', start));
+      expect(block).toMatch(/\.nav-search-btn-wait \{\s*height: 44px;\s*min-width: 44px;/);
+      expect(block).toMatch(/\.version-badge \{\s*height: 44px;\s*min-width: 44px;/);
+      expect(block).toMatch(/\.settings-trigger \{\s*width: 44px;\s*height: 44px;/);
+      expect(block).toMatch(/\.VPNavBarTitle \.title \{\s*min-width: 44px;/);
+      // The pickers in the hamburger menu and in the Settings dropdown (which
+      // the gear still opens at 768-959px).
+      expect(block).toMatch(
+        /\.VPNavScreen \.NavStylePicker \.nav-style-option,\s*\.VPNavBar \.SettingsMenu \.theme-picker-option,\s*\.VPNavBar \.SettingsMenu \.nav-style-option \{\s*min-width: 44px;\s*min-height: 44px;/,
+      );
+      // The 40px tracks grow with their segments, and the theme picker wraps
+      // rather than overflowing a 320px menu.
+      expect(block).toMatch(/\.VPNavBar \.SettingsMenu \.nav-style-group \{\s*height: auto;/);
+      expect(block).toMatch(/\.ThemePicker \{\s*flex-wrap: wrap;\s*gap: 8px;/);
     });
 
     test('is reachable at narrow widths through the nav screen', () => {
