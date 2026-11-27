@@ -114,8 +114,8 @@ pattern does not catch it; `.projenrc.ts` pins it by name at `cdkAlpha`
 modules the nightly module sync leaves in place. It documents with the default
 kinds and examples: its per-service `mixins` submodules follow the mixin rules
 below, and its per-service `events` submodules fold into their service per
-[fold events submodules](./2026-10-22-fold-events-submodules.md). At
-2.274.0-alpha.0 it contributes about 2,100 pages, roughly 3.6% of the site.
+[fold events submodules](./2026-10-22-fold-events-submodules.md). It
+contributes a few percent of the site's pages.
 
 ### Mixin classification by the `IMixin` marker
 

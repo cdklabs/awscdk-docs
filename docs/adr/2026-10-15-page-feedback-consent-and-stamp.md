@@ -158,8 +158,8 @@ runner location.
   unaffected and the footer link does nothing. The site now sets the `awsccc`
   cookie and, with consent, AWS analytics cookies. Analytics page views are
   recorded on full loads only, not client-side route changes.
-- The stamp block is identical on every page (~130 bytes × ~21.9k pages, under
-  3MB total). A reader with JavaScript disabled, or SSR output before hydration,
+- The stamp block is identical on every page (about 130 bytes per page, a few MB
+  across the site). A reader with JavaScript disabled, or SSR output before hydration,
   sees the build-time values until the hydrated render adopts a rewritten stamp.
 
 ### Rejected alternatives

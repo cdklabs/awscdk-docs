@@ -14,8 +14,8 @@ package set is recorded in
 ## Context
 
 `@aws-cdk/mixins-preview` ships, next to its per-service `mixins` submodules,
-a generated `<service>.events` submodule per service — 64 of them at
-2.274.0-alpha.0 — holding the service's EventBridge event patterns. Each has
+a generated `<service>.events` submodule per service — dozens of
+them — holding the service's EventBridge event patterns. Each has
 the same shape: a class per event (`DLMPolicyStateChange`,
 `EC2InstanceStateChangeNotification`) with a static `eventPattern()`, nested
 detail structs under each class, and for 31 services a *facade* class
