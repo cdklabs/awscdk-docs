@@ -1,8 +1,8 @@
 import * as spec from '@jsii/spec';
 import { STABILITY_ROUTE } from '../site-routes.js';
 import { escapeAttr, escapeVueText } from './escape.js';
-import { pageHref } from './links.js';
 import { escapeProse } from './layout.js';
+import { pageHref } from './links.js';
 import { PAGEFIND_IGNORE, weightedTitle } from './search.js';
 import { typeStability } from './stability.js';
 
