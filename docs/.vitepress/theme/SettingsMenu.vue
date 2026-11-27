@@ -32,11 +32,13 @@ function onDocumentClick(event: MouseEvent): void {
   }
 }
 
+function closeAndFocusTrigger(): void {
+  open.value = false;
+  trigger.value?.focus();
+}
+
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === "Escape" && open.value) {
-    open.value = false;
-    trigger.value?.focus();
-  }
+  if (event.key === "Escape" && open.value) closeAndFocusTrigger();
 }
 
 onMounted(() => {
@@ -77,7 +79,7 @@ onBeforeUnmount(() => {
            reader preference like the themes, so it lives in the same panel. -->
       <NavStylePicker />
       <!-- Opt-in sidebar variant with a view rail; the last group so it reads as an experiment. -->
-      <ExplorerPreviewPicker v-if="mounted" />
+      <ExplorerPreviewPicker v-if="mounted" @off="closeAndFocusTrigger" />
     </div>
   </div>
 </template>

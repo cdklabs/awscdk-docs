@@ -69,7 +69,7 @@ test.describe('explorer preview on desktop', () => {
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('on');
   });
 
-  test('turning the preview off from the gear panel removes the rail and leaves focus on the Off segment', async ({
+  test('turning the preview off from the gear panel removes the rail, closes the panel and returns focus to the gear', async ({
     page,
   }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
@@ -78,7 +78,8 @@ test.describe('explorer preview on desktop', () => {
     await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
     await expect(rail(page)).toHaveCount(0);
     await expect(page.locator('.VPSidebar')).toHaveCSS('width', '320px');
-    await expect(page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true })).toBeFocused();
+    await expect(page.locator('.VPNavBar .settings-trigger')).toBeFocused();
+    await expect(page.locator('#settings-menu-panel')).toBeHidden();
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('off');
   });
 
@@ -229,11 +230,11 @@ test.describe('explorer preview on desktop', () => {
     await gear.click();
     const panel = page.locator('#settings-menu-panel');
     await expect(panel.locator('[data-value="on"]')).toHaveAttribute('aria-pressed', 'true');
-    const off = panel.getByRole('button', { name: 'Off', exact: true });
-    await off.click();
+    await panel.getByRole('button', { name: 'Off', exact: true }).click();
     await expect(page.locator('html')).not.toHaveAttribute('data-explorer-preview', /.*/);
-    await expect(off).toBeFocused();
-    await expect(gear).toHaveAttribute('aria-expanded', 'true');
+    await expect(gear).toBeFocused();
+    await expect(gear).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toBeHidden();
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('off');
   });
 
@@ -373,7 +374,7 @@ test.describe('explorer preview on a phone', () => {
     await expect(screen.getByRole('group', { name: 'Navigation' })).toBeVisible();
     await expect(group.getByRole('button', { name: 'On', exact: true })).toBeFocused();
   });
-  test('at 800px the gear is in the bar with the preview on, and turning it off from there leaves focus on the Off segment', async ({
+  test('at 800px the gear is in the bar with the preview on, and turning it off from there closes the panel and returns focus to the gear', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 800, height: 700 });
@@ -381,11 +382,28 @@ test.describe('explorer preview on a phone', () => {
     const gear = page.locator('.VPNavBar .settings-trigger');
     await expect(gear).toBeVisible();
     await gear.click();
-    const off = page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true });
-    await off.click();
+    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
     await expect(rail(page)).toHaveCount(0);
-    await expect(off).toBeFocused();
+    await expect(gear).toBeFocused();
+    await expect(page.locator('#settings-menu-panel')).toBeHidden();
   });
+  test('the unfolded rail and scrim stay fixed to the viewport when the drawer scrolls', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 400 });
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    await page.getByRole('button', { name: /^Views/ }).click();
+    await expect(rail(page)).toBeVisible();
+    const scrolled = await page.locator('.VPSidebar').evaluate((el) => {
+      el.scrollTo(0, 200);
+      return el.scrollTop;
+    });
+    expect(scrolled, 'the drawer scrolled').toBeGreaterThan(0);
+    const box = (await rail(page).boundingBox())!;
+    expect(box.y).toBe(0);
+    expect(box.height).toBe(400);
+    expect((await page.locator('.explorer-rail-scrim').boundingBox())!.width).toBe(375);
+  });
+
   test('tabbing out of the unfolded rail folds it and leaves the drawer open', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
     await page.locator('.VPLocalNav button.menu').click();

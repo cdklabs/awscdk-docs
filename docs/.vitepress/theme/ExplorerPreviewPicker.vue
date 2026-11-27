@@ -23,9 +23,14 @@ onMounted(() => {
   mounted.value = true;
 });
 
+const emit = defineEmits<{ off: [] }>();
+
+// Turning the preview off tells the host panel, so the bar's Settings panel can close and hand focus to the gear.
+// The phone menu row has no listener: the pressed segment keeps focus there because the gear is hidden.
 function choose(value: ExplorerPreview): void {
   if (explorerPreview.value === value) return;
   setExplorerPreview(value);
+  if (value === "off") emit("off");
 }
 </script>
 
