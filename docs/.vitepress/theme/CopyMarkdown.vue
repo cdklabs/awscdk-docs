@@ -2,8 +2,8 @@
      teleports into the `type-action-copy` mount point of the docgen-emitted chip row, beside the favorite star;
      every other API page keeps the doc-before slot at the top of the page. On a page whose frontmatter says it has
      a chip row, the control waits in `doc-before` taking no space until that mount point resolves, so it never
-     paints in the fallback placement and then jumps, and the served HTML still carries the link to the twin.
-     The main button copies the page's
+     paints in the fallback placement and then jumps, while the served HTML still carries the link to the twin for
+     an agent or crawler that reads the markup without running JavaScript. The main button copies the page's
      Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page without a
      twin (no `agentMarkdown` frontmatter) renders nothing. -->
 <script setup lang="ts">
@@ -230,7 +230,7 @@ onUnmounted(() => {
    the row reserves its own room for the pills, and painting them above the
    breadcrumb first would shift the whole page. Hidden this way rather than
    left unrendered so the served HTML still carries the link to the Markdown
-   twin for a reader that runs no JavaScript. */
+   twin for an agent or crawler reading the markup without running JavaScript. */
 .copy-markdown.pending {
   position: absolute;
   width: 1px;

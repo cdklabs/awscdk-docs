@@ -159,11 +159,13 @@ produced. A "Copy Markdown" split button and a
 `<link rel="alternate" type="text/markdown">` in `<head>` both render from it.
 The button renders in the `doc-before` slot above the breadcrumb bar; on a type
 page, whose header carries a chip row, it teleports into that row on mount. It
-is still in the served HTML either way, so the in-page link to the twin reaches
-a reader that runs no JavaScript: while it waits for the row it is positioned
-out of the layout rather than left unrendered, because the row reserves its own
-room for the pills and a control painted above the breadcrumb first would shift
-the page.
+is in the served HTML either way, so the in-page link to the twin is there for
+an agent or crawler that reads the markup without running JavaScript. It is not
+reachable by a browser user in that state: the waiting section is
+`visibility: hidden`, and the "View as Markdown" anchor sits in a menu a script
+opens. While it waits for the row it is positioned out of the layout rather
+than left unrendered, because the row reserves its own room for the pills and a
+control painted above the breadcrumb first would shift the page.
 The main button fetches the twin from the same origin and copies its text; a
 menu next to it holds a "View as Markdown" link that opens the file in a new
 tab. That relies on the host serving `.md` as `text/markdown` or `text/plain`

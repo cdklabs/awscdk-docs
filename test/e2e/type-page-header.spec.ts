@@ -45,6 +45,55 @@ test.describe('type page header', () => {
     expect(stabilityBox.x).toBeGreaterThan(kindBox.x);
   });
 
+  test('the Added in badge sits on the H1 text baseline row', async ({ page }) => {
+    // The `Added in vX.Y.Z` badge is the one badge an API H1 still carries, and
+    // `api-layout.css` overrides VitePress's stock treatment to hold it on the
+    // title's baseline. No fixture page carries one, because the ledger marks
+    // only types introduced in the documented minor line, so the badge is
+    // appended to the live H1 here and measured against the title text.
+    await page.goto(QUEUE_PAGE);
+    const name = page.locator('h1 span[data-pagefind-weight]');
+    await expect(name).toBeVisible();
+
+    // A fixed pixel threshold is the wrong instrument: `vertical-align: middle`
+    // aligns the badge's middle with the parent's x-height middle rather than
+    // with the center of the line box, so a correctly aligned badge still sits
+    // a few px off center. So measure the override DIFFERENTIALLY: read the
+    // offset as shipped, then put VitePress's stock declarations back inline
+    // and read it again. That is the only form of the claim that cannot be
+    // satisfied by the override's absence.
+    const offsets = await page.evaluate((nameSel) => {
+      const h1 = document.querySelector('h1')!;
+      const badge = document.createElement('span');
+      badge.className = 'VPBadge tip api-badge';
+      badge.textContent = 'Added in v2.200.0';
+      h1.append(badge);
+      const nameEl = document.querySelector(nameSel)!;
+      const delta = () => {
+        const b = badge.getBoundingClientRect();
+        const n = nameEl.getBoundingClientRect();
+        return Math.abs((b.top + b.height / 2) - (n.top + n.height / 2));
+      };
+      const shipped = delta();
+      badge.style.verticalAlign = 'top';
+      badge.style.transform = 'translateY(-2px)';
+      const stock = delta();
+      badge.style.verticalAlign = '';
+      badge.style.transform = '';
+      const restored = delta();
+      const height = nameEl.getBoundingClientRect().height;
+      badge.remove();
+      return { shipped, stock, restored, height };
+    }, 'h1 span[data-pagefind-weight]');
+
+    // Removing the override moves the badge measurably further off the row.
+    expect(offsets.stock).toBeGreaterThan(offsets.shipped + 1);
+    // And the shipped offset is a fraction of the line box, not a stagger.
+    expect(offsets.shipped).toBeLessThan(offsets.height / 4);
+    // The inline mutation was undone, so the two readings are comparable.
+    expect(offsets.restored).toBeCloseTo(offsets.shipped, 1);
+  });
+
   test('a chip edge is its own ink, so it is visible rather than a pale tint', async ({ page }) => {
     // `currentColor` makes the edge the ink, whose contrast against the chip
     // fill the unit suite already pins. Only a browser can confirm the edge
@@ -231,8 +280,8 @@ test.describe('type page header', () => {
     const html = await (await request.get(QUEUE_PAGE)).text();
     expect(html).toContain('type-action-copy');
     expect(html).toContain('type-action-fav');
-    // Copy Markdown is in the served HTML, so a reader that runs no JavaScript
-    // still gets the link to the twin, but it is `pending` and so takes no
+    // Copy Markdown is in the served HTML, so an agent or crawler reading the
+    // markup gets the link to the twin, but it is `pending` and so takes no
     // space until the row's mount point resolves.
     expect(html).toMatch(/class="[^"]*\bpending\b[^"]*copy-markdown|class="[^"]*copy-markdown[^"]*\bpending\b/);
     expect(html).toContain('View as Markdown');
@@ -264,7 +313,7 @@ test.describe('type page header', () => {
   test('a type page links its Markdown twin in the served HTML', async ({ request, browser }) => {
     // The in-page link the SEO ADR promises alongside the `<head>` alternate.
     // It is teleported into the row on mount, so without a server-rendered
-    // copy an agent reading the body without JavaScript would lose it.
+    // copy an agent reading the markup would lose it.
     const html = await (await request.get(QUEUE_PAGE)).text();
     const twin = QUEUE_PAGE.replace(/\.html$/, '.md');
     expect(html).toContain('View as Markdown');
