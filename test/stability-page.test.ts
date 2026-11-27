@@ -22,8 +22,11 @@ describe('api stability guide page', () => {
     expect(page).toContain('without a major version bump');
   });
 
-  test('tells the reader that a missing indicator means stable', () => {
-    expect(page).toContain('the absence of an indicator means stable');
+  test('names every chip a type page header can carry', () => {
+    expect(page).toContain('**Stable**');
+    expect(page).toContain('**Deprecated**');
+    // The two cases where no stability chip appears at all.
+    expect(page).toContain('show the kind chip alone');
   });
 
   test('stays out of the navbar, whose three entries are the layout budget', () => {

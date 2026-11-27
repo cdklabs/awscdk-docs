@@ -149,7 +149,7 @@ an unscoped rule would restyle module overviews and authored pages too.
   The corpus carries 29,154 type pages: `docs:generate` writes 29,892 pages
   under `docs/v2/docs`, of which 738 are `-readme.md` module overviews, which
   have no chip row. Extrapolating the per-page figures alone over those 29,154
-  gives about +12.9 MB of HTML, +7.8 MB of full chunks and -11.2 MB of lean
+  gives about +12.9 MiB of HTML, +7.8 MiB of full chunks and -11.2 MiB of lean
   chunks, that last figure an upper bound: no fixture page carries an `Added in`
   badge, and a page that does still loads `<Badge>`. The
   zip is deliberately not extrapolated, because a

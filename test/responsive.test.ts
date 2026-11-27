@@ -87,9 +87,10 @@ describe('type page header below the tablet breakpoint', () => {
     expect(mobileRules.get('.vp-doc a.type-chip-stability')).toContain('position: relative');
     const overlay = mobileRules.get('.vp-doc a.type-chip-stability::before');
     expect(overlay).toContain('position: absolute');
-    // Vertical only: 10px above and below the 24px chip reaches 44px, and 0 to
-    // the sides keeps the area off the neighboring chip and the row's gap.
-    expect(overlay).toContain('inset: -10px 0');
+    // Vertical only: the chip's padding box is 22px inside its 1px border, so
+    // 11px above and below reaches 44px, and 0 to the sides keeps the area off
+    // the neighboring chip and the row's gap.
+    expect(overlay).toContain('inset: -11px 0');
   });
 });
 

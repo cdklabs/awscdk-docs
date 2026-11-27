@@ -164,7 +164,8 @@ pre.signature {
   /* The Experimental chip is the row's only linking chip, and the one new
      header target still at the chip's 24px. The tap area grows outside the
      layout, so the chip keeps its painted height beside the kind chip. The
-     inset is vertical only: 10px above and below reaches 44px, and 0 left and
+     inset is vertical only and is measured from the chip's padding box (22px
+     inside its 1px border): 11px above and below reaches 44px, and 0 left and
      right keeps the area off the neighboring chip and the row's gap. */
   .vp-doc a.type-chip-stability {
     position: relative;
@@ -173,7 +174,7 @@ pre.signature {
   .vp-doc a.type-chip-stability::before {
     content: '';
     position: absolute;
-    inset: -10px 0;
+    inset: -11px 0;
   }
 }
 
