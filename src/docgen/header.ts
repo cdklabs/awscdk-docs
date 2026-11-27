@@ -144,10 +144,8 @@ const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: strin
  * sits beside the controls that act on the page. A type whose stability is stable, experimental or deprecated
  * states it, "Stable" included, so a reader of those pages never has to decide whether a missing chip means
  * "stable" or "not shown". A generated L1 type is `external` in jsii and a few types carry no stability at all;
- * both show the kind chip alone, so on those pages the absence does carry a meaning. No fourth label is invented
- * for `external` because the AWS guides read two ways on L1 stability: the v2 migration guide calls L1 constructs
- * always stable, while the versioning page says generated L1 code may change incompatibly. Choosing a word is a
- * maintainer's call.
+ * both show the kind chip alone, so on those pages the absence does carry a meaning. Why `external` gets no label
+ * is recorded in docs/adr/2026-11-26-type-page-header-chip-row.md.
  *
  * The row is one raw-HTML block, so markdown-it passes it through whole and the chips need no markdown escape; it is
  * excluded from the Pagefind index, because the kind is already a `kind:` search filter and the stability is not a

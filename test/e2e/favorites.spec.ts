@@ -199,9 +199,8 @@ test.describe('favorite pages', () => {
   test('the capped message stays in the row without overlapping the pills or widening the page', async ({ page }) => {
     // Starring past the cap puts a sentence inside the star's wrapper, which on
     // a type page sits in the chip row beside two pills. The row is a wrapping
-    // flex box, so the message takes the width left over: measured 291x24 at
-    // 1280px between the pills, and 104x96 at 375px, inside the viewport and
-    // clear of both pills in each case.
+    // flex box, so the message takes the width left over and stays inside the
+    // viewport, clear of both pills.
     for (const width of [1280, 375]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(TOPIC_PAGE);
