@@ -382,7 +382,7 @@ describe('API kind badge palette', () => {
     // An unshadowed `:root` color wins in dark mode, the same trap the brand
     // ramp carries. Without this, a dark-mode badge would be near-black text
     // on a pale tint while the suite stayed green.
-    for (const part of ['bg', 'text', 'border']) {
+    for (const part of ['bg', 'text']) {
       expect(darkBlock).toContain(`--cdk-badge-${kind}-${part}:`);
     }
   });

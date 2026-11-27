@@ -388,10 +388,9 @@
   transform: none;
 }
 
-/* Per-kind colors. `<Badge>` only accepts info|tip|warning|danger, so the
-   kind travels as an extra class merged onto the component's root span by
-   Vue's attribute fallthrough, and these rules restate all three color
-   properties to beat `.VPBadge.tip` / `.VPBadge.info`.
+/* Per-kind colors. The kind travels as an `api-badge-<kind>` class on the
+   header row's chip and on the hover preview's chip, and each rule sets the
+   fill and the ink; the chip's edge is `currentColor`.
 
    The hues are this repo's own, not VitePress ramps: the palette needs
    eight mutually distinct kinds and the theme's blue `--vp-c-brand-*` /
@@ -401,28 +400,20 @@
 :root {
   --cdk-badge-l1-bg: #fef3c7;
   --cdk-badge-l1-text: #713f12;
-  --cdk-badge-l1-border: #fcd34d;
   --cdk-badge-l2-bg: #dbeafe;
   --cdk-badge-l2-text: #1e40af;
-  --cdk-badge-l2-border: #93c5fd;
   --cdk-badge-l3-bg: #dcfce7;
   --cdk-badge-l3-text: #166534;
-  --cdk-badge-l3-border: #86efac;
   --cdk-badge-mixin-bg: #f3e8ff;
   --cdk-badge-mixin-text: #6b21a8;
-  --cdk-badge-mixin-border: #d8b4fe;
   --cdk-badge-facade-bg: #ccfbf1;
   --cdk-badge-facade-text: #115e59;
-  --cdk-badge-facade-border: #5eead4;
   --cdk-badge-struct-bg: #fce7f3;
   --cdk-badge-struct-text: #831843;
-  --cdk-badge-struct-border: #f9a8d4;
   --cdk-badge-interface-bg: #e0e7ff;
   --cdk-badge-interface-text: #3730a3;
-  --cdk-badge-interface-border: #a5b4fc;
   --cdk-badge-enum-bg: #ffedd5;
   --cdk-badge-enum-text: #7c2d12;
-  --cdk-badge-enum-border: #fdba74;
 }
 
 /* Every light value is shadowed here. An unshadowed `:root` color wins in
@@ -431,82 +422,25 @@
 .dark {
   --cdk-badge-l1-bg: #422006;
   --cdk-badge-l1-text: #fcd34d;
-  --cdk-badge-l1-border: #854d0e;
   --cdk-badge-l2-bg: #172554;
   --cdk-badge-l2-text: #93c5fd;
-  --cdk-badge-l2-border: #1e40af;
   --cdk-badge-l3-bg: #052e16;
   --cdk-badge-l3-text: #86efac;
-  --cdk-badge-l3-border: #166534;
   --cdk-badge-mixin-bg: #2e1065;
   --cdk-badge-mixin-text: #d8b4fe;
-  --cdk-badge-mixin-border: #6b21a8;
   --cdk-badge-facade-bg: #042f2e;
   --cdk-badge-facade-text: #5eead4;
-  --cdk-badge-facade-border: #115e59;
   --cdk-badge-struct-bg: #500724;
   --cdk-badge-struct-text: #f9a8d4;
-  --cdk-badge-struct-border: #9d174d;
   --cdk-badge-interface-bg: #1e1b4b;
   --cdk-badge-interface-text: #a5b4fc;
-  --cdk-badge-interface-border: #3730a3;
   --cdk-badge-enum-bg: #431407;
   --cdk-badge-enum-text: #fdba74;
-  --cdk-badge-enum-border: #9a3412;
 }
 
-.VPBadge.api-badge.api-badge-l1 {
-  background-color: var(--cdk-badge-l1-bg);
-  color: var(--cdk-badge-l1-text);
-  border-color: var(--cdk-badge-l1-border);
-}
-
-.VPBadge.api-badge.api-badge-l2 {
-  background-color: var(--cdk-badge-l2-bg);
-  color: var(--cdk-badge-l2-text);
-  border-color: var(--cdk-badge-l2-border);
-}
-
-.VPBadge.api-badge.api-badge-l3 {
-  background-color: var(--cdk-badge-l3-bg);
-  color: var(--cdk-badge-l3-text);
-  border-color: var(--cdk-badge-l3-border);
-}
-
-.VPBadge.api-badge.api-badge-mixin {
-  background-color: var(--cdk-badge-mixin-bg);
-  color: var(--cdk-badge-mixin-text);
-  border-color: var(--cdk-badge-mixin-border);
-}
-
-.VPBadge.api-badge.api-badge-facade {
-  background-color: var(--cdk-badge-facade-bg);
-  color: var(--cdk-badge-facade-text);
-  border-color: var(--cdk-badge-facade-border);
-}
-
-.VPBadge.api-badge.api-badge-struct {
-  background-color: var(--cdk-badge-struct-bg);
-  color: var(--cdk-badge-struct-text);
-  border-color: var(--cdk-badge-struct-border);
-}
-
-.VPBadge.api-badge.api-badge-interface {
-  background-color: var(--cdk-badge-interface-bg);
-  color: var(--cdk-badge-interface-text);
-  border-color: var(--cdk-badge-interface-border);
-}
-
-.VPBadge.api-badge.api-badge-enum {
-  background-color: var(--cdk-badge-enum-bg);
-  color: var(--cdk-badge-enum-text);
-  border-color: var(--cdk-badge-enum-border);
-}
-
-/* The kind CHIP borrows each kind's fill and ink, but not its border tint: the
-   chip's edge is `currentColor`, which is the ink and so clears 4.5:1 against
-   the fill by construction. The `-border` tokens stay for the badge the
-   hover-preview chip uses. */
+/* The kind CHIP takes each kind's fill and ink. Its edge is `currentColor`,
+   which is the ink and so clears 4.5:1 against the fill by construction, so
+   the palette carries no per-kind border tint. */
 .type-chip-kind.api-badge-l1 {
   background-color: var(--cdk-badge-l1-bg);
   color: var(--cdk-badge-l1-text);

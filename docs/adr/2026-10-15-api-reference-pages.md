@@ -734,12 +734,12 @@ Enum and L1 is what closed the last three, leaving L1 the narrowest of those at
 L1 keeps the amber construct pages already wore. Rules live in `api-layout.css`
 (not `custom.css`, which is constrained to pure variable declarations).
 
-The chip's EDGE is `currentColor`, not the palette's `--cdk-badge-*-border`
-tint, which measured 1.69:1 light and 1.71:1 dark against the chip fill and so
-was not a visible edge at all. As the ink, `currentColor` clears whatever the
-chip's label clears against that fill, because the ink/fill pair is already
-pinned above. The `-border` tokens stay for the badge the hover-preview chip
-still uses. The neutral Class chip carries its own opaque pair rather than the
+The chip's EDGE is `currentColor`, not a palette tint. The former
+`--cdk-badge-*-border` tints measured 1.69:1 light and 1.71:1 dark against the
+chip fill and so were not a visible edge at all; as the ink, `currentColor`
+clears whatever the chip's label clears against that fill, because the ink/fill
+pair is already pinned above. Those tints are gone from the palette, along with
+the H1 badge rules that were their only readers. The neutral Class chip carries its own opaque pair rather than the
 translucent `--vp-c-default-soft` it once inherited, so that pair can be read
 and pinned like the others.
 

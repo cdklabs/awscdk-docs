@@ -437,8 +437,8 @@
   content: attr(data-level);
 }
 
-/* The level's own foreground, from the same `--cdk-badge-l*` triples the H1
-   badge and the hover preview use, so the three surfaces agree
+/* The level's own foreground, from the same `--cdk-badge-l*` pairs the kind
+   chip and the hover preview use, so the three surfaces agree
    on which hue means which level. Only the FOREGROUND: the chip stays
    `--vp-c-default-soft`, keeping the tag quiet against the tree per the
    sidebar-tag ADR, so these hues are measured against the sidebar surface

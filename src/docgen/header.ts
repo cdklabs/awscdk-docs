@@ -141,8 +141,10 @@ const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: strin
  * chip and the mount points the theme's page actions teleport into, then — for a deprecated type — the reason.
  *
  * The kind sits in the row rather than the H1, so the heading is the name a reader came for and the classification
- * sits beside the controls that act on the page. Every type states its stability, "Stable" included, so that no
- * reader has to decide whether a missing chip means "stable" or "not shown".
+ * sits beside the controls that act on the page. A type whose stability is stable, experimental or deprecated
+ * states it, "Stable" included, so that no reader has to decide whether a missing chip means "stable" or "not
+ * shown". A generated L1 type is `external` in jsii and a few types carry no stability at all; both show the kind
+ * chip alone, because neither has a stability this project can claim.
  *
  * The row is one raw-HTML block, so markdown-it passes it through whole and the chips need no markdown escape; it is
  * excluded from the Pagefind index, because the kind is already a `kind:` search filter and the stability is not a

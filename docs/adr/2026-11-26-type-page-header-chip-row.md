@@ -55,8 +55,11 @@ header needs is already what the page assembly produces.
 `typeStability` — the type's own `docs.stability` when set, otherwise its
 package's. Experimental links to the stability guide, because the word alone
 does not tell a reader what it costs them. `external`, and a type with no
-stability at all, get no chip: there is no claim to make, and inventing a
-fourth label for a case no page in the corpus exercises would be a guess.
+stability at all, get no chip, so those pages carry the kind chip alone and
+their Markdown twin's classification line names the kind only. Generated L1
+types are the corpus case: jsii gives a CloudFormation resource `external`
+stability, which says the API is not this project's to promise, so there is no
+stability claim to print and a fourth label invented for it would be a guess.
 
 **A deprecated type gets the three signals its members already had.** The title
 is struck in the deprecation tone, the chip reads "Deprecated", and the reason
@@ -74,13 +77,13 @@ the kind hues come from. Amber is L1's pair in both schemes, and green shares
 L3's fill in both, with L3's ink as well in dark mode, so an L1 or an L3 page
 can show two chips in one tone; the label and the fixed order tell them apart,
 and picking a second amber for the sake of difference would cost the convention
-and gain nothing a reader uses. That last
-one is why the neutral chip has an opaque `--th-chip-neutral-bg` rather than
-the translucent `--vp-c-default-soft` it could have inherited: a translucent
-fill has to be composited against the page before its contrast can be read,
-and a pair a test cannot read is a pair nothing holds. The per-kind `-border`
-tints stay in the palette for the hover-preview chip, which still uses the
-badge.
+and gain nothing a reader uses. The neutral pair is why the neutral chip has
+an opaque `--th-chip-neutral-bg` rather than the translucent
+`--vp-c-default-soft` it could have inherited: a translucent fill has to be
+composited against the page before its contrast can be read, and a pair a test
+cannot read is a pair nothing holds. The per-kind `-border` tints leave the
+palette with this change: their only readers were the H1 badge rules, and the
+H1 no longer carries a kind badge.
 
 **The page actions move into the row as outlined pills.** Copy Markdown and the
 favorite star teleport into two fixed mount points, `type-action-copy` then
