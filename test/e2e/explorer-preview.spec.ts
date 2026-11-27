@@ -33,11 +33,12 @@ test.describe('explorer preview on desktop', () => {
 
   test('the preview is off by default: gear in the bar, no rail, favorites section as before', async ({ page }) => {
     await open(page, {}, true);
-    await expect(rail(page)).toHaveCount(0);
     await expect(page.locator('html')).not.toHaveAttribute('data-explorer-preview', /.*/);
     await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
     await expect(page.locator('.VPSidebar')).toHaveCSS('width', '320px');
     await expect(page.locator('.favorites-section')).toBeVisible();
+    // The rail renders only after mount, so it is checked once a post-mount element is on the page.
+    await expect(rail(page)).toHaveCount(0);
     await page.locator('.VPNavBar .settings-trigger').click();
     const group = page.locator('#settings-menu-panel').getByRole('group', { name: 'Explorer preview' });
     await expect(group.getByRole('button')).toHaveText(['Off', 'On']);
@@ -150,6 +151,9 @@ test.describe('explorer preview on desktop', () => {
     });
     await open(page, { [PREVIEW_KEY]: 'yes', [VIEW_KEY]: 'tree' });
     expect(await page.evaluate(() => (window as unknown as { __early: string[] }).__early)).toEqual(['', '']);
+    // The rail renders only after mount, so wait for the panel to show the switch read from storage first.
+    await page.locator('.VPNavBar .settings-trigger').click();
+    await expect(page.locator('#settings-menu-panel [data-value="off"]')).toHaveAttribute('aria-pressed', 'true');
     await expect(rail(page)).toHaveCount(0);
   });
 

@@ -12,8 +12,9 @@
 //
 // With the Explorer preview on, the gear leaves the bar and the rail's Settings button
 // (ExplorerRail.vue) opens a copy of this panel there. The open state is shared through
-// explorer-preview.ts. This component's outside-click rule skips the rail's button and panel;
-// ExplorerRail.vue closes the panel for clicks inside the sidebar, which never reach the document.
+// explorer-preview.ts. The rail's button and panel render inside `.VPSidebar`, which stops click
+// propagation, so clicks there never reach this component's document listener. Only ExplorerRail.vue
+// handles outside clicks for the rail's panel, in a capture-phase listener of its own.
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
 import { explorerPreview, settingsOpen as open } from "./explorer-preview";
@@ -34,9 +35,7 @@ function onDocumentClick(event: MouseEvent): void {
   // The composed path is read at dispatch time, so a click on a control that unmounts while handling it
   // (the preview switch moves the panel to the rail) still counts as inside.
   const path = event.composedPath() as Element[];
-  const inside =
-    path.includes(root.value as HTMLElement) ||
-    path.some((el) => el.matches?.("[data-settings-trigger], .explorer-settings-panel"));
+  const inside = path.includes(root.value as HTMLElement);
   if (open.value && root.value && !inside) {
     open.value = false;
   }
