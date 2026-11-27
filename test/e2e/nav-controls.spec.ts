@@ -549,6 +549,12 @@ test.describe('navbar layout', () => {
       await version.hover();
       await expect.poll(() => version.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
       await expect.poll(() => version.evaluate(color)).toBe(hoverText);
+      // The open gear keeps the hover fill and text with the pointer elsewhere.
+      await gear.click();
+      await expect(gear).toHaveAttribute('aria-expanded', 'true');
+      await page.mouse.move(0, 0);
+      await expect.poll(() => gear.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+      await expect.poll(() => gear.evaluate(color)).toBe(hoverText);
     });
   }
 

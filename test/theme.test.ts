@@ -646,6 +646,9 @@ describe('selected language label contrast', () => {
     // Hovered idle controls: muted text (phone rows) and the bar's hover text
     // (tabs, version, gear) on the hover fill.
     expect(contrast(hex(nav(), '--tb-muted'), hex(nav(), '--tb-hover-bg'))).toBeGreaterThanOrEqual(AA);
+    // The token is either a literal or exactly the primary text, so the fallback
+    // below measures what the bar actually paints.
+    expect(nav()).toMatch(/--tb-hover-fg: (#[0-9a-fA-F]{6}|var\(--vp-c-text-1\));/);
     const hoverFg = nav().includes('--tb-hover-fg: #') ? hex(nav(), '--tb-hover-fg') : hex(palette(), '--vp-c-text-1');
     expect(contrast(hoverFg, hex(nav(), '--tb-hover-bg'))).toBeGreaterThanOrEqual(7);
     // The phone group edge is a non-text boundary (WCAG 1.4.11).

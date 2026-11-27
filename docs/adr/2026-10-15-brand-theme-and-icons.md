@@ -108,8 +108,9 @@ on mobile they render in the hamburger nav screen.
   reload never flashes the wrong colors.
 
 Both groups pin `height: 40px; box-sizing: border-box` to align with the search
-trigger and the Settings gear from 960px up; below 960px the phone menu's tracks
-grow with their 44px segments (see
+trigger and the Settings gear from 960px up; below 960px the tracks in the
+Settings dropdown (768–959px) and the hamburger menu (below 768px) grow with
+their 44px segments (see
 [navbar, footer, and layout](./2026-10-15-navbar-footer-and-layout.md)). The
 e2e suite asserts both tri-states cycle,
 Default follows the site theme including Device, decoupled rendering both ways,
