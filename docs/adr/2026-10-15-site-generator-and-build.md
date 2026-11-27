@@ -207,8 +207,10 @@ The cache lives for one shard's build and captures all its intra-shard repeats.
   before it drops anything; a post-order hook registered after it would see
   the dropped fields missing. The files on disk do not change. Tests build a
   small Vite site and a two-page VitePress site with and without the plugin and
-  require the same files, so a VitePress version that reads another output
-  field after bundling fails the suite.
+  require the same files. The VitePress site uses the default theme and the
+  shared metadata chunk, so a VitePress version that reads another output
+  field while rendering such a site fails the suite; other render paths are
+  not covered.
 
 ### Compile existence gates into the bundle
 

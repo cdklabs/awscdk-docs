@@ -118,8 +118,9 @@ describe('releasing the build output once written', () => {
 });
 
 /**
- * A VitePress build of a two-page site: every written file, and the build outputs the plugin was handed. The page
- * HTML carries what VitePress reads from the outputs after bundling (preload links, stylesheet, app script).
+ * A VitePress build of a two-page default-theme site with the shared metadata chunk: every written file, and the
+ * build outputs the plugin was handed. The page HTML carries what VitePress reads from the outputs after bundling for
+ * such a site (preload links, stylesheet, app script, font preload); other render paths are not covered.
  */
 async function buildVitepress(withPlugin: boolean): Promise<{ files: Map<string, string>; handed: object[] }> {
   // Inside the repo, so the pages resolve `vue` from its node_modules.
@@ -147,6 +148,8 @@ async function buildVitepress(withPlugin: boolean): Promise<{ files: Map<string,
     await vitepress.build(root, {
       onAfterConfigResolve(siteConfig) {
         siteConfig.logger.level = 'silent' as never;
+        // As the site config: page metadata goes to a shared chunk, a separate VitePress path.
+        siteConfig.metaChunk = true;
         if (withPlugin) {
           siteConfig.vite = { ...siteConfig.vite, plugins: [...(siteConfig.vite?.plugins ?? []), recording] };
         }
@@ -175,6 +178,7 @@ describe('a VitePress build with the build output released', () => {
     expect(page).toContain('<script type="module"');
     // The default-theme font preload: VitePress finds it through the theme chunk's name and module ids.
     expect(page).toMatch(/<link rel="preload" href="\/assets\/inter-roman-latin\.[\w-]+\.woff2" as="font"/);
+    expect([...stock.files.keys()].some((name) => /^assets\/chunks\/metadata\.[\w-]+\.js$/.test(name))).toBe(true);
     expect([...released.files.keys()].sort()).toEqual([...stock.files.keys()].sort());
     expect(released.files).toEqual(stock.files);
   });
