@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
 import { tmpdir } from 'os';
 import { join, relative, resolve } from 'path';
@@ -125,7 +125,8 @@ async function buildVitepress(withPlugin: boolean): Promise<{ files: Map<string,
   // Inside the repo, so the pages resolve `vue` from its node_modules.
   const cache = resolve(import.meta.dirname, '..', 'node_modules', '.cache');
   mkdirSync(cache, { recursive: true });
-  const root = mkdtempSync(join(cache, 'release-build-output-vp-'));
+  // Real path: VitePress checks links against the real page paths, so a symlinked root reads as dead links.
+  const root = realpathSync(mkdtempSync(join(cache, 'release-build-output-vp-')));
   const handed: object[] = [];
   const env = process.env.NODE_ENV;
   try {
