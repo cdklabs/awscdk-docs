@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Settings dropdown: a compact gear-icon disclosure in the desktop navbar that
 // hosts the low-frequency reader preferences — the three tri-state pickers,
-// Site theme, Code theme and Layout, and the API sidebar's Navigation style —
-// behind the gear to keep the nav row uncluttered.
+// Site theme, Code theme and Layout, the API sidebar's Navigation style and the
+// Explorer preview switch — behind the gear to keep the nav row uncluttered.
 //
 // Disclosure pattern: the trigger is a real <button> with aria-expanded /
 // aria-controls, Enter/Space toggle natively, Escape closes and returns focus to
@@ -12,9 +12,9 @@
 //
 // With the Explorer preview on, the gear leaves the bar and the rail's Settings button
 // (ExplorerRail.vue) opens a copy of this panel there. The open state is shared through
-// explorer-preview.ts. The rail's button and panel render inside `.VPSidebar`, which stops click
-// propagation, so clicks there never reach this component's document listener. Only ExplorerRail.vue
-// handles outside clicks for the rail's panel, in a capture-phase listener of its own.
+// explorer-preview.ts. This component's document listener also closes the rail's panel on a click
+// outside the sidebar. Clicks inside `.VPSidebar` never reach it, so ExplorerRail.vue closes the panel
+// for those with a capture-phase listener of its own.
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
 import { explorerPreview, settingsOpen as open } from "./explorer-preview";

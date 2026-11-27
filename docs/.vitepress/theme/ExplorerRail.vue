@@ -10,7 +10,8 @@
 // inside the sidebar with a capture-phase listener.
 //
 // Below 960px the rail stays hidden until ExplorerViewsButton.vue unfolds it over a scrim; picking a view,
-// Escape from anywhere, a route change or a tap on the scrim folds it again.
+// Escape from anywhere, a route change, a tap on the scrim or moving keyboard focus out of the rail folds it
+// again. The scrim keeps pointers off the tree behind it, and the focus rule does the same for the keyboard.
 import { useRoute } from "vitepress";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
@@ -94,6 +95,16 @@ function onDocumentKeydown(event: KeyboardEvent): void {
   }
 }
 
+// While the rail is unfolded, focus may sit in the rail, its Settings panel or the Views button. Anywhere else
+// (the filter and tree behind the scrim) folds it. Focus is already where the reader put it, so it is not moved.
+function onDocumentFocusin(event: FocusEvent): void {
+  if (!railOpen.value || !enabled.value) return;
+  const target = event.target as Element | null;
+  if (!target?.closest || target.closest(".ExplorerRailRoot, .explorer-views-button")) return;
+  railOpen.value = false;
+  settingsOpen.value = false;
+}
+
 // `.VPSidebar` stops click propagation, so clicks inside it never reach SettingsMenu.vue's document listener.
 function onDocumentClickCapture(event: MouseEvent): void {
   if (!settingsOpen.value || !enabled.value) return;
@@ -114,11 +125,13 @@ onMounted(() => {
   mounted.value = true;
   document.addEventListener("keydown", onDocumentKeydown);
   document.addEventListener("click", onDocumentClickCapture, true);
+  document.addEventListener("focusin", onDocumentFocusin);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", onDocumentKeydown);
   document.removeEventListener("click", onDocumentClickCapture, true);
+  document.removeEventListener("focusin", onDocumentFocusin);
 });
 </script>
 

@@ -390,6 +390,19 @@ test.describe('explorer preview on a phone', () => {
     await expect(rail(page)).toHaveCount(0);
     await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
   });
+
+  test('turning the preview off from the drawer at 800px keeps focus in the drawer, not on the gear behind it', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 800, height: 700 });
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    await page.getByRole('button', { name: /^Views/ }).click();
+    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
+    await expect(rail(page)).toHaveCount(0);
+    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
+  });
   test('on a landscape phone the Settings panel stays on screen and scrolls', async ({ page }) => {
     await page.setViewportSize({ width: 667, height: 375 });
     await open(page, { [PREVIEW_KEY]: 'on' });
@@ -404,17 +417,23 @@ test.describe('explorer preview on a phone', () => {
     await panel.evaluate((el) => el.scrollTo(0, 0));
     await expect(panel.getByRole('group', { name: 'Site theme' })).toBeInViewport();
   });
-  test('Escape from the drawer filter folds an unfolded rail and keeps the drawer open', async ({ page }) => {
+  test('tabbing out of the unfolded rail folds it and leaves the drawer open', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
     await page.locator('.VPLocalNav button.menu').click();
     const views = page.getByRole('button', { name: /^Views/ });
     await views.click();
     await expect(rail(page)).toBeVisible();
-    await page.locator('.VPSidebar .nav-filter-input').focus();
-    await page.keyboard.press('Escape');
+    await rail(page).getByRole('button', { name: 'Settings' }).focus();
+    // The Views button is the rail's own toggle, so focus may rest there with the rail unfolded.
+    await page.keyboard.press('Tab');
+    await expect(views).toBeFocused();
+    await expect(rail(page)).toBeVisible();
+    // The next stop is the filter behind the scrim; the rail folds and focus stays where the reader put it.
+    await page.keyboard.press('Tab');
+    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
     await expect(rail(page)).toBeHidden();
     await expect(views).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.locator('.VPSidebar')).toBeInViewport();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
   });
 
   test('a modifier released before Escape does not let the Escape release close the drawer', async ({ page }) => {
@@ -422,7 +441,6 @@ test.describe('explorer preview on a phone', () => {
     await page.locator('.VPLocalNav button.menu').click();
     const views = page.getByRole('button', { name: /^Views/ });
     await views.click();
-    await page.locator('.VPSidebar .nav-filter-input').focus();
     await page.keyboard.down('Shift');
     await page.keyboard.down('Escape');
     await page.keyboard.up('Shift');
@@ -435,7 +453,6 @@ test.describe('explorer preview on a phone', () => {
     await open(page, { [PREVIEW_KEY]: 'on' });
     await page.locator('.VPLocalNav button.menu').click();
     await page.getByRole('button', { name: /^Views/ }).click();
-    await page.locator('.VPSidebar .nav-filter-input').focus();
     await page.evaluate(() => {
       (window as unknown as { releases: number }).releases = 0;
       window.addEventListener('keyup', (event) => {

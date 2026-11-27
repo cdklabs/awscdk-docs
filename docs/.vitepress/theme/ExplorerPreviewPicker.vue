@@ -47,7 +47,15 @@ async function choose(value: ExplorerPreview): Promise<void> {
   focusFirstVisible(
     value === "on"
       ? [".explorer-settings-panel [data-value='on']", ".VPNavBarHamburger", ".VPNavBar .nav-search-btn-wait"]
-      : [".VPNavBar .settings-trigger", ".VPSidebar .nav-filter-input", ".VPLocalNav button.menu", ".VPNavBarHamburger"],
+      : [
+          // An open drawer comes first: at 768-959px the gear is visible in the bar, but it sits under the
+          // drawer's backdrop, so a keyboard reader would end up on a control a pointer cannot reach.
+          ".VPSidebar.open .nav-filter-input",
+          ".VPNavBar .settings-trigger",
+          ".VPSidebar .nav-filter-input",
+          ".VPLocalNav button.menu",
+          ".VPNavBarHamburger",
+        ],
   );
 }
 </script>

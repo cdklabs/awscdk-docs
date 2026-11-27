@@ -39,10 +39,6 @@ export const settingsOpen = ref(false);
 /** Whether the rail is unfolded below 960px, where it stays hidden until the Views button opens it. */
 export const railOpen = ref(false);
 
-export function isExplorerPreview(value: string | null): value is ExplorerPreview {
-  return value === 'on' || value === 'off';
-}
-
 export function isExplorerView(value: string | null): value is ExplorerView {
   return value === 'api' || value === 'favorites';
 }
