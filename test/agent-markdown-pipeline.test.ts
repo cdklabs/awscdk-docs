@@ -94,7 +94,7 @@ describe('agent-oriented Markdown twins', () => {
     expect(page.startsWith('---\nagentMarkdown: "/v2/docs/constructs.Node.md"\n')).toBe(true);
     // The rest of the frontmatter survives.
     expect(page).toContain('\ntitle: "Node"\n');
-    expect(page).toMatch(/\noutlineMembers: .*\n---\n/);
+    expect(page).toMatch(/\noutlineMembers: .*\n/);
     expect(existsSync(join(agentOutDir, 'v2', 'docs', 'constructs.Node.md'))).toBe(true);
   });
 

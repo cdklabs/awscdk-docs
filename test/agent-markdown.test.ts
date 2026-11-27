@@ -16,6 +16,14 @@ describe('withFrontmatterKey', () => {
       '---\nagentMarkdown: "/v2/docs/x.md"\n---\n\n# Bucket\n',
     );
   });
+
+  test('at the end, appends to an existing block so every other key keeps its place', () => {
+    expect(withFrontmatterKey('---\ntitle: "Bucket"\nupstreamEditUrl: "u"\n---\n\n# Bucket\n', 'date', 'd', 'end')).toBe(
+      '---\ntitle: "Bucket"\nupstreamEditUrl: "u"\ndate: "d"\n---\n\n# Bucket\n',
+    );
+    // Without a block the two placements are the same.
+    expect(withFrontmatterKey('# Bucket\n', 'date', 'd', 'end')).toBe('---\ndate: "d"\n---\n\n# Bucket\n');
+  });
 });
 
 // A page shaped like the real emission: frontmatter, breadcrumb nav, badged H1 with a Pagefind weight span, a

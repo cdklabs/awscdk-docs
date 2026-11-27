@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process';
-import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'fs';
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
@@ -147,5 +147,19 @@ describe('local-shard-build.sh', () => {
       expect(Number(m[3])).toBeGreaterThanOrEqual(Math.floor(allocatedMb));
       expect(Number(m[3])).toBeLessThan(allocatedMb + 512);
     }
+  });
+
+  test('copies the docs tree into each shard workspace with its file times kept', () => {
+    // A handwritten page: the workspace is not a git repo, so the Pagefind plugin dates it by this time.
+    const page = join(dir, 'docs', 'index.md');
+    writeFileSync(page, '# Home\n');
+    utimesSync(page, 1_000_000_000, 1_000_000_000);
+    writeFileSync(join(dir, 'node_modules', '.bin', 'vitepress'), [
+      "const fs = require('fs');",
+      "fs.appendFileSync(process.env.ROOT + '/mtimes', fs.statSync('docs/index.md').mtimeMs + '\\n');",
+    ].join('\n'));
+    run(3);
+    const mtimes = readFileSync(join(dir, 'mtimes'), 'utf-8').trim().split('\n').map(Number);
+    expect(mtimes).toEqual([1e12, 1e12, 1e12]);
   });
 });

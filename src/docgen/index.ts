@@ -39,7 +39,7 @@ import { LANGUAGES, Language, LanguageMeta, sidebarModuleLabels } from './langua
 import { breakableTypeName } from './layout.js';
 import { API_ROOT, moduleReadmeLink, typePageLink } from './links.js';
 import { LlmsTxtEntry, renderLlmsTxt, titleOf } from './llms-txt.js';
-import { HISTORY_FRONTMATTER } from '../page-history.js';
+import { contentRevised, HISTORY_FRONTMATTER } from '../page-history.js';
 import { SITE_TITLE, STABILITY_ROUTE } from '../site-routes.js';
 import { buildMixinClassification, MixinIndex, renderMixinPage } from './mixins.js';
 import { byLevelThenName } from './ordering.js';
@@ -435,7 +435,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
    * advertises a twin that exists.
    */
   const emitPage = (link: string, content: string, history: PageHistory = {}): void =>
-    emitPageFile(fileFor(link), `${link}.md`, withHistory(content, history));
+    emitPageFile(fileFor(link), `${link}.md`, withHistory(content, history), history);
 
   /**
    * A module overview is an ordinary page that the site-scoped `llms.txt` also lists, so its twin and title are
@@ -461,8 +461,15 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
     return withHistoryFrontmatter(badged, history);
   };
 
-  /** The same, for a page whose file is given rather than derived from its route. */
-  const emitPageFile = (file: string, twinHref: string, content: string): void => {
+  /**
+   * The same, for a page whose file is given rather than derived from its route. Every page also gets a `date` key,
+   * the page's content-revised instant: the Pagefind plugin reads it for the page's `date` meta, and without it falls
+   * back to the file's modified time, which differs on every build because docgen rewrites these gitignored files.
+   * It is added before `agentMarkdown` so that key stays the first frontmatter line, and at the end of the block so
+   * every other key keeps its place.
+   */
+  const emitPageFile = (file: string, twinHref: string, content: string, history: PageHistory = {}): void => {
+    content = withFrontmatterKey(content, 'date', contentRevised(history).at, 'end');
     if (options.agentOutDir) {
       const twin = path.join(options.agentOutDir, twinHref);
       fs.mkdirSync(path.dirname(twin), { recursive: true });
@@ -506,6 +513,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
   if (options.overviewFile) {
     const primary = assemblies.get(config.modules[0])!;
     fs.mkdirSync(path.dirname(options.overviewFile), { recursive: true });
+    // An authored overview has no recorded history; a generated one shares the primary package README's.
+    const overviewHistory = options.overviewSourceFile ? {} : readmeHistory(ledger, primary.name);
     const content = options.overviewSourceFile
       ? fs.readFileSync(options.overviewSourceFile, 'utf-8')
       : withHistory(renderApiOverviewPage(primary, {
@@ -513,8 +522,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         languages: languageIds,
         tablet: tabletFor(config.modules[0]),
         typeLinks: { linkFor, modules: readmeModules },
-      }, documentedPackages), readmeHistory(ledger, primary.name));
-    emitPageFile(options.overviewFile, `${API_ROOT}index.md`, content);
+      }, documentedPackages), overviewHistory);
+    emitPageFile(options.overviewFile, `${API_ROOT}index.md`, content, overviewHistory);
   }
 
   // Type-summary lookup for hover tooltips: keyed by page link so the client can resolve any cross-reference anchor.

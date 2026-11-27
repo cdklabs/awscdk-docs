@@ -48,8 +48,11 @@ run_shard() {
     # carry it at the same root-relative spot.
     ln -s "$ROOT/docgen.config.json" "$ws/docgen.config.json"
     # Copy the docs tree, excluding build outputs (dist/cache), as
-    # copy-on-write clones where the filesystem supports them.
-    clone() { cp -cR "$1" "$2" 2>/dev/null || { rm -rf "$2"; cp -R "$1" "$2"; }; }
+    # copy-on-write clones where the filesystem supports them. Keep file
+    # times (-p): the workspace is not a git repo, so the Pagefind plugin
+    # dates the handwritten pages by their modified time, and a fresh time
+    # per copy would make two builds from the same checkout differ.
+    clone() { cp -cpR "$1" "$2" 2>/dev/null || { rm -rf "$2"; cp -pR "$1" "$2"; }; }
     for entry in "$ROOT/docs"/*; do
       name="$(basename "$entry")"
       [ "$name" = ".vitepress" ] && continue
