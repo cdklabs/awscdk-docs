@@ -6,7 +6,7 @@
 /**
  * The day the documentation itself was last broadly improved. Bump this to re-date every page — use it when the
  * documentation itself has been broadly improved, not for a release: type and README changes date themselves from
- * the version-history ledger.
+ * the version-history ledger. Update the `date` frontmatter of the handwritten pages under `docs/` with it.
  */
 export const CONTENT_REVISED_DATE = '2026-09-11';
 

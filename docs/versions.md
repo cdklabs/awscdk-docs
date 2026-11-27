@@ -1,6 +1,7 @@
 ---
 pageClass: versions-page
 editLink: false
+date: "2026-09-11T00:00:00.000Z"
 ---
 
 # AWS CDK Versions

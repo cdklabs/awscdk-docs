@@ -32,6 +32,7 @@ features:
     details: Discover community-published construct libraries on Construct Hub and extend your stacks beyond what ships with the AWS CDK.
     link: https://constructs.dev
     linkText: Find constructs
+date: "2026-09-11T00:00:00.000Z"
 ---
 
 ## What is the AWS CDK

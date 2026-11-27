@@ -11,7 +11,7 @@ describe('api stability guide page', () => {
   test('the route resolves to a page under docs/ that the type-page indicator can link', () => {
     expect(STABILITY_ROUTE).toBe('/stability');
     expect(pageHref(STABILITY_ROUTE)).toBe('/stability.html');
-    expect(page).toMatch(/^# API Stability\n/);
+    expect(page).toMatch(/^(?:---\n[\s\S]*?\n---\n\n)?# API Stability\n/);
   });
 
   test('explains both levels a type page can carry', () => {
