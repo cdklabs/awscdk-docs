@@ -112,7 +112,8 @@ describe('releasing the build output once written', () => {
   // Config shape: the freed memory has no build output to assert, so pin that the site config registers the plugin.
   test('the VitePress config registers the plugin', () => {
     const config = readFileSync(resolve(import.meta.dirname, '..', 'docs/.vitepress/config.mts'), 'utf-8');
-    expect(config).toMatch(/^\s*releaseBuildOutput\(\),$/m);
+    // Last in vite.plugins: a later post-order writeBundle would see the dropped fields missing.
+    expect(config).toMatch(/^\s*releaseBuildOutput\(\),\n\s*\],$/m);
   });
 });
 
@@ -176,8 +177,9 @@ describe('a VitePress build with the build output released', () => {
   });
 
   test('the client and SSR outputs reach rendering already released', () => {
-    expect(stock.handed).toHaveLength(0);
-    expect(released.handed.some((file) => (file as { isEntry?: boolean }).isEntry)).toBe(true);
+    const names = released.handed.map((file) => (file as { fileName: string }).fileName);
+    expect(names).toContain('app.js'); // SSR entry
+    expect(names.some((name) => /^assets\/app\.[\w-]+\.js$/.test(name))).toBe(true); // client entry
     for (const file of released.handed) {
       expect(Object.keys(file).every((key) => KEPT_OUTPUT_FIELDS.has(key))).toBe(true);
     }

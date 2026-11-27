@@ -1,8 +1,9 @@
 import type { Plugin, Rollup } from "vite";
 
 /**
- * The output fields VitePress reads after a build has written its files: it finds the app, page and CSS chunks,
- * lists their imports for the preload links and checks for the default theme. Everything else is dropped.
+ * The output fields VitePress reads after a build has written its files, in its default (non-MPA) mode: it finds
+ * the app, page and CSS chunks, lists their imports for the preload links and checks for the default theme.
+ * Everything else is dropped. MPA mode also reads chunk `code`, so this plugin does not support it.
  */
 export const KEPT_OUTPUT_FIELDS: ReadonlySet<string> = new Set([
   "type",
