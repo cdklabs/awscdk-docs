@@ -127,7 +127,7 @@ pre.signature {
     min-width: 44px;
   }
 
-  /* Copy Markdown split button and its menu row, in the same top-of-page slot as the star */
+  /* Copy Markdown split button and its menu row: the chip row on type pages, doc-before elsewhere */
   .copy-markdown-main,
   .copy-markdown-options {
     min-height: 44px;
@@ -138,10 +138,73 @@ pre.signature {
     min-height: 44px;
   }
 
-  /* Icon-only favorite star in the breadcrumb bar */
+  /* Icon-only favorite star: the chip row on type pages, the breadcrumb bar on overviews */
   .favorite-star-button {
     min-height: 44px;
     min-width: 44px;
+  }
+
+  /* The actions box reserves the taller touch-target height here, for the same
+     reason it reserves 32px on desktop: the pills arrive after mount. */
+  .type-actions {
+    min-height: 44px;
+  }
+
+  /* Breadcrumb links above the title. `inline-flex` so a min-height binds at
+     all: an inline anchor's height is its line box, which padding alone does
+     not grow. Height only — the chevron after each link already carries the
+     horizontal room, and a 44px min-width would stretch short segments into
+     a ragged trail. */
+  .type-breadcrumb a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* The Experimental chip is the row's only linking chip, and the one new
+     header target still at the chip's 24px. The tap area grows outside the
+     layout, so the chip keeps its painted height beside the kind chip. The
+     inset is vertical only and is measured from the chip's padding box (22px
+     inside its 1px border): 11px above and below reaches 44px, and 0 left and
+     right keeps the area off the neighboring chip and the row's gap. */
+  .vp-doc a.type-chip-stability {
+    position: relative;
+  }
+
+  .vp-doc a.type-chip-stability::before {
+    content: '';
+    position: absolute;
+    inset: -11px 0;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Type page header below the tablet breakpoint
+ *
+ * The title steps down, and the chip row splits into two lines: chips
+ * first, page actions under them. The gap between the two groups grows
+ * to the full row width, which is what forces the wrap.
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  /* Scoped to the type page title, like its desktop rule. */
+  .vp-doc h1:has(+ .type-header) {
+    font-size: 32px;
+    line-height: 1.1;
+  }
+
+  /* VitePress parks the permalink in the gutter left of the heading, at
+     `margin-left: -0.87em`. That em grows with the title, and `VPDoc` pads the
+     content by as little as 24px below 768px, so the stock 27.8px pull at the
+     32px title puts the glyph past the left edge of the screen. Pin it to the
+     gutter instead: 22px clears the glyph's own width and still ends before
+     the title's first letter. From 768px the 42px title's 36.5px pull sits
+     against a 40px gutter and stays on screen, so no cap applies there. */
+  .vp-doc h1:has(+ .type-header) .header-anchor {
+    margin-left: -22px;
+  }
+
+  .type-header-gap {
+    flex-basis: 100%;
   }
 }
 

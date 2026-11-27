@@ -12,10 +12,10 @@ capabilities. A construct's props, a method's signature, an enum's members — o
 released as stable, none of these are removed or changed in an incompatible way
 without a new major version.
 
-Nearly all of `aws-cdk-lib` and all of `constructs` is stable. A stable type page does
-not call out its stability; the absence of an indicator means stable. L1 constructs
-(the `Cfn*` classes and their props) mirror the CloudFormation resource
-specification and change only as that specification does.
+Nearly all of `aws-cdk-lib` and all of `constructs` is stable. A stable type page's
+header shows a **Stable** chip. L1 constructs (the `Cfn*` classes and their props)
+mirror the CloudFormation resource specification and change only as that
+specification does.
 
 ## Experimental
 
@@ -36,12 +36,22 @@ stable guarantee and the alpha package is deprecated.
 
 ## How the level is shown
 
-Every type page of an experimental package opens with an **Experimental** banner
-above the page title. The banner names the package, says that its API may change
-in any release without a major version bump, and links here. An experimental type
-also shows **Stability: Experimental** in the metadata block at the top of its
-page. The module's own page opens with a warning that says the same. Stable pages
-show no banner and no stability indicator.
+A type page carries a chip row under its title, and the stability chip sits
+beside the kind chip. A stable type shows **Stable**. An experimental type shows
+**Experimental**, which links here. A deprecated type shows **Deprecated**,
+strikes its title, and carries a `Deprecated:` note under the row giving the
+reason.
+
+Generated L1 types (the `Cfn*` classes and their props), which the published
+metadata marks `external`, and the few types that declare no stability at all
+show the kind chip alone.
+
+Every type page of an experimental package also opens with an **Experimental**
+banner above the page title. The banner names the package, says that its API may
+change in any release without a major version bump, and links here. An
+experimental type also shows **Stability: Experimental** in the metadata block
+at the top of its page. The module's own page opens with a warning that says the
+same.
 
 The level is read from the published package metadata: a type's own declared
 stability when it has one, otherwise the stability of the module it belongs to.

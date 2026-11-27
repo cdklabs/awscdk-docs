@@ -31,8 +31,8 @@ export function ignoreBlock(lines: string[]): string[] {
  * title match (`aws-s3.Bucket` for `bucket`) above pages that merely
  * mention the term in prose. Pagefind weights h1 text 7.0 by default;
  * 10 keeps the title decisively ahead once boilerplate is ignored.
- * VitePress strips inline HTML when inferring the page title (the H1s
- * already carry a `<Badge>`), so the span never leaks into titles.
+ * A type page states its title in frontmatter, so this span never reaches the
+ * inferred page title.
  *
  * Inserts `<wbr>` at CamelCase and acronym-to-word boundaries so a long
  * name wraps between words on a narrow screen (`HTTP<wbr>Server`,

@@ -2,6 +2,7 @@ import * as spec from '@jsii/spec';
 import { anchoredHeading, PROPS_ANCHOR_PREFIX, SECTION_ANCHORS } from './anchors.js';
 import { escapeAttr, escapeVueText, EXTERNAL_LINK_ATTRS } from './escape.js';
 import { exampleSection } from './examples.js';
+import { renderTypeHeaderFor } from './header.js';
 import { PageHistory } from './history.js';
 import { DEFAULT_LANGUAGE, Language } from './languages.js';
 import {
@@ -21,8 +22,9 @@ import { isUnlinkableSource, relocatedSource } from './provenance.js';
 import { RosettaTablet } from './rosetta.js';
 import { formatDateOnly } from '../page-history.js';
 import { STABILITY_ROUTE } from '../site-routes.js';
-import { PAGEFIND_IGNORE, weightedTitle } from './search.js';
+import { PAGEFIND_IGNORE } from './search.js';
 import { LinkResolver, shortName } from './signatures.js';
+import { typeStability } from './stability.js';
 import { initializerSignatureVariants } from './variants.js';
 import { releasePartOf } from './version-bump.js';
 
@@ -194,13 +196,7 @@ export function cfnMetadata(type: spec.Type, index: TypeIndex): CfnResourceRef |
   return spec.isClassType(type) ? cfnResourceRef(type, index) : undefined;
 }
 
-/**
- * The jsii stability of a type: its own `docs.stability` when set, otherwise the owning assembly's. The same
- * fallback order the version-history fingerprint uses, so the page and the ledger never disagree about a type.
- */
-export function typeStability(type: spec.Type, assembly: spec.Assembly): spec.Stability | undefined {
-  return type.docs?.stability ?? assembly.docs?.stability;
-}
+export { typeStability } from './stability.js';
 
 /**
  * The metadata rows for one type page, in order: stability, CloudFormation resource, L1 counterpart, source
@@ -315,8 +311,8 @@ export interface ConstructPageOptions {
 }
 
 /**
- * The construct level as a reader-facing label. One function, so the H1 badge and the hover preview cannot drift
- * into two formats for the same determination.
+ * The construct level as a reader-facing label. One function, so the page's kind chip and the hover preview cannot
+ * drift into two formats for the same determination.
  */
 export function constructLevelLabel(level: ConstructLevel): string {
   return `${level} construct`;
@@ -327,12 +323,9 @@ export function renderConstructPage(options: ConstructPageOptions): string {
   const { type, assembly, index, linkFor } = options;
   const languages = options.languages ?? [DEFAULT_LANGUAGE];
   const level = constructLevel(type, index);
-  // The kind travels as a class, not as `type`: `<Badge>` only accepts info|tip|warning|danger. Vue merges the
-  // extra class onto the component's root span.
-  const badge = level
-    ? ` <Badge type="tip" class="api-badge api-badge-${level.toLowerCase()}" text="${constructLevelLabel(level)}" />`
-    : '';
-  const lines: string[] = [`# ${weightedTitle(type.name)}${badge}`, ''];
+  const lines: string[] = renderTypeHeaderFor(type, assembly, level
+    ? { text: constructLevelLabel(level), kindClass: `api-badge-${level.toLowerCase()}` }
+    : { text: 'Construct' });
 
   // Merged description: tagline + remarks as one continuous block, no `## Overview` row. The CloudFormation backing
   // resource is a row of the metadata block below.

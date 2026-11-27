@@ -50,6 +50,50 @@ function rulesInMediaBlock(source: string, query: string): Map<string, string> {
   return rules;
 }
 
+describe('type page header below the tablet breakpoint', () => {
+  const css = readFileSync(resolve(THEME_DIR, 'responsive.css'), 'utf-8');
+  // The stylesheet carries several 767px blocks, so the header's own is found
+  // from its section heading rather than by taking the first match.
+  const tabletRules = rulesInMediaBlock(
+    css.slice(css.indexOf('Type page header below the tablet breakpoint')),
+    '@media (max-width: 767px)',
+  );
+
+  test('the title steps down from its desktop size, still scoped to type pages', () => {
+    const h1 = tabletRules.get('.vp-doc h1:has(+ .type-header)');
+    expect(h1).toContain('font-size: 32px');
+    expect(h1).toContain('line-height: 1.1');
+    // Unscoped, it would shrink every H1 on the site below 768px.
+    expect(tabletRules.get('.vp-doc h1')).toBeUndefined();
+  });
+
+  test('the spacer takes the full row, so chips keep one line and the actions take the next', () => {
+    // The wrap is forced by the spacer growing to the row width rather than by
+    // a width query on the groups, which would have to guess the chip count.
+    expect(tabletRules.get('.type-header-gap')).toContain('flex-basis: 100%');
+  });
+
+  test('a breadcrumb link becomes a flex box, so a min-height can bind at all', () => {
+    // An inline anchor's height is its line box, which padding alone does not
+    // grow, so the 44px rule in the 959px block would otherwise do nothing.
+    const mobileRules = rulesInMediaBlock(css, '@media (max-width: 959px)');
+    expect(mobileRules.get('.type-breadcrumb a')).toContain('display: inline-flex');
+  });
+
+  test('the linking stability chip reaches the touch target through an overlay, not its own box', () => {
+    const mobileRules = rulesInMediaBlock(css, '@media (max-width: 959px)');
+    // The chip keeps its 24px painted height next to the kind chip, so the
+    // 44px comes from a positioned pseudo-element the overlay anchors.
+    expect(mobileRules.get('.vp-doc a.type-chip-stability')).toContain('position: relative');
+    const overlay = mobileRules.get('.vp-doc a.type-chip-stability::before');
+    expect(overlay).toContain('position: absolute');
+    // Vertical only: the chip's padding box is 22px inside its 1px border, so
+    // 11px above and below reaches 44px, and 0 to the sides keeps the area off
+    // the neighboring chip and the row's gap.
+    expect(overlay).toContain('inset: -11px 0');
+  });
+});
+
 describe('responsive mobile layout', () => {
   const cssPath = resolve(THEME_DIR, 'responsive.css');
   const css = readFileSync(cssPath, 'utf-8');
@@ -134,6 +178,13 @@ describe('responsive mobile layout', () => {
       ['.copy-markdown-main', 'Copy Markdown button', ['min-height', 'min-width']],
       ['.copy-markdown-options', 'Markdown options button', ['min-height', 'min-width']],
       ['.copy-markdown-item', 'Markdown menu row', ['min-height']],
+      // Height only: the chevron after each crumb already carries the
+      // horizontal room, and a 44px min-width would stretch a short segment
+      // into a ragged trail.
+      ['.type-breadcrumb a', 'breadcrumb links', ['min-height']],
+      // The actions box is emitted empty and reserves its children's height,
+      // so its width is the row's to give; only the height binds.
+      ['.type-actions', 'type page actions box', ['min-height']],
     ];
 
     // These two guards pin the parse: the block is brace-bounded, and every
@@ -163,6 +214,8 @@ describe('responsive mobile layout', () => {
         '.VPSidebar .api-sidebar-group',
         '.VPSidebar .api-sidebar-link',
         '.copy-markdown-item',
+        '.type-breadcrumb a',
+        '.type-actions',
       ]);
     });
 

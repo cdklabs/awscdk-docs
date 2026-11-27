@@ -36,12 +36,19 @@ our custom layer:
   padding below 768px; generated initializer signatures wrap rather than scroll);
 - heading/badge wrapping so title badges never widen the page;
 - WCAG 2.5.5 touch targets (>= 44x44px) below 960px for the hamburger, TOC
-  dropdown button, sidebar drawer rows, the breadcrumb favorite star, and every
-  control in the top bar, the Settings dropdown (768–959px) and the hamburger
-  menu (below 768px): the logo link, the version badge, the search trigger,
-  the Settings gear, the language tabs, and the theme and navigation picker
-  segments (whose 40px tracks grow with them and whose theme picker wraps
-  inside a 320px menu);
+  dropdown button, sidebar drawer rows, the favorite star, the Copy Markdown
+  split button, the type page's breadcrumb links, and every control in the top
+  bar, the Settings dropdown (768–959px) and the hamburger menu (below 768px):
+  the logo link, the version badge, the search trigger, the Settings gear, the
+  language tabs, and the theme and navigation picker segments (whose 40px
+  tracks grow with them and whose theme picker wraps inside a 320px menu). The
+  breadcrumb links and the sidebar drawer rows take the height alone: a 44px
+  min-width would stretch a short crumb into a ragged trail, and the drawer
+  rows already span the drawer. A breadcrumb link also becomes `inline-flex`
+  there, because an inline anchor's height is its line box and a min-height
+  would not bind. The type page's linking stability chip reaches the target
+  through a positioned overlay instead of its own box, so the chip keeps the
+  painted height it shares with the kind chip beside it;
 - a full-width Pagefind dialog below 768px with a 16px input font size to stop
   iOS Safari zoom-on-focus.
 

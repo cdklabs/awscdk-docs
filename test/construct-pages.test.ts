@@ -525,18 +525,20 @@ describe('construct page generation', () => {
       return renderConstructPage({ type, assembly: cdkAssembly, index, linkFor: () => undefined });
     };
 
-    expect(level('aws_ecs_patterns')).toContain('class="api-badge api-badge-l3" text="L3 construct"');
-    expect(level('aws_s3', 'AWS::S3::Bucket')).toContain('class="api-badge api-badge-l1" text="L1 construct"');
-    expect(level('aws_s3')).toContain('class="api-badge api-badge-l2" text="L2 construct"');
+    expect(level('aws_ecs_patterns')).toContain('class="type-chip type-chip-kind api-badge-l3">L3 construct<');
+    expect(level('aws_s3', 'AWS::S3::Bucket')).toContain('class="type-chip type-chip-kind api-badge-l1">L1 construct<');
+    expect(level('aws_s3')).toContain('class="type-chip type-chip-kind api-badge-l2">L2 construct<');
   });
 
-  test('L2 construct page has badge, metadata block, example, and inlined props', () => {
+  test('L2 construct page has a chip row, metadata block, example, and inlined props', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
-    // The H1 carries the name and the kind badge and nothing else: the source
-    // chip belongs to the metadata block. Anchored to the end of the line, so
-    // a chip creeping in fails this.
-    expect(page).toMatch(/^# <span data-pagefind-weight="10">Bucket<\/span> <Badge type="tip" class="api-badge api-badge-l2" text="L2 construct" \/> \{#class-bucket-construct\}$/m);
+    // The H1 carries the type name and nothing else. Anchored to the end of
+    // the line, so a chip or badge creeping back into it fails this.
+    expect(page).toMatch(/^# <span data-pagefind-weight="10">Bucket<\/span> \{#class-bucket-construct\}$/m);
     expect(page).not.toContain('class="header-tag"');
+    // The kind and the stability are chips of the row below the title.
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-l2">L2 construct</span>');
+    expect(page).toContain('<span class="type-chip type-chip-stability type-chip-stable">Stable</span>');
     // The block sits between the hierarchy bar and the example, which is the
     // specified header order.
     const chain = page.indexOf('<nav class="inheritance-chain"');
@@ -547,7 +549,7 @@ describe('construct page generation', () => {
     expect(example).toBeGreaterThan(metadata);
     expect(page).toMatch(/<td class="type-metadata-value"><a class="type-metadata-source" data-pagefind-ignore href="https:\/\/github\.com\/aws\/aws-cdk\/blob\/v\d+\.\d+\.\d+\/packages\/aws-cdk-lib\/aws-s3\/lib\/bucket\.ts#L\d+" target="_blank" rel="noopener noreferrer"><code>aws-s3\/lib\/bucket\.ts<\/code><\/a><\/td>/);
     // Breadcrumb module hierarchy above the H1
-    expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>Bucket</strong>');
+    expect(page).toContain('<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a><span class="breadcrumb-dot">.</span><wbr><strong>Bucket</strong>');
     // The link text carries no full file path, which would be noise
     expect(page).not.toContain('[aws-s3/lib/bucket.ts');
     expect(page).toContain('## Example');
@@ -620,7 +622,7 @@ describe('construct page generation', () => {
 
   test('L1 construct page states its CloudFormation resource in the metadata block', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
-    expect(page).toContain('text="L1 construct"');
+    expect(page).toContain('class="type-chip type-chip-kind api-badge-l1">L1 construct<');
     // The fact is a metadata row, not a description sentence, normalized to
     // HTTPS + TemplateReference.
     expect(page).toContain(
@@ -659,12 +661,21 @@ describe('construct page generation', () => {
     expect(page).not.toContain('CloudFormation resource');
   });
 
+  test('a construct matching no level takes the neutral Construct chip', () => {
+    // `constructLevel` returns nothing for a construct outside the L1/L2/L3
+    // scheme, `constructs.Construct` itself among them, so the chip carries no
+    // `api-badge-*` color class and the row still names the kind.
+    const page = readFileSync(join(outDir, 'docs', 'constructs.Construct.md'), 'utf-8');
+    expect(page).toContain('<span class="type-chip type-chip-kind">Construct</span>');
+    expect(page).not.toMatch(/type-chip-kind api-badge-l[123]/);
+  });
+
   test('L3 pattern construct gets a page in its patterns submodule', () => {
     const page = readFileSync(
       join(outDir, 'docs', 'aws-cdk-lib.aws_ecs_patterns.ApplicationLoadBalancedFargateService.md'),
       'utf-8',
     );
-    expect(page).toContain('text="L3 construct"');
+    expect(page).toContain('class="type-chip type-chip-kind api-badge-l3">L3 construct<');
   });
 
   test('module-root constructs get pages', () => {

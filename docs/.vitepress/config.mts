@@ -17,30 +17,9 @@ import { astReleasingCompiler } from "./vue-compiler";
 import { docsSiteUrl, readVersionSnapshot, VERSION_SNAPSHOT_FILE } from "../../src/docgen/versions";
 import { assertValidVersion } from "../../src/docgen/version-format";
 import { makeHighlight } from "./highlight";
-
-// Clean accessible permalink labels for multi-language member headings and type-page titles. VitePress derives
-// each anchor's `aria-label` from the heading token's raw `content`, which for a docgen member heading is
-// variant-span markup plus the `{#…}` pin. Rewriting `content` to the canonical (first-span, TypeScript) member
-// name before markdown-it-anchor runs restores a clean label. Safe here because rendering, outline, and slug
-// derivation all read the token's `children`; the raw `content` string's only remaining consumer is the aria-label.
-const LANG_VARIANT_SPAN = /^<span class="lang-variant"[^>]*>(.*?)<\/span>/;
-// A type page's H1 source is the weighted name span (with `<wbr>` break points), the kind `<Badge>` and the
-// `{#…}` pin; its label is the plain type name. Any weight matches, so retuning it in weightedTitle() keeps working.
-const WEIGHTED_TITLE_SPAN = /^<span data-pagefind-weight="[\d.]+">(.*?)<\/span>/;
-function cleanHeadingLabel(source: string): string | undefined {
-  const title = WEIGHTED_TITLE_SPAN.exec(source)?.[1];
-  const canonical = title?.replace(/<wbr>/g, "") ?? LANG_VARIANT_SPAN.exec(source)?.[1];
-  if (canonical === undefined) {
-    return undefined; // not a docgen title or variant heading — leave untouched
-  }
-  // Drop any trailing markup after the spans (e.g. a static `<Badge>`)
-  // and the `{#…}` pin; unescape docgen's escapeHtml entities.
-  return canonical
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"');
-}
+// Accessible permalink labels for docgen headings. Its own module, like `highlight`, so a unit test can
+// feed it each heading shape directly.
+import { cleanHeadingLabel } from "./heading-label";
 
 // The generated Service -> Resource -> Kind API tree is emitted once by docgen as cached static assets under
 // docs/public/api-sidebar/ (a skeleton plus one chunk per section) and rendered by the ApiSidebar theme
@@ -174,7 +153,7 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
     // no client runtime, no per-page JS growth.
     math: true,
     // Runs before markdown-it-anchor's core rule so its permalink renderAttrs sees the clean type or member name
-    // instead of title or variant-span markup (see cleanHeadingLabel above). `ruler.before("anchor", …)`
+    // instead of title or variant-span markup (see `heading-label`). `ruler.before("anchor", …)`
     // positions the rule ahead of anchor's regardless of registration order.
     config: (md) => {
       md.core.ruler.before("anchor", "clean_heading_label", (state) => {

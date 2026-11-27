@@ -95,8 +95,11 @@ twin 34.1 KB to 109.1 KB, three times its size, all of it before the first
 `##` heading; `aws_iam.IGrantable` goes 19.8 KB to 67.9 KB and `aws_iam.Grant`
 24.0 KB to 72.1 KB. Tens of kilobytes of URLs, not hundreds, but still several
 times the API surface the twin carries, for a list whose entries a reader of
-the rendered page sees folded away), the type-metadata table becomes `- Label: value` bullets, `:::`
-containers become titled blockquotes. The type-metadata table is the only
+the rendered page sees folded away), the type header's chip row becomes one
+`Kind · Stability` line, the kind alone when the type's stability is
+`external` or unset, and a deprecated type's note becomes a `Deprecated:
+<reason>` paragraph, the type-metadata table becomes `- Label: value`
+bullets, `:::` containers become titled blockquotes. The type-metadata table is the only
 `<table>` the transform parses; every other table-shaped text passes through
 literally. Headings, prose, fenced code and tables pass through. Links keep
 their text and external target. Site page links use `pageHref()` for the
@@ -155,9 +158,17 @@ docgen writes the twins to a sibling tree outside `docs/`,
 optional `GenerateOptions.agentOutDir`. The canonical page records its twin in
 frontmatter as `agentMarkdown: "/v2/docs/<page>.md"` — the only existence
 signal the site consults, so no page can advertise a twin that was not
-produced. A "Copy Markdown" split button at the top of the page, rendered in the
-`doc-before` slot above the breadcrumb bar, and a
+produced. A "Copy Markdown" split button and a
 `<link rel="alternate" type="text/markdown">` in `<head>` both render from it.
+The button renders in the `doc-before` slot above the breadcrumb bar; on a type
+page, whose header carries a chip row, it teleports into that row on mount. It
+is in the served HTML either way, so the in-page link to the twin is there for
+an agent or crawler that reads the markup without running JavaScript. It is not
+reachable by a browser user in that state: the waiting section is
+`visibility: hidden`, and the "View as Markdown" anchor sits in a menu a script
+opens. While it waits for the row it is positioned out of the layout rather
+than left unrendered, because the row reserves its own room for the pills and a
+control painted above the breadcrumb first would shift the page.
 The main button fetches the twin from the same origin and copies its text; a
 menu next to it holds a "View as Markdown" link that opens the file in a new
 tab. That relies on the host serving `.md` as `text/markdown` or `text/plain`

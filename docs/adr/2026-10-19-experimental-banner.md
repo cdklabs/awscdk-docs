@@ -41,8 +41,20 @@ experimental inside a stable package (the resource reference interfaces in
 `aws-cdk-lib`, for example) keeps its `Stability: Experimental` metadata row
 and gets no banner: the banner states a fact about the package the page
 belongs to, and a banner on one page of `aws-cdk-lib` would read as a warning
-about the library. Stable pages show nothing; the absence of the banner is the
-stable indicator, as before.
+about the library. Stable pages carry no banner; their stability is stated by
+the header's stability chip, which a stable, experimental or deprecated type
+page carries. An L1 type is `external` in jsii, so its page carries the kind
+chip alone (see the
+[type page header ADR](./2026-11-26-type-page-header-chip-row.md)).
+
+The absence of the banner is therefore not the stable indicator. It never
+could be a per-type one: the banner is keyed on the package, so on a stable
+package it said nothing at all, which left a reader unable to tell "this type
+is stable" from "this page does not mention stability".
+
+The banner itself stays, and stays keyed on the package. The chip states a
+level in two words; the banner explains what an alpha package means for the
+reader's code, which a chip cannot.
 
 The metadata row on type pages stays. It is where a reader looks for facts
 about a type, and it costs nothing next to the banner.
@@ -50,7 +62,13 @@ about a type, and it costs nothing next to the banner.
 ## Consequences
 
 - Alpha type pages are visibly experimental at a glance, including when
-  entered from a deep link. Stable pages and all overview pages are unchanged.
+  entered from a deep link. Overview pages are unchanged.
+- A type page whose stability is stable, experimental or deprecated states it,
+  stable ones included, so no absence has to carry a meaning there. An L1 page
+  is the exception: jsii calls it `external`, and which label that deserves is a
+  maintainer's call (see the type page header ADR), so it shows the kind chip
+  alone. An alpha type page states its stability three times: the chip, the
+  banner and the metadata row.
 - One more block above the fold on every alpha type page. The banner is short
   and the theme's container styling keeps it compact.
 - Any future stability level that needs its own above-title treatment adds a

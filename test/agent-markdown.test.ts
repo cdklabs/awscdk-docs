@@ -1,4 +1,5 @@
 import { toAgentMarkdown, withFrontmatterKey } from '../src/docgen/agent-markdown.js';
+import { renderTypeHeader } from '../src/docgen/header.js';
 import { renderOverviewPage } from '../src/docgen/index.js';
 import { renderTypeMetadata } from '../src/docgen/layout.js';
 import type { RosettaTablet } from '../src/docgen/rosetta.js';
@@ -28,7 +29,14 @@ describe('withFrontmatterKey', () => {
 
 // A page shaped like the real emission: frontmatter, breadcrumb nav, badged H1 with a Pagefind weight span, a
 // LanguageTabs block with one variant per language, inline variant spans in a table, a container and the trailing
-// hidden filter spans.
+// hidden filter spans. The H1 and the chip row come from the renderer, so the fixture cannot drift from the markup
+// a type page actually carries.
+const [BUCKET_H1, ...BUCKET_HEADER] = renderTypeHeader({
+  name: 'Bucket',
+  kind: { text: 'L2 construct', kindClass: 'api-badge-l2' },
+  stability: 'stable',
+});
+
 const PAGE = [
   '---',
   'title: "Bucket"',
@@ -42,9 +50,8 @@ const PAGE = [
   '',
   '</nav>',
   '',
-  '# <span data-pagefind-weight="10">Bucket</span> <Badge type="tip" class="api-badge api-badge-l2" text="L2" />' +
-    ' <Badge type="tip" class="api-badge" text="Added in v2.200.0" />',
-  '',
+  `${BUCKET_H1} <Badge type="tip" class="api-badge" text="Added in v2.200.0" />`,
+  ...BUCKET_HEADER,
   'An S3 bucket with helpers.',
   '',
   '::: warning Separate package',
@@ -104,6 +111,59 @@ describe('toAgentMarkdown', () => {
     expect(markdown).not.toContain('data-pagefind');
     expect(markdown).not.toContain('<div');
     expect(markdown).not.toContain('<span');
+  });
+
+  test('the kind and the stability survive as a line of their own under the title', () => {
+    // The twin has no chips, so the row's words are what carries the
+    // classification an agent would otherwise have to guess from the FQN. The
+    // row's other children are empty action mounts and contribute nothing.
+    expect(markdown).toContain('# Bucket\n\nL2 construct · Stable\n');
+  });
+
+  test('an experimental type keeps the stability chip as a link', () => {
+    // The chip is the only link in the row, and it leaves the page, so it
+    // keeps its target like every other cross-page link in the twin.
+    const page = renderTypeHeader({
+      name: 'GitHubRepository',
+      kind: { text: 'L2 construct', kindClass: 'api-badge-l2' },
+      stability: 'experimental',
+    }).join('\n');
+    const twin = toAgentMarkdown(page).markdown;
+    expect(twin).toContain(`L2 construct · [Experimental](${docsSiteUrl()}stability.html)`);
+    expect(twin).not.toContain('<a');
+  });
+
+  test('a deprecated type keeps its reason and brings no markup with it', () => {
+    // The note's label has to be a tag the module knows, or `protectCode`
+    // treats it as author text and restores it verbatim into the twin.
+    const page = renderTypeHeader({
+      name: 'Statistic',
+      kind: { text: 'Enum', kindClass: 'api-badge-enum' },
+      stability: 'deprecated',
+      deprecationReason: 'Use one of the factory methods on `Stats`.',
+    }).join('\n');
+    const twin = toAgentMarkdown(page).markdown;
+    expect(twin).toContain('Deprecated: Use one of the factory methods on `Stats`.');
+    expect(twin).toContain('Enum · Deprecated');
+    expect(twin).not.toContain('<strong');
+    expect(twin).not.toContain('<span');
+    expect(twin).not.toContain('<p');
+    expect(twin).not.toContain('type-deprecated');
+  });
+
+  test('a deprecation reason with a paragraph break stays inside its note', () => {
+    // The note's reason is Markdown, so blank lines delimit it on purpose. The collapse is what keeps the
+    // reason itself one line: a second paragraph would close the note early and strand its closing tags.
+    const page = renderTypeHeader({
+      name: 'Statistic',
+      kind: { text: 'Enum' },
+      stability: 'deprecated',
+      deprecationReason: 'Superseded.\n\nUse `Stats` instead.',
+    }).join('\n');
+    expect(page).toContain('Superseded. Use `Stats` instead.');
+    const note = page.slice(page.indexOf('<div class="type-deprecated-note" v-pre>'));
+    expect(note.split('\n\n')).toHaveLength(3);
+    expect(toAgentMarkdown(page).markdown).toContain('Deprecated: Superseded. Use `Stats` instead.');
   });
 
   test('keeps every language variant, each block after a label line naming its language', () => {

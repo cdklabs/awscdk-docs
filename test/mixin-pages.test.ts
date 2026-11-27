@@ -299,11 +299,12 @@ describe('mixin page generation', () => {
     expect(page).not.toContain('class="header-tag"');
   });
 
-  test('mixin page has badge, breadcrumb, methods, and implementors', () => {
+  test('mixin page has a kind chip, breadcrumb, methods, and implementors', () => {
     const page = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
-    expect(page).toContain('# <span data-pagefind-weight="10">IMixin</span> <Badge type="tip" class="api-badge api-badge-mixin" text="Mixin" />');
+    expect(page).toMatch(/^# <span data-pagefind-weight="10">IMixin<\/span> \{#/m);
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-mixin">Mixin</span>');
     // The breadcrumb carries what a metadata table would
-    expect(page).toContain('<a href="/v2/docs/constructs-readme.html">constructs</a>.<wbr><strong>IMixin</strong>');
+    expect(page).toContain('<a href="/v2/docs/constructs-readme.html">constructs</a><span class="breadcrumb-dot">.</span><wbr><strong>IMixin</strong>');
     expect(page).not.toContain('| **Module** |');
     expect(page).not.toContain('| **FQN** |');
     expect(page).toContain('## Methods');
@@ -355,16 +356,16 @@ describe('mixin page generation', () => {
     expect(page).toMatch(/<LanguageTabs[^>]*>\n\n<nav class="inheritance-chain"/);
   });
 
-  test('a behavioral interface is badged Interface, not Mixin', () => {
+  test('a behavioral interface chips itself Interface, not Mixin', () => {
     const page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.IBucket.md'), 'utf-8');
-    expect(page).not.toContain('text="Mixin"');
-    expect(page).toContain('text="Interface"');
+    expect(page).not.toContain('>Mixin<');
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-interface">Interface</span>');
   });
 
   test('marker interfaces get a plain interface page, not a mixin page', () => {
     const page = readFileSync(join(outDir, 'docs', 'constructs.IDependable.md'), 'utf-8');
-    expect(page).not.toContain('text="Mixin"');
-    expect(page).toContain('text="Interface"');
+    expect(page).not.toContain('>Mixin<');
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-interface">Interface</span>');
   });
 
   test('a class-based mixin page badges itself Mixin, not Class', () => {
@@ -377,19 +378,19 @@ describe('mixin page generation', () => {
       join(outDir, 'docs', 'aws-cdk-lib.aws_s3.mixins.BucketAutoDeleteObjects.md'),
       'utf-8',
     );
-    expect(page).toContain('<Badge type="tip" class="api-badge api-badge-mixin" text="Mixin" />');
-    expect(page).not.toContain('text="Class"');
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-mixin">Mixin</span>');
+    expect(page).not.toContain('>Class<');
     // Same badge COLOR as an interface mixin's page, or the sidebar's
     // Mixins group renders one kind as two differently-colored badges.
     const ifacePage = readFileSync(join(outDir, 'docs', 'constructs.IMixin.md'), 'utf-8');
-    expect(ifacePage).toContain('<Badge type="tip" class="api-badge api-badge-mixin" text="Mixin" />');
+    expect(ifacePage).toContain('<span class="type-chip type-chip-kind api-badge-mixin">Mixin</span>');
     // Still the class template, not the interface-shaped mixin page.
     expect(page).not.toContain('implemented by');
 
     // A plain (non-construct) class in the same build keeps the Class badge.
     const duration = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.Duration.md'), 'utf-8');
-    expect(duration).toContain('<Badge type="info" class="api-badge" text="Class" />');
-    expect(duration).not.toContain('text="Mixin"');
+    expect(duration).toContain('<span class="type-chip type-chip-kind">Class</span>');
+    expect(duration).not.toContain('>Mixin<');
   });
 
   test('type lists link mixins with Mixin kind and structs with Struct kind', () => {

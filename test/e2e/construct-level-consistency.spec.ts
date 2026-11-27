@@ -11,7 +11,7 @@ import {
 
 // One construct level, three surfaces. The level is a single determination —
 // `constructLevel()` — but it reaches the reader through three separately
-// assembled labels: the page badge, a link's hover preview, and the sidebar
+// assembled labels: the page's kind chip, a link's hover preview, and the sidebar
 // entry, each with its own text and color. Nothing here can be checked
 // from the generator or the stylesheet alone: the label is assembled in three
 // places and the colors only exist once the cascade has run, so this spec
@@ -59,10 +59,10 @@ test.describe('construct level is consistent across its three surfaces', () => {
     return `${style.color}|${style.backgroundColor}`;
   };
 
-  async function h1Badge(page: Page): Promise<{ text: string; paint: string }> {
-    const badge = page.locator('h1 .VPBadge');
-    await expect(badge).toBeVisible();
-    return { text: (await badge.innerText()).trim(), paint: await badge.evaluate(PAINT) };
+  async function kindChip(page: Page): Promise<{ text: string; paint: string }> {
+    const chip = page.locator('.type-header-row .type-chip-kind');
+    await expect(chip).toBeVisible();
+    return { text: (await chip.innerText()).trim(), paint: await chip.evaluate(PAINT) };
   }
 
   /**
@@ -114,12 +114,12 @@ test.describe('construct level is consistent across its three surfaces', () => {
     };
   }
 
-  test('the page badge and a link preview of the same type read identically', async ({ page }) => {
+  test('the page kind chip and a link preview of the same type read identically', async ({ page }) => {
     // The preview is read from the OTHER page, because a link to the page
     // you are on gets no preview at all — so this compares two surfaces
     // built by two different code paths for the same type.
     await page.goto(QUEUE_PAGE);
-    const queueBadge = await h1Badge(page);
+    const queueBadge = await kindChip(page);
 
     await page.goto(CFN_QUEUE_PAGE);
     await surfaceQueues(page);
@@ -136,7 +136,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
 
   test('the same holds for an L1, in the L1 palette', async ({ page }) => {
     await page.goto(CFN_QUEUE_PAGE);
-    const cfnBadge = await h1Badge(page);
+    const cfnBadge = await kindChip(page);
 
     await page.goto(QUEUE_PAGE);
     await surfaceQueues(page);
@@ -147,13 +147,13 @@ test.describe('construct level is consistent across its three surfaces', () => {
     expect(cfnPreview.paint).toBe(cfnBadge.paint);
   });
 
-  test('the sidebar tag carries the level in the page badge\'s own hue', async ({ page }) => {
+  test('the sidebar tag carries the level in the kind chip\'s own hue', async ({ page }) => {
     // The visible tag stays the bare level — that is the sidebar-navigation ADR's
     // decision and this spec must not reverse it — but its foreground now
-    // comes from the same triple, so the short tag and the long badge are
+    // comes from the same triple, so the short tag and the long chip are
     // visibly the same fact.
     await page.goto(QUEUE_PAGE);
-    const queueBadge = await h1Badge(page);
+    const queueBadge = await kindChip(page);
     const badgeColor = queueBadge.paint.split('|')[0];
 
     await page.goto(CFN_QUEUE_PAGE);
@@ -170,7 +170,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
     // the accent rather than as L2 — otherwise a reader loses "you are here"
     // to a color that only repeats what the name already says.
     await page.goto(QUEUE_PAGE);
-    const badge = await h1Badge(page);
+    const badge = await kindChip(page);
     const l2Hue = badge.paint.split('|')[0];
     await surfaceQueues(page);
 
@@ -200,13 +200,13 @@ test.describe('construct level is consistent across its three surfaces', () => {
     // this is the half of the contract that catches a palette collapsed back
     // to one hue.
     await page.goto(QUEUE_PAGE);
-    const l2Badge = await h1Badge(page);
+    const l2Badge = await kindChip(page);
     await surfaceQueues(page);
     const l1Tag = await sidebarTag(page, '.aws_sqs.CfnQueue');
     const l1Preview = await previewChip(page, '.aws_sqs.CfnQueue');
 
     await page.goto(CFN_QUEUE_PAGE);
-    const l1Badge = await h1Badge(page);
+    const l1Badge = await kindChip(page);
     await surfaceQueues(page);
     const l2Tag = await sidebarTag(page, '.aws_sqs.Queue');
     const l2Preview = await previewChip(page, '.aws_sqs.Queue');
@@ -218,7 +218,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
   });
 
   for (const appearance of ['light', 'dark'] as const) {
-    test(`non-level kinds match their page badges in ${appearance} mode`, async ({ page }) => {
+    test(`non-level kinds match their page chips in ${appearance} mode`, async ({ page }) => {
       await page.addInitScript((theme) => {
         window.localStorage.setItem('vitepress-theme-appearance', theme);
       }, appearance);
@@ -233,7 +233,7 @@ test.describe('construct level is consistent across its three surfaces', () => {
 
       for (const example of examples) {
         await page.goto(example.page);
-        const badge = await h1Badge(page);
+        const badge = await kindChip(page);
 
         await page.goto(QUEUE_PAGE);
         await page

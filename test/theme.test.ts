@@ -382,9 +382,34 @@ describe('API kind badge palette', () => {
     // An unshadowed `:root` color wins in dark mode, the same trap the brand
     // ramp carries. Without this, a dark-mode badge would be near-black text
     // on a pale tint while the suite stayed green.
-    for (const part of ['bg', 'text', 'border']) {
+    for (const part of ['bg', 'text']) {
       expect(darkBlock).toContain(`--cdk-badge-${kind}-${part}:`);
     }
+  });
+
+  test('the Struct, Enum and L1 light inks are pinned by hex', () => {
+    // A chip label is page text, so it owes 7:1 on its own fill. With these
+    // inks the only light pairs under 7:1 are L3 and Facade, which clear AA.
+    // A retune that loosens one of the three has to fail here, not in an audit.
+    expect(cssVar(lightBlock, '--cdk-badge-struct-text')).toBe('#831843');
+    expect(cssVar(lightBlock, '--cdk-badge-enum-text')).toBe('#7c2d12');
+    expect(cssVar(lightBlock, '--cdk-badge-l1-text')).toBe('#713f12');
+  });
+
+  test.each(['struct', 'enum', 'l1'] as const)('light mode: the %s ink clears 7:1 on its own fill', (kind) => {
+    expect(
+      contrast(cssVar(lightBlock, `--cdk-badge-${kind}-text`), cssVar(lightBlock, `--cdk-badge-${kind}-bg`)),
+    ).toBeGreaterThanOrEqual(7);
+  });
+
+  test.each(KINDS)('the %s kind chip takes the fill and ink but not the border tint', (kind) => {
+    // The chip's edge is `currentColor`, so it is the ink, whose contrast
+    // against this fill the pair above already pins.
+    const chip = exactRuleBody(`.type-chip-kind.api-badge-${kind}`);
+    expect(chip).toContain(`background-color: var(--cdk-badge-${kind}-bg)`);
+    expect(chip).toContain(`color: var(--cdk-badge-${kind}-text)`);
+    expect(chip).not.toContain('border-color');
+    expect(exactRuleBody('.type-chip-kind')).toContain('border-color: currentColor');
   });
 
   test('every kind has a distinct color in both schemes', () => {
@@ -463,8 +488,8 @@ describe('API kind badge palette', () => {
 
     test('the tag keeps its neutral chip', () => {
       // The level may tint the text, never the chip: recoloring the chip
-      // would make the tag as loud as the H1 badge, which the sidebar-tag
-      // ADR decided against.
+      // would make the tag as loud as the page's kind chip, which the
+      // sidebar-tag ADR decided against.
       const sidebar = readFileSync(resolve(THEME_DIR, 'api-sidebar.css'), 'utf-8');
       for (const level of ['L1', 'L2', 'L3']) {
         const start = sidebar.indexOf(`.api-sidebar-level[data-level='${level}']`);
@@ -549,6 +574,211 @@ describe('API kind badge palette', () => {
     const generated = ruleBody('.type-metadata-generated');
     expect(generated).toContain('var(--vp-c-text-2)');
     expect(generated).not.toContain('text-decoration: underline');
+  });
+
+  describe('type page header', () => {
+    // The header's own tokens. Secondary text owes 7:1 against the page it sits
+    // on, a chip label 7:1 against its own fill, and a non-text graphic such as
+    // the chevron 3:1 against the page. Both schemes are checked, because the
+    // a11y audit runs the default color scheme only.
+    const headerStart = css.indexOf('--th-text-2');
+    const headerDarkStart = css.indexOf('.dark {', headerStart);
+    const headerLight = css.slice(headerStart, headerDarkStart);
+    const headerDark = css.slice(headerDarkStart, css.indexOf('}', headerDarkStart));
+    const themeCss = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
+    const themeLight = themeCss.slice(themeCss.indexOf(':root {'), themeCss.indexOf('.dark {'));
+    const themeDark = themeCss.slice(themeCss.indexOf('.dark {'));
+    // Read from the theme, so retuning the page background moves these ratios
+    // instead of leaving them measured against a stale copy of it.
+    const PAGE_BG = {
+      light: cssVar(themeLight, '--vp-c-bg'),
+      dark: cssVar(themeDark, '--vp-c-bg'),
+    } as const;
+
+    test.each(['--th-text-2', '--th-chevron'] as const)(
+      '%s is shadowed in dark mode, so the light value cannot win there',
+      (name) => {
+        expect(headerDark).toContain(`${name}:`);
+      },
+    );
+
+    test('the breadcrumb current segment clears 7:1 on the page', () => {
+      for (const [scheme, block] of [['light', headerLight], ['dark', headerDark]] as const) {
+        expect(contrast(cssVar(block, '--th-text-2'), PAGE_BG[scheme])).toBeGreaterThanOrEqual(7);
+      }
+    });
+
+    test('the chevron clears the 3:1 graphics floor', () => {
+      // A non-text graphic (WCAG 1.4.11): it carries no word.
+      for (const [scheme, block] of [['light', headerLight], ['dark', headerDark]] as const) {
+        expect(contrast(cssVar(block, '--th-chevron'), PAGE_BG[scheme])).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    test('the neutral chip label clears 7:1 on its own fill in both schemes', () => {
+      // A plain class and a level-less construct take this chip, and its label
+      // is 13px bold text, so it owes what any other chip label owes. The fill
+      // is an opaque token for exactly this reason: a translucent one would
+      // have to be composited before it could be read.
+      for (const block of [headerLight, headerDark]) {
+        expect(contrast(cssVar(block, '--th-chip-neutral-text'), cssVar(block, '--th-chip-neutral-bg')))
+          .toBeGreaterThanOrEqual(7);
+      }
+      expect(headerDark).toContain('--th-chip-neutral-bg:');
+      expect(headerDark).toContain('--th-chip-neutral-text:');
+      expect(exactRuleBody(".type-chip-kind:not([class*='api-badge-'])"))
+        .toContain('background-color: var(--th-chip-neutral-bg)');
+    });
+
+    test('each stability chip ink clears 7:1 on its own fill in both schemes', () => {
+      for (const block of [headerLight, headerDark]) {
+        for (const kind of ['stable', 'exp', 'dep']) {
+          expect(contrast(cssVar(block, `--th-${kind}-text`), cssVar(block, `--th-${kind}-bg`)))
+            .toBeGreaterThanOrEqual(7);
+        }
+      }
+    });
+
+    test('a link in the deprecation note clears 4.5:1 on the note fill', () => {
+      // A reason can carry a web link, which `escapeProse` turns into a Markdown
+      // link. `--vp-c-brand-1` on this tint is under what body text owes, so
+      // the note re-points its links to brand-2 as the callouts do.
+      expect(ruleBody('.vp-doc .type-deprecated-note a')).toContain('var(--vp-c-brand-2)');
+      for (const [header, theme] of [[headerLight, themeLight], [headerDark, themeDark]] as const) {
+        expect(contrast(cssVar(theme, '--vp-c-brand-2'), cssVar(header, '--th-dep-bg')))
+          .toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    test('the deprecation edge clears 4.5:1 on the note it bounds', () => {
+      for (const block of [headerLight, headerDark]) {
+        expect(contrast(cssVar(block, '--th-dep-edge'), cssVar(block, '--th-dep-bg')))
+          .toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    test('the breadcrumb is plain text in the body typeface, with no box of its own', () => {
+      const bar = exactRuleBody('.type-breadcrumb');
+      expect(bar).toContain('font-family: var(--vp-font-family-base)');
+      expect(bar).toContain('font-size: 14px');
+      expect(bar).toContain('padding: 0');
+      expect(bar).not.toContain('border-radius');
+      expect(bar).not.toContain('background-color');
+    });
+
+    test('the join dots are real text at no size, so a copy still gives the FQN', () => {
+      // `display: none` would drop them from the selection, which is the whole
+      // reason the separator a reader sees is drawn rather than written. Only
+      // the joins collapse: a dot inside one segment's label is part of a
+      // nested type's name and has to stay visible.
+      expect(exactRuleBody('.breadcrumb-dot')).toContain('font-size: 0');
+      expect(bare).not.toMatch(/\.breadcrumb-trail\s*\{[^}]*font-size:\s*0/);
+      const chevron = exactRuleBody(
+        '.type-breadcrumb a::after',
+        '.breadcrumb-segment::after',
+        '.breadcrumb-ellipsis::after',
+      );
+      expect(chevron).toContain("content: ''");
+      expect(chevron).toContain('transform: rotate(45deg)');
+      expect(chevron).toContain('var(--th-chevron)');
+      // Nothing follows the current page, so the trail's last segment gets none.
+      expect(exactRuleBody('.breadcrumb-trail > :last-child::after')).toContain('content: none');
+    });
+
+    test('the title treatment is keyed on the header block, so it reaches type pages only', () => {
+      // This stylesheet is imported globally, so an unscoped `.vp-doc h1`
+      // would restyle module overviews and authored pages as well.
+      const h1 = exactRuleBody('.vp-doc h1:has(+ .type-header)');
+      expect(h1).toContain('font-size: 42px');
+      expect(h1).toContain('font-weight: 700');
+      expect(h1).toContain('margin: 0');
+      expect(bare).not.toMatch(/(^|\})\s*\.vp-doc h1\s*\{/);
+    });
+
+    test('the badge alignment override holds the Added in badge on the title baseline', () => {
+      // It is the one badge an API H1 still carries. All three declarations,
+      // since dropping any one hands that property back to VitePress.
+      const rule = exactRuleBody('.vp-doc h1 > .VPBadge.api-badge');
+      expect(rule).toContain('vertical-align: middle');
+      expect(rule).toContain('margin-top: 0');
+      expect(rule).toContain('transform: none');
+    });
+
+    test('the header block closes with a divider above the summary', () => {
+      const block = exactRuleBody('.type-header');
+      expect(block).toContain('border-bottom: 1px solid var(--vp-c-divider)');
+      expect(block).toContain('padding-bottom: 16px');
+      expect(block).toContain('margin: 20px 0 32px');
+    });
+
+    test('both chips share one geometry and the row wraps rather than scrolls', () => {
+      const chip = exactRuleBody('.type-chip');
+      expect(chip).toContain('height: 24px');
+      expect(chip).toContain('border-radius: 12px');
+      expect(chip).toContain('white-space: nowrap');
+      const row = exactRuleBody('.type-header-row');
+      expect(row).toContain('flex-wrap: wrap');
+      expect(row).toContain('gap: 8px');
+    });
+
+    test('the actions box reserves the pills height, so the row does not grow on mount', () => {
+      // Docgen emits the box empty; the buttons teleport in after hydration.
+      expect(exactRuleBody('.type-actions')).toContain('min-height: 32px');
+    });
+
+    test('the page actions are outlined pills with a visible focus ring', () => {
+      const pills = ruleBody('.vp-doc .type-actions .copy-markdown-main');
+      expect(pills).toContain('border: 2px solid var(--vp-c-brand-1)');
+      expect(pills).toContain('height: 32px');
+      const star = ruleBody('.vp-doc .type-actions .favorite-star-button');
+      expect(star).toContain('border-radius: 20px');
+      // One ring treatment for every new control, the site's own.
+      const ring = ruleBody(':focus-visible');
+      expect(ring).toContain('outline: 2px solid var(--vp-c-brand-1)');
+      for (const selector of [
+        '.vp-doc .type-actions .copy-markdown-main:focus-visible',
+        '.vp-doc .type-actions .favorite-star-button:focus-visible',
+        '.type-breadcrumb a:focus-visible',
+        '.vp-doc a.type-chip-stability:focus-visible',
+      ]) {
+        expect(bare).toContain(selector);
+      }
+    });
+
+    test('the experimental chip keeps its chip ink against the prose link color', () => {
+      // `.vp-doc a` would otherwise paint it as a link. The resting selector
+      // carries `.vp-doc` too, which beats it; the hover selector adds the
+      // pseudo-class, because VitePress's `.vp-doc a:hover` has the same
+      // specificity as the resting rule and would otherwise win on load order.
+      // The ink itself is measured in the browser, hover included, in
+      // `test/e2e/type-page-header.spec.ts`.
+      expect(bare).toContain('.vp-doc a.type-chip-experimental');
+      expect(bare).toContain('.vp-doc a.type-chip-experimental:hover');
+      const linking = ruleBody('.vp-doc a.type-chip-stability');
+      expect(linking).toContain('text-decoration: underline');
+      // `.vp-doc a` sets weight 500 and outranks `.type-chip`, so the chip's
+      // own 700 is restated here to keep both chips at one weight.
+      expect(linking).toContain('font-weight: 700');
+    });
+
+    test('a deprecated title is struck in the deprecation tone', () => {
+      const title = exactRuleBody('.vp-doc h1 .type-title-deprecated');
+      expect(title).toContain('line-through');
+      expect(title).toContain('var(--th-dep-edge)');
+    });
+
+    test('the deprecation note is a left-edged block carrying the reason', () => {
+      const note = exactRuleBody('.type-deprecated-note');
+      expect(note).toContain('border-left: 4px solid var(--th-dep-edge)');
+      expect(note).toContain('background-color: var(--th-dep-bg)');
+      expect(note).toContain('line-height: 20px');
+      expect(exactRuleBody('.type-deprecated-label')).toContain('var(--th-dep-text)');
+      // The reason renders as Markdown, so its paragraph drops the default theme's
+      // margins and its 28px line height, which would beat what the note declares.
+      const paragraph = exactRuleBody('.vp-doc .type-deprecated-note p');
+      expect(paragraph).toContain('margin: 0');
+      expect(paragraph).toContain('line-height: inherit');
+    });
   });
 
   test('the metadata table uses the body typeface', () => {

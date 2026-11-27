@@ -1,9 +1,13 @@
-<!-- "Copy Markdown" split button (a labeled region, so landmark navigation reaches it), rendered from the
-     doc-before slot at the top of the page, above the breadcrumb bar. The main button copies the page's
+<!-- "Copy Markdown" split button (a labeled region, so landmark navigation reaches it). On a type page it
+     teleports into the `type-action-copy` mount point of the docgen-emitted chip row, beside the favorite star;
+     every other API page keeps the doc-before slot at the top of the page. On a page whose frontmatter says it has
+     a chip row, the control waits in `doc-before` taking no space until that mount point resolves, so it never
+     paints in the fallback placement and then jumps, while the served HTML still carries the link to the twin for
+     an agent or crawler that reads the markup without running JavaScript. The main button copies the page's
      Markdown twin; the options button opens a one-item menu that links the file in a new tab. A page without a
      twin (no `agentMarkdown` frontmatter) renders nothing. -->
 <script setup lang="ts">
-import { useData } from "vitepress";
+import { onContentUpdated, useData } from "vitepress";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { agentMarkdownHref } from "../agent-markdown";
 import { copyMarkdownFrom, type CopyResult } from "../copy-markdown";
@@ -24,6 +28,14 @@ const menuOpen = ref(false);
 // Set once hydration has run, so a test (or any script) can tell a live button from the server-rendered shell.
 const ready = ref(false);
 const root = ref<HTMLElement | null>(null);
+// The chip row's copy mount point, re-resolved on every content update: SPA
+// navigation replaces the rendered page and its row element.
+const rowTarget = ref<HTMLElement | null>(null);
+// Whether THIS page has a chip row, known from frontmatter at server-render
+// time. The mount point itself can only be queried in the browser, so without
+// this the control would paint in `doc-before` first and move on mount,
+// shifting the whole header on every type-page load.
+const hasRow = computed(() => page.value.frontmatter?.typeHeader === true);
 const optionsButton = ref<HTMLButtonElement | null>(null);
 const viewLink = ref<HTMLAnchorElement | null>(null);
 let resetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -126,8 +138,17 @@ watch(
   }
 );
 
+function resolveRowTarget(): void {
+  rowTarget.value =
+    typeof document === "undefined"
+      ? null
+      : document.querySelector<HTMLElement>(".vp-doc .type-header-row .type-action-copy");
+}
+onContentUpdated(resolveRowTarget);
+
 onMounted(() => {
   ready.value = true;
+  resolveRowTarget();
   document.addEventListener("pointerdown", onDocumentPointerDown);
 });
 onUnmounted(() => {
@@ -137,10 +158,12 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <Teleport :to="rowTarget ?? 'body'" :disabled="!rowTarget">
   <section
     v-if="markdownUrl"
     ref="root"
     class="copy-markdown"
+    :class="hasRow ? (rowTarget ? 'in-row' : 'pending') : 'standalone'"
     @focusout="onFocusOut"
     aria-label="Page Markdown"
     :data-ready="ready ? '' : undefined"
@@ -188,6 +211,7 @@ onUnmounted(() => {
     </div>
     <span class="copy-markdown-status" role="status" aria-live="polite">{{ announcement }}</span>
   </section>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -195,7 +219,29 @@ onUnmounted(() => {
 .copy-markdown {
   position: relative;
   display: inline-block;
+}
+
+.copy-markdown.standalone {
   margin-bottom: 8px;
+}
+
+/* A type page renders the control in `doc-before` until the chip row's mount
+   point resolves, then teleports it. While it waits it must take no space:
+   the row reserves its own room for the pills, and painting them above the
+   breadcrumb first would shift the whole page. Hidden this way rather than
+   left unrendered so the served HTML still carries the link to the Markdown
+   twin for an agent or crawler reading the markup without running JavaScript. */
+.copy-markdown.pending {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  /* Out of the tab order and the accessibility tree as well as out of the
+     layout: the buttons do nothing until the handlers are attached, and a
+     keyboard user must not land on two invisible ones before the breadcrumb. */
+  visibility: hidden;
 }
 
 .copy-markdown-split {

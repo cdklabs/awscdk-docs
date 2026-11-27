@@ -39,13 +39,19 @@ and `npx projen docs:e2e` never collide. `docs:e2e` is NOT part of the default
 `build` task — a browser suite is too slow and heavy for every local build.
 
 **Fixture, not the full site.** `docs:e2e` runs the normal `docs:generate` (cheap),
-then `scripts/e2e-fixture-prune.cjs` prunes to a couple of representative
-aws-cdk-lib services (default `aws-sns` + `aws-sqs` via `E2E_FIXTURE_SERVICES`; the
-`constructs` module and hand-written pages stay), then a single-shot `vitepress build`
+then `scripts/e2e-fixture-prune.cjs` prunes to a few representative aws-cdk-lib
+services (default `aws-sns`, `aws-sqs` and `region-info` via `E2E_FIXTURE_SERVICES`;
+the `constructs` and `aws-cdk-aws-codestar-alpha` modules via `E2E_FIXTURE_MODULES`,
+plus the hand-written pages), then a single-shot `vitepress build`
 with Pagefind indexing, then overlays the agent-Markdown twins. The complete
 client-side assets (`sidebar.json`, `symbols.json`, `type-summaries.json`,
 `api-sidebar/<lang>.json`) are left intact, so the features under test consume
-production-identical data. The suite builds ~150 pages in well under a minute and
+production-identical data. `region-info` and `aws-cdk-aws-codestar-alpha` each earn
+their place with one page the other services cannot supply: `region_info.Default` is
+a type whose own stability is `deprecated`, and the alpha package is what renders the
+experimental banner and the Experimental stability chip, the only link in the chip
+row. Both are small. `scripts/e2e-fixture-prune.cjs` prints the number of pages it
+keeps on every run, 88 with these defaults, and the build of that many pages
 needs no special memory settings.
 
 **The suite owns its server; never reuses one.** Playwright boots

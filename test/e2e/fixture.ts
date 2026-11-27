@@ -1,6 +1,6 @@
 // Pages that exist in the e2e fixture build (scripts/e2e-fixture-prune.cjs
-// keeps the aws-sns + aws-sqs services and the constructs module), at the
-// historical /v2/docs/ canonical shape.
+// keeps the aws-sns, aws-sqs and region-info services and the constructs and
+// aws-codestar-alpha modules), at the historical /v2/docs/ canonical shape.
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -20,6 +20,16 @@ export const CFN_QUEUE_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue.html';
 export const NESTED_TYPE_PAGE = '/v2/docs/aws-cdk-lib.aws_sns.CfnTopic.SubscriptionProperty.html';
 /** A Facade class: the fixture surfaces `QueueGrants`. */
 export const QUEUE_GRANTS_PAGE = '/v2/docs/aws-cdk-lib.aws_sqs.QueueGrants.html';
+/**
+ * A type whose OWN stability is `deprecated`, inside a stable package: its header strikes the title, chips
+ * `Deprecated` and carries the reason as a note. The fixture keeps `region-info` for this one page.
+ */
+export const DEPRECATED_TYPE_PAGE = '/v2/docs/aws-cdk-lib.region_info.Default.html';
+/**
+ * A type page of an experimental package: it carries the experimental banner above the title and the only link in
+ * the chip row, the Experimental chip, which points at the stability guide.
+ */
+export const EXPERIMENTAL_TYPE_PAGE = '/v2/docs/@aws-cdk_aws-codestar-alpha.GitHubRepository.html';
 /**
  * A class with four static factories of its own type (`existsFilter`, `notExistsFilter`, `numericFilter`,
  * `stringFilter`): the only fixture type whose `obtainable from` row overflows its two-line budget.
@@ -104,6 +114,12 @@ export const REPRESENTATIVE_PAGES = [
   // path (`renderUsageBar`) and the `Type relations` landmark.
   ICONSTRUCT_PAGE,
   CONSTRUCT_ORDER_PAGE,
+  // The two header states no page above renders: a struck title with its
+  // deprecation note, and the Experimental chip, the chip row's only link and
+  // so the only part of the row with a contrast and target-size obligation of
+  // its own.
+  DEPRECATED_TYPE_PAGE,
+  EXPERIMENTAL_TYPE_PAGE,
 ] as const;
 
 // Severities that FAIL the accessibility gate. Moderate and minor

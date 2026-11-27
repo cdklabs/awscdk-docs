@@ -1,9 +1,10 @@
 /* Favorite pages UI. All colors come from
  * VitePress theme variables so light and dark mode both work. */
 
-/* Icon-only star toggle: lives at the right edge of the
- * breadcrumb header bar on type pages, standalone above the content on
- * API pages without a breadcrumb. Hover/title text carries the label. */
+/* Icon-only star toggle: an outlined pill on the chip row of a type page
+ * (sized in api-layout.css, with the Copy Markdown pills it sits beside),
+ * a compact icon in the breadcrumb bar of an API page that has no chip row,
+ * standalone above the content otherwise. Hover/title text carries the label. */
 .favorite-star {
   display: inline-flex;
   align-items: center;

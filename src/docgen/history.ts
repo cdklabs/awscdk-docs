@@ -156,7 +156,7 @@ function minorLine(version: string): string {
 /** H1 badge for a page introduced in the documented minor line. */
 export function addedInBadge(introducedIn: string): string {
   // `api-badge` carries no color of its own; it opts this badge into the H1 alignment override, because
-  // `injectBadges` appends it to the same line box as the kind badge and the source chip.
+  // `injectBadges` appends it to the H1's line beside the type name.
   return `<Badge type="tip" class="api-badge" text="Added in v${introducedIn}" />`;
 }
 

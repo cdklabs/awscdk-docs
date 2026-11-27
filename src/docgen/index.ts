@@ -21,7 +21,7 @@ import { escapeVueText, removeAll } from './escape.js';
 import { FENCE_LANG, withoutLiteralsAndComments } from './examples.js';
 import { codeFence, mapProse, tokenizeFences } from './fences.js';
 import { injectBadges } from './freshness.js';
-import { BreadcrumbSegment, renderBreadcrumb } from './header.js';
+import { BreadcrumbSegment, renderBreadcrumb, renderTypeHeader } from './header.js';
 import {
   addedInBadge,
   emptyLedger,
@@ -140,8 +140,8 @@ export interface TypeEntry {
   /** The underlying jsii type, for page generation. */
   readonly type: spec.Type;
   /**
-   * Construct level, from {@link constructLevel} — the same determination that badges the page H1. Carried here so
-   * the sidebar generator reuses this classification instead of re-deriving it (or parsing it back out of
+   * Construct level, from {@link constructLevel} — the same determination that chips the page header row. Carried
+   * here so the sidebar generator reuses this classification instead of re-deriving it (or parsing it back out of
    * {@link kind}); absent for everything that is not a leveled construct.
    */
   readonly level?: ConstructLevel;
@@ -541,9 +541,10 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
           name: entry.name,
           kind: entry.kind,
           summary: entry.summary,
-          // Reader-facing label and level for the preview's kind chip, from the SAME helper the H1 badge uses so
-          // the two surfaces cannot drift. `kind` is left alone because it is a classification value, not a label:
-          // `searchKind` derives the Pagefind filter from its first word. `level` is the canonical `ConstructLevel`
+          // Reader-facing label and level for the preview's kind chip, from the SAME helper the page's kind chip
+          // uses, so the two surfaces cannot drift. `kind` is left alone because it is a classification value, not
+          // a label: `searchKind` derives the Pagefind filter from its first word. `level` is the canonical
+          // `ConstructLevel`
           // — the same form the sidebar nav data emits — so one field name never means two things. Emitted only for
           // leveled constructs.
           ...(entry.level
@@ -917,13 +918,13 @@ function typeKind(type: spec.Type): string {
 }
 
 /**
- * Heading badge for a classification that differs from the jsii kind. `Mixin` is overridden so a class-based mixin
- * badges itself the same way an interface mixin does; `Facade` is classified and labeled everywhere else, so its
- * page badges itself `Facade` rather than a plain `Class`. Any kind absent here keeps the neutral `Class` badge.
+ * Kind chip for a classification that differs from the jsii kind. `Mixin` is overridden so a class-based mixin
+ * chips itself the same way an interface mixin does; `Facade` is classified and labeled everywhere else, so its
+ * page chips itself `Facade` rather than a plain `Class`. Any kind absent here takes the neutral `Class` chip.
  */
-const KIND_BADGE: Readonly<Record<string, { text: string; type: string; kindClass: string } | undefined>> = {
-  Mixin: { text: 'Mixin', type: 'tip', kindClass: 'api-badge-mixin' },
-  Facade: { text: 'Facade', type: 'tip', kindClass: 'api-badge-facade' },
+const KIND_BADGE: Readonly<Record<string, { text: string; kindClass: string } | undefined>> = {
+  Mixin: { text: 'Mixin', kindClass: 'api-badge-mixin' },
+  Facade: { text: 'Facade', kindClass: 'api-badge-facade' },
 };
 
 /** Dispatch a type to its page renderer based on classification. */
@@ -982,8 +983,8 @@ function renderTypePage(
         emitExamples,
         history,
         // A class-based mixin is grouped as `Mixin` in the module type list, the sidebar and the search filter, so its
-        // own page badges itself the same way, in the same color renderMixinPage gives an interface mixin. A Facade
-        // is classified by `buildFacadeIndex` and labeled Facade elsewhere, so its page badges itself Facade too.
+        // own page chips itself the same way, in the same color renderMixinPage gives an interface mixin. A Facade
+        // is classified by `buildFacadeIndex` and labeled Facade elsewhere, so its page chips itself Facade too.
         badge: KIND_BADGE[entry.kind],
       });
   }
@@ -998,13 +999,18 @@ function renderTypePage(
   if (spec.isEnumType(type)) {
     return renderEnumPage({ type, assembly, index, usage, linkFor, languages, tablet, emitExamples, history });
   }
-  return [`# ${entry.name}`, '', entry.summary, ''].join('\n');
+  // Exhaustiveness fallback, unreachable today: `@jsii/spec` declares `Type` as class | interface | enum, and the
+  // three guards above cover all three. It still emits the chip row, because `typePageFrontmatter` writes
+  // `typeHeader: true` on EVERY type page and the theme reads that as a promise: `CopyMarkdown.vue` waits for the
+  // row to teleport into and `FavoriteStar.vue` renders the star only inside it. A row-less page would hide both
+  // for good. The chip states the entry's own kind, which is the classification the module list and sidebar use.
+  return [...renderTypeHeader({ name: entry.name, kind: { text: entry.kind } }), entry.summary, ''].join('\n');
 }
 
 /**
  * Experimental banner for every type page of an experimental (alpha) package, emitted above the H1 so the level is
  * the first thing a reader sees. A VitePress `warning` custom container — the same block the separate-install alert
- * uses, so the two read as one family. Empty for a stable package: the absence of the banner is the stable indicator.
+ * uses, so the two read as one family. Empty for a stable package, whose stability the header's Stable chip states.
  *
  * Type pages only: the module overview already opens with the package README's own experimental notice and the
  * separate-install alert, so a third box there would repeat them.
@@ -1071,11 +1077,15 @@ const OVERVIEW_FRONTMATTER = ['---', 'outline: false', '---', ''];
  *
  * - It must be the file's FIRST bytes. VitePress parses a frontmatter block only at the very top and silently
  *   ignores it anywhere else, so anything inserted above this silently restores H1 inference.
- * - The type name is stated explicitly because the H1 carries a source chip whose inner text would otherwise leak
- *   into VitePress's inferred title.
+ * - The type name is stated explicitly because the H1 source is markup (the weighted-title span, the deprecated
+ *   wrapper and, on a newly added type, the `Added in` badge), and the frontmatter title keeps it the bare name.
+ *
+ * `typeHeader` tells the theme, at server-render time, that this page has a chip row for the page actions to
+ * teleport into. Without it the actions would have to render in their fallback placement first and move on mount,
+ * which shifts the whole header on every type-page load.
  */
 function typePageFrontmatter(name: string, upstreamEditUrl: string | undefined): readonly string[] {
-  return ['---', `title: ${JSON.stringify(name)}`, ...upstreamKey(upstreamEditUrl), '---', ''];
+  return ['---', `title: ${JSON.stringify(name)}`, 'typeHeader: true', ...upstreamKey(upstreamEditUrl), '---', ''];
 }
 
 /** The recorded history as frontmatter keys, one per known value; a page with no history is returned untouched. */

@@ -855,7 +855,7 @@ describe('API page layout', () => {
         // Pagefind filter from its first word, and the module type lists print it.
         kind: 'Construct (L2)',
         // The reader-facing label and its level ride alongside for the hover
-        // preview's chip, so the preview and the page's H1 badge
+        // preview's chip, so the preview and the page's kind chip
         // are the same string from the same helper.
         label: 'L2 construct',
         // The canonical `ConstructLevel`, identical to what the sidebar nav

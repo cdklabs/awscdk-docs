@@ -3,21 +3,28 @@
 // Prune the generated API docs down to the small browser-e2e fixture.
 //
 // The full ~21k-page site is too heavy to rebuild for every browser-test run, so the e2e suite builds a small
-// subset: a handful of aws-cdk-lib services plus the `constructs` module and the hand-written pages. The
+// subset: the aws-cdk-lib services and standalone modules named in the defaults below, plus the hand-written
+// pages. The
 // complete client-side assets (the api-sidebar/ skeleton, chunks, symbol index and type-summary lookup) are
 // left intact, so the interactive features under test see the same data as in production.
 //
-// Env: E2E_FIXTURE_SERVICES — comma-separated aws-cdk-lib service dirs to keep (default: aws-sns,aws-sqs).
+// Env: E2E_FIXTURE_SERVICES — comma-separated aws-cdk-lib service dirs to keep (default:
+// aws-sns,aws-sqs,region-info).
 // E2E_FIXTURE_MODULES — comma-separated standalone module docIds or their historical directory slugs (e.g.
-// `constructs`, `aws-cdk-aws-glue-alpha`) to keep besides aws-cdk-lib (default: constructs). Every other
-// standalone module tree is dropped to keep the single-process 4 GB e2e VitePress build within its heap.
+// `constructs`, `aws-cdk-aws-glue-alpha`) to keep besides aws-cdk-lib (default:
+// constructs,aws-cdk-aws-codestar-alpha). Every other standalone module tree is dropped to keep the
+// single-process 4 GB e2e VitePress build within its heap.
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const { unitFor } = require('./shard-prune.cjs');
 
-const DEFAULT_SERVICES = 'aws-sns,aws-sqs';
-const DEFAULT_MODULES = 'constructs';
+// `region-info` is in the default set for one page: `region_info.Default` is the only small, stable-package
+// submodule carrying a type whose own stability is `deprecated`, which the type-page header renders differently.
+const DEFAULT_SERVICES = 'aws-sns,aws-sqs,region-info';
+// `aws-codestar-alpha` is the smallest experimental package, kept so one page in the fixture carries the
+// experimental banner and the Experimental stability chip.
+const DEFAULT_MODULES = 'constructs,aws-cdk-aws-codestar-alpha';
 
 function main() {
   const keep = new Set(

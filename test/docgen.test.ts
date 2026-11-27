@@ -576,7 +576,7 @@ describe('docgen generation', () => {
       join(outDir, 'docs', '@aws-cdk_cfn-property-mixins.aws_lambda.CfnFunctionPropsMixin.md'),
       'utf-8',
     );
-    expect(page).toContain('class="api-badge api-badge-mixin" text="Mixin"');
+    expect(page).toContain('<span class="type-chip type-chip-kind api-badge-mixin">Mixin</span>');
     expect(page).toContain('href="/v2/docs/constructs.IMixin.html">IMixin</a>');
     expect(page).toContain('## Initializer');
     expect(page).toContain('## Methods');
@@ -592,7 +592,7 @@ describe('docgen generation', () => {
     );
     const propertyMixinPages = packagePages.filter((name) => name.endsWith('PropsMixin.md'));
     const classifiedPages = packagePages.filter((name) =>
-      readFileSync(join(outDir, 'docs', name), 'utf-8').includes('class="api-badge api-badge-'),
+      readFileSync(join(outDir, 'docs', name), 'utf-8').includes('class="type-chip type-chip-kind api-badge-'),
     );
     expect(propertyMixinPages.length).toBeGreaterThan(1000);
     expect(classifiedPages).toEqual(propertyMixinPages);
@@ -793,7 +793,7 @@ describe('docgen generation', () => {
     // README-backed submodule overview: package linked, submodule plain,
     // and the trail sits OUTSIDE the v-pre container so its links render.
     const s3Page = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
-    const trail = '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><strong>aws_s3</strong>';
+    const trail = '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><strong>aws_s3</strong>';
     expect(s3Page).toContain(trail);
     expect(s3Page).not.toContain('AWS CDK API');
     expect(s3Page.indexOf(trail)).toBeLessThan(s3Page.indexOf('<div v-pre>'));
@@ -805,7 +805,8 @@ describe('docgen generation', () => {
       'utf-8',
     );
     expect(bare).toContain(
-      '.<wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront-readme.html">aws_cloudfront</a>.<wbr><strong>experimental</strong>',
+      '<span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront-readme.html">aws_cloudfront</a>'
+        + '<span class="breadcrumb-dot">.</span><wbr><strong>experimental</strong>',
     );
     expect(bare).not.toContain('AWS CDK API');
   });
@@ -819,7 +820,7 @@ describe('docgen generation', () => {
       'utf-8',
     );
     expect(typePage).toContain(
-      '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront-readme.html">aws_cloudfront</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront.experimental-readme.html">experimental</a>.<wbr><strong>EdgeFunction</strong>',
+      '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront-readme.html">aws_cloudfront</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_cloudfront.experimental-readme.html">experimental</a><span class="breadcrumb-dot">.</span><wbr><strong>EdgeFunction</strong>',
     );
     // The single-crumb form appears nowhere.
     expect(typePage).not.toContain('aws_cloudfront.experimental]');
@@ -828,7 +829,7 @@ describe('docgen generation', () => {
     // A plain submodule has no dot, so its trail is untouched.
     const plain = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(plain).toContain(
-      '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a>.<wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a>.<wbr><strong>Bucket</strong>',
+      '<a href="/v2/docs/aws-cdk-lib-readme.html">aws-cdk-lib</a><span class="breadcrumb-dot">.</span><wbr><a href="/v2/docs/aws-cdk-lib.aws_s3-readme.html">aws_s3</a><span class="breadcrumb-dot">.</span><wbr><strong>Bucket</strong>',
     );
 
     // Slugs and links are display-independent: the page filename and the
@@ -939,7 +940,8 @@ describe('docgen generation', () => {
     // stays the first frontmatter key.
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(bucket.startsWith(
-      '---\ntitle: "Bucket"\nupstreamEditUrl: "https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-s3/lib/bucket.ts"\n',
+      '---\ntitle: "Bucket"\ntypeHeader: true\n'
+        + 'upstreamEditUrl: "https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-s3/lib/bucket.ts"\n',
     )).toBe(true);
     const props = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.BucketProps.md'), 'utf-8');
     expect(props).toContain(
@@ -1011,12 +1013,13 @@ describe('docgen generation', () => {
   });
 
   test('gives every type page an explicit title, so H1 markup cannot leak into it', () => {
-    // The H1 line carries raw HTML: the weighted-title span and the kind
+    // The H1 line still carries raw HTML: the weighted-title span, the
+    // `type-title-deprecated` wrapper on a deprecated type and any `Added in`
     // badge. VitePress infers a page title from the H1 with
     // `shouldAllowHtml: false`, which drops the tags but KEEPS their inner
     // text — which is how raw HTML in an H1 leaks its words into `<title>`
-    // and into the Favorites list, which snapshots `page.title`. Explicit
-    // frontmatter is what stops the badge text leaking that way.
+    // and into the Favorites list, which snapshots `page.title`. The explicit
+    // frontmatter title is what holds the inferred title to the bare name.
     const cases: [string, string][] = [
       // Source-link chip (has an upstream location).
       ['aws-cdk-lib.aws_s3.Bucket.md', 'Bucket'],
@@ -1036,17 +1039,19 @@ describe('docgen generation', () => {
       const end = page.indexOf('\n---\n');
       expect(end + 5).toBeLessThan(page.indexOf('<nav class="type-breadcrumb"'));
     }
-    // The visible chip itself is untouched — it is a deliberate feature
-    // and only the inferred title is at stake here.
+    // The kind and the source link are both outside the heading, so neither
+    // can leak into the inferred title.
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     const cfn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
-    // The badge is the H1's remaining raw HTML, and its text is exactly what
-    // inference would otherwise append to the title.
-    expect(bucket.split('\n').find((l) => l.startsWith('# '))).toContain('text="L2 construct"');
-    expect(cfn.split('\n').find((l) => l.startsWith('# '))).toContain('text="L1 construct"');
-    // The source-link chip is not in the H1 at all.
-    expect(bucket.split('\n').find((l) => l.startsWith('# '))).not.toContain('header-tag');
-    expect(cfn.split('\n').find((l) => l.startsWith('# '))).not.toContain('header-tag');
+    for (const page of [bucket, cfn]) {
+      // Without the explicit anchor, which is not part of the rendered heading.
+      const h1 = page.split('\n').find((l) => l.startsWith('# '))!.replace(/ \{#[^}]*\}$/, '');
+      expect(h1).not.toContain('construct');
+      expect(h1).not.toContain('header-tag');
+    }
+    // The kind is still stated, as a chip of the row under the title.
+    expect(bucket).toContain('<span class="type-chip type-chip-kind api-badge-l2">L2 construct</span>');
+    expect(cfn).toContain('<span class="type-chip type-chip-kind api-badge-l1">L1 construct</span>');
   });
 
   test('generates pages for standalone packages under the standard path convention', () => {
@@ -1119,6 +1124,39 @@ describe('docgen generation', () => {
     }
   });
 
+  test('a stable, experimental or deprecated type states its stability as a chip', () => {
+    // The banner is keyed on the PACKAGE and says nothing on a stable one, so
+    // the chip is what makes a stable type distinguishable from a page that
+    // does not mention stability.
+    const chip = (file: string): string => {
+      const page = readFileSync(join(outDir, 'docs', file), 'utf-8');
+      return page.match(/class="type-chip type-chip-stability type-chip-(\w+)"/)![1];
+    };
+    expect(chip('aws-cdk-lib.aws_s3.Bucket.md')).toBe('stable');
+    expect(chip('@aws-cdk_aws-lambda-python-alpha.PythonFunction.md')).toBe('experimental');
+    // The experimental chip is the only one that links, to the level's own page.
+    const alphaType = readFileSync(
+      join(outDir, 'docs', '@aws-cdk_aws-lambda-python-alpha.PythonFunction.md'),
+      'utf-8',
+    );
+    expect(alphaType).toContain('<a class="type-chip type-chip-stability type-chip-experimental" href="/stability');
+    // A type marked experimental inside the stable library gets the chip even
+    // though its package-level banner does not fire.
+    expect(chip('aws-cdk-lib.interfaces.aws_s3.IBucketRef.md')).toBe('experimental');
+
+    // An L1 type is `external` in jsii, which takes no stability chip, so its
+    // row carries the kind chip alone. The kind assertion is the positive
+    // control: without it the absence below would also hold for a page that
+    // rendered no row at all.
+    const cfn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
+    expect(cfn).toContain('<span class="type-chip type-chip-kind api-badge-l1">L1 construct</span>');
+    expect(cfn).not.toContain('type-chip-stability');
+
+    // A deprecated type chips the third stability value, from the same page the
+    // struck title and the deprecation note are asserted on elsewhere.
+    expect(chip('aws-cdk-lib.aws_cloudwatch.Statistic.md')).toBe('deprecated');
+  });
+
   test('type pages mark experimental types in the metadata block and stable ones not at all', () => {
     const stabilityRow = '<th class="type-metadata-label" scope="row">Stability</th><td class="type-metadata-value">'
       + '<a class="type-metadata-stability" data-pagefind-ignore href="/stability.html">Experimental</a></td>';
@@ -1131,7 +1169,8 @@ describe('docgen generation', () => {
     // A per-type mark inside the stable library surfaces too.
     const refInterface = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.interfaces.aws_s3.IBucketRef.md'), 'utf-8');
     expect(refInterface).toContain(stabilityRow);
-    // Stable types stay silent: the absence of the row is the stable indicator.
+    // A stable type carries no Stability row: the header's Stable chip states
+    // its stability, which the chip test above asserts.
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(bucket).not.toContain('type-metadata-label">Stability<');
   });
