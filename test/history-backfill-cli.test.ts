@@ -1,6 +1,6 @@
-import { jest } from '@jest/globals';
 import { readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { jest } from '@jest/globals';
 import { runCli, scratchDir } from './cli-run.js';
 
 const backfill = await import('../src/docgen/history-backfill.js');

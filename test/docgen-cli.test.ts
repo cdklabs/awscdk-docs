@@ -1,6 +1,6 @@
-import { jest } from '@jest/globals';
 import { mkdirSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { jest } from '@jest/globals';
 import { runCli, scratchDir } from './cli-run.js';
 
 const index = await import('../src/docgen/index.js');
