@@ -126,6 +126,11 @@ watch(
 
 onMounted(() => {
   mounted.value = true;
+  // The shared open state can be left over from a page without the rail (the switch flipped from the gear on
+  // the home page), so a rail that mounts later starts folded and with the panel closed. A rail that is
+  // already mounted when the switch flips does not run this again, so the panel stays open beside it.
+  railOpen.value = false;
+  settingsOpen.value = false;
   document.addEventListener("keydown", onDocumentKeydown);
   document.addEventListener("click", onDocumentClickCapture, true);
   document.addEventListener("focusin", onDocumentFocusin);

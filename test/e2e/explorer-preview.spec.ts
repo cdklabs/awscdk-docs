@@ -101,6 +101,12 @@ test.describe('explorer preview on desktop', () => {
     await expect(page.locator('.VPSidebar .api-sidebar')).toBeHidden();
     expect(await page.evaluate((key) => window.localStorage.getItem(key), VIEW_KEY)).toBe('favorites');
 
+    // Back in the API view the section is gone again. The section is never in the server HTML, so this is
+    // checked after the view was switched at runtime, while both entries are still stored.
+    await rail(page).getByRole('button', { name: 'API' }).click();
+    await expect(page.locator('.favorites-section')).toHaveCount(0);
+    await rail(page).getByRole('button', { name: 'Favorites' }).click();
+
     await section.getByRole('button', { name: 'Remove Topic from favorites' }).click();
     await section.getByRole('button', { name: 'Remove Queue from favorites' }).click();
     await expect(section.locator('.favorites-empty')).toHaveText(
@@ -217,6 +223,25 @@ test.describe('explorer preview on desktop', () => {
     await page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true }).click();
     await expect(page.locator('.VPNavBar .settings-trigger')).toBeHidden();
     await expect(page.locator('.VPNavBar .nav-search-btn-wait')).toBeFocused();
+  });
+
+  test('a rail that mounts after the switch was flipped on a page without it starts with the panel closed', async ({
+    page,
+  }) => {
+    await open(page);
+    // The title link is a client-side navigation to the home page, which has no rail.
+    await page.evaluate(() => {
+      (document.querySelector('.VPNavBarTitle a') as HTMLAnchorElement).click();
+    });
+    await expect(page).toHaveURL(/\/$/);
+    await page.locator('.VPNavBar .settings-trigger').click();
+    await page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true }).click();
+    await expect(page.locator('.VPNavBar .settings-trigger')).toBeHidden();
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`${QUEUE_PAGE}$`));
+    await expect(rail(page)).toBeVisible();
+    await expect(page.locator('#settings-menu-panel')).toBeHidden();
+    await expect(rail(page).getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('Settings in the rail opens the panel, Escape closes it and returns focus, and Off brings the gear back', async ({
