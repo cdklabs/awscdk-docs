@@ -84,5 +84,16 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
       await page.getByRole('navigation', { name: 'Sidebar views' }).getByRole('button', { name: 'Settings' }).click();
       await audit(page, 'the phone rail with the Settings panel open');
     });
+
+    test('the Views button and the unfolded rail in dark mode have no critical or serious violations', async ({
+      page,
+    }) => {
+      await open(page, { 'vitepress-theme-appearance': 'dark' });
+      await expect(page.locator('html')).toHaveClass(/dark/);
+      await page.locator('.VPLocalNav button.menu').click();
+      await audit(page, 'the drawer with the Views button in dark mode');
+      await page.getByRole('button', { name: /^Views/ }).click();
+      await audit(page, 'the unfolded phone rail in dark mode');
+    });
   });
 });
