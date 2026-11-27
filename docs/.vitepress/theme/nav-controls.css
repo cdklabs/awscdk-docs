@@ -296,10 +296,13 @@
   align-self: stretch;
 }
 
+/* The top border is never painted; it balances the underline so the label
+ * centers on the row like the 40px controls beside it. */
 .VPNavBar .language-toggle .language-option {
   min-width: 44px;
   justify-content: center;
   padding: 0 var(--tab-pad);
+  border-top: 3px solid transparent;
   border-bottom: 3px solid transparent;
   color: var(--tb-muted);
 }
@@ -723,6 +726,10 @@
  * label is underlined in the system text color as well, so the cue survives
  * in the phone menu too, where the fill is gone. Neither changes a size. */
 @media (forced-colors: active) {
+  .VPNavBar .language-toggle .language-option {
+    border-top-color: Canvas;
+  }
+
   .VPNavBar .language-toggle .language-option:not(.active) {
     border-bottom-color: Canvas;
   }

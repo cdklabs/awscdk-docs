@@ -239,8 +239,11 @@ test.describe('language toggle', () => {
     expect(sliderBox.height).toBeCloseTo(rowBox.height, 0);
     expect(sliderBox.y).toBeCloseTo(rowBox.y, 0);
     expect(searchBox.height).toBeLessThan(sliderBox.height);
-    // Both still share one horizontal center line.
+    // Both still share one horizontal center line, and so does the painted
+    // label: the unpainted top border balances the 3px underline.
     expect(sliderBox.y + sliderBox.height / 2).toBeCloseTo(searchBox.y + searchBox.height / 2, 0);
+    const label = (await slider.getByRole('radio', { name: 'TypeScript' }).locator('.language-label').boundingBox())!;
+    expect(Math.abs(label.y + label.height / 2 - (searchBox.y + searchBox.height / 2))).toBeLessThanOrEqual(0.5);
     // Every tab fills the group's height, so the underline reaches the edge.
     for (const box of await slider.getByRole('radio').evaluateAll((els) =>
       els.map((el) => el.getBoundingClientRect()),

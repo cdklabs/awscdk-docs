@@ -155,12 +155,15 @@ describe('navbar layout', () => {
       // which also takes the brand text color and no fill. The border is part
       // of every tab's box, so selecting never changes a tab's size.
       expect(css).toMatch(
-        /\.VPNavBar \.language-toggle \.language-option \{[^}]*border-bottom: 3px solid transparent;/,
+        /\.VPNavBar \.language-toggle \.language-option \{[^}]*border-top: 3px solid transparent;\s*border-bottom: 3px solid transparent;/,
       );
       // Forced colors paints transparent borders in the system text color, so
-      // the idle borders take the canvas color there (checked in the browser
-      // in language-toggle.spec.ts).
+      // the never-painted top border and the idle bottom borders take the
+      // canvas color there (checked in the browser in language-toggle.spec.ts).
       const forced = css.slice(css.indexOf('@media (forced-colors: active)'));
+      expect(forced).toMatch(
+        /\.VPNavBar \.language-toggle \.language-option \{\s*border-top-color: Canvas;/,
+      );
       expect(forced).toMatch(
         /\.VPNavBar \.language-toggle \.language-option:not\(\.active\) \{\s*border-bottom-color: Canvas;/,
       );

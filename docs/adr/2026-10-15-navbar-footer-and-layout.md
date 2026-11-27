@@ -153,11 +153,13 @@ search's centering falls back to the theme's default position.
 
 The search trigger, version badge and Settings trigger are pinned to the same
 40px rendered height from 960px up. The pagefind plugin hard-codes `height:
-40px` on `.nav-search-btn-wait` and exposes no variable, so the value is pinned
-in each component and guarded by a regression test that reads the plugin's
-source. The language tabs are the exception: they stretch to the control row's
-full height so their underline meets the bar's edge, and they are centered on
-the same line as the 40px controls.
+40px` on `.nav-search-btn-wait` and exposes no variable, so the value is restated
+as a literal in `SettingsMenu.vue` and in the version badge rule in
+`nav-controls.css`, and `test/nav-controls.test.ts` and `test/version-badge.test.ts`
+pin both to 40px. The language tabs are the exception: they stretch to the
+control row's full height so their underline meets the bar's edge. A transparent
+3px top border balances the underline, so each label's midpoint sits on the same
+line as the 40px controls.
 
 #### Fitting the medium breakpoint (768–1279px)
 
