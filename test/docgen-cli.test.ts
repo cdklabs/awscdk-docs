@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { jest } from '@jest/globals';
 import { runCli, scratchDir } from './cli-run.js';
@@ -33,7 +33,8 @@ const run = (args: string[], env: Record<string, string | undefined> = {}) =>
   runCli(CLI, { cwd: dir, args, env: { CDK_DIST_DIR: undefined, ...env } });
 
 beforeEach(() => {
-  dir = scratchDir('docgen-cli-');
+  // Resolved, because the CLI resolves CDK_DIST_DIR and a temp dir can sit behind a symlink.
+  dir = realpathSync(scratchDir('docgen-cli-'));
   writeFileSync(join(dir, 'docgen.config.json'), JSON.stringify({ modules: MODULES }));
   tarballNames = new Map();
   generateDocs.mockReset().mockReturnValue(['a.md', 'b.md', 'c.md']);
