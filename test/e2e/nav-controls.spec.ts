@@ -621,6 +621,11 @@ test.describe('navbar layout', () => {
       await version.hover();
       await expect.poll(() => version.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
       await expect.poll(() => version.evaluate(color)).toBe(hoverText);
+      // The search button's own ink follows too (its label and chip keep the
+      // muted ink; the pill's hover cue is the brand ring).
+      const searchBtn = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
+      await searchBtn.hover();
+      await expect.poll(() => searchBtn.evaluate(color)).toBe(hoverText);
       // The open gear keeps the hover fill and text with the pointer elsewhere.
       await gear.click();
       await expect(gear).toHaveAttribute('aria-expanded', 'true');
