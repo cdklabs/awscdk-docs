@@ -539,7 +539,7 @@ describe('docgen generation', () => {
     const overview = readFileSync(overviewFile, 'utf-8');
     const authored = readFileSync(join(ROOT, 'docs', 'aws-construct-library.md'), 'utf-8');
     // The authored page carries its own date, so docgen adds none.
-    expect(authored).toMatch(/^---\ndate: "[^"]+"\n---\n/);
+    expect(authored.match(/^date: /gm)).toHaveLength(1);
     expect(overview).toBe(authored);
     expect(overview).toContain('# AWS Construct Library');
     expect(overview).toContain('## Construct levels');

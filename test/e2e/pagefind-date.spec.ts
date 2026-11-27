@@ -1,14 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { CONSTRUCT_LIBRARY_PAGE, SKILLS_PAGE, VERSIONS_PAGE } from './fixture.js';
+import { pageHref } from '../../src/docgen/links.js';
+import { STABILITY_ROUTE } from '../../src/site-routes.js';
 
 // The handwritten pages give Pagefind the same date the page's own content-revised meta states.
 
-const HANDWRITTEN_PAGES = [
-  '/',
-  '/skills.html',
-  '/stability.html',
-  '/versions.html',
-  '/v2/docs/aws-construct-library.html',
-];
+const HANDWRITTEN_PAGES = ['/', SKILLS_PAGE, pageHref(STABILITY_ROUTE), VERSIONS_PAGE, CONSTRUCT_LIBRARY_PAGE];
 
 test.describe('Pagefind date meta', () => {
   test('each handwritten page is dated by its content-revised instant', async ({ request }) => {
