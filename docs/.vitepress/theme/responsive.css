@@ -177,8 +177,8 @@ pre.signature {
   }
 
   /* VitePress parks the permalink in the gutter left of the heading, at
-     `margin-left: -0.87em`. That em grows with the title, and below 640px the
-     content gutter is only 24px wide, so the stock pull puts the glyph past
+     `margin-left: -0.87em`. That em grows with the title, and `VPDoc` pads the
+     content by only 24px below 768px, so the stock pull puts the glyph past
      the left edge of the screen. Pin it to the gutter instead: 22px clears the
      glyph's own width and still ends before the title's first letter. */
   .vp-doc h1:has(+ .type-header) .header-anchor {

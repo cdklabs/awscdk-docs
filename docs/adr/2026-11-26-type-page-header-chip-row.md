@@ -124,15 +124,23 @@ an unscoped rule would restyle module overviews and authored pages too.
   `.type-header-row .type-chip`, not from a `<Badge>` in the H1. The Markdown
   twin renders the row as one line, `L2 construct · Stable`, so an agent still
   gets the classification.
-- The header block costs about 460 bytes of HTML per type page and the deploy
-  zip still shrank. Measured base against this change on the baseline fixture
+- The header block costs about 400 bytes of HTML per type page, and the page's
+  lean hydration chunk gives more back than that. Measured base `f71cdbe`
+  against head on the baseline fixture
   (`E2E_FIXTURE_SERVICES=aws-sns,aws-sqs E2E_FIXTURE_MODULES=constructs`, 77
-  pages): `aws_sqs.Queue.html` 185,084 to 185,547 B and `QueueProps.html`
-  96,917 to 97,379 B, all HTML 9,605,954 to 9,639,158 B (+0.35%), the `assets`
-  JavaScript 17,526,742 to 17,506,231 B (-0.12%) now that the H1 badge rules
-  and their tokens are gone, raw `dist` 45,414,905 to 45,430,335 B (+0.03%),
-  and the `scripts/package-site.sh` zip 4,650,844 to 4,642,367 B (-0.18%). The
-  row is the same markup on every page, which deflates well.
+  pages and 83 page chunks both times): `docs:generate`, then
+  `scripts/e2e-fixture-prune.cjs`, then `vitepress build docs`, then
+  `scripts/package-site.sh`. Per page, HTML goes +400 B and the full page chunk
+  +208 B, while the lean chunk goes -462 B, because a page no longer uses the
+  `<Badge>` component. All three scale with the page count. One-time: the shared
+  chunks +610 B and the stylesheet +3,358 B. On the fixture that nets raw `dist`
+  45,414,905 to 45,430,335 B (+0.03%) and the deploy zip 4,650,844 to 4,642,367
+  B (-0.18%). Extrapolating the per-page figures alone to the roughly 29,900
+  generated pages gives about +12 MB of HTML, +6 MB of full chunks and -14 MB of
+  lean chunks; the zip is not extrapolated, because a repeated block's
+  compression ratio does not scale linearly, so the fixture figure is the
+  measurement and the deployed zip is what `package-site.sh` reports on each
+  release.
 - The H1 source stays markup: the weighted-title span, wrapped in
   `type-title-deprecated` for a deprecated type, plus any `Added in` badge
   `injectBadges` appends. So the explicit `title` frontmatter is still what

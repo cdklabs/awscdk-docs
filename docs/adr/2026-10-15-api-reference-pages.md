@@ -709,7 +709,7 @@ No anchor carries a numeric `-1` disambiguation suffix.
 
 The kind travels as a class on the header row's kind chip
 (`class="type-chip type-chip-kind api-badge-l2"`), giving each of eight kinds a
-distinct hue, declared once as `--cdk-badge-<kind>-{bg,text,border}`
+distinct hue, declared once as `--cdk-badge-<kind>-{bg,text}`
 in `:root` and shadowed in `.dark` (an unshadowed `:root` color wins in dark
 mode). A plain class and a level-less construct carry no `api-badge-*` class at
 all: their chip reads the neutral `--th-chip-neutral-{bg,text}`, the ninth row
