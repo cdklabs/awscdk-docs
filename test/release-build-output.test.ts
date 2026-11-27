@@ -172,6 +172,8 @@ describe('a VitePress build with the build output released', () => {
     expect(page).toContain('rel="modulepreload"');
     expect(page).toMatch(/<link rel="preload stylesheet" href="\/assets\/[^"]+\.css"/);
     expect(page).toContain('<script type="module"');
+    // The default-theme font preload: VitePress finds it through the theme chunk's name and module ids.
+    expect(page).toMatch(/<link rel="preload" href="\/assets\/inter-roman-latin\.[\w-]+\.woff2" as="font"/);
     expect([...released.files.keys()].sort()).toEqual([...stock.files.keys()].sort());
     expect(released.files).toEqual(stock.files);
   });
