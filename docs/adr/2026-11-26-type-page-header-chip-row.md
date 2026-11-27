@@ -133,8 +133,7 @@ an unscoped rule would restyle module overviews and authored pages too.
   gets the classification.
 - The header block costs about 400 bytes of HTML per type page, and the page's
   lean hydration chunk gives more back than that. Measured base `f71cdbe`
-  against `e95763a`, after which this branch changes only comments and records,
-  on the baseline fixture
+  against `e95763a` on the baseline fixture
   (`E2E_FIXTURE_SERVICES=aws-sns,aws-sqs E2E_FIXTURE_MODULES=constructs`, 77
   pages and 83 page chunks both times): `docs:generate`, then
   `scripts/e2e-fixture-prune.cjs`, then `vitepress build docs`, then
