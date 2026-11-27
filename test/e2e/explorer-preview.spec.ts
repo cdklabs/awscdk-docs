@@ -541,6 +541,37 @@ test.describe('explorer preview on a phone', () => {
     await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
   });
 
+  test('widening the viewport past 959px folds the rail and gives the sidebar back', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    await page.getByRole('button', { name: /^Views/ }).click();
+    const covered = page.locator('.VPSidebar .sidebar-header, .VPSidebar .api-sidebar');
+    expect(await covered.evaluateAll((els) => els.length > 0 && els.every((el) => (el as HTMLElement).inert))).toBe(true);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect.poll(() => covered.evaluateAll((els) => els.some((el) => (el as HTMLElement).inert))).toBe(false);
+    await page.locator('.VPSidebar .nav-filter-input').focus();
+    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
+    await page.locator('.VPSidebar .api-sidebar-link').first().focus();
+    await expect(page.locator('.VPSidebar .api-sidebar-link').first()).toBeFocused();
+  });
+
+  test('turning the preview off with the rail unfolded gives the sidebar back', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    await page.getByRole('button', { name: /^Views/ }).click();
+    const covered = page.locator('.VPSidebar .sidebar-header, .VPSidebar .api-sidebar');
+    expect(await covered.evaluateAll((els) => els.length > 0 && els.every((el) => (el as HTMLElement).inert))).toBe(true);
+    // The phone menu carries the preview switch. The scrim covers the hamburger, so the clicks are dispatched.
+    await page.locator('.VPNavBarHamburger').dispatchEvent('click');
+    await page
+      .locator('.VPNavScreen')
+      .getByRole('group', { name: 'Explorer preview' })
+      .getByRole('button', { name: 'Off', exact: true })
+      .dispatchEvent('click');
+    await expect(page.locator('html')).not.toHaveAttribute('data-explorer-preview', /.*/);
+    await expect.poll(() => covered.evaluateAll((els) => els.some((el) => (el as HTMLElement).inert))).toBe(false);
+  });
+
   test('a modifier released before Escape does not let the Escape release close the drawer', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
     await page.locator('.VPLocalNav button.menu').click();

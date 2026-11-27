@@ -80,10 +80,9 @@ export function initExplorerPreview(): void {
 /** Turn the preview on or off; persists immediately. Turning it on starts in the API view. */
 export function setExplorerPreview(value: ExplorerPreview): void {
   explorerPreview.value = value;
-  if (value === 'on') {
-    explorerView.value = DEFAULT_EXPLORER_VIEW;
-    railOpen.value = false;
-  }
+  // Either way the rail starts folded: turning the preview off must not leave the covered sidebar inert.
+  railOpen.value = false;
+  if (value === 'on') explorerView.value = DEFAULT_EXPLORER_VIEW;
   if (typeof window === 'undefined') return;
   store(EXPLORER_PREVIEW_KEY, value);
   if (value === 'on') store(EXPLORER_VIEW_KEY, explorerView.value);

@@ -92,6 +92,14 @@ describe('explorer preview state', () => {
     expect(attributes['data-explorer-view']).toBe('favorites');
   });
 
+  test('turning the preview off folds an unfolded rail', async () => {
+    const mod = await import('../docs/.vitepress/theme/explorer-preview.js');
+    mod.setExplorerPreview('on');
+    mod.railOpen.value = true;
+    mod.setExplorerPreview('off');
+    expect(mod.railOpen.value).toBe(false);
+  });
+
   test('turning the preview on folds an unfolded rail', async () => {
     const mod = await import('../docs/.vitepress/theme/explorer-preview.js');
     mod.railOpen.value = true;

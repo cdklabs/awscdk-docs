@@ -104,6 +104,19 @@ function onRailKeydown(event: KeyboardEvent): void {
 
 watch(railOpen, (open) => setCoveredInert(open), { flush: "sync" });
 
+// The rail is a drawer only while it is enabled and the viewport is narrow. Leaving either state folds it, so
+// the sidebar never stays inert behind a rail that no longer acts as a drawer.
+watch(enabled, (on) => {
+  if (!on) railOpen.value = false;
+});
+
+const narrow =
+  typeof window === "undefined" || !window.matchMedia ? undefined : window.matchMedia("(max-width: 959px)");
+
+function onNarrowChange(event: MediaQueryListEvent): void {
+  if (!event.matches) railOpen.value = false;
+}
+
 watch(
   () => route.path,
   () => {
@@ -118,12 +131,14 @@ onMounted(() => {
   document.addEventListener("keydown", onDocumentKeydown);
   document.addEventListener("focusin", onDocumentFocusin);
   document.addEventListener("keydown", onRailKeydown);
+  narrow?.addEventListener("change", onNarrowChange);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", onDocumentKeydown);
   document.removeEventListener("focusin", onDocumentFocusin);
   document.removeEventListener("keydown", onRailKeydown);
+  narrow?.removeEventListener("change", onNarrowChange);
   setCoveredInert(false);
 });
 </script>
