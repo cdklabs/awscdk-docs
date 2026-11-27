@@ -33,7 +33,8 @@ export function releaseBuildOutput(): Plugin {
   return {
     name: "cdk-docs:release-build-output",
     apply: "build",
-    // Sequential and last, so no other plugin's writeBundle still reads the fields being dropped.
+    // Post-order and sequential: runs after every other writeBundle except post-order ones registered later, so keep
+    // it last in vite.plugins.
     writeBundle: { order: "post", sequential: true, handler: (_options, bundle) => releaseOutput(bundle) },
   };
 }

@@ -9,6 +9,7 @@ import { KEPT_OUTPUT_FIELDS, releaseBuildOutput } from '../docs/.vitepress/relea
 // The Vite copy VitePress builds with.
 const fromVitepress = createRequire(createRequire(import.meta.url).resolve('vitepress'));
 const { build } = await import(pathToFileURL(fromVitepress.resolve('vite')).href) as typeof import('vite');
+const vitepress = await import('vitepress');
 
 // What VitePress reads after the build, per output type.
 const CHUNK_FIELDS = ['dynamicImports', 'facadeModuleId', 'fileName', 'imports', 'isEntry', 'moduleIds', 'name', 'type'];
@@ -78,7 +79,7 @@ describe('releasing the build output once written', () => {
     expect(released.files).toEqual(stock.files);
   });
 
-  test('the kept fields are exactly the ones VitePress reads', () => {
+  test('pins the kept field set', () => {
     expect([...KEPT_OUTPUT_FIELDS].sort()).toEqual(CHUNK_FIELDS);
   });
 
@@ -112,5 +113,73 @@ describe('releasing the build output once written', () => {
   test('the VitePress config registers the plugin', () => {
     const config = readFileSync(resolve(import.meta.dirname, '..', 'docs/.vitepress/config.mts'), 'utf-8');
     expect(config).toMatch(/^\s*releaseBuildOutput\(\),$/m);
+  });
+});
+
+/**
+ * A VitePress build of a two-page site: every written file, and the build outputs the plugin was handed. The page
+ * HTML carries what VitePress reads from the outputs after bundling (preload links, stylesheet, app script).
+ */
+async function buildVitepress(withPlugin: boolean): Promise<{ files: Map<string, string>; handed: object[] }> {
+  // Inside the repo, so the pages resolve `vue` from its node_modules.
+  const cache = resolve(import.meta.dirname, '..', 'node_modules', '.cache');
+  mkdirSync(cache, { recursive: true });
+  const root = mkdtempSync(join(cache, 'release-build-output-vp-'));
+  const handed: object[] = [];
+  const env = process.env.NODE_ENV;
+  try {
+    writeFileSync(join(root, 'index.md'), '# Home\n\n[Other](./other)\n\n```ts\nconst a = 1;\n```\n');
+    writeFileSync(join(root, 'other.md'), '# Other\n\n::: tip\nA tip.\n:::\n');
+    const plugin = releaseBuildOutput();
+    const release = plugin.writeBundle as { handler: (this: unknown, ...args: unknown[]) => void };
+    const recording: Plugin = {
+      ...plugin,
+      writeBundle: {
+        ...release,
+        handler(this: unknown, ...args: unknown[]) {
+          release.handler.apply(this, args);
+          handed.push(...Object.values(args[1] as object));
+        },
+      },
+    };
+    await vitepress.build(root, {
+      onAfterConfigResolve(siteConfig) {
+        siteConfig.logger.level = 'silent' as never;
+        if (withPlugin) {
+          siteConfig.vite = { ...siteConfig.vite, plugins: [...(siteConfig.vite?.plugins ?? []), recording] };
+        }
+      },
+    });
+    return { files: listFiles(join(root, '.vitepress', 'dist')), handed };
+  } finally {
+    process.env.NODE_ENV = env;
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+describe('a VitePress build with the build output released', () => {
+  let stock: Awaited<ReturnType<typeof buildVitepress>>;
+  let released: Awaited<ReturnType<typeof buildVitepress>>;
+
+  beforeAll(async () => {
+    stock = await buildVitepress(false);
+    released = await buildVitepress(true);
+  }, 120_000);
+
+  test('renders the same pages and assets as without the plugin', () => {
+    const page = stock.files.get('index.html') ?? '';
+    expect(page).toContain('rel="modulepreload"');
+    expect(page).toMatch(/<link rel="preload stylesheet" href="\/assets\/[^"]+\.css"/);
+    expect(page).toContain('<script type="module"');
+    expect([...released.files.keys()].sort()).toEqual([...stock.files.keys()].sort());
+    expect(released.files).toEqual(stock.files);
+  });
+
+  test('the client and SSR outputs reach rendering already released', () => {
+    expect(stock.handed).toHaveLength(0);
+    expect(released.handed.some((file) => (file as { isEntry?: boolean }).isEntry)).toBe(true);
+    for (const file of released.handed) {
+      expect(Object.keys(file).every((key) => KEPT_OUTPUT_FIELDS.has(key))).toBe(true);
+    }
   });
 });

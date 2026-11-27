@@ -200,13 +200,15 @@ The cache lives for one shard's build and captures all its intra-shard repeats.
   SSR build results until the last page is rendered, and each result holds
   every chunk's code and every module's rendered source. After the build
   writes its files, the plugin drops every field of each output chunk and
-  asset except the few VitePress still reads (type, file and chunk names,
-  entry flag, facade and module ids, imports and dynamic imports). It runs as
-  the last, sequential `writeBundle` hook, so no other plugin still reads the
-  dropped fields. The files on disk do not change. A test builds a small
-  site with and without the plugin, requires the same files and the same kept
-  values, and pins the kept fields. A VitePress upgrade must recheck that list
-  against what its build reads after bundling.
+  asset except the few VitePress still reads in its default single-page app
+  mode (type, file and chunk names, entry flag, facade and module ids, imports
+  and dynamic imports). It is a post-order, sequential `writeBundle` hook and
+  the last entry in `vite.plugins`, so every other `writeBundle` has finished
+  before it drops anything; a post-order hook registered after it would see
+  the dropped fields missing. The files on disk do not change. Tests build a
+  small Vite site and a two-page VitePress site with and without the plugin and
+  require the same files, so a VitePress version that reads another output
+  field after bundling fails the suite.
 
 ### Compile existence gates into the bundle
 
