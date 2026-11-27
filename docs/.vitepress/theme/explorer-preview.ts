@@ -1,8 +1,9 @@
 // Explorer preview state, mirroring density.ts.
 //
 // The preview is an opt-in sidebar variant: a view rail at the sidebar's left edge with an API view
-// (today's tree and filter) and a Favorites view. The top-bar gear stays. Everything
-// the preview changes keys on two attributes on <html>, so a reader who never opts in sees only the switch itself:
+// (today's tree and filter) and a Favorites view. The top-bar gear stays. Every CSS rule that changes the
+// preview-off layout keys on two attributes on <html>, and the components read the `explorerPreview` ref, so a
+// reader who never opts in sees only the switch itself:
 //
 // - `data-explorer-preview="on"` is present only while the preview is on.
 // - `data-explorer-view="api" | "favorites"` is present only while the preview is on.

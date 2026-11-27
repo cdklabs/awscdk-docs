@@ -79,10 +79,12 @@ function toggle(): void {
 
 <template>
   <nav v-if="visible" class="favorites-section" aria-label="Favorites">
-    <p v-if="viewShown && entries.length === 0" class="favorites-empty">
-      No favorites yet. Select the star on an API page to add it.
-    </p>
-    <h2 v-else-if="viewShown" class="favorites-static-heading"><span aria-hidden="true">★ </span>Favorites ({{ entries.length }})</h2>
+    <template v-if="viewShown">
+      <h2 class="favorites-static-heading"><span aria-hidden="true">★ </span>Favorites ({{ entries.length }})</h2>
+      <p v-if="entries.length === 0" class="favorites-empty">
+        No favorites yet. Select Add to favorites (☆) on an API page to add one.
+      </p>
+    </template>
     <button
       v-else
       type="button"

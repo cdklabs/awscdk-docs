@@ -109,8 +109,9 @@ test.describe('explorer preview on desktop', () => {
 
     await section.getByRole('button', { name: 'Remove Topic from favorites' }).click();
     await section.getByRole('button', { name: 'Remove Queue from favorites' }).click();
+    await expect(section.getByRole('heading', { name: 'Favorites (0)' })).toBeVisible();
     await expect(section.locator('.favorites-empty')).toHaveText(
-      'No favorites yet. Select the star on an API page to add it.',
+      'No favorites yet. Select Add to favorites (☆) on an API page to add one.',
     );
   });
 
