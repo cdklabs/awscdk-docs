@@ -185,6 +185,7 @@ test.describe('explorer preview on desktop', () => {
   for (const [pagePath, label] of [
     [QUEUE_PAGE, 'an API page'],
     ['/', 'the home page'],
+    ['/skills', 'the skills page'],
   ] as const) {
     for (const width of [960, 1000, 1280]) {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
@@ -216,8 +217,8 @@ test.describe('explorer preview on desktop', () => {
         expect(last.x + last.width, 'the gear ends at least 8px inside the viewport').toBeLessThanOrEqual(width - 8);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
         await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
-        // Only a page with the sidebar gives its 72px to the rail: the title lane elsewhere keeps its width.
-        expect(title!.width).toBe(pagePath === QUEUE_PAGE && width >= 960 ? 392 : 320);
+        // The title lane follows the preview, not the page: 392px on every page, so the controls do not move.
+        expect(title!.width).toBe(392);
       });
     }
   }
@@ -238,6 +239,41 @@ test.describe('explorer preview on desktop', () => {
     expect(selected.marker, 'the selected marker is not transparent').not.toMatch(/, 0\)$/);
     expect(selected.marker, 'the selected marker differs from the rail background').not.toBe(selected.background);
     expect((await colors('Favorites')).marker, 'the other button has no marker').toMatch(/, 0\)$/);
+  });
+
+  for (const [pagePath, label] of [
+    [QUEUE_PAGE, 'an API page'],
+    ['/', 'the home page'],
+    ['/skills', 'the skills page'],
+  ] as const) {
+    test(`the nav-link padding rule is what keeps the 960px row inside the viewport on ${label}`, async ({ page }) => {
+      await page.setViewportSize({ width: 960, height: 800 });
+      await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
+      const gearEnd = async () => {
+        const box = (await page.locator('.VPNavBar .settings-trigger').boundingBox())!;
+        return box.x + box.width;
+      };
+      const withRule = await gearEnd();
+      // Positive control: undo the rule and the row needs about 24px more, so the gear moves right.
+      await page.addStyleTag({ content: '.VPNavBar .VPNavBarMenuLink { padding: 0 12px !important; }' });
+      const withoutRule = await gearEnd();
+      expect(withoutRule - withRule, 'the rule gives the row about 24px back').toBeGreaterThanOrEqual(16);
+    });
+  }
+
+  test('the title lane is 392px on every page with the preview on and 320px with it off', async ({ page }) => {
+    const lane = async () => (await page.locator('.VPNavBar .container > .title').boundingBox())!.width;
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    for (const path of [QUEUE_PAGE, '/', '/skills']) {
+      await page.goto(path);
+      expect(await lane(), `${path} with the preview on`).toBe(392);
+    }
+    const off = await page.context().newPage();
+    await open(off, { [PREVIEW_KEY]: 'off' });
+    for (const path of [QUEUE_PAGE, '/', '/skills']) {
+      await off.goto(path);
+      expect((await off.locator('.VPNavBar .container > .title').boundingBox())!.width, `${path} with it off`).toBe(320);
+    }
   });
 
   test('on a page without the rail the gear stays, and the switch there turns the preview off', async ({ page }) => {

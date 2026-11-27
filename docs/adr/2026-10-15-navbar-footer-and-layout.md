@@ -215,6 +215,8 @@ rule. The `.title` selector uses a child chain (`> .wrapper > .container >
 .title`) because these unscoped rules would otherwise also match the anchor
 inside `VPNavBarTitle`.
 
+With the Explorer preview on, the title lane is 392px on every page; the geometry stays page-independent within each mode.
+
 These geometry rules are **not** gated on the slider's presence — they are page
 geometry, not control arrangement, so a single-language build also gets one
 shape on every page. The CSS says so in a comment; do not "harmonize" the gating

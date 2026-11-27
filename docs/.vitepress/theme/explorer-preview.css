@@ -16,7 +16,9 @@
 
 /* Sidebar column: the rail's 72px come out of the sidebar's width, so the tree keeps its 256px. */
 @media (min-width: 960px) {
-  html[data-explorer-preview="on"]:has(.VPSidebar) {
+  /* The title lane follows the preview, not the page: it is 392px on every page with the preview on, so the
+     top bar's controls stay put when the reader navigates. */
+  html[data-explorer-preview="on"] {
     --vp-sidebar-width: 392px;
   }
 
@@ -28,11 +30,12 @@
 }
 
 /* The 392px title lane leaves the top bar row 72px less room than the 320px lane, which
-   nav-controls.css sized to fit at 960px with 1px to spare. From 960px to 1023px the row takes
+   nav-controls.css sized to fit at 960px with 1px to spare. From 960px to 1023px, on every page, the row takes
    24px back from the nav links' side padding (12px to 8px). At 960px the search button then keeps
-   its icon width and the gear's right edge sits at least 8px inside the viewport. */
+   its icon width and the gear's right edge sits at least 8px inside the viewport. From 1024px the row fits
+   without it. */
 @media (min-width: 960px) and (max-width: 1023px) {
-  html[data-explorer-preview="on"]:has(.VPSidebar) .VPNavBar .VPNavBarMenuLink {
+  html[data-explorer-preview="on"] .VPNavBar .VPNavBarMenuLink {
     padding: 0 8px;
   }
 }
@@ -50,7 +53,8 @@
 }
 
 /* Favorites view: only the favorites list, always open. The pinned header would clip a long list. */
-html[data-explorer-preview="on"][data-explorer-view="favorites"] .VPSidebar :is(.nav-filter, .api-sidebar) {
+/* The tree and filter stay until the Favorites view has rendered, so the sidebar is never empty before hydration. */
+html[data-explorer-preview="on"][data-explorer-view="favorites"] .VPSidebar:has(.favorites-static-heading) :is(.nav-filter, .api-sidebar) {
   display: none;
 }
 
