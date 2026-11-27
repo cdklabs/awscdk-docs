@@ -508,12 +508,21 @@ test.describe('navbar layout', () => {
     await expect(tab).toBeFocused();
     expect(await tab.evaluate(ring)).toBe('solid 2px -3px');
 
-    const search = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
-    await search.focus();
-    await page.keyboard.press('Shift+Tab');
-    await page.keyboard.press('Tab');
-    await expect(search).toBeFocused();
-    expect(await search.evaluate(ring)).toBe('solid 2px 2px');
+    // The search ring applies to each of its shapes: the pill from 960px, the
+    // disc at 768-959px and the bare icon below 768px; it stays in the viewport.
+    for (const width of [1280, 800, 375]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      const search = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
+      await search.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await expect(search).toBeFocused();
+      expect(await search.evaluate(ring), `search ring at ${width}px`).toBe('solid 2px 2px');
+      const box = (await search.boundingBox())!;
+      expect(box.x - 4, `ring inside the viewport at ${width}px`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width + 4, `ring inside the viewport at ${width}px`).toBeLessThanOrEqual(width);
+    }
   });
 
   for (const [theme, muted, hoverText] of [

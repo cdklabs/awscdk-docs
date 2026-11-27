@@ -435,10 +435,13 @@ keeps its stock 896px container.
 - The title-lane and transition regressions are browser measurements sampling
   every animation frame and requiring each to be an end state, because a
   stylesheet assertion cannot show the absence of a transition.
-- Unit pins read VitePress's and the pagefind plugin's own sources
-  declaration-by-declaration rather than hard-coding mirrored values, so an
-  upstream geometry or height change fails at the test instead of letting the
-  page types silently diverge.
+- Unit pins read VitePress's own sources declaration-by-declaration rather
+  than hard-coding mirrored values, so an upstream geometry change fails at the
+  test instead of letting the page types silently diverge. The pagefind
+  plugin's 40px trigger height has no source contract to read, so it is
+  restated as a literal and pinned in `test/nav-controls.test.ts` and
+  `test/version-badge.test.ts`; a plugin height change shows up in the e2e row
+  and baseline checks instead.
 - `/versions` trades width for alignment from 1280px up: its container is 896px
   at 1280px and 1056px at 1440px, against the stock 992px and 1104px; below
   1280px it keeps the stock width and the nav-lane misalignment.
