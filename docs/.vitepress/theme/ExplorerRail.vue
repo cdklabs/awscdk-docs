@@ -1,8 +1,7 @@
 <script setup lang="ts">
 // Explorer rail: a 72px column at the sidebar's left edge with the API and Favorites views, and nothing else.
 // It renders only while the Explorer preview is on and the page has the API sidebar, and it is a plain
-// disclosure of two views, not a tablist: each view is a <button> with aria-pressed. Settings is not here:
-// the top-bar gear stays on every page, so the switch to turn the preview off is always reachable.
+// disclosure of two views, not a tablist: each view is a <button> with aria-pressed.
 //
 // Below 960px the rail stays hidden until ExplorerViewsButton.vue unfolds it over a scrim; picking a view,
 // Escape from anywhere, a route change, a tap on the scrim or moving keyboard focus out of the rail folds it

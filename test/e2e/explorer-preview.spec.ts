@@ -31,7 +31,7 @@ const rail = (page: Page) => page.getByRole('navigation', { name: 'Sidebar views
 test.describe('explorer preview on desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test('the preview is off by default: gear in the bar, no rail, favorites section as before', async ({ page }) => {
+  test('the preview is off by default: gear in the bar, no rail, favorites section in the sidebar', async ({ page }) => {
     await open(page, {}, true);
     await expect(page.locator('html')).not.toHaveAttribute('data-explorer-preview', /.*/);
     await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
@@ -78,7 +78,7 @@ test.describe('explorer preview on desktop', () => {
     await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
     await expect(rail(page)).toHaveCount(0);
     await expect(page.locator('.VPSidebar')).toHaveCSS('width', '320px');
-    await expect(page.locator('.VPNavBar .settings-trigger')).toBeFocused();
+    await expect(page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true })).toBeFocused();
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('off');
   });
 
@@ -178,8 +178,8 @@ test.describe('explorer preview on desktop', () => {
     await expect(rail(page).getByRole('button', { name: 'API' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  // The 392px sidebar variable moves where the top bar's controls start while the gear stays, so the
-  // row, gear included, is re-measured at the tightest one-row widths on a page with the sidebar and on one without.
+  // The 392px sidebar variable moves where the top bar's controls start, so the row, gear included,
+  // is measured at the tightest one-row widths on a page with the sidebar and on one without.
   for (const [pagePath, label] of [
     [QUEUE_PAGE, 'an API page'],
     ['/', 'the home page'],
@@ -225,9 +225,11 @@ test.describe('explorer preview on desktop', () => {
     await gear.click();
     const panel = page.locator('#settings-menu-panel');
     await expect(panel.locator('[data-value="on"]')).toHaveAttribute('aria-pressed', 'true');
-    await panel.getByRole('button', { name: 'Off', exact: true }).click();
+    const off = panel.getByRole('button', { name: 'Off', exact: true });
+    await off.click();
     await expect(page.locator('html')).not.toHaveAttribute('data-explorer-preview', /.*/);
-    await expect(gear).toBeFocused();
+    await expect(off).toBeFocused();
+    await expect(gear).toHaveAttribute('aria-expanded', 'true');
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('off');
   });
 
@@ -242,7 +244,7 @@ test.describe('explorer preview on desktop', () => {
     await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
     await expect(on).toBeFocused();
   });
-  test('the gear panel opens and closes as before with the preview on: Escape returns focus to the gear', async ({
+  test('with the preview on, the gear panel opens, and Escape closes it and returns focus to the gear', async ({
     page,
   }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
@@ -375,9 +377,10 @@ test.describe('explorer preview on a phone', () => {
     const gear = page.locator('.VPNavBar .settings-trigger');
     await expect(gear).toBeVisible();
     await gear.click();
-    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
+    const off = page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true });
+    await off.click();
     await expect(rail(page)).toHaveCount(0);
-    await expect(gear).toBeFocused();
+    await expect(off).toBeFocused();
   });
   test('tabbing out of the unfolded rail folds it and leaves the drawer open', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });

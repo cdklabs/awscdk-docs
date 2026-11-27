@@ -8,8 +8,7 @@
  * make it the containing block for fixed children, so the transform is dropped while the preview is on.
  */
 
-/* The top bar and the phone menu screen are unchanged with the preview on: the gear and its panel, and the
-   phone menu's setting rows, stay, so the switch to turn the preview off is reachable on every page. */
+/* Phone menu row for the preview switch. */
 .VPNavScreen .ExplorerPreviewPicker {
   margin-top: 12px;
   width: 100%;

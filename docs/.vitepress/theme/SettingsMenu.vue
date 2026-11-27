@@ -9,9 +9,6 @@
 // the trigger, and any click outside closes the panel. Focus is not trapped, so
 // the rest of the navbar stays tabbable. The panel is a plain labeled region;
 // its content (ThemePicker) carries its own group semantics and state.
-//
-// The gear stays in the bar on every page with the Explorer preview on or off, so the preview switch
-// in this panel is always reachable, including on pages without the rail.
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
 import NavStylePicker from "./NavStylePicker.vue";

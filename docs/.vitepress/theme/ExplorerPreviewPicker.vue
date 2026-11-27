@@ -3,7 +3,7 @@
 // so the Settings panel reads as one family of controls. State and persistence live in explorer-preview.ts.
 // Hydration: like NavStylePicker, the active state is gated on `mounted` so the server-rendered default
 // never shows as the stored choice until the client has read storage.
-import { nextTick, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import {
   explorerPreview,
   initExplorerPreview,
@@ -23,16 +23,9 @@ onMounted(() => {
   mounted.value = true;
 });
 
-async function choose(value: ExplorerPreview): Promise<void> {
+function choose(value: ExplorerPreview): void {
   if (explorerPreview.value === value) return;
-  // Where the segment sits in the bar's Settings panel, turning the preview off hands focus back to the gear,
-  // so the reader lands on the control that opened the panel. In the phone menu the pressed segment keeps
-  // focus: the gear is hidden there. Turning it on leaves focus on the pressed segment everywhere.
-  const inPanel = document.activeElement?.closest(".SettingsMenu") != null;
   setExplorerPreview(value);
-  if (value !== "off" || !inPanel) return;
-  await nextTick();
-  document.querySelector<HTMLElement>(".VPNavBar .settings-trigger")?.focus();
 }
 </script>
 
