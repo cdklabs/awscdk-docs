@@ -186,8 +186,9 @@ project.package.addPackageResolutions('@sentry/node@file:projenrc/stubs/sentry-n
 // nothing it imports ships in the site.
 project.eslint?.allowDevDeps('src/**');
 
-// Projen's ESLint component pins this plugin to an older major. A later request for the same dependency replaces it.
-project.addDevDeps('@stylistic/eslint-plugin@^5');
+// Projen's ESLint component asks for an older major. A later request for the same dependency replaces it; without a
+// version, projen keeps the range in package.json.
+project.addDevDeps('@stylistic/eslint-plugin');
 // Requires a space between `catch` and its parameter; the other function-paren cases stay unchecked.
 project.eslint?.addRules({
   '@stylistic/space-before-function-paren': ['error', { anonymous: 'ignore', named: 'ignore', asyncArrow: 'ignore', catch: 'always' }],

@@ -223,7 +223,6 @@
     },
     {
       "name": "@stylistic/eslint-plugin",
-      "version": "^5",
       "type": "build"
     },
     {

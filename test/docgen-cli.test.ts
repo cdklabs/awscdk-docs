@@ -10,7 +10,7 @@ type Config = { modules: string[] };
 const generateDocs = jest.fn<(config: Config, options: Record<string, string>) => string[]>();
 const updateHistoryLedger = jest.fn<
   (config: Config, ledgerFile: string, root: string, releasedAt: (name: string, version: string) => string | undefined) =>
-  { introduced: number; changed: number; seeded: number }
+    { introduced: number; changed: number; seeded: number }
 >();
 const generateThirdPartyLicenses = jest.fn<(root: string) => Promise<string>>();
 /** Package names the dist tarballs declare, keyed by tarball path. Stands in for listing each archive with `tar`. */

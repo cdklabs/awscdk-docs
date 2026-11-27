@@ -669,7 +669,7 @@
             "--peer",
             "--no-deprecated",
             "--dep=dev",
-            "--filter=@axe-core/playwright,@jest/globals,@jsii/spec,@playwright/test,@types/jest,@types/node,botvisibility,eslint-import-resolver-typescript,eslint-plugin-import,htmlparser2,jest,lighthouse,ts-jest,tsx,typescript"
+            "--filter=@axe-core/playwright,@jest/globals,@jsii/spec,@playwright/test,@stylistic/eslint-plugin,@types/jest,@types/node,botvisibility,eslint-import-resolver-typescript,eslint-plugin-import,htmlparser2,jest,lighthouse,ts-jest,tsx,typescript"
           ]
         },
         {
