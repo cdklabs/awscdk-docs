@@ -179,6 +179,20 @@ The cache lives for one shard's build and captures all its intra-shard repeats.
   runs first.
 - **`vite.build.reportCompressedSize: false`**: Vite gzips every emitted asset
   only to log its compressed size — pure waste across ~21k pages.
+- **Release each page's template AST once compiled**
+  (`docs/.vitepress/vue-compiler.ts`, passed as the Vue plugin's `compiler`).
+  The Vue plugin caches every page's SFC descriptor for the whole build, and
+  compiling a template grows the descriptor's AST in place, so a shard would
+  hold every page's AST through the SSR build and rendering. The wrapper
+  empties an AST only after compiling it, keeping its `source` and
+  `transformed` flag. When the SSR build gets the same cached descriptor back,
+  compiler-sfc sees the flag and re-parses the template from `source`, as it
+  already does for a compiled AST; when compiler-sfc's parse cache has dropped
+  the page, the SSR build parses it afresh. Neither path reads the dropped
+  fields, so the output does not change. A test builds a page-shaped component
+  through Vite with the stock and the wrapped compiler, requires the same
+  client and SSR output, and checks that the SSR build was handed the released
+  AST, so a Vue upgrade that stops re-parsing it fails the suite.
 
 ### Compile existence gates into the bundle
 

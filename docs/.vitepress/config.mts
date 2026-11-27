@@ -13,6 +13,7 @@ import { structuredDataHead } from "./structured-data";
 import { siteOverridesHead } from "./site-overrides";
 import { injectSiteStamp } from "../../src/site-stamp";
 import { hashmapCacheBuster, resolveBuildId } from "./hashmap-cache-buster";
+import { astReleasingCompiler } from "./vue-compiler";
 import { docsSiteUrl, readVersionSnapshot, VERSION_SNAPSHOT_FILE } from "../../src/docgen/versions";
 import { assertValidVersion } from "../../src/docgen/version-format";
 import { createHighlighter, type ShikiTransformer } from "shiki";
@@ -335,6 +336,9 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
     // stylesheets, so its rules win at equal specificity.
     siteOverridesHead(sitePaths.siteBase()),
   ],
+
+  // Frees each page's template AST once compiled, so a shard build does not hold every page's AST until it exits.
+  vue: { compiler: astReleasingCompiler },
 
   vite: {
     resolve: {
