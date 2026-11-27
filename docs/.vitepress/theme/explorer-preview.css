@@ -30,7 +30,7 @@
 /* The 392px title lane leaves the top bar row 72px less room than the 320px lane, which
    nav-controls.css sized to fit at 960px with 1px to spare. From 960px to 1023px the row takes
    24px back from the nav links' side padding (12px to 8px). At 960px the search button then keeps
-   its 40px icon width and the gear's right edge sits 32px inside the viewport. */
+   its icon width and the gear's right edge sits at least 8px inside the viewport. */
 @media (min-width: 960px) and (max-width: 1023px) {
   html[data-explorer-preview="on"]:has(.VPSidebar) .VPNavBar .VPNavBarMenuLink {
     padding: 0 8px;

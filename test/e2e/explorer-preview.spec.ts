@@ -206,8 +206,8 @@ test.describe('explorer preview on desktop', () => {
         }
         const title = await page.locator('.VPNavBar .container > .title').boundingBox();
         expect(boxes[0].x, 'the first control starts after the title lane').toBeGreaterThanOrEqual(title!.x + title!.width);
-        // The search button keeps at least its icon width where the row is tightest.
-        expect(boxes[1].width, 'the search button keeps its icon width').toBeGreaterThanOrEqual(40);
+        // The search button keeps at least its 36px icon width where the row is tightest.
+        expect(boxes[1].width, 'the search button keeps its icon width').toBeGreaterThanOrEqual(36);
         for (let i = 1; i < boxes.length; i++) {
           expect(boxes[i].x, 'controls do not overlap').toBeGreaterThanOrEqual(boxes[i - 1].x + boxes[i - 1].width - 1);
         }

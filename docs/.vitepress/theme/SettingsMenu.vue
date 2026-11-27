@@ -25,9 +25,7 @@ function toggle(): void {
 }
 
 function onDocumentClick(event: MouseEvent): void {
-  const path = event.composedPath() as Element[];
-  const inside = path.includes(root.value as HTMLElement);
-  if (open.value && root.value && !inside) {
+  if (open.value && root.value && !root.value.contains(event.target as Node)) {
     open.value = false;
   }
 }
