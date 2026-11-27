@@ -26,7 +26,7 @@ function handwrittenPages(): string[] {
 }
 
 describe('handwritten page dates', () => {
-  // Reads the sources, not a build: the date only feeds the Pagefind meta, and building every page here is too slow.
+  // Reads the sources so a new page is caught without a build; test/e2e/pagefind-date.spec.ts checks the built meta.
   test.each(handwrittenPages())('%s carries the content-revised date its footer and JSON-LD show', (file) => {
     const source = readFileSync(join(DOCS, file), 'utf-8');
     const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(source)?.[1] ?? '';
