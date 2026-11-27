@@ -262,7 +262,8 @@ later fingerprint difference sets the last-change version and npm publish time. 
 enforced fingerprint version, and `mergeSeedLedger` replaces only the `aws-cdk-lib` slice, preserving `constructs`
 and alpha-module rows with their version indices remapped. The release count is an input, not a constant, so a run
 can widen the window when coverage is poor. The committed seed walks every stable CDK v2 release from 2.0.0 to the release it was seeded at,
-resolving most introductions and nearly all last changes across the current `aws-cdk-lib` types;
+resolving most introductions and most last changes across the current `aws-cdk-lib` types (the backfill CLI prints
+the exact `coverage` for a run);
 entries present in 2.0.0 remain unknown (v1 history is outside the evidence window).
 
 ## Consequences

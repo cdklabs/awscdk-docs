@@ -182,7 +182,7 @@ the merge. The hand-written homepage is the one exception: it declares
 `agentMarkdown: "/index.md"`, and `scripts/agent-markdown-overlay.cjs`
 transforms its finished Markdown into the root twin during the same overlay
 step, keeping the advertised file and its producer together. The sizes below
-are a point-in-time measurement against one `aws-cdk-lib` release and grow with
+are a point-in-time measurement against `aws-cdk-lib` 2.277.0 and grow with
 each CDK release, so re-measure rather than reuse them. The compressed
 corpus (`tar | gzip -6` over `dist-agent-markdown` after a full
 `docs:generate`, five languages) is about 23 MB with

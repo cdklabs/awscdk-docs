@@ -18,7 +18,7 @@ a generated `<service>.events` submodule per service — dozens of
 them — holding the service's EventBridge event patterns. Each has
 the same shape: a class per event (`DLMPolicyStateChange`,
 `EC2InstanceStateChangeNotification`) with a static `eventPattern()`, nested
-detail structs under each class, and for 31 services a *facade* class
+detail structs under each class, and for many services a *facade* class
 (`InstanceEvents`, `RepositoryEvents`, `AlarmEvents`) that fronts one
 construct: `InstanceEvents.fromInstance(IInstanceRef)` already matches the
 facade rule of `classification.ts` and is classified `Facade`.
