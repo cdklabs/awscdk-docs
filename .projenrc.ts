@@ -55,6 +55,10 @@ const project = new CdkTypeScriptProject({
   releaseWorkflowName: 'deploy-and-release',
   minMajorVersion: 1,
 
+  // Nothing imports this package, so package.json gets no `main`/`types`, and projen writes no sample `src/index.ts`.
+  entrypoint: '',
+  sampleCode: false,
+
   githubOptions: {
     projenCredentials: PROJEN_GITHUB_TOKEN,
     pullRequestLintOptions: {
