@@ -8,7 +8,9 @@
  *    `order`. The overrides only apply when the tabs actually render
  *    (`:has()`), so the single-language build — where the tabs are
  *    absent — keeps the stock arrangement; the restyle and touch-target
- *    rules further below are not gated and apply to it too.
+ *    rules further below apply to it too, except the search compaction
+ *    (768–1279px) and the 44px search disc (768–959px), which are gated
+ *    the same way.
  *
  * 2. The search box moves to the CENTER of the nav row: it keeps the
  *    pagefind plugin's `flex: 1` (so it owns the space between the
@@ -240,7 +242,7 @@
 .VPNavBar .content-body > .search .nav-search-btn-wait:hover {
   border-color: var(--tb-focus);
   box-shadow: 0 0 0 1px var(--tb-focus);
-  color: var(--vp-c-text-1);
+  color: var(--tb-hover-fg);
 }
 
 .VPNavBar .content-body > .search .nav-search-btn-wait:focus-visible {
