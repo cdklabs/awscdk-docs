@@ -7,7 +7,8 @@
  *    (mounted in nav-bar-content-after) is repositioned with flex
  *    `order`. The overrides only apply when the tabs actually render
  *    (`:has()`), so the single-language build — where the tabs are
- *    absent — keeps the stock layout untouched.
+ *    absent — keeps the stock arrangement; the restyle and touch-target
+ *    rules further below are not gated and apply to it too.
  *
  * 2. The search box moves to the CENTER of the nav row: it keeps the
  *    pagefind plugin's `flex: 1` (so it owns the space between the
@@ -656,6 +657,12 @@
    * plus :hover), including the sticky hover after a tap. */
   .VPNavBar .content-body > .search .nav-search-btn-wait:hover {
     box-shadow: none;
+  }
+
+  /* The icon is the bar's full height, so an outside ring would leave the
+   * viewport at the top; draw it inset instead. */
+  .VPNavBar .content-body > .search .nav-search-btn-wait:focus-visible {
+    outline-offset: -2px;
   }
 }
 

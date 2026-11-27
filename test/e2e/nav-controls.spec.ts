@@ -562,9 +562,14 @@ test.describe('navbar layout', () => {
     await expect(tab).toBeFocused();
     expect(await tab.evaluate(ring)).toBe('solid 2px -3px');
 
-    // The search ring applies to each of its shapes: the pill from 960px, the
-    // disc at 768-959px and the bare icon below 768px; it stays in the viewport.
-    for (const width of [1280, 800, 375]) {
+    // The search ring applies to each of its shapes: outside the pill from
+    // 960px and the disc at 768-959px, inset on the bare full-height icon
+    // below 768px; in every case the whole ring stays inside the viewport.
+    for (const [width, offset] of [
+      [1280, 2],
+      [800, 2],
+      [375, -2],
+    ] as const) {
       await page.setViewportSize({ width, height: 800 });
       await page.goto(TOPIC_PAGE);
       const search = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
@@ -572,10 +577,14 @@ test.describe('navbar layout', () => {
       await page.keyboard.press('Shift+Tab');
       await page.keyboard.press('Tab');
       await expect(search).toBeFocused();
-      expect(await search.evaluate(ring), `search ring at ${width}px`).toBe('solid 2px 2px');
+      expect(await search.evaluate(ring), `search ring at ${width}px`).toBe(`solid 2px ${offset}px`);
       const box = (await search.boundingBox())!;
-      expect(box.x - 4, `ring inside the viewport at ${width}px`).toBeGreaterThanOrEqual(0);
-      expect(box.x + box.width + 4, `ring inside the viewport at ${width}px`).toBeLessThanOrEqual(width);
+      // Outer edge of the ring: the box edge plus the offset plus the 2px line.
+      const reach = offset + 2;
+      expect(box.x - reach, `ring inside the viewport at ${width}px`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width + reach, `ring inside the viewport at ${width}px`).toBeLessThanOrEqual(width);
+      expect(box.y - reach, `ring inside the viewport at ${width}px`).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height + reach, `ring inside the viewport at ${width}px`).toBeLessThanOrEqual(800);
     }
   });
 

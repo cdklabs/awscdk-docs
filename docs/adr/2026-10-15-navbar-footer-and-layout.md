@@ -132,7 +132,9 @@ specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.
   (`--tb-input-border`, 5.6:1 light, 6.9:1 dark against the bar) instead of the
   plugin's near-white fill with a transparent border, which has no visible box
   on a white bar. Hover adds a 1px brand ring; keyboard focus a 2px outline
-  2px outside. The `Ctrl K` chip takes the same edge.
+  2px outside (inset 2px on the bare phone icon below 768px, which is the
+  bar's full height, so the ring stays in the viewport). The `Ctrl K` chip
+  takes the same edge.
 - **Version badge then Settings gear** sit at the right end, in the same muted
   ink as the idle tabs and the search label (`--tb-muted`, 9.4:1 light, 10:1
   dark) with the same hover fill (`--tb-hover-bg`) and hover text
