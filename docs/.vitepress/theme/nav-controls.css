@@ -1,12 +1,12 @@
 /*
  * Navbar layout, superseding an earlier arrangement.
  *
- * 1. The language slider takes the LEADING slot — the position the
+ * 1. The language tabs take the LEADING slot — the position the
  *    search box used to occupy, right after the site title. VitePress
- *    renders the layout slots after its own controls, so the slider
+ *    renders the layout slots after its own controls, so the tab group
  *    (mounted in nav-bar-content-after) is repositioned with flex
- *    `order`. The overrides only apply when the slider actually renders
- *    (`:has()`), so the single-language build — where the slider is
+ *    `order`. The overrides only apply when the tabs actually render
+ *    (`:has()`), so the single-language build — where the tabs are
  *    absent — keeps the stock layout untouched.
  *
  * 2. The search box moves to the CENTER of the nav row: it keeps the
@@ -211,10 +211,9 @@
 @media (min-width: 768px) {
   .VPNavBar .content-body > .language-toggle {
     order: -2;
-    /* 10px (was the search's 32px padding): the doubled theme picker
-     * needs the row's spare width more than the title gap —
-     * the segments themselves stay at the 24px WCAG 2.5.8 minimum, so
-     * the width comes out of chrome like this margin instead. */
+    /* 10px (was the search's 32px padding): the row's spare width comes out
+     * of chrome like this margin and the tabs' `--tab-pad`, never out of the
+     * tabs' 44px minimum width. */
     margin-left: 10px;
   }
 
@@ -610,11 +609,14 @@
   }
 }
 
-/* 768-959px: the search is its icon only (the label and hint are already out
- * of flow across the medium band), so the pill shrinks to a 44px disc. */
+/* 768-959px, multi-language builds only: the label and hint are already out
+ * of flow across the medium band (the gated rules above), so the pill shrinks
+ * to a 44px disc around the icon. A single-language build keeps its label and
+ * so its padding. */
 @media (min-width: 768px) and (max-width: 959px) {
-  .VPNavBar .content-body > .search .nav-search-btn-wait {
+  .VPNavBar .content-body:has(> .language-toggle) > .search .nav-search-btn-wait {
     padding: 0;
+    border-radius: 50%;
   }
 }
 
@@ -709,10 +711,16 @@
 }
 
 /* Forced colors (high contrast) replaces the selected option's author colors
- * and drops its inset underline, which would leave five identical options.
- * Underline the selected label in the system text color instead, which
- * survives forced colors and does not change the option's size. */
+ * and paints every transparent border in the system text color, which would
+ * give all five bar tabs the same underline. The idle tabs' bottom border
+ * takes the canvas color so only the selected one shows, and the selected
+ * label is underlined in the system text color as well, so the cue survives
+ * in the phone menu too, where the fill is gone. Neither changes a size. */
 @media (forced-colors: active) {
+  .VPNavBar .language-toggle .language-option:not(.active) {
+    border-bottom-color: Canvas;
+  }
+
   :is(.VPNavBar, .VPNavScreen) .language-toggle .language-option.active {
     text-decoration: underline 3px;
     text-underline-offset: 4px;

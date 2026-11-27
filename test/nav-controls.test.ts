@@ -68,7 +68,7 @@ describe('navbar layout', () => {
       expect(menu).toContain('removeEventListener("click", onDocumentClick)');
     });
 
-    test('the trigger sits level with the 40px search trigger and slider', () => {
+    test('the trigger sits level with the 40px search trigger', () => {
       // Inside the popover the picker's groups need not match the nav row's
       // baseline, but the gear trigger standing in for them does.
       const menu = readFileSync(menuPath, 'utf-8');
@@ -152,10 +152,17 @@ describe('navbar layout', () => {
       );
       // The bar draws the options as text tabs: a 3px bottom border on every
       // option, transparent when idle and brand-colored on the selected one,
-      // which also takes the brand text color and no fill. The underline is a
-      // border, so the tab's box carries it and forced colors keep it.
+      // which also takes the brand text color and no fill. The border is part
+      // of every tab's box, so selecting never changes a tab's size.
       expect(css).toMatch(
         /\.VPNavBar \.language-toggle \.language-option \{[^}]*border-bottom: 3px solid transparent;/,
+      );
+      // Forced colors paints transparent borders in the system text color, so
+      // the idle borders take the canvas color there (checked in the browser
+      // in language-toggle.spec.ts).
+      const forced = css.slice(css.indexOf('@media (forced-colors: active)'));
+      expect(forced).toMatch(
+        /\.VPNavBar \.language-toggle \.language-option:not\(\.active\) \{\s*border-bottom-color: Canvas;/,
       );
       expect(css).toMatch(
         /\.VPNavBar \.language-toggle \.language-option\.active \{\s*color: var\(--tb-tab-on\);\s*border-bottom-color: var\(--tb-tab-on\);\s*background-color: transparent;/,
@@ -416,6 +423,12 @@ describe('navbar layout', () => {
       );
       expect(stripped).toMatch(
         /\.nav-search-btn-wait:focus-visible \{\s*outline: 2px solid var\(--tb-focus\);\s*outline-offset: 2px;/,
+      );
+      // 768-959px drops the padding only when the tabs render, because only
+      // then are the label and hint out of flow; a single-language build keeps
+      // its label and its padding.
+      expect(stripped).toMatch(
+        /@media \(min-width: 768px\) and \(max-width: 959px\) \{\s*\.VPNavBar \.content-body:has\(> \.language-toggle\) > \.search \.nav-search-btn-wait \{\s*padding: 0;\s*border-radius: 50%;/,
       );
       // Below 768px the plugin's bare icon returns: no edge, no fill, no radius.
       const phone = stripped.slice(stripped.indexOf('@media (max-width: 767px)'));

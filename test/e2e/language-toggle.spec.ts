@@ -150,7 +150,9 @@ test.describe('language toggle', () => {
       expect(idle.underline).toBe('3px solid rgba(0, 0, 0, 0)');
       expect(idle.fill).toBe('rgba(0, 0, 0, 0)');
       // Hovering the selected tab keeps it as is; hovering an idle one fills it.
+      // The fill transitions, so read it only once any transition has ended.
       await selected.hover();
+      await selected.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
       expect((await selected.evaluate(paint)).fill).toBe('rgba(0, 0, 0, 0)');
       const python = slider.getByRole('radio', { name: 'Python' });
       await python.hover();
@@ -287,10 +289,29 @@ test.describe('language toggle', () => {
       const picker = scope.getByRole('radiogroup', { name: 'Select programming language' });
       await expect(picker).toBeVisible();
       const decoration = (el: Element) => getComputedStyle(el).textDecorationLine;
-      // Forced colors drops the fill and the inset underline, so the selected
+      // Forced colors drops the fill and recolors the borders, so the selected
       // label is underlined in the system text color; the others are not.
       expect(await picker.getByRole('radio', { name: 'TypeScript' }).evaluate(decoration)).toBe('underline');
       expect(await picker.getByRole('radio', { name: 'Python' }).evaluate(decoration)).toBe('none');
+      if (where === 'bar') {
+        // Transparent borders paint in the system text color under forced
+        // colors, so the idle tabs' bottom border takes the canvas color: only
+        // the selected tab's border differs from the bar behind it.
+        const border = (el: Element) => getComputedStyle(el).borderBottomColor;
+        const canvas = await page.evaluate(() => {
+          const probe = document.createElement('span');
+          probe.style.color = 'Canvas';
+          document.body.appendChild(probe);
+          const resolved = getComputedStyle(probe).color;
+          probe.remove();
+          return resolved;
+        });
+        const selectedBorder = await picker.getByRole('radio', { name: 'TypeScript' }).evaluate(border);
+        expect(selectedBorder).not.toBe(canvas);
+        for (const name of ['Python', 'Java', 'C#', 'Go']) {
+          expect(await picker.getByRole('radio', { name, exact: true }).evaluate(border), name).toBe(canvas);
+        }
+      }
     });
   }
 

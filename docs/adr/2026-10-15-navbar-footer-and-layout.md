@@ -177,7 +177,7 @@ values because the logo-only title gives that band its room. The search button
 compacts to its magnifier icon from 1279px down, as a 44px disc from 959px down.
 Every control keeps its place in the row — the version must stay visible, and a
 control a click away is not visible. E2e assertions pin the row fitting inside
-768px, 800px, 900px, 960px, 1000px, 1024px, 1099px, 1100px, and 1279px viewports,
+768px, 800px, 900px, 960px, 1024px, 1099px, 1100px, and 1279px viewports,
 and the page scroll width equaling the viewport with no two bar controls
 overlapping at 1440, 1359, 1280, 1180, 1100, 1099, 1024, 960, 959, 900, 768,
 767, 375 and 320px in both color schemes; the 768px case has a positive control
