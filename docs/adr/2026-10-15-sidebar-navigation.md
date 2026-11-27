@@ -337,6 +337,8 @@ outgoing position.
 
 ### Sticky sidebar header
 
+*With the Explorer preview on, the Views button also heads this block below 960px; see [Explorer preview](./2026-11-26-explorer-preview-rail.md).*
+
 The symbol filter (which carries the locate control in its status row) and
 the favorites list are wrapped in one `.sidebar-header` element that is
 pinned (one wrapper because sticky siblings do not stack and would overlap).
@@ -388,6 +390,8 @@ here without reinstating the route-dependent height difference, and the
 control is outside that test's enumerated selectors.
 
 ### Client-side favorite pages
+
+*With the Explorer preview on, the Favorites view replaces this section: its list is always open and shows an empty-state line with zero favorites; see [Explorer preview](./2026-11-26-explorer-preview-rail.md).*
 
 Starred pages persist in `localStorage` under `cdk-docs:favourites` as a
 JSON array of `{ path, title }`, paths stored base-stripped and without
