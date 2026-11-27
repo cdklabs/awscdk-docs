@@ -4,6 +4,7 @@ import { jest } from '@jest/globals';
 import { runCli, scratchDir } from './cli-run.js';
 
 const backfill = await import('../src/docgen/history-backfill.js');
+const { FINGERPRINT_VERSION } = await import('../src/docgen/history.js');
 
 /** Types each made-up release ships, keyed by version; a type's stability stands in for its shape. */
 let releaseTypes: Record<string, Record<string, string>>;
@@ -106,7 +107,7 @@ describe('history-backfill-cli', () => {
 
   test('keeps the rows of other assemblies already in the output ledger', async () => {
     writeFileSync(join(dir, 'ledger.json'), JSON.stringify({
-      fingerprintVersion: 1,
+      fingerprintVersion: FINGERPRINT_VERSION,
       versions: ['1.0.0'],
       types: { 'constructs.Construct': [0, 0, '2025-01-01T00:00:00.000Z', 'abc'] },
       readmes: {},
