@@ -3,7 +3,8 @@
 // Prune the generated API docs down to the small browser-e2e fixture.
 //
 // The full ~21k-page site is too heavy to rebuild for every browser-test run, so the e2e suite builds a small
-// subset: a handful of aws-cdk-lib services plus the `constructs` module and the hand-written pages. The
+// subset: the aws-cdk-lib services and standalone modules named in the defaults below, plus the hand-written
+// pages. The
 // complete client-side assets (the api-sidebar/ skeleton, chunks, symbol index and type-summary lookup) are
 // left intact, so the interactive features under test see the same data as in production.
 //

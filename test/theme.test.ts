@@ -579,13 +579,21 @@ describe('API kind badge palette', () => {
   describe('type page header', () => {
     // The header's own tokens. Secondary text owes 7:1 against the page it sits
     // on, a chip label 7:1 against its own fill, and a non-text graphic such as
-    // the chevron 3:1 against the page. Both schemes are pinned by hex, because
-    // the a11y audit runs the default color scheme only.
+    // the chevron 3:1 against the page. Both schemes are checked, because the
+    // a11y audit runs the default color scheme only.
     const headerStart = css.indexOf('--th-text-2');
     const headerDarkStart = css.indexOf('.dark {', headerStart);
     const headerLight = css.slice(headerStart, headerDarkStart);
     const headerDark = css.slice(headerDarkStart, css.indexOf('}', headerDarkStart));
-    const PAGE_BG = { light: '#ffffff', dark: '#161d26' } as const;
+    const themeCss = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
+    const themeLight = themeCss.slice(themeCss.indexOf(':root {'), themeCss.indexOf('.dark {'));
+    const themeDark = themeCss.slice(themeCss.indexOf('.dark {'));
+    // Read from the theme, so retuning the page background moves these ratios
+    // instead of leaving them measured against a stale copy of it.
+    const PAGE_BG = {
+      light: cssVar(themeLight, '--vp-c-bg'),
+      dark: cssVar(themeDark, '--vp-c-bg'),
+    } as const;
 
     test.each(['--th-text-2', '--th-chevron'] as const)(
       '%s is shadowed in dark mode, so the light value cannot win there',
@@ -635,9 +643,6 @@ describe('API kind badge palette', () => {
       // A reason can carry a web link, which `escapeSummaryHtml` renders as an
       // anchor. `--vp-c-brand-1` on this tint is under what body text owes, so
       // the note re-points its links to brand-2 as the callouts do.
-      const themeCss = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
-      const themeLight = themeCss.slice(themeCss.indexOf(':root {'), themeCss.indexOf('.dark {'));
-      const themeDark = themeCss.slice(themeCss.indexOf('.dark {'));
       expect(ruleBody('.vp-doc .type-deprecated-note a')).toContain('var(--vp-c-brand-2)');
       for (const [header, theme] of [[headerLight, themeLight], [headerDark, themeDark]] as const) {
         expect(contrast(cssVar(theme, '--vp-c-brand-2'), cssVar(header, '--th-dep-bg')))

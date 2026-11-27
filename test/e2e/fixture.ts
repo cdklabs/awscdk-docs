@@ -1,6 +1,6 @@
 // Pages that exist in the e2e fixture build (scripts/e2e-fixture-prune.cjs
-// keeps the aws-sns + aws-sqs services and the constructs module), at the
-// historical /v2/docs/ canonical shape.
+// keeps the aws-sns, aws-sqs and region-info services and the constructs and
+// aws-codestar-alpha modules), at the historical /v2/docs/ canonical shape.
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
