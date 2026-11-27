@@ -132,24 +132,26 @@ an unscoped rule would restyle module overviews and authored pages too.
   `.type-header-row .type-chip`, not from a `<Badge>` in the H1. The Markdown
   twin renders the row as one line, `L2 construct · Stable`, so an agent still
   gets the classification.
-- The header block costs about 400 bytes of HTML per type page, and the page's
-  lean hydration chunk gives more back than that. Measured base `f71cdbe`
-  against the branch head that adds this record, on the baseline fixture
+- The header block costs about 460 bytes of HTML per type page, and the page's
+  lean hydration chunk gives most of it back. Measured base `a0f033c`, the
+  `main` commit this branch merges, against `d90fa57`, its last commit that
+  changes built output, on the baseline fixture
   (`E2E_FIXTURE_SERVICES=aws-sns,aws-sqs E2E_FIXTURE_MODULES=constructs`, 77
-  pages and 83 page chunks both times): `docs:generate`, then
+  pages and 78 built HTML pages both times): `docs:generate`, then
   `scripts/e2e-fixture-prune.cjs`, then `vitepress build docs`, then
-  `scripts/package-site.sh`. Per page, HTML goes +400 B and the full page chunk
-  +208 B, while the lean chunk goes -462 B, because a page without an `Added in`
+  `scripts/package-site.sh`. On `aws_sqs.Queue`, HTML goes 184,464 to 184,928 B
+  (+464) and the full page chunk 183,815 to 184,095 B (+280), while the lean
+  chunk goes 182,256 to 181,854 B (-402), because a page without an `Added in`
   badge no longer uses the `<Badge>` component. All three scale with the page
-  count. One-time: the shared
-  chunks +610 B and the stylesheet +3,358 B. On the fixture that nets raw `dist`
-  45,414,905 to 45,430,335 B (+0.03%) and the deploy zip 4,650,844 to 4,642,367
-  B (-0.18%). The corpus carries 29,154 type pages: `docs:generate` writes
-  29,892 pages under `docs/v2/docs`, of which 738 are `-readme.md` module
-  overviews, which have no chip row. Extrapolating the per-page figures alone
-  over those 29,154 gives about +11.7 MB of HTML, +6.1 MB of full chunks and
-  -13.5 MB of lean chunks, that last figure an upper bound: no fixture page
-  carries an `Added in` badge, and a page that does still loads `<Badge>`. The
+  count. One-time: the shared chunks +610 B and the stylesheet 178,419 to
+  181,970 B (+3,551). On the fixture that nets raw `dist` 45,265,959 to
+  45,282,069 B (+0.04%) and the deploy zip 4,645,588 to 4,638,740 B (-0.15%).
+  The corpus carries 29,154 type pages: `docs:generate` writes 29,892 pages
+  under `docs/v2/docs`, of which 738 are `-readme.md` module overviews, which
+  have no chip row. Extrapolating the per-page figures alone over those 29,154
+  gives about +12.9 MB of HTML, +7.8 MB of full chunks and -11.2 MB of lean
+  chunks, that last figure an upper bound: no fixture page carries an `Added in`
+  badge, and a page that does still loads `<Badge>`. The
   zip is deliberately not extrapolated, because a
   repeated block's compression ratio does not scale linearly, so the fixture
   figure is the measurement and the deployed zip is what `package-site.sh`
