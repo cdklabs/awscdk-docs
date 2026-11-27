@@ -157,7 +157,9 @@ const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: strin
  * The reason's whitespace is collapsed before it is escaped, like the member summaries it reads beside: a raw HTML
  * block in markdown ends at a blank line, so a reason carrying a paragraph break would otherwise split this block
  * and strand its closing tags. The note opens and closes with a blank line so markdown-it renders the reason's
- * inline Markdown, the way a member row's extra prose does, and `escapeProse` keeps a web link a link.
+ * inline Markdown, and `escapeProse` keeps a web link a link. The note is `v-pre` for the same reason the member
+ * lists are: `escapeProse` leaves inline code spans alone, so a reason naming `{{ x }}` in backticks would reach
+ * the Vue compiler. markdown-it runs first, so the code span is still rendered.
  */
 export function renderTypeHeader(options: TypeHeaderOptions): string[] {
   const title = weightedTitle(options.name);
@@ -173,7 +175,7 @@ export function renderTypeHeader(options: TypeHeaderOptions): string[] {
       + '</span></div>',
     ...(deprecated && reason
       ? [
-        '<div class="type-deprecated-note">',
+        '<div class="type-deprecated-note" v-pre>',
         '',
         `<span class="type-deprecated-label">Deprecated:</span> ${escapeProse(reason.replace(/\s+/g, ' '))}`,
         '',

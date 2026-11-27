@@ -262,12 +262,25 @@ describe('type page header', () => {
     // The reason is left as Markdown and the blank lines around it end the raw-HTML block, so markdown-it
     // renders the code span instead of printing its backticks.
     expect(block).toContain(
-      '<div class="type-deprecated-note">\n\n'
+      '<div class="type-deprecated-note" v-pre>\n\n'
       + '<span class="type-deprecated-label">Deprecated:</span> Use `Stats` instead.\n\n'
       + '</div>',
     );
     // The note sits inside the header block, so the divider closes below it.
     expect(block.indexOf('type-deprecated-note')).toBeLessThan(block.lastIndexOf('</div>'));
+  });
+
+  test('a deprecated reason naming Vue syntax in backticks cannot reach the compiler', () => {
+    // escapeProse leaves inline code spans alone, so the note's v-pre is what keeps `{{ x }}` out of the
+    // Vue compiler, the same guard the member lists use.
+    const block = header({
+      name: 'Statistic',
+      kind: { text: 'Enum' },
+      stability: 'deprecated',
+      deprecationReason: 'Use `{{ x }}` instead.',
+    });
+    expect(block).toContain('<div class="type-deprecated-note" v-pre>');
+    expect(block).toContain('Use `{{ x }}` instead.');
   });
 
   test('a deprecated reason keeps its paragraph on one line so the note cannot end early', () => {
@@ -277,7 +290,7 @@ describe('type page header', () => {
       stability: 'deprecated',
       deprecationReason: 'Gone.\n\nUse `Stats`.',
     });
-    const note = block.slice(block.indexOf('<div class="type-deprecated-note">'));
+    const note = block.slice(block.indexOf('<div class="type-deprecated-note" v-pre>'));
     expect(note).toContain('Gone. Use `Stats`.');
     // One blank line before the reason and one after it; a third would strand the closing tag.
     expect(note.split('\n\n')).toHaveLength(3);

@@ -640,8 +640,8 @@ describe('API kind badge palette', () => {
     });
 
     test('a link in the deprecation note clears 4.5:1 on the note fill', () => {
-      // A reason can carry a web link, which `escapeSummaryHtml` renders as an
-      // anchor. `--vp-c-brand-1` on this tint is under what body text owes, so
+      // A reason can carry a web link, which `escapeProse` turns into a Markdown
+      // link. `--vp-c-brand-1` on this tint is under what body text owes, so
       // the note re-points its links to brand-2 as the callouts do.
       expect(ruleBody('.vp-doc .type-deprecated-note a')).toContain('var(--vp-c-brand-2)');
       for (const [header, theme] of [[headerLight, themeLight], [headerDark, themeDark]] as const) {

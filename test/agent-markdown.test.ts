@@ -153,7 +153,7 @@ describe('toAgentMarkdown', () => {
       deprecationReason: 'Superseded.\n\nUse `Stats` instead.',
     }).join('\n');
     expect(page).toContain('Superseded. Use `Stats` instead.');
-    const note = page.slice(page.indexOf('<div class="type-deprecated-note">'));
+    const note = page.slice(page.indexOf('<div class="type-deprecated-note" v-pre>'));
     expect(note.split('\n\n')).toHaveLength(3);
     expect(toAgentMarkdown(page).markdown).toContain('Deprecated: Superseded. Use `Stats` instead.');
   });

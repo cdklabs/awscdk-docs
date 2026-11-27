@@ -300,10 +300,11 @@
   margin: 0;
 }
 
-/* A deprecation reason can carry a web link, which `escapeSummaryHtml` renders
-   as an anchor. brand-1 on the note's tint is 4.07:1 in light mode, under what
+/* A deprecation reason can carry a web link, which `escapeProse` turns into a
+   Markdown link. brand-1 on the note's tint is 4.07:1 in light mode, under what
    body text owes, so the note re-points its links the way the info and note
-   callouts do in callouts.css. Three classes, so it beats `.vp-doc a`. */
+   callouts do in callouts.css. Two classes and an element, so it beats
+   `.vp-doc a`. */
 .vp-doc .type-deprecated-note a {
   color: var(--vp-c-brand-2);
 }

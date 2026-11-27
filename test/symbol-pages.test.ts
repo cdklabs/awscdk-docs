@@ -557,7 +557,7 @@ describe('symbol page generation', () => {
       '# <span class="type-title-deprecated"><span data-pagefind-weight="10">Statistic</span></span>',
     );
     expect(page).toContain('<span class="type-chip type-chip-stability type-chip-deprecated">Deprecated</span>');
-    expect(page).toContain('<div class="type-deprecated-note">');
+    expect(page).toContain('<div class="type-deprecated-note" v-pre>');
     expect(page).toContain('<span class="type-deprecated-label">Deprecated:</span> Use one of the factory');
     expect(page).not.toContain('type-chip-stable');
   });
