@@ -14,6 +14,7 @@ import { siteOverridesHead } from "./site-overrides";
 import { injectSiteStamp } from "../../src/site-stamp";
 import { hashmapCacheBuster, resolveBuildId } from "./hashmap-cache-buster";
 import { astReleasingCompiler } from "./vue-compiler";
+import { releaseBuildOutput } from "./release-build-output";
 import { docsSiteUrl, readVersionSnapshot, VERSION_SNAPSHOT_FILE } from "../../src/docgen/versions";
 import { assertValidVersion } from "../../src/docgen/version-format";
 import { makeHighlight } from "./highlight";
@@ -276,6 +277,8 @@ const config: UserConfigFn<DefaultTheme.Config> = async () => ({
           : {}),
       }),
       hashmapCacheBuster(resolveBuildId()),
+      // Frees each build's code and module sources once written; VitePress holds the results until rendering ends.
+      releaseBuildOutput(),
     ],
 
     build: {

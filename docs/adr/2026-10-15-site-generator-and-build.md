@@ -195,6 +195,18 @@ The cache lives for one shard's build and captures all its intra-shard repeats.
   through Vite with the stock and the wrapped compiler, requires the same
   client and SSR output, and checks that the SSR build was handed the released
   AST, so a Vue upgrade that stops re-parsing it fails the suite.
+- **Release the build output once written**
+  (`docs/.vitepress/release-build-output.ts`). VitePress keeps the client and
+  SSR build results until the last page is rendered, and each result holds
+  every chunk's code and every module's rendered source. After the build
+  writes its files, the plugin drops every field of each output chunk and
+  asset except the few VitePress still reads (type, file and chunk names,
+  entry flag, facade and module ids, imports and dynamic imports). It runs as
+  the last, sequential `writeBundle` hook, so no other plugin still reads the
+  dropped fields. The files on disk do not change. A test builds a small
+  site with and without the plugin, requires the same files and the same kept
+  values, and pins the kept fields. A VitePress upgrade must recheck that list
+  against what its build reads after bundling.
 
 ### Compile existence gates into the bundle
 
