@@ -140,6 +140,14 @@ html[data-explorer-preview="on"] .favorites-empty {
   background-color: var(--vp-c-brand-2);
 }
 
+/* Forced colors replace the background colors above, so the marker keeps a system color. */
+@media (forced-colors: active) {
+  .explorer-rail-button.selected::before {
+    forced-color-adjust: none;
+    background-color: Highlight;
+  }
+}
+
 .explorer-rail-icon {
   width: 20px;
   height: 20px;

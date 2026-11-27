@@ -94,7 +94,7 @@ test.describe('explorer preview on desktop', () => {
     await rail(page).getByRole('button', { name: 'Favorites' }).click();
     await expect(rail(page).getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
     const section = page.locator('.favorites-section');
-    await expect(section.getByRole('heading', { name: '★ Favorites (2)' })).toBeVisible();
+    await expect(section.getByRole('heading', { name: 'Favorites (2)' })).toBeVisible();
     await expect(section.locator('.favorites-link')).toHaveText(['Topic', 'Queue']);
     await expect(section.locator('.favorites-toggle')).toHaveCount(0);
     await expect(page.locator('.VPSidebar .nav-filter')).toBeHidden();
@@ -220,6 +220,24 @@ test.describe('explorer preview on desktop', () => {
       });
     }
   }
+
+  test('in forced colors the selected rail button keeps a visible marker and the other does not', async ({ page }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    const colors = (name: string) =>
+      rail(page)
+        .getByRole('button', { name })
+        .evaluate((el) => ({
+          marker: getComputedStyle(el, '::before').backgroundColor,
+          background: getComputedStyle(el.closest('.ExplorerRail') ?? el).backgroundColor,
+        }));
+    await expect(rail(page)).toBeVisible();
+    // Forced colors flatten every background to the canvas color, so the marker has to differ from the rail's.
+    const selected = await colors('API');
+    expect(selected.marker, 'the selected marker is not transparent').not.toMatch(/, 0\)$/);
+    expect(selected.marker, 'the selected marker differs from the rail background').not.toBe(selected.background);
+    expect((await colors('Favorites')).marker, 'the other button has no marker').toMatch(/, 0\)$/);
+  });
 
   test('on a page without the rail the gear stays, and the switch there turns the preview off', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' }, false, '/');
@@ -460,6 +478,9 @@ test.describe('explorer preview on a phone', () => {
     const views = page.getByRole('button', { name: /^Views/ });
     await views.click();
     await expect(rail(page)).toBeVisible();
+    // VitePress moves focus outside the rail on every route change, and the focus rule would fold the rail on
+    // its own. A capture listener stops that event, so only the route watcher can fold the rail here.
+    await page.evaluate(() => document.addEventListener('focusin', (e) => e.stopPropagation(), true));
     // A programmatic click on a sidebar link is a VitePress client-side navigation; the scrim covers the tree
     // on a phone, so a pointer click cannot reach it.
     await page.evaluate((href) => {

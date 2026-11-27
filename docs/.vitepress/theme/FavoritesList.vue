@@ -82,7 +82,7 @@ function toggle(): void {
     <p v-if="viewShown && entries.length === 0" class="favorites-empty">
       No favorites yet. Select the star on an API page to add it.
     </p>
-    <h2 v-else-if="viewShown" class="favorites-static-heading">★ Favorites ({{ entries.length }})</h2>
+    <h2 v-else-if="viewShown" class="favorites-static-heading"><span aria-hidden="true">★ </span>Favorites ({{ entries.length }})</h2>
     <button
       v-else
       type="button"
