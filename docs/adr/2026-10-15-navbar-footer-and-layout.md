@@ -119,9 +119,9 @@ specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.
   text tabs on the bar itself, with no track and no fill: muted text when idle,
   a hover fill, and the selected tab in the brand color with a 3px underline
   that sits on the bar's bottom edge, because the group spans the control row's
-  full height. The earlier bordered track with an elevated selected segment had
-  a 1.3:1 edge against the bar and, in light mode, a selected fill identical to
-  the track, so the only cue left was a bolder label.
+  full height. The earlier bordered track's edge was under the 3:1 non-text
+  contrast minimum, and in light mode its selected fill matched the track, so
+  selection relied on the brand color and a 2px inset underline alone.
 - **Search is centered** (`.search { order: -1; justify-content: center;
   padding-left: 0 }`), keeping the pagefind plugin's `flex: 1` so it owns the
   region between the tabs and the right-hand controls and centers its trigger
