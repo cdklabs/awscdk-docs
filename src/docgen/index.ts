@@ -469,7 +469,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
    * every other key keeps its place. An authored page that docgen copies keeps the `date` it already has.
    */
   const emitPageFile = (file: string, twinHref: string, content: string, history: PageHistory = {}): void => {
-    content = withFrontmatterKey(content, 'date', contentRevised(history).at, 'end');
+    content = withFrontmatterKey(content, 'date', contentRevised(history).at, 'end', true);
     if (options.agentOutDir) {
       const twin = path.join(options.agentOutDir, twinHref);
       fs.mkdirSync(path.dirname(twin), { recursive: true });

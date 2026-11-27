@@ -81,15 +81,17 @@ export function toAgentMarkdown(page: string, siteUrl = docsSiteUrl()): AgentMar
  * Add one string-valued key to a page's frontmatter, opening a block when the page has none. Frontmatter must stay
  * the very first thing in the file or VitePress ignores it, so by default the key is inserted directly after the
  * opening `---`; `at: 'end'` places it just before the closing `---` instead, leaving the existing first key first.
- * A page whose block already has the key is returned unchanged, so an authored value wins and YAML sees no duplicate.
+ * With `keepExisting`, a page whose block already has the key is returned unchanged, so an authored value wins.
  */
-export function withFrontmatterKey(page: string, key: string, value: string, at: 'start' | 'end' = 'start'): string {
+export function withFrontmatterKey(
+  page: string, key: string, value: string, at: 'start' | 'end' = 'start', keepExisting = false,
+): string {
   const line = `${key}: ${JSON.stringify(value)}`;
   if (!page.startsWith('---\n')) {
     return `---\n${line}\n---\n\n${page}`;
   }
   const close = page.indexOf('\n---\n', 3);
-  if (close >= 0 && page.slice(4, close + 1).split('\n').some((l) => l.startsWith(`${key}:`))) {
+  if (keepExisting && close >= 0 && page.slice(4, close + 1).split('\n').some((l) => l.startsWith(`${key}:`))) {
     return page;
   }
   return at === 'end' && close >= 0
