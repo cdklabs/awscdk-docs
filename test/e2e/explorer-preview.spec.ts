@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CFN_QUEUE_PAGE, QUEUE_PAGE, VERSIONS_PAGE } from './fixture.js';
+import { CFN_QUEUE_PAGE, QUEUE_PAGE, SKILLS_PAGE, VERSIONS_PAGE } from './fixture.js';
 
 const PREVIEW_KEY = 'cdk-docs-explorer-preview';
 const VIEW_KEY = 'cdk-docs-explorer-view';
@@ -185,7 +185,7 @@ test.describe('explorer preview on desktop', () => {
   for (const [pagePath, label] of [
     [QUEUE_PAGE, 'an API page'],
     ['/', 'the home page'],
-    ['/skills', 'the skills page'],
+    [SKILLS_PAGE, 'the skills page'],
   ] as const) {
     for (const width of [960, 1000, 1024, 1280]) {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
@@ -263,7 +263,8 @@ test.describe('explorer preview on desktop', () => {
     expect((await colors('Favorites')).marker, 'the other button has no marker').toMatch(/, 0\)$/);
     await page.locator('.VPNavBar .settings-trigger').click();
     const panel = page.locator('#settings-menu-panel');
-    // The pressed switch segment stands out from the panel, since the gear panel is the only cue on pages without the rail.
+    // The pressed switch segment stands out from the panel,
+    // since the gear panel is the only cue on pages without the rail.
     const segment = (name: string) =>
       panel
         .getByRole('button', { name, exact: true })
@@ -275,7 +276,7 @@ test.describe('explorer preview on desktop', () => {
   for (const [pagePath, label] of [
     [QUEUE_PAGE, 'an API page'],
     ['/', 'the home page'],
-    ['/skills', 'the skills page'],
+    [SKILLS_PAGE, 'the skills page'],
   ] as const) {
     test(`the nav-link padding rule is what keeps the 960px row inside the viewport on ${label}`, async ({ page }) => {
       await page.setViewportSize({ width: 960, height: 800 });
@@ -295,13 +296,13 @@ test.describe('explorer preview on desktop', () => {
   test('the title lane is 392px on every page with the preview on and 320px with it off', async ({ page }) => {
     const lane = async () => (await page.locator('.VPNavBar .container > .title').boundingBox())!.width;
     await open(page, { [PREVIEW_KEY]: 'on' });
-    for (const path of [QUEUE_PAGE, '/', '/skills', VERSIONS_PAGE]) {
+    for (const path of [QUEUE_PAGE, '/', SKILLS_PAGE, VERSIONS_PAGE]) {
       await page.goto(path);
       expect(await lane(), `${path} with the preview on`).toBe(392);
     }
     const off = await page.context().newPage();
     await open(off, { [PREVIEW_KEY]: 'off' });
-    for (const path of [QUEUE_PAGE, '/', '/skills', VERSIONS_PAGE]) {
+    for (const path of [QUEUE_PAGE, '/', SKILLS_PAGE, VERSIONS_PAGE]) {
       await off.goto(path);
       expect((await off.locator('.VPNavBar .container > .title').boundingBox())!.width, `${path} with it off`).toBe(320);
     }
