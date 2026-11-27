@@ -455,11 +455,13 @@ describe('navbar layout', () => {
       // The pickers in the hamburger menu and in the Settings dropdown (which
       // the gear still opens at 768-959px).
       expect(block).toMatch(
-        /\.VPNavScreen \.NavStylePicker \.nav-style-option,\s*\.VPNavBar \.SettingsMenu \.theme-picker-option,\s*\.VPNavBar \.SettingsMenu \.nav-style-option \{\s*min-width: 44px;\s*min-height: 44px;/,
+        /\.VPNavScreen \.NavStylePicker \.nav-style-option,\s*\.VPNavScreen \.ExplorerPreviewPicker \.explorer-preview-option,\s*\.VPNavBar \.SettingsMenu \.theme-picker-option,\s*\.VPNavBar \.SettingsMenu \.nav-style-option,\s*\.VPNavBar \.SettingsMenu \.explorer-preview-option \{\s*min-width: 44px;\s*min-height: 44px;/,
       );
       // The 40px tracks grow with their segments, and the theme picker wraps
       // rather than overflowing a 320px menu.
-      expect(block).toMatch(/\.VPNavBar \.SettingsMenu \.nav-style-group \{\s*height: auto;/);
+      expect(block).toMatch(
+        /\.VPNavBar \.SettingsMenu \.nav-style-group,\s*\.VPNavBar \.SettingsMenu \.explorer-preview-group \{\s*height: auto;/,
+      );
       expect(block).toMatch(/\.ThemePicker \{\s*flex-wrap: wrap;\s*gap: 8px;/);
     });
 

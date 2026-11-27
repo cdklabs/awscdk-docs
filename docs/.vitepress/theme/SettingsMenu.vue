@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Settings dropdown: a compact gear-icon disclosure in the desktop navbar that
 // hosts the low-frequency reader preferences — the three tri-state pickers,
-// Site theme, Code theme and Layout, and the API sidebar's Navigation style —
-// behind the gear to keep the nav row uncluttered.
+// Site theme, Code theme and Layout, the API sidebar's Navigation style and the
+// Explorer preview switch — behind the gear to keep the nav row uncluttered.
 //
 // Disclosure pattern: the trigger is a real <button> with aria-expanded /
 // aria-controls, Enter/Space toggle natively, Escape closes and returns focus to
@@ -10,12 +10,15 @@
 // the rest of the navbar stays tabbable. The panel is a plain labeled region;
 // its content (ThemePicker) carries its own group semantics and state.
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
 import NavStylePicker from "./NavStylePicker.vue";
 import ThemePicker from "./ThemePicker.vue";
 
-const open = ref(false);
 const root = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLButtonElement | null>(null);
+const open = ref(false);
+// The preview switch reads storage on the client, so it renders after mount to keep hydration matching.
+const mounted = ref(false);
 
 function toggle(): void {
   open.value = !open.value;
@@ -27,14 +30,17 @@ function onDocumentClick(event: MouseEvent): void {
   }
 }
 
+function closeAndFocusTrigger(): void {
+  open.value = false;
+  trigger.value?.focus();
+}
+
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === "Escape" && open.value) {
-    open.value = false;
-    trigger.value?.focus();
-  }
+  if (event.key === "Escape" && open.value) closeAndFocusTrigger();
 }
 
 onMounted(() => {
+  mounted.value = true;
   document.addEventListener("click", onDocumentClick);
 });
 
@@ -70,6 +76,8 @@ onBeforeUnmount(() => {
       <!-- Navigation style (by service / by package) for the API sidebar: a
            reader preference like the themes, so it lives in the same panel. -->
       <NavStylePicker />
+      <!-- Opt-in sidebar variant with a view rail; the last group so it reads as an experiment. -->
+      <ExplorerPreviewPicker v-if="mounted" @off="closeAndFocusTrigger" />
     </div>
   </div>
 </template>
@@ -130,7 +138,8 @@ onBeforeUnmount(() => {
 
 /* The navigation group sits 6px under the theme pickers. The child's root
    element carries this component's scope attribute, so a scoped rule reaches it. */
-.settings-panel > .NavStylePicker {
+.settings-panel > .NavStylePicker,
+.settings-panel > .ExplorerPreviewPicker {
   margin-top: 6px;
 }
 </style>

@@ -1,0 +1,241 @@
+/*
+ * Explorer preview: an opt-in view rail at the sidebar's left edge.
+ *
+ * Every rule that changes the preview-off layout keys on `html[data-explorer-preview="on"]`, set before first
+ * paint by the bootstrap script in config.mts, so a reload with it on never jumps by the rail's width. The
+ * rail's own classes exist only while the preview is on, and the phone-menu switch row is styled in both
+ * modes. The rail itself (ExplorerRail.vue) is position: fixed. `.VPSidebar` carries a transform that would
+ * make it the containing block for fixed children, so the transform is dropped while the preview is on.
+ */
+
+/* Phone menu row for the preview switch. */
+.VPNavScreen .ExplorerPreviewPicker {
+  margin-top: 12px;
+  width: 100%;
+}
+
+/* Sidebar column: the rail's 72px come out of the sidebar's width, so the tree keeps its 256px. */
+@media (min-width: 960px) {
+  /* The title lane follows the preview, not the page: it is 392px on every page with the preview on, so the
+     top bar's controls stay put when the reader navigates. */
+  html[data-explorer-preview="on"] {
+    --vp-sidebar-width: 392px;
+  }
+
+  html[data-explorer-preview="on"] .VPSidebar {
+    padding-left: 104px;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* The 392px title lane leaves the top bar row 72px less room than the 320px lane. From 960px to 1119px the
+   version badge drops out of the bar with the preview on, which frees room so the gear's right edge stays
+   at its usual distance from the viewport edge. The Versions link next to it leads to the same page. */
+@media (min-width: 960px) and (max-width: 1119px) {
+  html[data-explorer-preview="on"] .VPNavBar .content-body > .version-badge {
+    display: none;
+  }
+}
+
+@media (min-width: 1440px) {
+  html[data-explorer-preview="on"] .VPSidebar {
+    padding-left: calc(max(32px, calc((100% - (var(--vp-layout-max-width) - 64px)) / 2)) + 72px);
+  }
+}
+
+@media (max-width: 959px) {
+  html[data-explorer-preview="on"] .VPSidebar.open {
+    transform: none;
+  }
+}
+
+/* Favorites view: only the favorites list, always open. The pinned header would clip a long list. */
+/* The tree and filter stay until the Favorites view has rendered, so the sidebar is never empty before hydration. */
+html[data-explorer-preview="on"][data-explorer-view="favorites"] .VPSidebar:has(.favorites-static-heading) :is(.nav-filter, .api-sidebar) {
+  display: none;
+}
+
+html[data-explorer-preview="on"][data-explorer-view="favorites"] .VPSidebar .sidebar-header {
+  position: static;
+}
+
+html[data-explorer-preview="on"] .favorites-static-heading {
+  margin: 0;
+  padding: 5px 4px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--vp-c-brand-1);
+}
+
+html[data-explorer-preview="on"] .favorites-empty {
+  margin: 0;
+  padding: 5px 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+}
+
+/* The rail. Left edge: where the sidebar's content starts today, less the 32px the sidebar pads it by,
+   so extra width at 1440px and up lands to the left of the rail as it does to the left of the sidebar. */
+.ExplorerRailRoot {
+  --explorer-rail-left: max(0px, calc((100% - (var(--vp-layout-max-width) - 64px)) / 2 - 32px));
+}
+
+.ExplorerRail {
+  position: fixed;
+  top: calc(var(--vp-layout-top-height, 0px) + var(--vp-nav-height));
+  bottom: 0;
+  left: var(--explorer-rail-left);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 72px;
+  padding: 8px 4px;
+  border-right: 1px solid var(--vp-c-divider);
+  background-color: var(--vp-sidebar-bg-color);
+}
+
+.explorer-rail-button {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 64px;
+  height: 56px;
+  padding: 4px 2px;
+  border-radius: 8px;
+  color: var(--vp-c-text-1);
+  transition: color 0.25s, background-color 0.25s;
+}
+
+.explorer-rail-button:hover {
+  background-color: var(--vp-c-default-soft);
+}
+
+.explorer-rail-button:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+}
+
+.explorer-rail-button.selected {
+  background-color: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-2);
+}
+
+.explorer-rail-button.selected::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background-color: var(--vp-c-brand-2);
+}
+
+/* Forced colors replace the background colors above, so the marker keeps a system color. */
+@media (forced-colors: active) {
+  .explorer-rail-button.selected::before {
+    forced-color-adjust: none;
+    background-color: Highlight;
+  }
+}
+
+.explorer-rail-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.explorer-rail-label {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.explorer-rail-button.selected .explorer-rail-label {
+  font-weight: 700;
+}
+
+/* Views button: drawer only. */
+.explorer-views-button {
+  display: none;
+}
+
+/* Below 960px the rail unfolds over a scrim. */
+@media (max-width: 959px) {
+  .ExplorerRail {
+    display: none;
+    top: 0;
+    left: 0;
+    height: 100%;
+    box-shadow: 4px 0 16px rgba(0, 7, 22, 0.28);
+  }
+
+  .ExplorerRail.open {
+    display: flex;
+  }
+
+  .explorer-rail-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    background-color: rgba(0, 7, 22, 0.45);
+  }
+
+  .explorer-views-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+    width: 100%;
+    height: 44px;
+    margin-bottom: 8px;
+    padding: 0 12px;
+    border: 1px solid var(--vp-c-text-2);
+    border-radius: 8px;
+    background-color: var(--vp-c-bg-alt);
+    color: var(--vp-c-text-1);
+    text-align: left;
+  }
+
+  .explorer-views-button.open {
+    border-color: var(--vp-c-brand-2);
+    background-color: var(--vp-c-brand-soft);
+    color: var(--vp-c-brand-2);
+  }
+
+  .explorer-views-button:focus-visible {
+    outline: 2px solid var(--vp-c-brand-1);
+    outline-offset: 2px;
+  }
+
+  .explorer-views-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .explorer-views-label {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .explorer-views-current {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--vp-c-text-2);
+  }
+
+  .explorer-views-button.open .explorer-views-current {
+    color: var(--vp-c-brand-2);
+  }
+}

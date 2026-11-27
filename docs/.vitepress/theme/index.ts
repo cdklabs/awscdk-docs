@@ -11,6 +11,10 @@ import ApiSidebar from "./ApiSidebar.vue";
 import { initCodeTheme } from "./code-theme";
 import CopyMarkdown from "./CopyMarkdown.vue";
 import { applyFoldoutsAfterNavigation, initDensity } from "./density";
+import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
+import ExplorerRail from "./ExplorerRail.vue";
+import ExplorerViewsButton from "./ExplorerViewsButton.vue";
+import { initExplorerPreview } from "./explorer-preview";
 import { installFavoritesSearchBoost } from "./favorites-client";
 import FavoriteStar from "./FavoriteStar.vue";
 import FavoritesList from "./FavoritesList.vue";
@@ -43,6 +47,7 @@ import "./api-sidebar.css";
 import "./theme-picker.css";
 import "./code-theme.css";
 import "./nav-controls.css";
+import "./explorer-preview.css";
 import "./outline.css";
 import "./home-features.css";
 import "./callouts.css";
@@ -56,14 +61,19 @@ const theme: Theme = {
   Layout: () =>
     h(DefaultTheme.Layout, null, {
       // The symbol filter belongs in the sidebar rather than the nav header:
-      // it is a navigation aid for the API tree beside it. Both children share
-      // one wrapper so the block can be made sticky together — see
+      // it is a navigation aid for the API tree beside it. The Views button, the filter and the
+      // favorites list share one wrapper so the block can be made sticky together — see
       // `.sidebar-header` in api-sidebar.css.
-      "sidebar-nav-before": () =>
+      // With the Explorer preview on, the view rail comes first in the DOM and the Views button
+      // (below 960px) heads the pinned block; both render nothing while the preview is off.
+      "sidebar-nav-before": () => [
+        h(ExplorerRail),
         h("div", { class: "sidebar-header" }, [
+          h(ExplorerViewsButton),
           h(NavFilter, null, { "status-actions": () => h(JumpToCurrent) }),
           h(FavoritesList),
         ]),
+      ],
       "doc-before": () => [h(FavoriteStar), h(CopyMarkdown)],
       "doc-after": () => h(PageFooterLinks),
       // The generated Service -> Resource -> Kind tree, fetched once. Inert
@@ -78,8 +88,14 @@ const theme: Theme = {
       // aws-cdk-lib version badge sits just left of the gear.
       "nav-bar-content-after": () => [h(LanguageToggle), h(VersionBadge), h(SettingsMenu)],
       // Below 768px the Settings dropdown is hidden (nav-controls.css), so the
-      // hamburger screen carries its controls directly, navigation style included.
-      "nav-screen-content-after": () => [h(LanguageToggle), h(ThemePicker), h(NavStylePicker)],
+      // hamburger screen carries its controls directly, navigation style and the
+      // Explorer preview switch included, with the preview on or off.
+      "nav-screen-content-after": () => [
+        h(LanguageToggle),
+        h(ThemePicker),
+        h(NavStylePicker),
+        h(ExplorerPreviewPicker),
+      ],
       // Site-wide footer: community links + AWS legal line. In layout-bottom
       // because themeConfig.footer is hidden by the default theme on sidebar
       // pages (every /api/** page).
@@ -99,6 +115,8 @@ const theme: Theme = {
     // Re-apply a stored layout-density choice at client boot. No-op on the
     // server and at the default (Balanced) level, which carries no attribute.
     initDensity();
+    // Re-apply a stored Explorer preview choice at client boot. No-op on the server and while the preview is off.
+    initExplorerPreview();
     // Mark the member row a jump lands on. Same-page links arrive as `hashchange`;
     // the route hook below covers back/forward, cross-page links with a hash and,
     // in a build, the initial load.
