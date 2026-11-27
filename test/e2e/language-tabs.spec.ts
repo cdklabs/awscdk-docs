@@ -117,7 +117,7 @@ test.describe('C# variant (generated page)', () => {
     const group = page.locator('.lang-tabs', {
       has: page.locator('.lang-variant[data-lang="dotnet"] div[class*="language-"]'),
     }).first();
-    await navSlider(page).getByRole('radio', { name: 'C# / .NET' }).click();
+    await navSlider(page).getByRole('radio', { name: 'C#' }).click();
 
     // The dotnet variant is shown; the other language variants are hidden.
     await expect(group).toHaveAttribute('data-active', 'dotnet');
@@ -138,7 +138,7 @@ test.describe('C# variant (generated page)', () => {
     const group = page.locator('.lang-tabs', {
       has: page.locator('.lang-variant[data-lang="dotnet"] div[class*="language-"]'),
     }).first();
-    await navSlider(page).getByRole('radio', { name: 'C# / .NET' }).click();
+    await navSlider(page).getByRole('radio', { name: 'C#' }).click();
 
     const csBlock = group.locator('.lang-variant[data-lang="dotnet"] div[class*="language-"]');
     await expect(csBlock).toBeVisible();

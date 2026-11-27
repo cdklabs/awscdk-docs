@@ -62,7 +62,7 @@ language.
 config at build time, so enabling a language is a config flip plus any
 language-specific snippet polish. Canonical display order is defined by
 `LANGUAGES` in `src/docgen/languages.ts` (TypeScript, Python, Java,
-C# / .NET, Golang); `DEFAULT_LANGUAGE`/`CANONICAL_URL_PREFIX` is `ts`.
+C#, Go); `DEFAULT_LANGUAGE`/`CANONICAL_URL_PREFIX` is `ts`.
 
 ### Algorithmic transliteration from jsii metadata
 
@@ -177,8 +177,8 @@ configured `languages`, so changing that list also means editing these pages.
 first-embedded-language fallback for blocks missing the active language,
 and the scoped CSS that hides inactive variants — but renders no per-
 block tab bar, ARIA roles, or keyboard handling. Language selection is
-driven solely by the navbar slider `LanguageToggle.vue`, which carries
-the full WAI-ARIA radio-group keyboard pattern and renders only when the
+driven solely by the navbar language tabs `LanguageToggle.vue`, which carry
+the full WAI-ARIA radio-group keyboard pattern and render only when the
 build enables 2+ languages (compiled-in constants from
 `enabled-languages.ts`). See
 [navbar, footer, and layout](./2026-10-15-navbar-footer-and-layout.md).

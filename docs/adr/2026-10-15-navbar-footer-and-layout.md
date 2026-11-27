@@ -7,7 +7,7 @@ Accepted
 ## Context
 
 The site extends the VitePress 1.6.x default theme rather than forking it. The
-navbar carries custom controls (a language slider, the search box, a version
+navbar carries custom controls (language tabs, the search box, a version
 badge, and appearance pickers), the site needs one footer on **every** page
 including the tens of thousands of generated `/v2/**` reference pages, and the
 whole thing must work on phones. Several defects were only visible across page
@@ -35,8 +35,13 @@ our custom layer:
 - mobile sizing for docgen `pre.signature` blocks (momentum scrolling, tighter
   padding below 768px; generated initializer signatures wrap rather than scroll);
 - heading/badge wrapping so title badges never widen the page;
-- WCAG 2.5.5 touch targets (>= 44x44px) for the hamburger, TOC dropdown button,
-  sidebar drawer rows, and the breadcrumb favorite star, below 960px;
+- WCAG 2.5.5 touch targets (>= 44x44px) below 960px for the hamburger, TOC
+  dropdown button, sidebar drawer rows, the breadcrumb favorite star, and every
+  control in the top bar, the Settings dropdown (768–959px) and the hamburger
+  menu (below 768px): the logo link, the version badge, the search trigger,
+  the Settings gear, the language tabs, and the theme and navigation picker
+  segments (whose 40px tracks grow with them and whose theme picker wraps
+  inside a 320px menu);
 - a full-width Pagefind dialog below 768px with a 16px input font size to stop
   iOS Safari zoom-on-focus.
 
@@ -106,18 +111,35 @@ offers and are repositioned with flex `order` in `nav-controls.css`.
 `[LanguageToggle, ThemePicker, NavStylePicker, ExplorerPreviewPicker]`. The navigation style row is
 specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.md).
 
-- **Language slider leads** (`.language-toggle { order: -2 }`), taking the slot
+- **Language tabs lead** (`.language-toggle { order: -2 }`), taking the slot
   the search box used to occupy and the leading gap the search's `padding-left`
   used to provide (now a 10px margin). It is the primary control on a
-  multi-language docs site. Its segmented radio-group behavior and glyphs are
-  owned by [multi-language](./2026-10-15-multi-language.md).
+  multi-language docs site. Its radio-group behavior and labels are owned by
+  [multi-language](./2026-10-15-multi-language.md). The options are drawn as
+  text tabs on the bar itself, with no track and no fill: muted text when idle,
+  a hover fill, and the selected tab in the brand color with a 3px underline
+  that sits on the bar's bottom edge, because the group spans the control row's
+  full height. The earlier bordered track's edge was under the 3:1 non-text
+  contrast minimum, and in light mode its selected fill matched the track, so
+  selection relied on the brand color and a 2px inset underline alone.
 - **Search is centered** (`.search { order: -1; justify-content: center;
   padding-left: 0 }`), keeping the pagefind plugin's `flex: 1` so it owns the
-  region between the slider and the right-hand controls and centers its trigger
+  region between the tabs and the right-hand controls and centers its trigger
   within it. True viewport-centering is not attempted — it breaks the search
   dropdown's anchoring and collides with controls at narrow widths — and
   centering within the free middle region is visually equivalent at real widths.
-- **Version badge then Settings gear** sit at the right end.
+  The trigger is an outlined pill: the bar's own background with a 1px edge
+  (`--tb-input-border`, 5.6:1 light, 6.9:1 dark against the bar) instead of the
+  plugin's near-white fill with a transparent border, which has no visible box
+  on a white bar. Hover adds a 1px brand ring; keyboard focus a 2px outline
+  2px outside (inset 2px on the bare phone icon below 768px, which is the
+  bar's full height, so the ring stays in the viewport). The `Ctrl K` chip
+  takes the same edge.
+- **Version badge then Settings gear** sit at the right end, in the same muted
+  ink as the idle tabs and the search label (`--tb-muted`, 9.4:1 light, 10:1
+  dark) with the same hover fill (`--tb-hover-bg`) and hover text
+  (`--tb-hover-fg`: the primary text in light mode; `#ebebf0` in dark mode,
+  10.7:1 on the fill, because the dark idle ink already is the primary text).
 - The medium-width (768–1279px) `VPNavBarExtra` "extra navigation" flyout
   embeds its own `VPSwitchAppearance`; it is hidden (and its emptied group
   collapsed) so **exactly one appearance control is reachable at every
@@ -129,30 +151,47 @@ specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.
 
 The `order`/centering overrides are gated on
 `:has(.VPNavBar .content-body > .language-toggle)`, so a single-language build
-(where the slider does not render) keeps the completely stock control
-arrangement. Browsers without `:has()` degrade gracefully: the slider still
-renders and keeps its leading position (its rule is not gated), only the
+(where the tabs do not render) keeps the completely stock control
+arrangement. Browsers without `:has()` degrade gracefully: the tabs still
+render and keep their leading position (their rule is not gated), only the
 search's centering falls back to the theme's default position.
 
-All custom nav controls (slider, search trigger, version badge, Settings
-trigger) are pinned to the same 40px rendered height. The pagefind plugin
-hard-codes `height: 40px` on `.nav-search-btn-wait` and exposes no variable, so
-the value is pinned in each component and guarded by a regression test that
-reads the plugin's source.
+The search trigger, version badge and Settings trigger are pinned to the same
+40px rendered height from 960px up. The pagefind plugin hard-codes `height:
+40px` on `.nav-search-btn-wait` and exposes no variable, so the value is restated
+as a literal in `SettingsMenu.vue` and in the version badge rule in
+`nav-controls.css`, and `test/nav-controls.test.ts` and `test/version-badge.test.ts`
+pin both to 40px. The language tabs are the exception: they stretch to the
+control row's full height so their underline meets the bar's edge. A transparent
+3px top border balances the underline, so each label's midpoint sits on the same
+line as the 40px controls.
 
 #### Fitting the medium breakpoint (768–1279px)
 
-The compacted controls need ~623px of row. Below 960px the site title is a flex
+The compacted controls fill most of the row (the e2e row-fit widths below pin
+that they fit). Below 960px the site title is a flex
 item that yields (`flex-shrink: 1`, ellipsis) so the row never overhangs the
 viewport. From 960px the title is the fixed `--vp-sidebar-width` lane and cannot
 yield, so the version badge and the Settings gear drop their 8px gaps across the
 whole band (not just where it binds, so the arrangement does not jump at 960px).
-The slider abbreviates to glyphs-only (active label visually hidden, still
-supplying the accessible name) and the search button compacts to its magnifier
-icon. Every control keeps its place in the row — the version must stay visible,
-and a control a click away is not visible. E2e assertions pin the row fitting
-inside 768px, 800px, 960px, and 1000px viewports, each with a positive control
-that undoes the rule making room at that width.
+The tabs keep every language's name visible; only TypeScript shortens, to
+`TS` below 1100px (the full name stays in the accessible name). The width comes
+out of padding, stepped per band through one variable (`--tab-pad`): 14px side
+padding on the tabs from 1280px, 10px below it, and 8px in the 960–1023px band,
+where the tabs' 44px minimum width also yields and the nav links tighten from
+12px to 8px (below 1100px) and 6px (960–1023px). 768–959px reuses the 1024–1099px
+values because the logo-only title gives that band its room. In a multi-language
+build the search button compacts to its magnifier icon from 1279px down, inside
+a 44px disc at 768–959px; below 768px it is the plugin's bare 48px icon on every
+build, with the pill's edge, fill and hover ring dropped. A single-language build
+keeps the labeled button.
+Every control keeps its place in the row — the version must stay visible, and a
+control a click away is not visible. E2e assertions pin the row fitting inside
+768px, 800px, 900px, 960px, 1024px, 1099px, 1100px, and 1279px viewports,
+and the page scroll width equaling the viewport with no two bar controls
+overlapping at 1440, 1359, 1280, 1180, 1100, 1099, 1024, 960, 959, 900, 768,
+767, 375 and 320px in both color schemes; the 768px case has a positive control
+that widens the title and expects the row to overflow.
 
 ### Tri-state theme pickers behind the Settings gear
 
@@ -200,7 +239,7 @@ VitePress keys four geometry rules (`.wrapper` padding, `.container` max-width,
 is true for `/v2/**` and false for both `/` (`layout: home`) and `/skills`
 (`themeConfig.sidebar` is keyed only on `/v2/`). That makes the row's left inset
 `var(--vp-sidebar-width)` on reference pages and `32px + title width` elsewhere
-— a ~97px difference. Because the slider holds the leading slot, that inset
+— a ~97px difference. Because the tabs hold the leading slot, that inset
 showed up as controls **moving** between page types.
 
 All non-sidebar pages are brought onto VitePress's full-width `has-sidebar`
@@ -217,7 +256,7 @@ inside `VPNavBarTitle`.
 
 With the Explorer preview on, `--vp-sidebar-width` is 392px on every page, so the title lane, the `/versions` content and its footer all start 72px further right; the geometry stays page-independent within each mode. From 960px to 1023px the nav links' side padding drops to 8px, an exception to the whole-band rule above. The nav screen also carries `ExplorerPreviewPicker` after `NavStylePicker`.
 
-These geometry rules are **not** gated on the slider's presence — they are page
+These geometry rules are **not** gated on the tabs' presence — they are page
 geometry, not control arrangement, so a single-language build also gets one
 shape on every page. The CSS says so in a comment; do not "harmonize" the gating
 and reinstate the jump. (The 320px sidebar width this mirrors is set in
@@ -385,12 +424,12 @@ keeps its stock 896px container.
   genuinely low-frequency settings appear later they can join the Settings
   dropdown; the theme toggle just should not be what seeds a new one.
 - Single-language builds keep the stock control *arrangement* (gated on the
-  slider) but not the stock navbar *geometry* — a ts-only home page also renders
-  the full-width bar. That is intended: gating the geometry on the slider would
+  tabs) but not the stock navbar *geometry* — a ts-only home page also renders
+  the full-width bar. That is intended: gating the geometry on the tabs would
   reinstate the cross-page jump for every multi-language build.
 - The search trigger has two no-movement invariants that belong together: it
-  must not move when the language changes (the stable-label-width sizers in the
-  slider) and must not move when the page changes (the geometry mirror). Both are
+  must not move when the language changes (every option paints its own name in
+  the same typesetting, checked or not) and must not move when the page changes (the geometry mirror). Both are
   the same defect at different scales; off-center is acceptable, *moving* is the
   bug.
 - The e2e suite carries the first cross-page navbar assertion; any future navbar
@@ -400,10 +439,13 @@ keeps its stock 896px container.
 - The title-lane and transition regressions are browser measurements sampling
   every animation frame and requiring each to be an end state, because a
   stylesheet assertion cannot show the absence of a transition.
-- Unit pins read VitePress's and the pagefind plugin's own sources
-  declaration-by-declaration rather than hard-coding mirrored values, so an
-  upstream geometry or height change fails at the test instead of letting the
-  page types silently diverge.
+- Unit pins read VitePress's own sources declaration-by-declaration rather
+  than hard-coding mirrored values, so an upstream geometry change fails at the
+  test instead of letting the page types silently diverge. The pagefind
+  plugin's 40px trigger height has no source contract to read, so it is
+  restated as a literal and pinned in `test/nav-controls.test.ts` and
+  `test/version-badge.test.ts`; a plugin height change shows up in the e2e row
+  and baseline checks instead.
 - `/versions` trades width for alignment from 1280px up: its container is 896px
   at 1280px and 1056px at 1440px, against the stock 992px and 1104px; below
   1280px it keeps the stock width and the nav-lane misalignment.

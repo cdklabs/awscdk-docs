@@ -57,9 +57,9 @@ covered by [navbar, footer, and layout](./2026-10-15-navbar-footer-and-layout.md
 ### No third-party brand marks in the chrome
 
 No mark belonging to someone else appears in the site chrome. The language
-selector segments show text abbreviations — `TS` / `Py` / `Ja` / `C#` / `Go` —
-from `LANGUAGE_SHORT_LABELS` in `languages-core.ts`, in the existing 22×20 box
-so the 40px control height and search-box baseline alignment are unchanged.
+selector shows each language by name — TypeScript, Python, Java, C#, Go — from
+`LANGUAGE_LABELS` in `languages-core.ts`; below 1100px the bar shortens
+TypeScript to its `LANGUAGE_SHORT_LABELS` text, `TS`. No badge or glyph is drawn.
 `devicon` and `simple-icons` are not dependencies. The framework GitHub link
 (targeting `aws/aws-cdk`, the library a reference reader wants) is the first
 text entry in the footer's community row, not a navbar `socialLinks` icon.
@@ -108,7 +108,11 @@ on mobile they render in the hamburger nav screen.
   reload never flashes the wrong colors.
 
 Both groups pin `height: 40px; box-sizing: border-box` to align with the search
-trigger and language slider. The e2e suite asserts both tri-states cycle,
+trigger and the Settings gear from 960px up; below 960px the tracks in the
+Settings dropdown (768–959px) and the hamburger menu (below 768px) grow with
+their 44px segments (see
+[navbar, footer, and layout](./2026-10-15-navbar-footer-and-layout.md)). The
+e2e suite asserts both tri-states cycle,
 Default follows the site theme including Device, decoupled rendering both ways,
 and persistence across reloads.
 

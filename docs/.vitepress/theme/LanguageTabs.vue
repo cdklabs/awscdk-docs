@@ -18,13 +18,13 @@
 //
 // Plain `div` children (not named slots) keep markdown-it on the type-6
 // HTML-block path, the same pattern the generated props tables use. Every
-// instance reads the one shared reactive language, so the navbar language slider
-// switches every group on the page (and, via localStorage + ?lang=, on every
+// instance reads the one shared reactive language, so the navbar language tabs
+// switch every group on the page (and, via localStorage + ?lang=, on every
 // subsequent page). All languages' content is in the HTML; non-active variants
 // are hidden with CSS.
 //
 // This component renders no controls of its own: selection is driven solely by
-// the navbar slider. It is a pure show/hide wrapper.
+// the navbar tabs. It is a pure show/hide wrapper.
 import { computed, onMounted } from 'vue';
 import {
   activeLanguage,

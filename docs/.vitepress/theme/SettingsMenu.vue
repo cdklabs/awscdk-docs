@@ -98,11 +98,11 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   color: var(--vp-c-text-2);
   transition: color 0.25s, background-color 0.25s;
-  /* Same rendered height as the search trigger and the language slider so the
+  /* Same rendered height as the search trigger and the version badge so the
    * nav controls share one baseline. The pagefind plugin hard-codes
    * `height: 40px` on `.nav-search-btn-wait` and exposes no variable, so the
-   * value is pinned here like LanguageToggle.vue and guarded by a regression
-   * test that reads the plugin's source (test/nav-controls.test.ts). */
+   * value is pinned here and guarded by a regression test
+   * (test/nav-controls.test.ts). */
   box-sizing: border-box;
   height: 40px;
 }

@@ -12,7 +12,7 @@ import {
 // Type links skip strings and comments (ADR 2026-10-26-no-type-links-in-literals).
 // The highlighter marks each string or comment token with NOLINK_CLASS from its
 // grammar scope, and applyTypeLinks leaves those tokens alone. These tests run
-// the real Shiki highlighter with the options config.mts uses.
+// the real Shiki highlighter with the options docs/.vitepress/highlight.ts uses.
 
 const THEMES = { light: 'github-light', dark: 'github-dark' } as const;
 let highlighter: Highlighter;
@@ -25,7 +25,7 @@ beforeAll(async () => {
   });
 });
 
-// The options config.mts passes when a fence offers type links. `tokenizeTimeLimit: 0`
+// The options highlight.ts passes when a fence offers type links. `tokenizeTimeLimit: 0`
 // matters: with scopes on, Shiki tokenizes each line twice (scopes, then colors), each
 // pass under its own time limit, and a timeout in only one pass throws.
 const OPTIONS = {

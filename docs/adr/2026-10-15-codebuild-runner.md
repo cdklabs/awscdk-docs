@@ -27,13 +27,18 @@ Build the site in a single `build` job on a self-hosted AWS CodeBuild runner. Th
 
 - **Label.** `codebuild-awscdk-docs-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}` routes the
   job to the CodeBuild project; the run ID and attempt make the label unique to the job.
-- **Machine.** `BUILD_GENERAL1_2XLARGE` (72 vCPU, 145 GB). A shard is roughly single-core bound, so memory limits
-  concurrency: the heaviest shard outgrows an 8 GB heap once struct, enum and interface pages carry translated
-  examples.
+- **Machine.** `BUILD_GENERAL1_2XLARGE` (72 vCPU, 145 GB). A shard is roughly single-core bound, so memory, not
+  cores, limits concurrency.
 - **Build.** `docs:build:ci`, which runs `scripts/local-shard-build.sh` (the script behind `docs:build:sharded`)
-  with 72 shards, a 12288 MB heap and a concurrency of 10; `DOCS_BUILD_SHARDS`, `DOCS_BUILD_HEAP_MB` and `DOCS_BUILD_CONCURRENCY` override them for one run. Ten
-  shards at their cap, plus about 1 GB of off-heap memory each, stay within the machine's memory. Every shard
-  carries a fixed ~30 s cost, so more shards lower the per-shard peak but lengthen the build.
+  with a fixed shard count, a per-shard heap cap and a concurrency set in `.projenrc.ts`; `DOCS_BUILD_SHARDS`,
+  `DOCS_BUILD_HEAP_MB` and `DOCS_BUILD_CONCURRENCY` override them for one run. The heap cap keeps a clear margin
+  above what the heaviest shard needs, found by building that shard alone under lower caps until it runs out.
+  Nothing checks the margin automatically. The per-shard `peak_rss_mb` line in the build log (resident memory,
+  off-heap included) is the signal to watch: when the heaviest shard's reading rises toward the cap plus its
+  off-heap memory, rebuild that shard alone under lower caps to find its need again, and raise the cap before it
+  fails a build. The concurrency then keeps every running shard at its cap, plus its off-heap memory, within the
+  machine's memory with headroom to spare, so a full wave of the heaviest shards cannot exhaust it. Every shard
+  carries a fixed cost, so more shards lower the per-shard peak but lengthen the build.
 - **One job, end to end.** The job generates the docs once, builds and merges every shard, indexes the site with
   Pagefind, verifies it and packages the site as the versioned S3 zip with `scripts/package-site.sh`. Packaging
   fails when the zip exceeds 900 MB. The publish job depends on `build` directly
@@ -68,9 +73,9 @@ Builds stay isolated from each other, so a pull request build cannot affect what
 
 - One job, one log and one check. `docs:generate` and `npm ci` run once per build, the site never leaves the machine
   between building and packaging, and CI runs exactly the path a developer runs locally.
-- Wall-clock time is bounded by the shards running 10 at a time; the heaviest wave sets the critical path. Raising
-  the shard count lengthens the build instead of adding runners, and changing the compute type or a content change
-  that raises the per-shard peak means revisiting the concurrency.
+- Wall-clock time is bounded by the shards running at the set concurrency; the heaviest wave sets the critical
+  path. Raising the shard count lengthens the build instead of adding runners, and changing the compute type or a
+  content change that raises the per-shard peak means revisiting the concurrency.
 - The build depends on infrastructure outside this repository: the CodeBuild project, its GitHub connection and the
   AWS account that pays for it. A missing or misconfigured project leaves the job queued with no runner.
 - Parts of the trust model are configured outside this repository (the fork pull request approval setting, the

@@ -1,17 +1,20 @@
 /*
  * Navbar layout, superseding an earlier arrangement.
  *
- * 1. The language slider takes the LEADING slot — the position the
+ * 1. The language tabs take the LEADING slot — the position the
  *    search box used to occupy, right after the site title. VitePress
- *    renders the layout slots after its own controls, so the slider
+ *    renders the layout slots after its own controls, so the tab group
  *    (mounted in nav-bar-content-after) is repositioned with flex
- *    `order`. The overrides only apply when the slider actually renders
- *    (`:has()`), so the single-language build — where the slider is
- *    absent — keeps the stock layout untouched.
+ *    `order`. The overrides only apply when the tabs actually render
+ *    (`:has()`), so the single-language build — where the tabs are
+ *    absent — keeps the stock arrangement; the restyle and touch-target
+ *    rules further below apply to it too, except the search compaction
+ *    (768–1279px) and the 44px search disc (768–959px), which are gated
+ *    the same way.
  *
  * 2. The search box moves to the CENTER of the nav row: it keeps the
  *    pagefind plugin's `flex: 1` (so it owns the space between the
- *    slider and the right-hand controls) and centers its trigger button
+ *    tabs and the right-hand controls) and centers its trigger button
  *    inside that region.
  *
  * 3. The appearance controls sit behind the gear-icon Settings
@@ -34,7 +37,7 @@
  *    sidebar. VitePress keys four geometry rules on its own
  *    `has-sidebar` class, which insets the row's left edge to the sidebar
  *    width on generated pages and to `32px + title width` everywhere
- *    else — a 97px difference here. Because item 1 puts the slider in the
+ *    else — a 97px difference here. Because item 1 puts the tabs in the
  *    leading slot, that inset showed up as controls MOVING between the
  *    home page and a reference page. The non-sidebar pages are brought
  *    onto the full-width geometry below.
@@ -205,16 +208,15 @@
  * the selector here). The plugin's `flex: 1` is kept: it makes the
  * search own the middle region; centering the trigger inside it is what
  * places the search visually mid-row. The plugin's 32px left padding
- * would skew that centering, so it moves onto the slider instead (the
- * slider now provides the gap from the site title that the search's
+ * would skew that centering, so it moves onto the tab group instead (the
+ * tab group now provides the gap from the site title that the search's
  * padding used to). */
 @media (min-width: 768px) {
   .VPNavBar .content-body > .language-toggle {
     order: -2;
-    /* 10px (was the search's 32px padding): the doubled theme picker
-     * needs the row's spare width more than the title gap —
-     * the segments themselves stay at the 24px WCAG 2.5.8 minimum, so
-     * the width comes out of chrome like this margin instead. */
+    /* 10px: the row's spare width comes out of chrome like this margin and
+     * the tabs' `--tab-pad` first; only the 960-1023px band also lets go of
+     * the tabs' 44px minimum width. */
     margin-left: 10px;
   }
 
@@ -225,34 +227,167 @@
   }
 }
 
-/* Medium breakpoint (where VitePress itself compacts the navbar into
- * the "extra" flyout): take the active segment's text label out of the
- * painted row so the slider is abbreviations-only and a 3+ language build
- * never overflows. Visually hidden rather than display:none, so the label
- * keeps supplying the checked segment's full accessible name at this width
- * (the .search-tip rule below gets the same treatment for the same reason). */
-@media (min-width: 768px) and (max-width: 1279px) {
-  .VPNavBar .language-toggle .language-label {
+/* --- Outlined search --- */
+/* The plugin paints the trigger as a near-white fill with a transparent
+ * border, which has no visible edge on the white bar. It becomes a pill with
+ * a 1px edge on the bar's own background; hover adds a 1px brand ring and
+ * keyboard focus a 2px outline just outside it. */
+.VPNavBar .content-body > .search .nav-search-btn-wait {
+  background-color: var(--vp-c-bg);
+  border: 1px solid var(--tb-input-border);
+  border-radius: 20px;
+  color: var(--tb-muted);
+}
+
+.VPNavBar .content-body > .search .nav-search-btn-wait:hover {
+  border-color: var(--tb-focus);
+  box-shadow: 0 0 0 1px var(--tb-focus);
+  color: var(--tb-hover-fg);
+}
+
+.VPNavBar .content-body > .search .nav-search-btn-wait:focus-visible {
+  outline: 2px solid var(--tb-focus);
+  outline-offset: 2px;
+}
+
+.VPNavBar .search .nav-search-btn-wait .metaKey {
+  border-color: var(--tb-chip-border);
+  color: var(--tb-muted);
+}
+
+.VPNavBar .search .nav-search-btn-wait .search-tip {
+  color: var(--tb-muted);
+}
+
+/* --- Top bar tokens --- */
+/* Hand-written copies of the palette; each notes the custom.css value it
+ * mirrors, and test/theme.test.ts measures their contrast. `--tab-pad` is the
+ * language tabs' side padding, stepped down per breakpoint further below. */
+:root {
+  --seg-edge: #656871; /* no custom.css token */
+  --seg-on-bg: var(--vp-c-brand-1);
+  --seg-on-fg: #ffffff; /* = light --vp-c-bg */
+  --tb-muted: #424650; /* = light --vp-code-lang-color */
+  --tb-hover-bg: #e9ebed; /* no custom.css token */
+  --tb-hover-fg: var(--vp-c-text-1);
+  --tb-focus: var(--vp-c-brand-1);
+  --tb-tab-on: var(--vp-c-brand-1);
+  --tb-input-border: #656871; /* no custom.css token */
+  --tb-chip-border: var(--tb-input-border);
+  --tab-pad: 14px;
+}
+
+.dark {
+  --seg-edge: #a4a4ad; /* = dark --vp-code-lang-color */
+  --seg-on-fg: #0f141a; /* = light --vp-c-text-1 */
+  --tb-muted: #c6c6cd; /* = dark --vp-c-text-1 */
+  --tb-hover-bg: #2a3340; /* no custom.css token */
+  /* The dark idle ink equals --vp-c-text-1, so hover needs its own, lighter
+   * text (10.7:1 on the hover fill) for the change to read as more than a fill. */
+  --tb-hover-fg: #ebebf0; /* = dark --vp-code-color */
+  --tb-input-border: #a4a4ad; /* = dark --vp-code-lang-color */
+}
+
+/* --- Language tabs in the bar --- */
+/* Every option paints its language name (LANGUAGE_LABELS) as plain text in
+ * the bar and the menu; the badges are hidden. In the bar the options are
+ * text tabs on the bar itself: no track, no fill, and the selected tab is
+ * brand-colored with a 3px underline, so the cue never depends on a fill. */
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option .language-abbr {
+  display: none;
+}
+
+/* The tab group spans the bar's full height so the underline sits on the
+ * bar's bottom edge. */
+.VPNavBar .content-body > .language-toggle {
+  align-self: stretch;
+}
+
+/* The top border is never painted; it balances the underline so the label
+ * centers on the row like the 40px controls beside it. */
+.VPNavBar .language-toggle .language-option {
+  min-width: 44px;
+  justify-content: center;
+  padding: 0 var(--tab-pad);
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  color: var(--tb-muted);
+}
+
+.VPNavBar .language-toggle .language-option:hover {
+  background-color: var(--tb-hover-bg);
+  color: var(--tb-hover-fg);
+}
+
+.VPNavBar .language-toggle .language-option:focus-visible {
+  outline: 2px solid var(--tb-focus);
+  outline-offset: -3px;
+}
+
+/* After the hover rule: the selected tab keeps its color and takes no fill. */
+.VPNavBar .language-toggle .language-option.active {
+  color: var(--tb-tab-on);
+  border-bottom-color: var(--tb-tab-on);
+  background-color: transparent;
+}
+
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option:not(.active) .visually-hidden,
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option.active .language-label {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: inherit;
+}
+
+/* Under 1100px the bar shortens TypeScript to "TS": the badge text is shown
+ * plain and the full name is visually hidden, so it still reaches assistive
+ * tech. The option's accessible name is then "TS TypeScript", which contains
+ * the visible "TS" (WCAG 2.5.3). The phone menu always shows "TypeScript". */
+@media (max-width: 1099px) {
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]) .language-abbr {
+    display: inline;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    color: inherit;
+  }
+
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]):not(.active) .visually-hidden,
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]).active .language-label {
     position: absolute;
     width: 1px;
     height: 1px;
-    padding: 0;
     margin: -1px;
+    padding: 0;
     overflow: hidden;
     clip-path: inset(50%);
-    white-space: nowrap;
   }
+}
 
+/* Medium breakpoint (where VitePress itself compacts the navbar into
+ * the "extra" flyout): compact the row so a 3+ language build never
+ * overflows. The language labels stay visible here (see the label rules
+ * above); only TypeScript shortens, under 1100px. */
+@media (min-width: 768px) and (max-width: 1279px) {
   .VPNavBar .content-body > .language-toggle {
     margin-left: 4px;
   }
 
-  /* With the five-language set the abbreviations-only slider
-   * alone no longer keeps the row inside the viewport at ~1000px: compact the
-   * search button to its magnifier icon (VitePress's own narrow-viewport
-   * treatment). The "Search" text is visually hidden (not display:none)
-   * so it keeps supplying the button's accessible name; the
-   * keyboard-shortcut hint is decorative and dropped outright. */
+  /* The five full language names take more of the row than the tabs
+   * leaves at these widths: compact the search button to its magnifier icon
+   * (VitePress's own narrow-viewport treatment) to make room. The "Search"
+   * text is visually hidden (not display:none) so it keeps supplying the
+   * button's accessible name; the keyboard-shortcut hint is decorative and
+   * dropped outright. */
   .VPNavBar .content-body:has(> .language-toggle) > .search .search-tip {
     position: absolute;
     width: 1px;
@@ -267,9 +402,40 @@
   .VPNavBar .content-body:has(> .language-toggle) > .search .metaKey {
     display: none;
   }
+}
+
+/* --- Fitting the tabs in one row --- */
+/* The tabs give up side padding first, then the nav links, then (from 960px,
+ * where the title lane is fixed) the tab minimum width and the version chip's
+ * padding. 768-959px reuses the 1024-1099px values; the logo-only title gives
+ * that band its room. */
+@media (max-width: 1279px) {
+  :root {
+    --tab-pad: 10px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .VPNavBar .content-body .VPNavBarMenuLink {
+    padding: 0 8px;
+  }
+}
+
+@media (min-width: 960px) and (max-width: 1023px) {
+  :root {
+    --tab-pad: 8px;
+  }
 
   .VPNavBar .language-toggle .language-option {
-    padding: 2px 4px;
+    min-width: 0;
+  }
+
+  .VPNavBar .content-body .VPNavBarMenuLink {
+    padding: 0 6px;
+  }
+
+  .VPNavBar .content-body > .version-badge {
+    padding: 0 4px;
   }
 }
 
@@ -298,12 +464,24 @@
   margin-left: 8px;
 }
 
+/* The gear reads in the same muted ink as the idle tabs and the version, and
+ * takes the same hover fill and hover text. The component's own rules carry
+ * Vue's scoping attribute, so these name the dropdown as well to outrank them. */
+.VPNavBar .SettingsMenu .settings-trigger {
+  color: var(--tb-muted);
+}
+
+.VPNavBar .SettingsMenu .settings-trigger:hover,
+.VPNavBar .SettingsMenu .settings-trigger[aria-expanded="true"] {
+  background-color: var(--tb-hover-bg);
+  color: var(--tb-hover-fg);
+}
+
 /* --- aws-cdk-lib version badge --- */
 /* Low-emphasis, compact, and on the same 40px baseline as the search
- * trigger and the other nav controls — a second baseline here would show
- * up as a half-pixel wobble across the row. Colors come from the
- * VitePress brand tokens so both themes and the code-theme override stay
- * consistent; nothing is hard-coded. */
+ * trigger and the gear — a second baseline here would show up as a
+ * half-pixel wobble across the row. Its ink, hover fill and hover text are
+ * the top bar tokens above, shared with the idle tabs and the gear. */
 .VPNavBar .content-body > .version-badge {
   margin-left: 8px;
 }
@@ -319,13 +497,13 @@
   line-height: 1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: var(--vp-c-text-2);
+  color: var(--tb-muted);
   transition: color 0.25s, background-color 0.25s;
 }
 
 .version-badge:hover {
-  color: var(--vp-c-text-1);
-  background-color: var(--vp-c-default-soft);
+  color: var(--tb-hover-fg);
+  background-color: var(--tb-hover-bg);
 }
 
 /* The mobile row has fewer controls than the medium row. Keep the full name
@@ -357,8 +535,9 @@
     min-width: 0;
   }
 
+  /* The 44px touch-target floor further below is the link's minimum here;
+   * overflow still clips the hidden full title's box. */
   .VPNavBarTitle .title {
-    min-width: 0;
     overflow: hidden;
   }
 
@@ -372,9 +551,9 @@
 }
 
 /* From 960px the title is the fixed sidebar lane, so the row cannot borrow
- * from it; 960-974px falls 15px short. The badge and the gear give up their
- * 8px gaps across the medium band (the badge has its own 8px padding) and
- * the row fits at 960px with 1px to spare. */
+ * from it. The badge and the gear give up their 8px gaps across the medium
+ * band (the badge has its own padding) so the row fits from 960px; the e2e
+ * row-fit tests pin it. */
 @media (min-width: 768px) and (max-width: 1279px) {
   .VPNavBar .content-body > .version-badge,
   .VPNavBar .content-body > .SettingsMenu {
@@ -394,22 +573,190 @@
   }
 }
 
+/* --- Touch targets below 960px --- */
+/* Under the desktop tier the bar is used on tablets and phones, so every
+ * control in the bar, the Settings dropdown (768-959px) and the hamburger
+ * menu (below 768px) is at least 44x44px (WCAG 2.5.5). The search trigger
+ * grows from the plugin's 40px; the version and the gear from 40px and 32px;
+ * the logo link gets a floor; the picker segments grow from 24px, their tracks
+ * follow, and the menu's theme picker wraps instead of overflowing a 320px
+ * menu. The component rules carry Vue's scoping attribute, so the selectors
+ * name the host as well to outrank them. */
+@media (max-width: 959px) {
+  .VPNavBar .content-body > .search .nav-search-btn-wait {
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .VPNavBar .content-body > .version-badge {
+    height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .VPNavBar .content-body > .SettingsMenu .settings-trigger {
+    width: 44px;
+    height: 44px;
+  }
+
+  .VPNavBar .VPNavBarTitle .title {
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .VPNavScreen .ThemePicker .theme-picker-option,
+  .VPNavScreen .NavStylePicker .nav-style-option,
+  .VPNavBar .SettingsMenu .theme-picker-option,
+  .VPNavBar .SettingsMenu .nav-style-option {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .VPNavScreen .ThemePicker .theme-picker-group,
+  .VPNavScreen .NavStylePicker .nav-style-group,
+  .VPNavBar .SettingsMenu .theme-picker-group,
+  .VPNavBar .SettingsMenu .nav-style-group {
+    height: auto;
+  }
+
+  .VPNavScreen .container .ThemePicker {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* 768-959px, multi-language builds only: the label and hint are already out
+ * of flow across the medium band (the gated rules above), so the pill shrinks
+ * to a 44px disc around the icon. A single-language build keeps its label and
+ * so its padding. */
+@media (min-width: 768px) and (max-width: 959px) {
+  .VPNavBar .content-body:has(> .language-toggle) > .search .nav-search-btn-wait {
+    padding: 0;
+    border-radius: 50%;
+  }
+}
+
 /* Narrow viewports: the hamburger nav screen carries the remaining controls
- * instead (full-width language slider, theme picker row, navigation style
- * row). */
+ * instead (stacked language picker, theme picker row, navigation style
+ * row). The search is the plugin's bare 48px icon again: the pill's edge and
+ * fill are dropped on the phone row. */
 @media (max-width: 767px) {
   .VPNavBar .content-body > .SettingsMenu,
   .VPNavBar .language-toggle {
     display: none;
   }
+
+  .VPNavBar .content-body > .search .nav-search-btn-wait {
+    width: 48px;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background-color: transparent;
+  }
+
+  /* The pill's hover ring would still outrank the bare icon (same selector
+   * plus :hover), including the sticky hover after a tap. */
+  .VPNavBar .content-body > .search .nav-search-btn-wait:hover {
+    box-shadow: none;
+  }
+
+  /* The icon is the bar's full height, so an outside ring would leave the
+   * viewport at the top; draw it inset instead. */
+  .VPNavBar .content-body > .search .nav-search-btn-wait:focus-visible {
+    outline-offset: -2px;
+  }
 }
 
-/* Mobile nav screen: the language slider as a full-width row above the
- * theme picker row (see theme-picker.css for the picker's row). */
-.VPNavScreen .language-toggle {
-  margin-top: 12px;
-  width: 100%;
-  justify-content: center;
+/* --- Language picker in the phone menu --- */
+/* Mobile nav screen: the language picker as one vertical segmented control
+ * above the theme picker row (see theme-picker.css for the picker's row):
+ * one bordered group, a 48px row per language, the selected row filled.
+ * Five full names do not fit a 320px menu side by side; stacked, they do,
+ * and every row stays above the 44px touch-target minimum. The fill and the
+ * focus ring use the palette's brand color, so they follow custom.css; the
+ * other colors are the top bar tokens above. */
+@media (max-width: 767px) {
+  /* [role] lifts this above the component's scoped .language-toggle rule, so
+   * the group's display does not depend on stylesheet order. */
+  .VPNavScreen .language-toggle[role="radiogroup"] {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    height: auto;
+    margin-top: 12px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--seg-edge);
+    border-radius: 8px;
+    background: var(--vp-c-bg);
+  }
+
+  .VPNavScreen .language-toggle .language-option {
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 0;
+    border-top: 1px solid var(--vp-c-divider);
+    box-shadow: none;
+    background: transparent;
+    color: var(--tb-muted);
+  }
+
+  .VPNavScreen .language-toggle .language-option:first-child {
+    border-top: 0;
+  }
+
+  .VPNavScreen .language-toggle .language-option.active {
+    background: var(--seg-on-bg);
+    color: var(--seg-on-fg);
+  }
+
+  .VPNavScreen .language-toggle .language-option.active .language-label {
+    color: inherit;
+  }
+
+  .VPNavScreen .language-toggle .language-option:not(.active):hover {
+    background: var(--tb-hover-bg);
+    color: var(--tb-muted);
+  }
+
+  .VPNavScreen .language-toggle .language-option:focus-visible {
+    outline: 2px solid var(--tb-focus);
+    outline-offset: -4px;
+  }
+
+  /* Arrow keys select as they move, so focus usually sits on the filled row,
+   * where a brand-colored ring would vanish into the fill. Draw it in the
+   * row's text color there instead. */
+  .VPNavScreen .language-toggle .language-option.active:focus-visible {
+    outline-color: var(--seg-on-fg);
+  }
+}
+
+/* Forced colors (high contrast) replaces the selected option's author colors
+ * and paints every transparent border in the system text color, which would
+ * give all five bar tabs the same underline. The idle tabs' bottom border
+ * takes the canvas color so only the selected one shows, and the selected
+ * label is underlined in the system text color as well, so the cue survives
+ * in the phone menu too, where the fill is gone. Neither changes a size. */
+@media (forced-colors: active) {
+  .VPNavBar .language-toggle .language-option {
+    border-top-color: Canvas;
+  }
+
+  .VPNavBar .language-toggle .language-option:not(.active) {
+    border-bottom-color: Canvas;
+  }
+
+  :is(.VPNavBar, .VPNavScreen) .language-toggle .language-option.active {
+    text-decoration: underline 3px;
+    text-underline-offset: 4px;
+  }
 }
 
 /* Mobile nav screen: the navigation style as a full-width row under the

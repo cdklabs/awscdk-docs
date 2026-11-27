@@ -573,11 +573,12 @@ describe('API kind badge palette', () => {
 
 });
 
-// The checked segment tints its abbreviation box with the brand soft layer over
-// the elevated surface, so neither the page background nor an opaque swatch is
-// the measurement. The accessibility gate audits the default scheme only.
-describe('language abbreviation contrast', () => {
+// The bar's selected tab paints its label and underline in brand-1 straight on
+// the bar's background, so that pair is measured in both schemes. The
+// accessibility gate audits the default scheme only.
+describe('selected language label contrast', () => {
   const themeCss = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
+  const navCss = readFileSync(resolve(THEME_DIR, 'nav-controls.css'), 'utf-8');
   const toggle = readFileSync(resolve(THEME_DIR, 'LanguageToggle.vue'), 'utf-8');
   const lightBlock = themeCss.slice(themeCss.indexOf(':root {'), themeCss.indexOf('.dark {'));
   const darkBlock = themeCss.slice(themeCss.indexOf('.dark {'));
@@ -588,23 +589,6 @@ describe('language abbreviation contrast', () => {
       throw new Error(`variable ${name} not found as a hex color`);
     }
     return match[1];
-  };
-
-  const rgba = (block: string, name: string): number[] => {
-    const match = block.match(new RegExp(`${name}:\\s*rgba\\(([^)]+)\\)`));
-    if (!match) {
-      throw new Error(`variable ${name} not found as an rgba color`);
-    }
-    return match[1].split(',').map((part) => parseFloat(part.trim()));
-  };
-
-  const composite = (soft: number[], overHex: string): string => {
-    const [r, g, b, a] = soft;
-    const channels = [r, g, b].map((layer, i) => {
-      const base = parseInt(overHex.slice(1 + i * 2, 3 + i * 2), 16);
-      return Math.round(a * layer + (1 - a) * base);
-    });
-    return `#${channels.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
   };
 
   const luminance = (value: string): number => {
@@ -622,32 +606,69 @@ describe('language abbreviation contrast', () => {
 
   const AA = 4.5;
 
-  const surface = (block: string): string =>
-    composite(rgba(block, '--vp-c-brand-soft'), hex(block, '--vp-c-bg-elv'));
-
-  test('light mode: the checked abbreviation clears AA on its tinted box', () => {
-    expect(contrast(hex(lightBlock, '--vp-c-brand-2'), surface(lightBlock))).toBeGreaterThanOrEqual(AA);
+  test.each([
+    ['light', () => lightBlock],
+    ['dark', () => darkBlock],
+  ])('%s mode: the selected tab label and underline clear AA on the bar', (_mode, block) => {
+    expect(contrast(hex(block(), '--vp-c-brand-1'), hex(block(), '--vp-c-bg'))).toBeGreaterThanOrEqual(AA);
   });
 
-  test('dark mode: the checked abbreviation clears AA on its tinted box', () => {
-    expect(contrast(hex(darkBlock, '--vp-c-brand-2'), surface(darkBlock))).toBeGreaterThanOrEqual(AA);
-  });
-
-  test('the unused brand step is under AA on that tinted box', () => {
-    expect(contrast(hex(lightBlock, '--vp-c-brand-1'), surface(lightBlock))).toBeLessThan(AA);
-  });
-
-  test('the checked abbreviation is colored by the pinned step on the pinned surface', () => {
-    // Holds the measurement to the tokens the rules actually carry.
-    const rule = (selector: string): string => {
-      const start = toggle.indexOf(selector);
+  test('the selected tab is colored by the measured step on the measured surface', () => {
+    // Holds the measurement to the tokens the rules actually carry: the tab's
+    // color is the brand step, and nothing paints a fill under it.
+    const rule = (source: string, selector: string): string => {
+      const start = source.indexOf(selector);
       expect(start).toBeGreaterThan(-1);
-      return toggle.slice(start, toggle.indexOf('}', start));
+      return source.slice(start, source.indexOf('}', start));
     };
-    expect(rule('.language-option.active .language-abbr {')).toContain('color: var(--vp-c-brand-2)');
-    expect(rule('.language-option.active .language-abbr {')).toContain(
-      'background-color: var(--vp-c-brand-soft)',
-    );
-    expect(rule('.language-option.active {')).toContain('background-color: var(--vp-c-bg-elv)');
+    expect(navCss).toContain('--tb-tab-on: var(--vp-c-brand-1);');
+    const active = rule(navCss, '.VPNavBar .language-toggle .language-option.active {');
+    expect(active).toContain('color: var(--tb-tab-on)');
+    expect(active).toContain('border-bottom-color: var(--tb-tab-on)');
+    expect(active).toContain('background-color: transparent');
+    expect(toggle).not.toContain('.language-option.active {');
+  });
+
+  // The top bar copies its colors into nav-controls.css, so the pairs it
+  // paints are measured here from its own :root and .dark blocks.
+  const navLight = navCss.slice(navCss.indexOf('\n:root {'), navCss.indexOf('\n.dark {'));
+  const navDark = navCss.slice(navCss.indexOf('\n.dark {'));
+  const navDarkBlock = navDark.slice(0, navDark.indexOf('}'));
+
+  test.each([
+    ['light', () => navLight, () => lightBlock],
+    ['dark', () => navDarkBlock, () => darkBlock],
+  ])('%s mode: the bar and phone menu controls clear their contrast targets', (_mode, nav, palette) => {
+    // Selected phone row: its text on the brand fill.
+    expect(contrast(hex(nav(), '--seg-on-fg'), hex(palette(), '--vp-c-brand-1'))).toBeGreaterThanOrEqual(AA);
+    // Idle tabs, search placeholder, version and gear: muted text on the bar.
+    expect(contrast(hex(nav(), '--tb-muted'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(7);
+    // Hovered idle controls: muted text (phone rows) and the bar's hover text
+    // (tabs, version, gear) on the hover fill.
+    expect(contrast(hex(nav(), '--tb-muted'), hex(nav(), '--tb-hover-bg'))).toBeGreaterThanOrEqual(AA);
+    // The token is either a literal or exactly the primary text, so the fallback
+    // below measures what the bar actually paints.
+    expect(nav()).toMatch(/--tb-hover-fg: (#[0-9a-fA-F]{6}|var\(--vp-c-text-1\));/);
+    const hoverFg = nav().includes('--tb-hover-fg: #') ? hex(nav(), '--tb-hover-fg') : hex(palette(), '--vp-c-text-1');
+    expect(contrast(hoverFg, hex(nav(), '--tb-hover-bg'))).toBeGreaterThanOrEqual(7);
+    // The phone group edge is a non-text boundary (WCAG 1.4.11).
+    expect(contrast(hex(nav(), '--seg-edge'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(3);
+    // The search box edge and the shortcut chip edge sit on the bar's fill.
+    expect(contrast(hex(nav(), '--tb-input-border'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(AA);
+    expect(navLight).toContain('--tb-chip-border: var(--tb-input-border)');
+  });
+
+  test('every top bar copy that names a palette token still equals it', () => {
+    // nav-controls.css marks each copy as `--name: #hex; /* = light|dark --token */`.
+    const copies = [...navCss.matchAll(/--[\w-]+:\s*(#[0-9a-fA-F]{6});\s*\/\*\s*=\s*(light|dark)\s+(--[\w-]+)\s*\*\//g)];
+    expect(copies.length).toBeGreaterThanOrEqual(4);
+    for (const [, value, scheme, token] of copies) {
+      const source = scheme === 'light' ? lightBlock : darkBlock;
+      expect({ token, scheme, value: value.toLowerCase() }).toEqual({
+        token,
+        scheme,
+        value: hex(source, token).toLowerCase(),
+      });
+    }
   });
 });

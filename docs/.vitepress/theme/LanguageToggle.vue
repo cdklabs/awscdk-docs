@@ -1,13 +1,14 @@
 <script setup lang="ts">
-// Prominent global language slider. Reads and writes the shared client-side
+// Prominent global language tabs. Reads and writes the shared client-side
 // language state that drives every <LanguageTabs> group and the sidebar display
 // labels — one selection, reflected everywhere, with the URL path unchanged
 // (`?lang=` carries the choice).
 //
-// A segmented slider (WAI-ARIA radio-group pattern) with a per-language text
-// abbreviation per segment, placed right of the search box. The active language
-// shows its full label next to the abbreviation, so the selection is never
-// indicated by color alone.
+// A radio group (WAI-ARIA radio-group pattern) in the row's leading slot, left
+// of the search box, drawn as underlined text tabs. nav-controls.css shows every
+// option by its language name and shortens TypeScript to its abbreviation, "TS",
+// below 1100px; the hidden full name keeps the abbreviation inside the
+// accessible name. The phone menu stacks the options vertically.
 //
 // Renders only when the build enables 2+ languages (enabled-languages.ts,
 // compiled into the bundle — see that module for why it is not themeConfig).
@@ -99,99 +100,37 @@ onMounted(initLanguageState);
       <span class="language-abbr" :data-lang="lang">{{
         LANGUAGE_SHORT_LABELS[lang]
       }}</span>
-      <!-- The full language, so the visible abbreviation is part of the
-           accessible name rather than replaced by it. -->
+      <!-- The full language name. Below 1100px it keeps the visible "TS"
+           inside TypeScript's accessible name. -->
       <span v-if="lang !== activeLanguage" class="visually-hidden">{{
         LANGUAGE_LABELS[lang]
       }}</span>
-      <span v-if="lang === activeLanguage" class="language-label">
-        <span class="language-label-text">{{ LANGUAGE_LABELS[lang] }}</span>
-        <!-- Width sizers: every enabled label, overlapped in the same grid cell,
-             so the column is as wide as the widest one and the slider width does
-             not track the active language. Rendering all of them lets the browser
-             measure. Hidden from paint, assistive tech, and the search index. -->
-        <span
-          v-for="sizer in enabled"
-          :key="`sizer-${sizer}`"
-          class="language-label-sizer"
-          aria-hidden="true"
-          data-pagefind-ignore
-          >{{ LANGUAGE_LABELS[sizer] }}</span
-        >
-      </span>
+      <span v-if="lang === activeLanguage" class="language-label">{{
+        LANGUAGE_LABELS[lang]
+      }}</span>
     </button>
   </div>
 </template>
 
 <style scoped>
+/* Structure only. nav-controls.css paints both placements: underlined text
+ * tabs spanning the bar, a stacked segmented control in the phone menu. */
 .language-toggle {
   display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
-  padding: 2px;
-  background-color: var(--vp-c-bg-alt);
-  /* Same rendered height as the adjacent search trigger so the two sit on a
-   * common baseline. The pagefind plugin hard-codes `height: 40px` on
-   * `.nav-search-btn-wait` (no CSS variable exposes it), so the value is pinned
-   * here and guarded by a regression test (test/nav-controls.test.ts) that reads
-   * the plugin's source. */
-  box-sizing: border-box;
-  height: 40px;
+  align-items: stretch;
 }
 
 .language-option {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  color: var(--vp-c-text-2);
   transition: color 0.25s, background-color 0.25s;
-  /* Segments stretch to fill the 40px track so the active "thumb"
-   * highlight spans the control's full inner height. */
   align-self: stretch;
 }
 
-.language-option:hover {
-  color: var(--vp-c-text-1);
-}
-
-.language-option:focus-visible {
-  outline: 2px solid var(--vp-c-brand-1);
-  outline-offset: -2px;
-}
-
-/* The sliding "thumb": the checked segment lifts off the track. */
-.language-option.active {
-  color: var(--vp-c-text-1);
-  background-color: var(--vp-c-bg-elv);
-  box-shadow: var(--vp-shadow-1);
-}
-
+/* nav-controls.css decides when the badge paints (TypeScript's "TS", below
+ * 1100px in the bar) and how it is typeset. */
 .language-abbr {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 20px;
-  border-radius: 4px;
-  border: 1px solid currentColor;
-  /* Typeset to fit the unchanged 22x20 box, so the control height and the
-   * search-box baseline alignment hold. */
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
   font-variant-ligatures: none;
-}
-
-.language-option.active .language-abbr {
-  border-color: var(--vp-c-brand-1);
-  background-color: var(--vp-c-brand-soft);
-  /* brand-2 clears AA on the soft tint over the elevated segment; brand-1 does
-   * not. test/theme.test.ts pins both. */
-  color: var(--vp-c-brand-2);
 }
 
 .visually-hidden {
@@ -205,27 +144,10 @@ onMounted(initLanguageState);
   white-space: nowrap;
 }
 
+/* Size and color come from nav-controls.css. */
 .language-label {
-  /* Overlapping single-cell grid: the visible text and one sizer per enabled
-   * language all occupy 1 / 1, so the cell's width is the widest label's width
-   * whatever the selection. Costs ~50px of nav-row width, only at >=1280px where
-   * the label renders. */
-  display: inline-grid;
-  font-size: 13px;
   font-weight: 600;
   line-height: 20px;
-  color: var(--vp-c-text-1);
-}
-
-.language-label-text,
-.language-label-sizer {
-  grid-area: 1 / 1;
   white-space: nowrap;
-}
-
-.language-label-sizer {
-  /* visibility, not display:none — a removed box measures nothing. */
-  visibility: hidden;
-  pointer-events: none;
 }
 </style>
