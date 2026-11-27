@@ -614,14 +614,16 @@ docsBuildWorkflow.on({ pullRequest: {}, mergeGroup: {} });
 // 40), so verify the byte peak when moving it. The plan is a pure function of SHARD_TOTAL and docs:merge
 // unions every shard, so the count is safe to raise.
 const DOCS_BUILD_SHARDS = 72;
-const DOCS_BUILD_HEAP_MB = 12288;
-const DOCS_BUILD_CONCURRENCY = 10;
+const DOCS_BUILD_HEAP_MB = 8192;
+const DOCS_BUILD_CONCURRENCY = 15;
 
 // The production build with the sizes above, for CI and for the CDK release pipeline. The runner is a CodeBuild
-// 2xlarge (72 vCPU, 145 GB). The heaviest shard outgrows an 8 GB heap once every struct, enum and interface page
-// carries translated examples, so each shard gets 12 GB. Ten at once keeps the worst case (every running shard at
-// its cap plus ~1 GB off-heap each) within the machine's memory. DOCS_BUILD_SHARDS, DOCS_BUILD_HEAP_MB and
-// DOCS_BUILD_CONCURRENCY override the values for a single run.
+// 2xlarge (72 vCPU, 145 GB). The heaviest shard (the highest `peak_rss_mb` in a `docs:build:ci` log, rebuilt alone
+// with `docs:build:sharded --shard I/72 --heap N`) builds under a 6 GB heap and runs out under 5 GB, so each shard
+// gets 8 GB, 2 GB or more above its need.
+// Fifteen at once keeps the worst case (every running shard at its cap plus ~1 GB off-heap each) within the
+// machine's memory with headroom. Size the heap from the heaviest shard's need, then the concurrency from the worst
+// case. DOCS_BUILD_SHARDS, DOCS_BUILD_HEAP_MB and DOCS_BUILD_CONCURRENCY override the values for a single run.
 project.addTask('docs:build:ci', {
   description: 'Sharded production build sized for the CI runner (env overrides: DOCS_BUILD_SHARDS, DOCS_BUILD_HEAP_MB, DOCS_BUILD_CONCURRENCY)',
   exec: `bash scripts/ci-shard-build.sh ${DOCS_BUILD_SHARDS} ${DOCS_BUILD_HEAP_MB} ${DOCS_BUILD_CONCURRENCY}`,
@@ -1006,7 +1008,7 @@ project.jest!.config.collectCoverageFrom = [
 ];
 // The coverage floor sits a little under today's numbers so the full suite fails when coverage drops.
 // It is passed on the test task, not the Jest config, so a bare `npx jest path` run is not held to it.
-const COVERAGE_FLOOR = { global: { lines: 87, statements: 87, branches: 92, functions: 93 } };
+const COVERAGE_FLOOR = { global: { lines: 88, statements: 88, branches: 92, functions: 93 } };
 const jestStep = project.testTask.steps.findIndex((step) => step.execArgs?.[0] === 'jest');
 project.testTask.updateStep(jestStep, {
   ...project.testTask.steps[jestStep],

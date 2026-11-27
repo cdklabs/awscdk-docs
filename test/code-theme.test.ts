@@ -117,10 +117,10 @@ describe('independent code-block theme', () => {
       expect(component).toContain('from "./code-theme"');
     });
 
-    test('both groups sit level with the 40px search trigger and slider', () => {
-      // The picker pins the same literal value the pagefind plugin
-      // hard-codes for its search trigger, exactly like LanguageToggle.vue,
-      // so the nav controls share a baseline.
+    test('both groups sit level with the 40px search trigger and Settings gear', () => {
+      // The picker restates the literal the pagefind plugin hard-codes for
+      // its search trigger, like SettingsMenu.vue's trigger, so the nav
+      // controls share a baseline.
       const groupHeight = component.match(
         /\.theme-picker-group\s*\{[^}]*?height:\s*(\d+)px/,
       );
