@@ -65,9 +65,10 @@ about a type, and it costs nothing next to the banner.
   entered from a deep link. Overview pages are unchanged.
 - A type page whose stability is stable, experimental or deprecated states it,
   stable ones included, so no absence has to carry a meaning there. An L1 page
-  is the exception: jsii calls it `external`, which is not a claim this project
-  can make, so it shows the kind chip alone. An alpha type page states its
-  stability three times: the chip, the banner and the metadata row.
+  is the exception: jsii calls it `external`, and which label that deserves is a
+  maintainer's call (see the type page header ADR), so it shows the kind chip
+  alone. An alpha type page states its stability three times: the chip, the
+  banner and the metadata row.
 - One more block above the fold on every alpha type page. The banner is short
   and the theme's container styling keeps it compact.
 - Any future stability level that needs its own above-title treatment adds a

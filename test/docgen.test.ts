@@ -1138,10 +1138,10 @@ describe('docgen generation', () => {
     // though its package-level banner does not fire.
     expect(chip('aws-cdk-lib.interfaces.aws_s3.IBucketRef.md')).toBe('experimental');
 
-    // An L1 type is `external` in jsii, which is not a stability this project
-    // can claim, so its row carries the kind chip alone. The kind assertion is
-    // the positive control: without it the absence below would also hold for a
-    // page that rendered no row at all.
+    // An L1 type is `external` in jsii, which takes no stability chip, so its
+    // row carries the kind chip alone. The kind assertion is the positive
+    // control: without it the absence below would also hold for a page that
+    // rendered no row at all.
     const cfn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
     expect(cfn).toContain('<span class="type-chip type-chip-kind api-badge-l1">L1 construct</span>');
     expect(cfn).not.toContain('type-chip-stability');
