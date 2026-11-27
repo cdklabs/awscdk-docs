@@ -191,11 +191,16 @@ test.describe('explorer preview on desktop', () => {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 });
         await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
+        // The version badge leaves the bar from 960px to 1119px with the preview on; the Versions link covers it.
+        const badge = '.VPNavBar .content-body > .version-badge';
+        if (width < 1120) {
+          await expect(page.locator(badge), 'the version badge is hidden below 1120px').toBeHidden();
+        }
         const controls = [
           '.VPNavBar .language-toggle',
           '.VPNavBar .content-body > .search',
           '.VPNavBar .content-body > .VPNavBarMenu',
-          '.VPNavBar .content-body > .version-badge',
+          ...(width < 1120 ? [] : [badge]),
           '.VPNavBar .settings-trigger',
         ];
         const boxes = [];
@@ -215,6 +220,8 @@ test.describe('explorer preview on desktop', () => {
         }
         const last = boxes[boxes.length - 1];
         expect(last.x + last.width, 'the gear ends at least 8px inside the viewport').toBeLessThanOrEqual(width - 8);
+        // Same distance from the viewport edge as with the preview off.
+        expect(width - (last.x + last.width), 'the gear sits 32px from the viewport edge').toBeCloseTo(32, 0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
         await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
         // The title lane follows the preview, not the page: 392px on every page, so the controls do not move.
@@ -278,7 +285,7 @@ test.describe('explorer preview on desktop', () => {
     ['/', 'the home page'],
     [SKILLS_PAGE, 'the skills page'],
   ] as const) {
-    test(`the nav-link padding rule is what keeps the 960px row inside the viewport on ${label}`, async ({ page }) => {
+    test(`hiding the version badge is what keeps the 960px row inside the viewport on ${label}`, async ({ page }) => {
       await page.setViewportSize({ width: 960, height: 800 });
       await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
       const gearEnd = async () => {
@@ -286,10 +293,10 @@ test.describe('explorer preview on desktop', () => {
         return box.x + box.width;
       };
       const withRule = await gearEnd();
-      // Positive control: undo the rule and the row needs about 24px more, so the gear moves right.
-      await page.addStyleTag({ content: '.VPNavBar .VPNavBarMenuLink { padding: 0 12px !important; }' });
+      // Positive control: show the badge again and the row needs more room, so the gear moves right.
+      await page.addStyleTag({ content: '.VPNavBar .content-body > .version-badge { display: flex !important; }' });
       const withoutRule = await gearEnd();
-      expect(withoutRule - withRule, 'the rule gives the row about 24px back').toBeGreaterThanOrEqual(16);
+      expect(withoutRule - withRule, 'hiding the badge gives the row room back').toBeGreaterThanOrEqual(16);
     });
   }
 

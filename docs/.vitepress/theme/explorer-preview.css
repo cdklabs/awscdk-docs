@@ -29,14 +29,12 @@
   }
 }
 
-/* The 392px title lane leaves the top bar row 72px less room than the 320px lane, which
-   nav-controls.css sized to fit at 960px with 1px to spare. From 960px to 1023px, on every page, the row takes
-   24px back from the nav links' side padding (12px to 8px). At 960px the search button then keeps
-   its icon width and the gear's right edge sits at least 8px inside the viewport. From 1024px the row fits
-   without it. */
-@media (min-width: 960px) and (max-width: 1023px) {
-  html[data-explorer-preview="on"] .VPNavBar .VPNavBarMenuLink {
-    padding: 0 8px;
+/* The 392px title lane leaves the top bar row 72px less room than the 320px lane. From 960px to 1119px the
+   version badge drops out of the bar with the preview on, which frees room so the gear's right edge stays
+   at its usual distance from the viewport edge. The Versions link next to it leads to the same page. */
+@media (min-width: 960px) and (max-width: 1119px) {
+  html[data-explorer-preview="on"] .VPNavBar .content-body > .version-badge {
+    display: none;
   }
 }
 
