@@ -271,11 +271,6 @@
 @media (max-width: 1099px) {
   .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]) .language-abbr {
     display: inline;
-    border: 0;
-    border-radius: 0;
-    background: none;
-    width: auto;
-    height: auto;
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
