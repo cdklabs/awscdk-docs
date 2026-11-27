@@ -337,7 +337,7 @@ outgoing position.
 
 ### Sticky sidebar header
 
-*With the Explorer preview on, the Views button also heads this block below 960px; see [Explorer preview](./2026-11-26-explorer-preview-rail.md).*
+*With the Explorer preview on, the Views button also heads this block below 960px, and in the Favorites view the block is not pinned, so a long list scrolls with the sidebar; see [Explorer preview](./2026-11-26-explorer-preview-rail.md).*
 
 The symbol filter (which carries the locate control in its status row) and
 the favorites list are wrapped in one `.sidebar-header` element that is

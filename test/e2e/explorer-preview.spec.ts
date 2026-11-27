@@ -622,4 +622,17 @@ test.describe('explorer preview on a phone', () => {
     await expect(views).toHaveAttribute('aria-expanded', 'false');
     await expect(rail(page)).toBeHidden();
   });
+
+  test('focus moving out of the unfolded rail folds it and stays where it went', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    await page.getByRole('button', { name: /^Views/ }).click();
+    await expect(rail(page)).toBeVisible();
+    const outside = page.locator('.VPNavBarHamburger');
+    await outside.focus();
+    await expect(rail(page)).toBeHidden();
+    await expect(outside).toBeFocused();
+    const covered = page.locator('.VPSidebar .sidebar-header, .VPSidebar .api-sidebar');
+    expect(await covered.evaluateAll((els) => els.some((el) => (el as HTMLElement).inert))).toBe(false);
+  });
 });
