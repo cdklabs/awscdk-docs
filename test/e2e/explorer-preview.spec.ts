@@ -246,6 +246,32 @@ test.describe('explorer preview on desktop', () => {
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('off');
   });
 
+  test('Escape with the panel open leaves focus where it is when the reader tabbed out of the rail', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    await expect(page.locator('#settings-menu-panel')).toBeVisible();
+    await page.locator('.VPSidebar .nav-filter-input').focus();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#settings-menu-panel')).toBeHidden();
+    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
+  });
+
+  test('a client-side history change closes the open Settings panel', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    // A programmatic click on a sidebar link is a VitePress client-side navigation.
+    await page.evaluate((href) => {
+      (document.querySelector(`.VPSidebar a[href$="${href}"]`) as HTMLAnchorElement).click();
+    }, CFN_QUEUE_PAGE);
+    await expect(page).toHaveURL(new RegExp(`${CFN_QUEUE_PAGE}$`));
+    const settings = rail(page).getByRole('button', { name: 'Settings' });
+    await settings.click();
+    await expect(settings).toHaveAttribute('aria-expanded', 'true');
+    await page.evaluate(() => window.history.back());
+    await expect(page).toHaveURL(new RegExp(`${QUEUE_PAGE}$`));
+    await expect(settings).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#settings-menu-panel')).toBeHidden();
+  });
+
   test('at 1600px the rail sits where the sidebar content used to start and the tree keeps its width', async ({
     page,
   }) => {

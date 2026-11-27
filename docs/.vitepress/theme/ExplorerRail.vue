@@ -83,13 +83,15 @@ function swallowEscapeRelease(): void {
 }
 
 // Escape closes the Settings panel first and then folds the rail, wherever focus is: the Views button and
-// the tree behind the scrim must not leave the rail unfolded when VitePress closes the drawer.
+// the tree behind the scrim must not leave the rail unfolded when VitePress closes the drawer. Focus goes back
+// to the Settings button only when it was in the rail; a reader who tabbed on into the filter or the tree
+// keeps their place, as with the top-bar gear.
 function onDocumentKeydown(event: KeyboardEvent): void {
   if (event.key !== "Escape" || !enabled.value || !(settingsOpen.value || railOpen.value)) return;
   swallowEscapeRelease();
   if (settingsOpen.value) {
     settingsOpen.value = false;
-    settingsButton.value?.focus();
+    if (document.activeElement?.closest(".ExplorerRailRoot")) settingsButton.value?.focus();
   } else {
     foldRail();
   }
@@ -118,6 +120,7 @@ watch(
   () => route.path,
   () => {
     railOpen.value = false;
+    settingsOpen.value = false;
   },
 );
 
