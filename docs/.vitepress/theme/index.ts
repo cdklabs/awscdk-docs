@@ -88,9 +88,8 @@ const theme: Theme = {
       // aws-cdk-lib version badge sits just left of the gear.
       "nav-bar-content-after": () => [h(LanguageToggle), h(VersionBadge), h(SettingsMenu)],
       // Below 768px the Settings dropdown is hidden (nav-controls.css), so the
-      // hamburger screen carries its controls directly, navigation style included,
-      // while the Explorer preview is off. With it on, explorer-preview.css hides these
-      // rows and the rail's Settings panel holds them.
+      // hamburger screen carries its controls directly, navigation style and the
+      // Explorer preview switch included, with the preview on or off.
       "nav-screen-content-after": () => [
         h(LanguageToggle),
         h(ThemePicker),

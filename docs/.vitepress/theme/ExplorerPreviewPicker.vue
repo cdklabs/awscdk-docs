@@ -23,40 +23,16 @@ onMounted(() => {
   mounted.value = true;
 });
 
-// First control in the list that is rendered and visible; a hidden one cannot take focus.
-function focusFirstVisible(selectors: string[]): void {
-  for (const selector of selectors) {
-    const el = document.querySelector<HTMLElement>(selector);
-    // checkVisibility() is missing from older browsers; fall back to "has a layout box".
-    const shown = el && (typeof el.checkVisibility === "function" ? el.checkVisibility() : el.getClientRects().length > 0);
-    if (el && shown) {
-      el.focus();
-      return;
-    }
-  }
-}
-
 async function choose(value: ExplorerPreview): Promise<void> {
   if (explorerPreview.value === value) return;
+  // Where the segment sits in the bar's Settings panel, turning the preview off hands focus back to the gear,
+  // so the reader lands on the control that opened the panel. In the phone menu the pressed segment keeps
+  // focus: the gear is hidden there. Turning it on leaves focus on the pressed segment everywhere.
+  const inPanel = document.activeElement?.closest(".SettingsMenu") != null;
   setExplorerPreview(value);
-  // The Settings panel changes host (bar and rail) when the switch flips, so keyboard focus is placed again.
-  // Preferred: the segment just pressed in the panel's new copy when turning on, the gear when turning off.
-  // Where that control is not rendered (a phone, a page without the rail), the next best visible control in
-  // the same area takes focus so it never falls to the page body.
+  if (value !== "off" || !inPanel) return;
   await nextTick();
-  focusFirstVisible(
-    value === "on"
-      ? [".explorer-settings-panel [data-value='on']", ".VPNavBarHamburger", ".VPNavBar .nav-search-btn-wait"]
-      : [
-          // An open drawer comes first: at 768-959px the gear is visible in the bar, but it sits under the
-          // drawer's backdrop, so a keyboard reader would end up on a control a pointer cannot reach.
-          ".VPSidebar.open .nav-filter-input",
-          ".VPNavBar .settings-trigger",
-          ".VPSidebar .nav-filter-input",
-          ".VPLocalNav button.menu",
-          ".VPNavBarHamburger",
-        ],
-  );
+  document.querySelector<HTMLElement>(".VPNavBar .settings-trigger")?.focus();
 }
 </script>
 

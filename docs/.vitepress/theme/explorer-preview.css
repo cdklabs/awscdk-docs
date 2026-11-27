@@ -8,20 +8,8 @@
  * make it the containing block for fixed children, so the transform is dropped while the preview is on.
  */
 
-/* Top bar: the gear leaves, and so does the wrapper's box. Settings opens from the rail instead. */
-html[data-explorer-preview="on"] .VPNavBar .content-body > .SettingsMenu {
-  display: contents;
-}
-
-html[data-explorer-preview="on"] .VPNavBar .settings-trigger {
-  display: none;
-}
-
-/* Phone menu screen: the setting rows move to the rail's Settings panel. Links and the language slider stay. */
-html[data-explorer-preview="on"] .VPNavScreen :is(.ThemePicker, .NavStylePicker, .ExplorerPreviewPicker) {
-  display: none;
-}
-
+/* The top bar and the phone menu screen are unchanged with the preview on: the gear and its panel, and the
+   phone menu's setting rows, stay, so the switch to turn the preview off is reachable on every page. */
 .VPNavScreen .ExplorerPreviewPicker {
   margin-top: 12px;
   width: 100%;
@@ -101,10 +89,6 @@ html[data-explorer-preview="on"] .favorites-empty {
   background-color: var(--vp-sidebar-bg-color);
 }
 
-.explorer-rail-gap {
-  flex: 1 1 auto;
-}
-
 .explorer-rail-button {
   position: relative;
   display: flex;
@@ -162,36 +146,12 @@ html[data-explorer-preview="on"] .favorites-empty {
   font-weight: 700;
 }
 
-/* The Settings panel opened from the rail: the same panel as the top-bar gear's, beside the rail. */
-.explorer-settings-panel {
-  position: fixed;
-  bottom: 8px;
-  left: calc(var(--explorer-rail-left) + 80px);
-  z-index: 11;
-  box-sizing: border-box;
-  min-width: 200px;
-  padding: 12px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background-color: var(--vp-c-bg-elv);
-  box-shadow: var(--vp-shadow-3);
-  /* Scrolls on a short screen instead of running off the top: it sits below the top bar on desktop. */
-  max-height: calc(100vh - var(--vp-layout-top-height, 0px) - var(--vp-nav-height) - 16px);
-  max-height: calc(100dvh - var(--vp-layout-top-height, 0px) - var(--vp-nav-height) - 16px);
-  overflow-y: auto;
-}
-
-.explorer-settings-panel > .NavStylePicker,
-.explorer-settings-panel > .ExplorerPreviewPicker {
-  margin-top: 6px;
-}
-
 /* Views button: drawer only. */
 .explorer-views-button {
   display: none;
 }
 
-/* Below 960px the rail unfolds over a scrim; the panel only shows beside an unfolded rail. */
+/* Below 960px the rail unfolds over a scrim. */
 @media (max-width: 959px) {
   .ExplorerRail {
     display: none;
@@ -210,18 +170,6 @@ html[data-explorer-preview="on"] .favorites-empty {
     inset: 0;
     z-index: 9;
     background-color: rgba(0, 7, 22, 0.45);
-  }
-
-  .explorer-settings-panel {
-    display: none;
-    right: 8px;
-    left: 80px;
-    max-height: calc(100vh - 16px);
-    max-height: calc(100dvh - 16px);
-  }
-
-  .ExplorerRail.open ~ .explorer-settings-panel {
-    display: block;
   }
 
   .explorer-views-button {

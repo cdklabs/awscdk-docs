@@ -1,7 +1,7 @@
 // Explorer preview state, mirroring density.ts.
 //
 // The preview is an opt-in sidebar variant: a view rail at the sidebar's left edge with an API view
-// (today's tree and filter) and a Favorites view, and the Settings button moved into the rail. Everything
+// (today's tree and filter) and a Favorites view. The top-bar gear stays. Everything
 // the preview changes keys on two attributes on <html>, so a reader who never opts in sees only the switch itself:
 //
 // - `data-explorer-preview="on"` is present only while the preview is on.
@@ -32,9 +32,6 @@ export const explorerPreview = ref<ExplorerPreview>(DEFAULT_EXPLORER_PREVIEW);
 
 /** The shared selected view. SSR-safe default (API). */
 export const explorerView = ref<ExplorerView>(DEFAULT_EXPLORER_VIEW);
-
-/** Whether the Settings panel is open. Shared because the top-bar gear and the rail button drive one panel. */
-export const settingsOpen = ref(false);
 
 /** Whether the rail is unfolded below 960px, where it stays hidden until the Views button opens it. */
 export const railOpen = ref(false);

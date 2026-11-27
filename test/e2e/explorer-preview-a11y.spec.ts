@@ -9,7 +9,7 @@ const FAVORITES = [
   { path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue', title: 'Queue' },
 ];
 
-// Axe over what the Explorer preview adds, with the preview on: the rail and its Settings panel, the Favorites
+// Axe over what the Explorer preview adds, with the preview on: the rail, the gear's Settings panel, the Favorites
 // view, the phone rail and Views button, and dark mode. Scoped to the top bar and the sidebar without its tree,
 // so the audit stays quick and never meets the vendored code-token colors. The Pagefind search button is left out:
 // below 768px it has no accessible name with the preview off too, and it is not part of this feature.
@@ -50,11 +50,11 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
   test.describe('desktop', () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
-    test('the rail with the Settings panel open has no critical or serious violations', async ({ page }) => {
+    test('the rail with the gear panel open has no critical or serious violations', async ({ page }) => {
       await open(page, {});
-      await page.getByRole('navigation', { name: 'Sidebar views' }).getByRole('button', { name: 'Settings' }).click();
+      await page.locator('.VPNavBar .settings-trigger').click();
       await expect(page.locator('#settings-menu-panel')).toBeVisible();
-      await audit(page, 'the rail with the Settings panel open');
+      await audit(page, 'the rail with the gear panel open');
     });
 
     test('the Favorites view has no critical or serious violations', async ({ page }) => {
@@ -67,7 +67,8 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
       await open(page, { 'vitepress-theme-appearance': 'dark', [VIEW_KEY]: 'favorites' });
       await expect(page.locator('html')).toHaveClass(/dark/);
       await audit(page, 'the Favorites view in dark mode');
-      await page.getByRole('navigation', { name: 'Sidebar views' }).getByRole('button', { name: 'Settings' }).click();
+      await page.locator('.VPNavBar .settings-trigger').click();
+      await expect(page.locator('#settings-menu-panel')).toBeVisible();
       await audit(page, 'the Settings panel in dark mode');
     });
   });
@@ -81,8 +82,6 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
       await audit(page, 'the drawer with the Views button');
       await page.getByRole('button', { name: /^Views/ }).click();
       await audit(page, 'the unfolded phone rail');
-      await page.getByRole('navigation', { name: 'Sidebar views' }).getByRole('button', { name: 'Settings' }).click();
-      await audit(page, 'the phone rail with the Settings panel open');
     });
 
     test('the Views button and the unfolded rail in dark mode have no critical or serious violations', async ({

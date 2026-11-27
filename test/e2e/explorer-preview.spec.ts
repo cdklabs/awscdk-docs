@@ -45,14 +45,15 @@ test.describe('explorer preview on desktop', () => {
     await expect(group.getByRole('button', { name: 'Off' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('turning the preview on swaps the gear for a rail and keeps focus on the On segment', async ({ page }) => {
+  test('turning the preview on adds the rail, keeps the gear and leaves focus on the On segment', async ({ page }) => {
     await open(page);
     await page.locator('.VPNavBar .settings-trigger').click();
     await page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true }).click();
 
-    await expect(page.locator('.VPNavBar .settings-trigger')).toBeHidden();
+    await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
     await expect(rail(page)).toBeVisible();
-    await expect(rail(page).getByRole('button')).toHaveText(['API', 'Favorites', 'Settings']);
+    await expect(rail(page).getByRole('button')).toHaveText(['API', 'Favorites']);
+    await expect(rail(page).getByRole('button', { name: 'Settings' })).toHaveCount(0);
     await expect(rail(page).getByRole('button', { name: 'API' })).toHaveAttribute('aria-pressed', 'true');
     await expect(rail(page).getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'false');
     const box = await rail(page).boundingBox();
@@ -61,26 +62,24 @@ test.describe('explorer preview on desktop', () => {
     await expect(page.locator('.VPSidebar')).toHaveCSS('width', '392px');
     await expect(page.locator('.VPSidebar')).toHaveCSS('padding-left', '104px');
 
-    // The panel stays open beside the rail, and focus sits on the same segment.
+    // The panel stays open under the gear, and focus sits on the same segment.
     const on = page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true });
     await expect(on).toBeFocused();
     await expect(on).toHaveAttribute('aria-pressed', 'true');
-    const panel = await page.locator('#settings-menu-panel').boundingBox();
-    expect(panel!.x).toBe(80);
-    expect(panel!.y + panel!.height).toBe(892);
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('on');
   });
 
-  test('turning the preview on still places focus in a browser without checkVisibility', async ({ page }) => {
-    await page.addInitScript(() => {
-      Reflect.deleteProperty(Element.prototype, 'checkVisibility');
-    });
-    await open(page);
-    expect(await page.evaluate(() => typeof document.body.checkVisibility)).toBe('undefined');
-    await page.locator('.VPNavBar .settings-trigger').click();
-    await page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true }).click();
+  test('turning the preview off from the gear panel moves focus back to the gear and removes the rail', async ({
+    page,
+  }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
     await expect(rail(page)).toBeVisible();
-    await expect(page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true })).toBeFocused();
+    await page.locator('.VPNavBar .settings-trigger').click();
+    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
+    await expect(rail(page)).toHaveCount(0);
+    await expect(page.locator('.VPSidebar')).toHaveCSS('width', '320px');
+    await expect(page.locator('.VPNavBar .settings-trigger')).toBeFocused();
+    expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('off');
   });
 
   test('the API view keeps the filter and tree and drops the favorites section; Favorites shows only the list', async ({
@@ -179,8 +178,8 @@ test.describe('explorer preview on desktop', () => {
     await expect(rail(page).getByRole('button', { name: 'API' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  // The 392px sidebar variable also moves where the top bar's controls start, and the gear is gone, so the
-  // row is re-measured at the tightest one-row widths on a page with the sidebar and on one without.
+  // The 392px sidebar variable moves where the top bar's controls start while the gear stays, so the
+  // row, gear included, is re-measured at the tightest one-row widths on a page with the sidebar and on one without.
   for (const [pagePath, label] of [
     [QUEUE_PAGE, 'an API page'],
     ['/', 'the home page'],
@@ -197,18 +196,19 @@ test.describe('explorer preview on desktop', () => {
           '.VPNavBar .content-body > .search',
           '.VPNavBar .content-body > .VPNavBarMenu',
           '.VPNavBar .content-body > .version-badge',
+          '.VPNavBar .settings-trigger',
         ]) {
           const box = await page.locator(selector).first().boundingBox();
           if (box) boxes.push(box);
         }
-        expect(boxes.length).toBeGreaterThanOrEqual(3);
+        expect(boxes.length).toBeGreaterThanOrEqual(4);
         for (let i = 1; i < boxes.length; i++) {
           expect(boxes[i].x, 'controls do not overlap').toBeGreaterThanOrEqual(boxes[i - 1].x + boxes[i - 1].width - 1);
         }
         const last = boxes[boxes.length - 1];
         expect(last.x + last.width).toBeLessThanOrEqual(width);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
-        await expect(page.locator('.VPNavBar .settings-trigger')).toBeHidden();
+        await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
         // Only a page with the sidebar gives its 72px to the rail: the title lane elsewhere keeps its width.
         const title = await page.locator('.VPNavBar .container > .title').boundingBox();
         expect(title!.width).toBe(pagePath === QUEUE_PAGE && width >= 960 ? 392 : 320);
@@ -216,87 +216,52 @@ test.describe('explorer preview on desktop', () => {
     }
   }
 
-  test('turning the preview on from the gear on a page without the rail keeps focus in the bar', async ({ page }) => {
-    await open(page);
-    await page.goto('/');
-    await page.locator('.VPNavBar .settings-trigger').click();
-    await page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true }).click();
-    await expect(page.locator('.VPNavBar .settings-trigger')).toBeHidden();
-    await expect(page.locator('.VPNavBar .nav-search-btn-wait')).toBeFocused();
-  });
-
-  test('a rail that mounts after the switch was flipped on a page without it starts with the panel closed', async ({
-    page,
-  }) => {
-    await open(page);
-    // The title link is a client-side navigation to the home page, which has no rail.
-    await page.evaluate(() => {
-      (document.querySelector('.VPNavBarTitle a') as HTMLAnchorElement).click();
-    });
-    await expect(page).toHaveURL(/\/$/);
-    await page.locator('.VPNavBar .settings-trigger').click();
-    await page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true }).click();
-    await expect(page.locator('.VPNavBar .settings-trigger')).toBeHidden();
-    await page.goBack();
-    await expect(page).toHaveURL(new RegExp(`${QUEUE_PAGE}$`));
-    await expect(rail(page)).toBeVisible();
-    await expect(page.locator('#settings-menu-panel')).toBeHidden();
-    await expect(rail(page).getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  test('Settings in the rail opens the panel, Escape closes it and returns focus, and Off brings the gear back', async ({
-    page,
-  }) => {
-    await open(page, { [PREVIEW_KEY]: 'on' });
-    const settings = rail(page).getByRole('button', { name: 'Settings' });
-    await expect(settings).toHaveAttribute('aria-haspopup', 'true');
-    await expect(settings).toHaveAttribute('aria-expanded', 'false');
-    await settings.click();
-    await expect(settings).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('#settings-menu-panel')).toBeVisible();
-
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#settings-menu-panel')).toBeHidden();
-    await expect(settings).toBeFocused();
-
-    await settings.click();
-    await page.mouse.click(700, 300);
-    await expect(page.locator('#settings-menu-panel')).toBeHidden();
-
-    await settings.click();
-    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
+  test('on a page without the rail the gear stays, and the switch there turns the preview off', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' }, false, '/');
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-preview', 'on');
     await expect(rail(page)).toHaveCount(0);
-    await expect(page.locator('.VPNavBar .settings-trigger')).toBeFocused();
-    await expect(page.locator('.VPSidebar')).toHaveCSS('width', '320px');
+    const gear = page.locator('.VPNavBar .settings-trigger');
+    await expect(gear).toBeVisible();
+    await gear.click();
+    const panel = page.locator('#settings-menu-panel');
+    await expect(panel.locator('[data-value="on"]')).toHaveAttribute('aria-pressed', 'true');
+    await panel.getByRole('button', { name: 'Off', exact: true }).click();
+    await expect(page.locator('html')).not.toHaveAttribute('data-explorer-preview', /.*/);
+    await expect(gear).toBeFocused();
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PREVIEW_KEY)).toBe('off');
   });
 
-  test('Escape with the panel open leaves focus where it is when the reader tabbed out of the rail', async ({ page }) => {
+  test('turning the preview on from the gear on a page without the rail keeps the gear and the focus', async ({
+    page,
+  }) => {
+    await open(page, {}, false, '/');
+    await page.locator('.VPNavBar .settings-trigger').click();
+    const on = page.locator('#settings-menu-panel').getByRole('button', { name: 'On', exact: true });
+    await on.click();
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-preview', 'on');
+    await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
+    await expect(on).toBeFocused();
+  });
+  test('the gear panel opens and closes as before with the preview on: Escape returns focus to the gear', async ({
+    page,
+  }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    const gear = page.locator('.VPNavBar .settings-trigger');
+    await expect(gear).toHaveAttribute('aria-haspopup', 'true');
+    await expect(gear).toHaveAttribute('aria-expanded', 'false');
+    await gear.click();
+    await expect(gear).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('#settings-menu-panel')).toBeVisible();
-    await page.locator('.VPSidebar .nav-filter-input').focus();
+    await expect(page.locator('#settings-menu-panel [data-value="on"]')).toHaveAttribute('aria-pressed', 'true');
+
     await page.keyboard.press('Escape');
     await expect(page.locator('#settings-menu-panel')).toBeHidden();
-    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
-  });
+    await expect(gear).toBeFocused();
 
-  test('a client-side history change closes the open Settings panel', async ({ page }) => {
-    await open(page, { [PREVIEW_KEY]: 'on' });
-    // A programmatic click on a sidebar link is a VitePress client-side navigation.
-    await page.evaluate((href) => {
-      (document.querySelector(`.VPSidebar a[href$="${href}"]`) as HTMLAnchorElement).click();
-    }, CFN_QUEUE_PAGE);
-    await expect(page).toHaveURL(new RegExp(`${CFN_QUEUE_PAGE}$`));
-    const settings = rail(page).getByRole('button', { name: 'Settings' });
-    await settings.click();
-    await expect(settings).toHaveAttribute('aria-expanded', 'true');
-    await page.evaluate(() => window.history.back());
-    await expect(page).toHaveURL(new RegExp(`${QUEUE_PAGE}$`));
-    await expect(settings).toHaveAttribute('aria-expanded', 'false');
+    await gear.click();
+    await page.mouse.click(700, 300);
     await expect(page.locator('#settings-menu-panel')).toBeHidden();
   });
-
   test('at 1600px the rail sits where the sidebar content used to start and the tree keeps its width', async ({
     page,
   }) => {
@@ -308,48 +273,18 @@ test.describe('explorer preview on desktop', () => {
     await expect(page.locator('.VPSidebar')).toHaveCSS('padding-left', '184px');
     const tree = await page.locator('.VPSidebar .api-sidebar').boundingBox();
     expect(tree!.x).toBe(184);
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
-    const panel = await page.locator('#settings-menu-panel').boundingBox();
-    expect(panel!.x).toBe(160);
   });
 
-  test('on a short desktop window the Settings panel scrolls below the top bar instead of running off', async ({
-    page,
-  }) => {
+  test('scrolling the sidebar leaves the rail where it is', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 400 });
     await open(page, { [PREVIEW_KEY]: 'on' });
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
-    const panel = page.locator('#settings-menu-panel');
-    const box = await panel.boundingBox();
-    expect(box!.y).toBeGreaterThanOrEqual(64);
-    expect(box!.y + box!.height).toBe(392);
-    expect(await panel.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
-  });
-
-  test('a click inside the sidebar closes the rail panel, and a click inside the panel does not', async ({ page }) => {
-    await open(page, { [PREVIEW_KEY]: 'on' });
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
-    const panel = page.locator('#settings-menu-panel');
-    await expect(panel).toBeVisible();
-    await panel.getByText('Site theme').click();
-    await expect(panel).toBeVisible();
-    await page.locator('.VPSidebar .nav-filter-input').click();
-    await expect(panel).toBeHidden();
-  });
-
-  test('scrolling the sidebar leaves the rail and its panel where they are', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 400 });
-    await open(page, { [PREVIEW_KEY]: 'on' });
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
     const railBefore = await rail(page).boundingBox();
-    const panelBefore = await page.locator('#settings-menu-panel').boundingBox();
     const scrolled = await page.locator('.VPSidebar').evaluate((el) => {
       el.scrollTo(0, 200);
       return el.scrollTop;
     });
     expect(scrolled, 'the sidebar scrolled').toBeGreaterThan(0);
     expect((await rail(page).boundingBox())!.y).toBe(railBefore!.y);
-    expect((await page.locator('#settings-menu-panel').boundingBox())!.y).toBe(panelBefore!.y);
   });
 
   test('each rail button is a Tab stop in order', async ({ page }) => {
@@ -357,8 +292,6 @@ test.describe('explorer preview on desktop', () => {
     await rail(page).getByRole('button', { name: 'API' }).focus();
     await page.keyboard.press('Tab');
     await expect(rail(page).getByRole('button', { name: 'Favorites' })).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(rail(page).getByRole('button', { name: 'Settings' })).toBeFocused();
   });
 });
 
@@ -393,7 +326,7 @@ test.describe('explorer preview on a phone', () => {
     await expect(page.locator('.favorites-section .favorites-link')).toHaveText(['Topic', 'Queue']);
   });
 
-  test('Escape and a tap on the scrim fold the rail, and Settings opens the panel beside it', async ({ page }) => {
+  test('Escape and a tap on the scrim fold the rail', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
     await page.locator('.VPLocalNav button.menu').click();
     const views = page.getByRole('button', { name: /^Views/ });
@@ -405,68 +338,46 @@ test.describe('explorer preview on a phone', () => {
     await views.click();
     await page.mouse.click(300, 400);
     await expect(rail(page)).toBeHidden();
-
-    await views.click();
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
-    const panel = await page.locator('#settings-menu-panel').boundingBox();
-    expect(panel!.x).toBe(80);
-    expect(panel!.x + panel!.width).toBe(367);
-    expect(panel!.y + panel!.height).toBe(752);
+  });
+  test('the phone menu keeps all its setting rows with the preview on, and the switch there turns it off', async ({
+    page,
+  }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPNavBarHamburger').click();
+    const screen = page.locator('.VPNavScreen');
+    const group = screen.getByRole('group', { name: 'Explorer preview' });
+    await expect(group).toBeVisible();
+    await expect(group.getByRole('button', { name: 'On', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(screen.getByRole('group', { name: 'Navigation' })).toBeVisible();
+    await expect(screen.getByRole('group', { name: 'Site theme' })).toBeVisible();
+    await group.getByRole('button', { name: 'Off', exact: true }).click();
+    await expect(page.locator('html')).not.toHaveAttribute('data-explorer-preview', /.*/);
+    await expect(group.getByRole('button', { name: 'Off', exact: true })).toBeFocused();
   });
 
-  test('the phone menu offers the preview switch only while it is off', async ({ page }) => {
+  test('the phone menu offers the preview switch, and turning it on keeps the rows and the focus', async ({ page }) => {
     await open(page);
     await page.locator('.VPNavBarHamburger').click();
-    const group = page.locator('.VPNavScreen').getByRole('group', { name: 'Explorer preview' });
+    const screen = page.locator('.VPNavScreen');
+    const group = screen.getByRole('group', { name: 'Explorer preview' });
     await expect(group).toBeVisible();
     await group.getByRole('button', { name: 'On', exact: true }).click();
-    await expect(group).toBeHidden();
-    await expect(page.locator('.VPNavScreen').getByRole('group', { name: 'Navigation' })).toBeHidden();
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-preview', 'on');
+    await expect(group).toBeVisible();
+    await expect(screen.getByRole('group', { name: 'Navigation' })).toBeVisible();
+    await expect(group.getByRole('button', { name: 'On', exact: true })).toBeFocused();
   });
-  test('turning the preview on from the phone menu row moves focus to the menu button', async ({ page }) => {
-    await open(page);
-    await page.locator('.VPNavBarHamburger').click();
-    const group = page.locator('.VPNavScreen').getByRole('group', { name: 'Explorer preview' });
-    await group.getByRole('button', { name: 'On', exact: true }).click();
-    await expect(group).toBeHidden();
-    await expect(page.locator('.VPNavBarHamburger')).toBeFocused();
-  });
-
-  test('turning the preview off from the rail panel on a phone moves focus to the drawer filter', async ({ page }) => {
-    await open(page, { [PREVIEW_KEY]: 'on' });
-    await page.locator('.VPLocalNav button.menu').click();
-    await page.getByRole('button', { name: /^Views/ }).click();
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
-    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
-    await expect(rail(page)).toHaveCount(0);
-    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
-  });
-
-  test('turning the preview off from the drawer at 800px keeps focus in the drawer, not on the gear behind it', async ({
+  test('at 800px the gear is in the bar with the preview on, and turning it off from there returns focus to the gear', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 800, height: 700 });
     await open(page, { [PREVIEW_KEY]: 'on' });
-    await page.locator('.VPLocalNav button.menu').click();
-    await page.getByRole('button', { name: /^Views/ }).click();
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
+    const gear = page.locator('.VPNavBar .settings-trigger');
+    await expect(gear).toBeVisible();
+    await gear.click();
     await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
     await expect(rail(page)).toHaveCount(0);
-    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
-  });
-  test('on a landscape phone the Settings panel stays on screen and scrolls', async ({ page }) => {
-    await page.setViewportSize({ width: 667, height: 375 });
-    await open(page, { [PREVIEW_KEY]: 'on' });
-    await page.locator('.VPLocalNav button.menu').click();
-    await page.getByRole('button', { name: /^Views/ }).click();
-    await rail(page).getByRole('button', { name: 'Settings' }).click();
-    const panel = page.locator('#settings-menu-panel');
-    const box = await panel.boundingBox();
-    expect(box!.y).toBeGreaterThanOrEqual(0);
-    expect(box!.y + box!.height).toBeLessThanOrEqual(375);
-    expect(await panel.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
-    await panel.evaluate((el) => el.scrollTo(0, 0));
-    await expect(panel.getByRole('group', { name: 'Site theme' })).toBeInViewport();
+    await expect(gear).toBeFocused();
   });
   test('tabbing out of the unfolded rail folds it and leaves the drawer open', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
@@ -474,7 +385,7 @@ test.describe('explorer preview on a phone', () => {
     const views = page.getByRole('button', { name: /^Views/ });
     await views.click();
     await expect(rail(page)).toBeVisible();
-    await rail(page).getByRole('button', { name: 'Settings' }).focus();
+    await rail(page).getByRole('button', { name: 'Favorites' }).focus();
     // The Views button is the rail's own toggle, so focus may rest there with the rail unfolded.
     await page.keyboard.press('Tab');
     await expect(views).toBeFocused();

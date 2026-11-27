@@ -10,21 +10,17 @@
 // the rest of the navbar stays tabbable. The panel is a plain labeled region;
 // its content (ThemePicker) carries its own group semantics and state.
 //
-// With the Explorer preview on, the gear leaves the bar and the rail's Settings button
-// (ExplorerRail.vue) opens a copy of this panel there. The open state is shared through
-// explorer-preview.ts. This component's document listener also closes the rail's panel on a click
-// outside the sidebar. Clicks inside `.VPSidebar` never reach it, so ExplorerRail.vue closes the panel
-// for those with a capture-phase listener of its own.
+// The gear stays in the bar on every page with the Explorer preview on or off, so the preview switch
+// in this panel is always reachable, including on pages without the rail.
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import ExplorerPreviewPicker from "./ExplorerPreviewPicker.vue";
-import { explorerPreview, settingsOpen as open } from "./explorer-preview";
 import NavStylePicker from "./NavStylePicker.vue";
 import ThemePicker from "./ThemePicker.vue";
 
 const root = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLButtonElement | null>(null);
-// The panel moves to the rail while the preview is on. Gated on mount so hydration still matches the server
-// render, which always has the panel here.
+const open = ref(false);
+// The preview switch reads storage on the client, so it renders after mount to keep hydration matching.
 const mounted = ref(false);
 
 function toggle(): void {
@@ -32,8 +28,6 @@ function toggle(): void {
 }
 
 function onDocumentClick(event: MouseEvent): void {
-  // The composed path is read at dispatch time, so a click on a control that unmounts while handling it
-  // (the preview switch moves the panel to the rail) still counts as inside.
   const path = event.composedPath() as Element[];
   const inside = path.includes(root.value as HTMLElement);
   if (open.value && root.value && !inside) {
@@ -74,7 +68,6 @@ onBeforeUnmount(() => {
       <span class="glyph glyph-gear settings-gear" aria-hidden="true" />
     </button>
     <div
-      v-if="!mounted || explorerPreview === 'off'"
       v-show="open"
       id="settings-menu-panel"
       class="settings-panel"
