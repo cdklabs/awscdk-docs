@@ -516,7 +516,7 @@
             "jest",
             "--passWithNoTests",
             "--updateSnapshot",
-            "--coverageThreshold={\"global\":{\"lines\":84,\"statements\":84,\"branches\":92,\"functions\":91}}"
+            "--coverageThreshold={\"global\":{\"lines\":87,\"statements\":87,\"branches\":92,\"functions\":93}}"
           ],
           "receiveArgs": true
         },
