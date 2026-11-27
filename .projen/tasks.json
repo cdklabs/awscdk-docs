@@ -235,7 +235,7 @@
       "description": "Sharded production build sized for the CI runner (env overrides: DOCS_BUILD_SHARDS, DOCS_BUILD_HEAP_MB, DOCS_BUILD_CONCURRENCY)",
       "steps": [
         {
-          "exec": "bash scripts/ci-shard-build.sh 72 12288 10"
+          "exec": "bash scripts/ci-shard-build.sh 72 8192 15"
         }
       ]
     },
