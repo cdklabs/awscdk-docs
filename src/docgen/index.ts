@@ -466,7 +466,7 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
    * the page's content-revised instant: the Pagefind plugin reads it for the page's `date` meta, and without it falls
    * back to the file's modified time, which differs on every build because docgen rewrites these gitignored files.
    * It is added before `agentMarkdown` so that key stays the first frontmatter line, and at the end of the block so
-   * every other key keeps its place.
+   * every other key keeps its place. An authored page that docgen copies keeps the `date` it already has.
    */
   const emitPageFile = (file: string, twinHref: string, content: string, history: PageHistory = {}): void => {
     content = withFrontmatterKey(content, 'date', contentRevised(history).at, 'end');

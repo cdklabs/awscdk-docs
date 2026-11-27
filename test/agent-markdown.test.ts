@@ -24,6 +24,12 @@ describe('withFrontmatterKey', () => {
     // Without a block the two placements are the same.
     expect(withFrontmatterKey('# Bucket\n', 'date', 'd', 'end')).toBe('---\ndate: "d"\n---\n\n# Bucket\n');
   });
+
+  test('keeps a key the block already has', () => {
+    const page = '---\npageClass: "x"\ndate: "authored"\n---\n\n# Bucket\n';
+    expect(withFrontmatterKey(page, 'date', 'd', 'end')).toBe(page);
+    expect(withFrontmatterKey(page, 'date', 'd')).toBe(page);
+  });
 });
 
 // A page shaped like the real emission: frontmatter, breadcrumb nav, badged H1 with a Pagefind weight span, a
