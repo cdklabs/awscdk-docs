@@ -36,6 +36,10 @@ test.describe('type page header', () => {
     const stability = page.locator('.type-header-row .type-chip-stability');
     await expect(kind).toHaveText('L2 construct');
     await expect(stability).toHaveText('Stable');
+    // A space between the chips, so the two labels do not reach a screen
+    // reader, a copied selection or a reader view as `L2 constructStable`.
+    const rowText = await page.locator('.type-header-row').evaluate((el) => el.textContent ?? '');
+    expect(rowText).toContain('L2 construct Stable');
     // The row sits below the title, and the two chips share its first line.
     const titleBox = (await title.boundingBox())!;
     const kindBox = (await kind.boundingBox())!;
@@ -43,6 +47,10 @@ test.describe('type page header', () => {
     expect(kindBox.y).toBeGreaterThan(titleBox.y + titleBox.height - 1);
     expect(Math.abs(kindBox.y - stabilityBox.y)).toBeLessThanOrEqual(1);
     expect(stabilityBox.x).toBeGreaterThan(kindBox.x);
+    // The row's own 8px gap is the whole separation: a white-space-only text
+    // run between flex items is not rendered, so the space added for the
+    // reading order costs no layout.
+    expect(stabilityBox.x - (kindBox.x + kindBox.width)).toBeCloseTo(8, 0);
 
     // The larger title is keyed on an H1 the header block follows, so whether
     // it lands depends on the rendered DOM. A module overview keeps the stock

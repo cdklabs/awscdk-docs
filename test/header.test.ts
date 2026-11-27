@@ -227,6 +227,17 @@ describe('type page header', () => {
     expect(block.indexOf('type-actions')).toBeGreaterThan(block.indexOf('type-header-gap'));
   });
 
+  test('the chips are separated by whitespace, so their labels do not read as one word', () => {
+    const block = header({ name: 'Bucket', kind: { text: 'L2 construct' }, stability: 'stable' });
+    expect(block).toContain('>L2 construct</span> <span class="type-chip type-chip-stability');
+    // The whole row, with the tags dropped: two words, not `L2 constructStable`.
+    const row = block.slice(
+      block.indexOf('<div class="type-header-row"'),
+      block.indexOf('<span class="type-header-gap">'),
+    );
+    expect(row.replace(/<[^>]*>/g, '').trim()).toBe('L2 construct Stable');
+  });
+
   test('a stable type says so, rather than leaving the absence of a chip to mean two things', () => {
     expect(header({ name: 'Bucket', kind: { text: 'Class' }, stability: 'stable' }))
       .toContain('<span class="type-chip type-chip-stability type-chip-stable">Stable</span>');

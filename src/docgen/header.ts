@@ -166,7 +166,7 @@ export function renderTypeHeader(options: TypeHeaderOptions): string[] {
     `# ${deprecated ? `<span class="type-title-deprecated">${title}</span>` : title}`,
     '',
     '<div class="type-header">',
-    `<div class="type-header-row" ${PAGEFIND_IGNORE}>${chips.join('')}<span class="type-header-gap"></span>`
+    `<div class="type-header-row" ${PAGEFIND_IGNORE}>${chips.join(' ')}<span class="type-header-gap"></span>`
       + '<span class="type-actions"><span class="type-action-copy"></span><span class="type-action-fav"></span>'
       + '</span></div>',
     ...(deprecated && reason
