@@ -242,7 +242,9 @@ Dates are day-only in visible text (UTC, e.g. `3 Mar 2025`, identical in SSR) an
 Docgen also writes a `date` key, the page's content-revised instant (the same value as `cdk-docs-content-revised`),
 on every page it generates. `vitepress-plugin-pagefind` reads `date` for its `data-pagefind-meta` date and otherwise
 falls back to the file's modified time, which is new on every build because docgen rewrites these gitignored pages;
-the key keeps two builds of one commit byte-identical. It goes last in the block, after the history keys.
+the key keeps two builds of one commit byte-identical on these pages. It goes last in the block, after the history
+keys. Handwritten pages are still dated by the plugin from git, or from their modified time where there is no git
+checkout, so two builds match there only when they copy from the same checkout.
 
 ### Bounded version-history backfill
 

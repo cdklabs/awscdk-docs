@@ -513,6 +513,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
   if (options.overviewFile) {
     const primary = assemblies.get(config.modules[0])!;
     fs.mkdirSync(path.dirname(options.overviewFile), { recursive: true });
+    // An authored overview has no recorded history; a generated one shares the primary package README's.
+    const overviewHistory = options.overviewSourceFile ? {} : readmeHistory(ledger, primary.name);
     const content = options.overviewSourceFile
       ? fs.readFileSync(options.overviewSourceFile, 'utf-8')
       : withHistory(renderApiOverviewPage(primary, {
@@ -520,13 +522,8 @@ export function generateDocs(config: DocgenConfig, options: GenerateOptions): st
         languages: languageIds,
         tablet: tabletFor(config.modules[0]),
         typeLinks: { linkFor, modules: readmeModules },
-      }, documentedPackages), readmeHistory(ledger, primary.name));
-    emitPageFile(
-      options.overviewFile,
-      `${API_ROOT}index.md`,
-      content,
-      options.overviewSourceFile ? {} : readmeHistory(ledger, primary.name),
-    );
+      }, documentedPackages), overviewHistory);
+    emitPageFile(options.overviewFile, `${API_ROOT}index.md`, content, overviewHistory);
   }
 
   // Type-summary lookup for hover tooltips: keyed by page link so the client can resolve any cross-reference anchor.

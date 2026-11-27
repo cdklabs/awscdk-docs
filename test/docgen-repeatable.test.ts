@@ -40,6 +40,8 @@ describe('repeatable docgen output', () => {
     ledger.types['constructs.Node'] = [0, 1, '2026-10-01T12:00:00.000Z', 'aaaaaaaaaaaa'];
     // Changed before it: the site-wide revision wins.
     ledger.types['constructs.Construct'] = [0, 0, '2020-01-01T00:00:00.000Z', 'bbbbbbbbbbbb'];
+    // The package README, which also dates the generated API overview.
+    ledger.readmes.constructs = [0, 1, '2026-10-02T00:00:00.000Z', 'cccccccccccc'];
     writeLedger(ledgerFile, ledger);
   });
 
@@ -51,6 +53,7 @@ describe('repeatable docgen output', () => {
     const out = join(dir, name);
     generateDocs({ modules: ['constructs'] }, {
       outDir: join(out, 'v2'),
+      overviewFile: join(out, 'v2', 'index.md'),
       agentOutDir: join(out, 'agent'),
       publicDir: join(out, 'public'),
       packageRoot: ROOT,
@@ -79,6 +82,9 @@ describe('repeatable docgen output', () => {
     // A page with older history, and a page with none, are dated by the site-wide revision.
     expect(dateOf(page('constructs.Construct.md'))).toBe(REVISED);
     expect(dateOf(page('constructs.Dependable.md'))).toBe(REVISED);
+    // The package README page and the generated API overview share the README's history.
+    expect(dateOf(page('constructs-readme.md'))).toBe('2026-10-02T00:00:00.000Z');
+    expect(dateOf(readFileSync(join(out, 'v2', 'index.md'), 'utf-8'))).toBe('2026-10-02T00:00:00.000Z');
 
     // Every Markdown page docgen writes has one, and `agentMarkdown` stays the first key.
     for (const [file, bytes] of tree(join(out, 'v2'))) {
@@ -91,8 +97,10 @@ describe('repeatable docgen output', () => {
 
   test('the agent Markdown twins carry no date', () => {
     const out = generate('twins');
-    for (const [file, bytes] of tree(join(out, 'agent'))) {
-      expect({ file, date: bytes.toString('utf-8').includes('date: ') }).toEqual({ file, date: false });
+    const twins = tree(join(out, 'agent'));
+    expect(twins.size).toBeGreaterThan(10);
+    for (const [file, bytes] of twins) {
+      expect({ file, date: /^date: /m.test(bytes.toString('utf-8')) }).toEqual({ file, date: false });
     }
   });
 });
