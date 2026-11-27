@@ -51,15 +51,22 @@ would move the heading out of `.vp-doc > h1`, which the theme's rules, the page
 outline and VitePress's inferred page title all select on; the ordering the
 header needs is already what the page assembly produces.
 
-**Every type states its stability, "Stable" included.** One chip, from
-`typeStability` — the type's own `docs.stability` when set, otherwise its
-package's. Experimental links to the stability guide, because the word alone
-does not tell a reader what it costs them. `external`, and a type with no
-stability at all, get no chip, so those pages carry the kind chip alone and
-their Markdown twin's classification line names the kind only. Generated L1
-types are the corpus case: jsii gives a CloudFormation resource `external`
-stability, which says the API is not this project's to promise, so there is no
-stability claim to print and a fourth label invented for it would be a guess.
+**A stable, experimental or deprecated type states its stability, "Stable"
+included.** One chip, from `typeStability` — the type's own `docs.stability`
+when set, otherwise its package's. Experimental links to the stability guide,
+because the word alone does not tell a reader what it costs them. `external`,
+and a type with no stability at all, get no chip, so those pages carry the kind
+chip alone and their Markdown twin's classification line names the kind only.
+Generated L1 types are the corpus case: jsii gives a CloudFormation resource
+`external` stability. On an L1 page, then, the missing chip does carry a
+meaning, which is the one place this design does not remove that ambiguity.
+
+No fourth label is invented for `external`, because the AWS guides do not agree
+on what it would say. The v2 migration guide calls L1 constructs always stable;
+the versioning page says generated L1 code may contain backward incompatible
+changes and that IDEs show those APIs as `@stability external`. A chip has to
+pick one of those readings for every L1 page in the corpus, which is a
+maintainer's call rather than a renderer's.
 
 **A deprecated type gets the three signals its members already had.** The title
 is struck in the deprecation tone, the chip reads "Deprecated", and the reason
@@ -126,7 +133,8 @@ an unscoped rule would restyle module overviews and authored pages too.
   gets the classification.
 - The header block costs about 400 bytes of HTML per type page, and the page's
   lean hydration chunk gives more back than that. Measured base `f71cdbe`
-  against head on the baseline fixture
+  against `e95763a`, after which this branch changes only comments and records,
+  on the baseline fixture
   (`E2E_FIXTURE_SERVICES=aws-sns,aws-sqs E2E_FIXTURE_MODULES=constructs`, 77
   pages and 83 page chunks both times): `docs:generate`, then
   `scripts/e2e-fixture-prune.cjs`, then `vitepress build docs`, then
@@ -135,12 +143,14 @@ an unscoped rule would restyle module overviews and authored pages too.
   `<Badge>` component. All three scale with the page count. One-time: the shared
   chunks +610 B and the stylesheet +3,358 B. On the fixture that nets raw `dist`
   45,414,905 to 45,430,335 B (+0.03%) and the deploy zip 4,650,844 to 4,642,367
-  B (-0.18%). Extrapolating the per-page figures alone to the roughly 29,900
-  generated pages gives about +12 MB of HTML, +6 MB of full chunks and -14 MB of
-  lean chunks; the zip is not extrapolated, because a repeated block's
-  compression ratio does not scale linearly, so the fixture figure is the
-  measurement and the deployed zip is what `package-site.sh` reports on each
-  release.
+  B (-0.18%). The corpus carries 29,154 type pages: `docs:generate` writes
+  29,892 pages under `docs/v2/docs`, of which 738 are `-readme.md` module
+  overviews, which have no chip row. Extrapolating the per-page figures alone
+  over those 29,154 gives about +11.7 MB of HTML, +6.1 MB of full chunks and
+  -13.5 MB of lean chunks. The zip is deliberately not extrapolated, because a
+  repeated block's compression ratio does not scale linearly, so the fixture
+  figure is the measurement and the deployed zip is what `package-site.sh`
+  reports on each release.
 - The H1 source stays markup: the weighted-title span, wrapped in
   `type-title-deprecated` for a deprecated type, plus any `Added in` badge
   `injectBadges` appends. So the explicit `title` frontmatter is still what
