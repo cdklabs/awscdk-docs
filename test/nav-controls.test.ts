@@ -125,7 +125,7 @@ describe('navbar layout', () => {
   });
 
   describe('language slider', () => {
-    test('is a segmented radio-group slider with per-language text abbreviations', () => {
+    test('is a segmented radio-group picker that names every language', () => {
       expect(toggle).toContain('role="radiogroup"');
       expect(toggle).toContain('aria-label="Select programming language"');
       expect(toggle).toContain('role="radio"');
@@ -141,30 +141,51 @@ describe('navbar layout', () => {
         /v-if="lang !== activeLanguage" class="visually-hidden">\{\{\s*LANGUAGE_LABELS\[lang\]/,
       );
       expect(toggle).toMatch(/\.visually-hidden \{[^}]*clip: rect\(0 0 0 0\)/);
-      // Active language is programmatically indicated and shown as a text
-      // label, never color-only.
+      // The active language is programmatically indicated (aria-checked);
+      // its visible non-color cue is the bar's inset underline, pinned below.
       expect(toggle).toMatch(/v-if="lang === activeLanguage"[^>]*class="language-label"/);
-      // The label area reserves the widest enabled label's width so the
-      // slider does not track the ACTIVE label and the centered search
-      // trigger does not shift when the language changes. The sizers
-      // must stay hidden from assistive technology and from the search
-      // index, and must use visibility rather than display:none — a removed
-      // box measures nothing, which would silently reinstate the jump.
-      expect(toggle).toContain('class="language-label-text"');
-      expect(toggle).toMatch(
-        /class="language-label-sizer"\s+aria-hidden="true"\s+data-pagefind-ignore/,
+      // The badges are not painted in the bar or the menu. That the unchecked
+      // names paint at full width is checked in the browser
+      // (language-toggle.spec.ts).
+      expect(css).toMatch(
+        /:is\(\.VPNavBar, \.VPNavScreen\) \.language-toggle \.language-option \.language-abbr \{\s*display: none;/,
       );
-      expect(toggle).toMatch(/\.language-label \{[^}]*display: inline-grid/);
-      expect(toggle).toMatch(/\.language-label-sizer \{[^}]*visibility: hidden/);
-      // Unpainting the label at the medium breakpoint takes it out of flow
-      // rather than removing it, so it still names the checked segment there.
-      const medium = css.slice(css.indexOf('@media (min-width: 768px) and (max-width: 1279px)'));
-      const labelRule = medium.slice(
-        medium.indexOf('.language-label {'),
-        medium.indexOf('}', medium.indexOf('.language-label {')),
+      // The bar marks the selected option with the brand color and an inset
+      // underline, not with the fill alone.
+      expect(css).toMatch(
+        /\.VPNavBar \.language-toggle \.language-option\.active \{\s*color: var\(--vp-c-brand-1\);\s*box-shadow: inset 0 -2px 0 var\(--vp-c-brand-1\);/,
       );
-      expect(labelRule).toContain('position: absolute');
-      expect(labelRule).not.toContain('display: none');
+      // Under 1100px only TypeScript shortens, to its badge text "TS"; the
+      // full name is taken out of flow rather than removed, so it still
+      // names the option there.
+      const narrow = css.slice(css.indexOf('@media (max-width: 1099px)'));
+      expect(narrow).toContain('.language-abbr[data-lang="ts"]');
+      const tsHidden = narrow.slice(
+        narrow.indexOf('.active .language-label {'),
+        narrow.indexOf('}', narrow.indexOf('.active .language-label {')),
+      );
+      expect(tsHidden).toContain('position: absolute');
+      expect(tsHidden).toContain('clip-path: inset(50%)');
+      expect(tsHidden).not.toContain('display: none');
+    });
+
+    test('the phone menu stacks the languages as one segmented control', () => {
+      const phone = css.slice(css.lastIndexOf('@media (max-width: 767px)'));
+      const group = phone.slice(
+        phone.indexOf('.VPNavScreen .language-toggle[role="radiogroup"] {'),
+        phone.indexOf('}', phone.indexOf('.VPNavScreen .language-toggle[role="radiogroup"] {')),
+      );
+      expect(group).toContain('flex-direction: column');
+      expect(group).toContain('border: 1px solid var(--seg-edge)');
+      expect(group).toContain('border-radius: 8px');
+      const row = phone.slice(
+        phone.indexOf('.VPNavScreen .language-toggle .language-option {'),
+        phone.indexOf('}', phone.indexOf('.VPNavScreen .language-toggle .language-option {')),
+      );
+      expect(row).toContain('min-height: 48px');
+      expect(phone).toMatch(
+        /\.VPNavScreen \.language-toggle \.language-option\.active \{\s*background: var\(--seg-on-bg\);\s*color: var\(--seg-on-fg\);/,
+      );
     });
 
     test('no third-party brand mark reaches the theme or its dependencies', () => {

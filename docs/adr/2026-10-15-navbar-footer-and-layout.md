@@ -109,7 +109,7 @@ specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.
 - **Language slider leads** (`.language-toggle { order: -2 }`), taking the slot
   the search box used to occupy and the leading gap the search's `padding-left`
   used to provide (now a 10px margin). It is the primary control on a
-  multi-language docs site. Its segmented radio-group behavior and glyphs are
+  multi-language docs site. Its segmented radio-group behavior and labels are
   owned by [multi-language](./2026-10-15-multi-language.md).
 - **Search is centered** (`.search { order: -1; justify-content: center;
   padding-left: 0 }`), keeping the pagefind plugin's `flex: 1` so it owns the
@@ -142,17 +142,18 @@ reads the plugin's source.
 
 #### Fitting the medium breakpoint (768–1279px)
 
-The compacted controls need ~623px of row. Below 960px the site title is a flex
+The compacted controls fill most of the row (the e2e row-fit widths below pin
+that they fit). Below 960px the site title is a flex
 item that yields (`flex-shrink: 1`, ellipsis) so the row never overhangs the
 viewport. From 960px the title is the fixed `--vp-sidebar-width` lane and cannot
 yield, so the version badge and the Settings gear drop their 8px gaps across the
 whole band (not just where it binds, so the arrangement does not jump at 960px).
-The slider abbreviates to glyphs-only (active label visually hidden, still
-supplying the accessible name) and the search button compacts to its magnifier
-icon. Every control keeps its place in the row — the version must stay visible,
+The slider keeps every language's name visible; only TypeScript shortens, to
+`TS` below 1100px (the full name stays in the accessible name). The search
+button compacts to its magnifier icon. Every control keeps its place in the row — the version must stay visible,
 and a control a click away is not visible. E2e assertions pin the row fitting
-inside 768px, 800px, 960px, and 1000px viewports, each with a positive control
-that undoes the rule making room at that width.
+inside 768px, 800px, 960px, 1000px, 1100px, and 1279px viewports; the 768px case
+has a positive control that widens the title and expects the row to overflow.
 
 ### Tri-state theme pickers behind the Settings gear
 
@@ -387,8 +388,8 @@ keeps its stock 896px container.
   the full-width bar. That is intended: gating the geometry on the slider would
   reinstate the cross-page jump for every multi-language build.
 - The search trigger has two no-movement invariants that belong together: it
-  must not move when the language changes (the stable-label-width sizers in the
-  slider) and must not move when the page changes (the geometry mirror). Both are
+  must not move when the language changes (every option paints its own name in
+  the same typesetting, checked or not) and must not move when the page changes (the geometry mirror). Both are
   the same defect at different scales; off-center is acceptable, *moving* is the
   bug.
 - The e2e suite carries the first cross-page navbar assertion; any future navbar

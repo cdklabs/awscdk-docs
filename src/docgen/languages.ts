@@ -17,8 +17,8 @@ export const LANGUAGES: readonly LanguageMeta[] = [
   { id: 'ts', label: 'TypeScript' },
   { id: 'python', label: 'Python' },
   { id: 'java', label: 'Java' },
-  { id: 'dotnet', label: 'C# / .NET' },
-  { id: 'go', label: 'Golang' },
+  { id: 'dotnet', label: 'C#' },
+  { id: 'go', label: 'Go' },
 ] as const;
 
 /** Default language for the documentation site. */
