@@ -1063,8 +1063,8 @@ const OVERVIEW_FRONTMATTER = ['---', 'outline: false', '---', ''];
  *
  * - It must be the file's FIRST bytes. VitePress parses a frontmatter block only at the very top and silently
  *   ignores it anywhere else, so anything inserted above this silently restores H1 inference.
- * - The type name is stated explicitly because the H1 carries a weighted-title span whose inner text would
- *   otherwise leak into VitePress's inferred title.
+ * - The type name is stated explicitly because the H1 source is markup (the weighted-title span, the deprecated
+ *   wrapper and, on a newly added type, the `Added in` badge), and the frontmatter title keeps it the bare name.
  *
  * `typeHeader` tells the theme, at server-render time, that this page has a chip row for the page actions to
  * teleport into. Without it the actions would have to render in their fallback placement first and move on mount,

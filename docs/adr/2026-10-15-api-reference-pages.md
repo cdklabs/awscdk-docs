@@ -414,9 +414,14 @@ assembly. The rules:
   actually stop a release, and these rows are long runs of similar markup that
   deflate takes most of back.
 
+  Both rows were measured with the fixture the defaults then named,
+  `E2E_FIXTURE_SERVICES=aws-sns,aws-sqs E2E_FIXTURE_MODULES=constructs`, which
+  `scripts/e2e-fixture-prune.cjs` still honors; the defaults have since grown.
+  Pass those two variables to re-measure against these numbers.
+
   | fixture | raw `dist` | deploy zip |
   |---|---|---|
-  | default, SNS and SQS, 77 pages | 44,857,537 B → 45,016,359 B, +0.35% | 4,602,976 B → 4,623,324 B, +0.44% |
+  | SNS and SQS, 77 pages | 44,857,537 B → 45,016,359 B, +0.35% | 4,602,976 B → 4,623,324 B, +0.44% |
   | plus `aws-cloudwatch` and `aws-iam`, 410 pages | 115,979,238 B → 119,872,457 B, +3.36% | 12,631,707 B → 12,867,022 B, +1.86% |
 
   The second fixture is the worst case a developer host can build, because

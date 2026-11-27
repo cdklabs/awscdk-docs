@@ -67,7 +67,14 @@ divider.
 clears a chip's label against its fill clears its edge against that fill too,
 and the edge needs no tuning pass of its own. Every chip's ink/fill pair is
 pinned by hex: the eight per-kind pairs in the palette, the three stability
-pairs, and the neutral pair a plain class or a level-less construct takes. That last
+pairs, and the neutral pair a plain class or a level-less construct takes. The
+stability pairs take the conventional tones for what they say, amber for
+experimental, green for stable, red for deprecated, drawn from the same palette
+the kind hues come from. Amber is L1's pair in both schemes, and green shares
+L3's fill in both, with L3's ink as well in dark mode, so an L1 or an L3 page
+can show two chips in one tone; the label and the fixed order tell them apart,
+and picking a second amber for the sake of difference would cost the convention
+and gain nothing a reader uses. That last
 one is why the neutral chip has an opaque `--th-chip-neutral-bg` rather than
 the translucent `--vp-c-default-soft` it could have inherited: a translucent
 fill has to be composited against the page before its contrast can be read,
@@ -114,10 +121,10 @@ an unscoped rule would restyle module overviews and authored pages too.
   `.type-header-row .type-chip`, not from a `<Badge>` in the H1. The Markdown
   twin renders the row as one line, `L2 construct · Stable`, so an agent still
   gets the classification.
-- The inferred page title is now strictly the type name: the H1's only raw
-  HTML is the weighted-title span, whose inner text is the name. The explicit
-  `title` frontmatter that guards against leakage is still emitted, because
-  the span itself is what VitePress would strip the tags from.
+- The H1 source stays markup: the weighted-title span, wrapped in
+  `type-title-deprecated` for a deprecated type, plus any `Added in` badge
+  `injectBadges` appends. So the explicit `title` frontmatter is still what
+  holds the inferred page title to the bare type name.
 - Two components teleport into the same row, so both resolve their mount point
   on every content update, and both read a `typeHeader` frontmatter flag to
   know at server-render time whether a row is coming. The empty actions box
