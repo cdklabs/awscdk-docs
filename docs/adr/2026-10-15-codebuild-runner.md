@@ -32,11 +32,12 @@ Build the site in a single `build` job on a self-hosted AWS CodeBuild runner. Th
 - **Build.** `docs:build:ci`, which runs `scripts/local-shard-build.sh` (the script behind `docs:build:sharded`)
   with a fixed shard count, a per-shard heap cap and a concurrency set in `.projenrc.ts`; `DOCS_BUILD_SHARDS`,
   `DOCS_BUILD_HEAP_MB` and `DOCS_BUILD_CONCURRENCY` override them for one run. The heap cap keeps a clear margin
-  above what the heaviest shard needs, found by building that shard alone under lower caps until it runs out, and
-  checked against the per-shard peak memory line in the build log; content growth that eats the margin means raising
-  the cap before it fails a build. The concurrency then keeps every running shard at its cap, plus its off-heap
-  memory, within the machine's memory with headroom to spare, so a full wave of the heaviest shards cannot exhaust
-  it. Every shard carries a fixed cost, so more shards lower the per-shard peak but lengthen the build.
+  above what the heaviest shard needs, found by building that shard alone under lower caps until it runs out.
+  Nothing checks the margin automatically: the per-shard peak memory line in the build log is the signal to watch,
+  and a heaviest shard that creeps toward the cap means raising the cap before it fails a build. The concurrency
+  then keeps every running shard at its cap, plus its off-heap memory, within the machine's memory with headroom to
+  spare, so a full wave of the heaviest shards cannot exhaust it. Every shard carries a fixed cost, so more shards
+  lower the per-shard peak but lengthen the build.
 - **One job, end to end.** The job generates the docs once, builds and merges every shard, indexes the site with
   Pagefind, verifies it and packages the site as the versioned S3 zip with `scripts/package-site.sh`. Packaging
   fails when the zip exceeds 900 MB. The publish job depends on `build` directly
