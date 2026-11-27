@@ -83,4 +83,7 @@ the light page and 7.44:1 on the dark page, and body text 18.5:1 and 9.99:1.
 - Contrast pins in the theme and accessibility tests read both sides of each
   pair from these tokens. Composited backgrounds, such as code chips and tints,
   are computed from the surface tokens and VitePress's gray soft layer, so a
-  surface change re-measures every pair.
+  surface change re-measures every pair. The phone-menu picker's copies in
+  `nav-controls.css` are measured as written; a test checks that each copy
+  naming a token still equals that token, so a palette change fails it until
+  the copy is updated.

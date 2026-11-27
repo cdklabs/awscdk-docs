@@ -645,4 +645,18 @@ describe('selected language label contrast', () => {
     // The group edge is a non-text boundary (WCAG 1.4.11).
     expect(contrast(hex(nav(), '--seg-edge'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(3);
   });
+
+  test('every phone-menu copy that names a palette token still equals it', () => {
+    // nav-controls.css marks each copy as `--name: #hex; /* = light|dark --token */`.
+    const copies = [...navCss.matchAll(/--[\w-]+:\s*(#[0-9a-fA-F]{6});\s*\/\*\s*=\s*(light|dark)\s+(--[\w-]+)\s*\*\//g)];
+    expect(copies.length).toBeGreaterThanOrEqual(4);
+    for (const [, value, scheme, token] of copies) {
+      const source = scheme === 'light' ? lightBlock : darkBlock;
+      expect({ token, scheme, value: value.toLowerCase() }).toEqual({
+        token,
+        scheme,
+        value: hex(source, token).toLowerCase(),
+      });
+    }
+  });
 });

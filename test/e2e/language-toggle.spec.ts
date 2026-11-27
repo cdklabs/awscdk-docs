@@ -97,8 +97,21 @@ test.describe('language toggle', () => {
     for (const [i, name] of ['Python', 'Java', 'C#', 'Go'].entries()) {
       await expect(radios.nth(i + 1)).toHaveText(name, { useInnerText: true });
     }
+    // innerText counts clipped text, so check that the four unchecked names
+    // are painted at real width in this band too.
+    const idleWidths = await slider
+      .locator('.language-option:not(.active) .visually-hidden')
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    expect(idleWidths).toHaveLength(4);
+    for (const width of idleWidths) {
+      expect(width).toBeGreaterThan(10);
+    }
     // Unchecked, TypeScript still reads "TS" and keeps its full name.
     await slider.getByRole('radio', { name: 'Python' }).click();
+    // The newly selected name is painted at real width as well.
+    expect(
+      await slider.getByRole('radio', { name: 'Python' }).locator('.language-label').evaluate((el) => el.getBoundingClientRect().width),
+    ).toBeGreaterThan(10);
     await expect(slider.getByRole('radio').nth(0)).toHaveAccessibleName('TS TypeScript');
     const ts = slider.getByRole('radio').nth(0);
     await expect(ts.locator('.language-abbr')).toBeVisible();
