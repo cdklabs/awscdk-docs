@@ -243,7 +243,8 @@ Docgen also writes a `date` key, the page's content-revised instant (the same va
 on every page it generates. `vitepress-plugin-pagefind` reads `date` for its `data-pagefind-meta` date and otherwise
 falls back to the file's modified time, which is new on every build because docgen rewrites these gitignored pages;
 the key keeps two builds of one commit byte-identical on these pages. It goes last in the block, after the history
-keys. Handwritten pages carry their own fixed `date` in their frontmatter, and an authored page that docgen copies
+keys. Handwritten pages carry the same instant as a fixed `date` in their own frontmatter (they have no history, so
+it is the site-wide constant, and their dates move with it when it is bumped). An authored page that docgen copies
 into the generated tree keeps that date instead of getting a second one, so two builds match on those pages too.
 
 ### Bounded version-history backfill

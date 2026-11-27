@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { pageSourceExcludes } from '../docs/.vitepress/page-url.js';
+import { contentRevised } from '../src/page-history.js';
 
 const DOCS = resolve(import.meta.dirname, '..', 'docs');
 
@@ -25,14 +26,12 @@ function handwrittenPages(): string[] {
 }
 
 describe('handwritten page dates', () => {
-  // Asserts on the source files: the date only feeds the Pagefind meta, which has no other runtime output to test.
-  test.each(handwrittenPages())('%s has a fixed ISO date in its frontmatter', (file) => {
+  // Reads the sources, not a build: the date only feeds the Pagefind meta, and building every page here is too slow.
+  test.each(handwrittenPages())('%s carries the content-revised date its footer and JSON-LD show', (file) => {
     const source = readFileSync(join(DOCS, file), 'utf-8');
     const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(source)?.[1] ?? '';
-    const date = /^date: "([^"]+)"$/m.exec(frontmatter)?.[1];
 
-    expect(date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
-    expect(new Date(date!).toISOString().replace('.000Z', 'Z')).toBe(date);
+    expect(/^date: "([^"]+)"$/m.exec(frontmatter)?.[1]).toBe(contentRevised({}).at);
   });
 
   test('finds the handwritten pages', () => {
