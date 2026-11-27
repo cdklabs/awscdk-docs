@@ -3,9 +3,11 @@ import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { generateDocs } from '../src/docgen/index.js';
 import { parseOverviews } from '../src/docgen/overviews.js';
+import { CONTENT_REVISED_DATE } from '../src/page-history.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const OUTLINE_OFF = '---\noutline: false\n---\n\n';
+// Docgen ends every page's frontmatter with a stable Pagefind `date`; no ledger here, so the site-wide revision.
+const OUTLINE_OFF = `---\noutline: false\ndate: "${CONTENT_REVISED_DATE}T00:00:00.000Z"\n---\n\n`;
 
 // Small assemblies only: the four overview kinds are a rendering decision,
 // and running them over aws-cdk-lib would add minutes for no extra signal

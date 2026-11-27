@@ -6,12 +6,18 @@ import { convertMathFences, generateDocs, loadConfig, renderApiOverviewPage, ren
 import { escapeCell, escapeProse } from '../src/docgen/layout.js';
 import { OutlineMembers } from '../src/docgen/outline-members.js';
 import { signatureText } from '../src/docgen/signatures.js';
+import { CONTENT_REVISED_DATE } from '../src/page-history.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
 // Overview/index pages open with frontmatter suppressing the redundant
 // right-hand outline; a blank line then the page heading follow.
 const OUTLINE_OFF = '---\noutline: false\n---\n\n';
+
+// Every page docgen writes ends its frontmatter with a stable Pagefind `date`; this suite passes no ledger, so it
+// is the site-wide content revision.
+const DATE_KEY = `date: "${CONTENT_REVISED_DATE}T00:00:00.000Z"\n`;
+const WRITTEN_OUTLINE_OFF = `---\noutline: false\n${DATE_KEY}---\n\n`;
 
 /** The `outlineMembers` frontmatter of a generated type page, or undefined when the page has none. */
 function frontmatterMembers(page: string): OutlineMembers | undefined {
@@ -532,7 +538,7 @@ describe('docgen generation', () => {
   test('the API root renders the authored construct-library overview', () => {
     const overview = readFileSync(overviewFile, 'utf-8');
     const authored = readFileSync(join(ROOT, 'docs', 'aws-construct-library.md'), 'utf-8');
-    expect(overview).toBe(authored);
+    expect(overview).toBe(`---\n${DATE_KEY}---\n\n${authored}`);
     expect(overview).toContain('# AWS Construct Library');
     expect(overview).toContain('## Construct levels');
   });
@@ -764,7 +770,7 @@ describe('docgen generation', () => {
     );
     // Frontmatter still opens the file; the breadcrumb then precedes the
     // H1, so the two are not adjacent.
-    expect(page.startsWith(OUTLINE_OFF)).toBe(true);
+    expect(page.startsWith(WRITTEN_OUTLINE_OFF)).toBe(true);
     expect(page.split('\n').find((l) => /^#{1,6}\s/.test(l))).toBe(
       '# aws-cdk-lib.aws_cloudfront.experimental',
     );
@@ -916,7 +922,7 @@ describe('docgen generation', () => {
     // which is not a file a reader can fix a typo in.
     const s3 = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3-readme.md'), 'utf-8');
     expect(s3.startsWith(
-      '---\nupstreamEditUrl: "https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-s3/README.md"\n---\n',
+      `---\nupstreamEditUrl: "https://github.com/aws/aws-cdk/blob/HEAD/packages/aws-cdk-lib/aws-s3/README.md"\n${DATE_KEY}---\n`,
     )).toBe(true);
 
     // The package root's own README, same mechanism.
@@ -953,7 +959,7 @@ describe('docgen generation', () => {
       'utf-8',
     );
     expect(tableOnly).not.toContain('upstreamEditUrl');
-    expect(tableOnly.startsWith('---\noutline: false\n---\n')).toBe(true);
+    expect(tableOnly.startsWith(WRITTEN_OUTLINE_OFF)).toBe(true);
   });
 
   test('every overview renderer puts the breadcrumb above the H1, like type pages', () => {
@@ -989,7 +995,7 @@ describe('docgen generation', () => {
         expect(end + 5).toBeLessThan(crumb);
         const block = page.slice(4, end);
         for (const key of block.split('\n').filter(Boolean)) {
-          expect(key).toMatch(/^(outline: false|upstreamEditUrl: ".*")$/);
+          expect(key).toMatch(/^(outline: false|upstreamEditUrl: ".*"|date: ".*")$/);
         }
       }
     }
@@ -1287,7 +1293,7 @@ describe('docgen generation', () => {
       join(outDir, 'docs', 'aws-cdk-lib.aws_cloudfront.experimental-readme.md'),
       'utf-8',
     );
-    expect(tableOnly.startsWith(OUTLINE_OFF)).toBe(true);
+    expect(tableOnly.startsWith(WRITTEN_OUTLINE_OFF)).toBe(true);
     // …but the README-backed submodule page keeps its quick nav: the
     // README's section headings are navigation the sidebar
     // does not provide.

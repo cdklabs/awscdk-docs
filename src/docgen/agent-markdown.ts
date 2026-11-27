@@ -79,13 +79,18 @@ export function toAgentMarkdown(page: string, siteUrl = docsSiteUrl()): AgentMar
 
 /**
  * Add one string-valued key to a page's frontmatter, opening a block when the page has none. Frontmatter must stay
- * the very first thing in the file or VitePress ignores it, so the key is inserted directly after the opening `---`.
+ * the very first thing in the file or VitePress ignores it, so by default the key is inserted directly after the
+ * opening `---`; `at: 'end'` places it just before the closing `---` instead, leaving the existing first key first.
  */
-export function withFrontmatterKey(page: string, key: string, value: string): string {
+export function withFrontmatterKey(page: string, key: string, value: string, at: 'start' | 'end' = 'start'): string {
   const line = `${key}: ${JSON.stringify(value)}`;
-  return page.startsWith('---\n')
-    ? `---\n${line}\n${page.slice(4)}`
-    : `---\n${line}\n---\n\n${page}`;
+  if (!page.startsWith('---\n')) {
+    return `---\n${line}\n---\n\n${page}`;
+  }
+  const close = page.indexOf('\n---\n', 3);
+  return at === 'end' && close >= 0
+    ? `${page.slice(0, close + 1)}${line}${page.slice(close)}`
+    : `---\n${line}\n${page.slice(4)}`;
 }
 
 function stripFrontmatter(s: string): string {

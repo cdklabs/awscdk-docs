@@ -239,6 +239,11 @@ Docgen writes recorded values into each page's frontmatter (`cdkDocsIntroducedIn
 
 Dates are day-only in visible text (UTC, e.g. `3 Mar 2025`, identical in SSR) and full ISO timestamps in the head.
 
+Docgen also writes a `date` key, the page's content-revised instant (the same value as `cdk-docs-content-revised`),
+on every page it generates. `vitepress-plugin-pagefind` reads `date` for its `data-pagefind-meta` date and otherwise
+falls back to the file's modified time, which is new on every build because docgen rewrites these gitignored pages;
+the key keeps two builds of one commit byte-identical. It goes last in the block, after the history keys.
+
 ### Bounded version-history backfill
 
 A manually invoked script (`history-backfill-cli.ts`) recovers history the migration left unknown without
