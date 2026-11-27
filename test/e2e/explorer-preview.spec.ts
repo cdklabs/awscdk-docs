@@ -450,6 +450,11 @@ test.describe('explorer preview on a phone', () => {
     const screen = page.locator('.VPNavScreen');
     const group = screen.getByRole('group', { name: 'Explorer preview' });
     await expect(group).toBeVisible();
+    for (const name of ['Off', 'On']) {
+      const box = await group.getByRole('button', { name, exact: true }).boundingBox();
+      expect(box!.width, `the ${name} segment is at least 44px wide`).toBeGreaterThanOrEqual(44);
+      expect(box!.height, `the ${name} segment is at least 44px tall`).toBeGreaterThanOrEqual(44);
+    }
     await expect(group.getByRole('button', { name: 'On', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(screen.getByRole('group', { name: 'Navigation' })).toBeVisible();
     await expect(screen.getByRole('group', { name: 'Site theme' })).toBeVisible();
@@ -478,7 +483,13 @@ test.describe('explorer preview on a phone', () => {
     const gear = page.locator('.VPNavBar .settings-trigger');
     await expect(gear).toBeVisible();
     await gear.click();
-    await page.locator('#settings-menu-panel').getByRole('button', { name: 'Off', exact: true }).click();
+    const panel = page.locator('#settings-menu-panel');
+    for (const name of ['Off', 'On']) {
+      const box = await panel.getByRole('group', { name: 'Explorer preview' }).getByRole('button', { name, exact: true }).boundingBox();
+      expect(box!.width, `the ${name} segment is at least 44px wide`).toBeGreaterThanOrEqual(44);
+      expect(box!.height, `the ${name} segment is at least 44px tall`).toBeGreaterThanOrEqual(44);
+    }
+    await panel.getByRole('button', { name: 'Off', exact: true }).click();
     await expect(rail(page)).toHaveCount(0);
     await expect(gear).toBeFocused();
     await expect(page.locator('#settings-menu-panel')).toBeHidden();

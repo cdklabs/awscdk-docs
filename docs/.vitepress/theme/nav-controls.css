@@ -578,7 +578,7 @@
  * control in the bar, the Settings dropdown (768-959px) and the hamburger
  * menu (below 768px) is at least 44x44px (WCAG 2.5.5). The search trigger
  * grows from the plugin's 40px; the version and the gear from 40px and 32px;
- * the logo link gets a floor; the picker segments grow from 24px, their tracks
+ * the logo link gets a floor; the picker segments (theme, navigation and Explorer preview) grow from 24px, their tracks
  * follow, and the menu's theme picker wraps instead of overflowing a 320px
  * menu. The component rules carry Vue's scoping attribute, so the selectors
  * name the host as well to outrank them. */
@@ -606,16 +606,20 @@
 
   .VPNavScreen .ThemePicker .theme-picker-option,
   .VPNavScreen .NavStylePicker .nav-style-option,
+  .VPNavScreen .ExplorerPreviewPicker .explorer-preview-option,
   .VPNavBar .SettingsMenu .theme-picker-option,
-  .VPNavBar .SettingsMenu .nav-style-option {
+  .VPNavBar .SettingsMenu .nav-style-option,
+  .VPNavBar .SettingsMenu .explorer-preview-option {
     min-width: 44px;
     min-height: 44px;
   }
 
   .VPNavScreen .ThemePicker .theme-picker-group,
   .VPNavScreen .NavStylePicker .nav-style-group,
+  .VPNavScreen .ExplorerPreviewPicker .explorer-preview-group,
   .VPNavBar .SettingsMenu .theme-picker-group,
-  .VPNavBar .SettingsMenu .nav-style-group {
+  .VPNavBar .SettingsMenu .nav-style-group,
+  .VPNavBar .SettingsMenu .explorer-preview-group {
     height: auto;
   }
 
