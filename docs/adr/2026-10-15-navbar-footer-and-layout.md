@@ -7,7 +7,7 @@ Accepted
 ## Context
 
 The site extends the VitePress 1.6.x default theme rather than forking it. The
-navbar carries custom controls (a language slider, the search box, a version
+navbar carries custom controls (language tabs, the search box, a version
 badge, and appearance pickers), the site needs one footer on **every** page
 including the tens of thousands of generated `/v2/**` reference pages, and the
 whole thing must work on phones. Several defects were only visible across page
@@ -146,9 +146,9 @@ specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.
 
 The `order`/centering overrides are gated on
 `:has(.VPNavBar .content-body > .language-toggle)`, so a single-language build
-(where the slider does not render) keeps the completely stock control
-arrangement. Browsers without `:has()` degrade gracefully: the slider still
-renders and keeps its leading position (its rule is not gated), only the
+(where the tabs do not render) keeps the completely stock control
+arrangement. Browsers without `:has()` degrade gracefully: the tabs still
+render and keep their leading position (their rule is not gated), only the
 search's centering falls back to the theme's default position.
 
 The search trigger, version badge and Settings trigger are pinned to the same
@@ -173,8 +173,11 @@ out of padding, stepped per band through one variable (`--tab-pad`): 14px side
 padding on the tabs from 1280px, 10px below it, and 8px in the 960–1023px band,
 where the tabs' 44px minimum width also yields and the nav links tighten from
 12px to 8px (below 1100px) and 6px (960–1023px). 768–959px reuses the 1024–1099px
-values because the logo-only title gives that band its room. The search button
-compacts to its magnifier icon from 1279px down, as a 44px disc from 959px down.
+values because the logo-only title gives that band its room. In a multi-language
+build the search button compacts to its magnifier icon from 1279px down, inside
+a 44px disc at 768–959px; below 768px it is the plugin's bare 48px icon on every
+build, with the pill's edge, fill and hover ring dropped. A single-language build
+keeps the labeled button.
 Every control keeps its place in the row — the version must stay visible, and a
 control a click away is not visible. E2e assertions pin the row fitting inside
 768px, 800px, 900px, 960px, 1024px, 1099px, 1100px, and 1279px viewports,
@@ -229,7 +232,7 @@ VitePress keys four geometry rules (`.wrapper` padding, `.container` max-width,
 is true for `/v2/**` and false for both `/` (`layout: home`) and `/skills`
 (`themeConfig.sidebar` is keyed only on `/v2/`). That makes the row's left inset
 `var(--vp-sidebar-width)` on reference pages and `32px + title width` elsewhere
-— a ~97px difference. Because the slider holds the leading slot, that inset
+— a ~97px difference. Because the tabs hold the leading slot, that inset
 showed up as controls **moving** between page types.
 
 All non-sidebar pages are brought onto VitePress's full-width `has-sidebar`
@@ -244,7 +247,7 @@ rule. The `.title` selector uses a child chain (`> .wrapper > .container >
 .title`) because these unscoped rules would otherwise also match the anchor
 inside `VPNavBarTitle`.
 
-These geometry rules are **not** gated on the slider's presence — they are page
+These geometry rules are **not** gated on the tabs' presence — they are page
 geometry, not control arrangement, so a single-language build also gets one
 shape on every page. The CSS says so in a comment; do not "harmonize" the gating
 and reinstate the jump. (The 320px sidebar width this mirrors is set in
@@ -412,8 +415,8 @@ keeps its stock 896px container.
   genuinely low-frequency settings appear later they can join the Settings
   dropdown; the theme toggle just should not be what seeds a new one.
 - Single-language builds keep the stock control *arrangement* (gated on the
-  slider) but not the stock navbar *geometry* — a ts-only home page also renders
-  the full-width bar. That is intended: gating the geometry on the slider would
+  tabs) but not the stock navbar *geometry* — a ts-only home page also renders
+  the full-width bar. That is intended: gating the geometry on the tabs would
   reinstate the cross-page jump for every multi-language build.
 - The search trigger has two no-movement invariants that belong together: it
   must not move when the language changes (every option paints its own name in

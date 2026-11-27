@@ -480,6 +480,10 @@ test.describe('navbar layout', () => {
       expect(phone.fill).toBe('rgba(0, 0, 0, 0)');
       expect(phone.ring).toBe('none');
       expect((await search.boundingBox())!.width).toBeCloseTo(48, 0);
+      // Hover (and the sticky hover after a tap) must not bring the ring back.
+      await search.hover();
+      await search.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+      expect((await search.evaluate(paint)).ring).toBe('none');
     });
   }
 

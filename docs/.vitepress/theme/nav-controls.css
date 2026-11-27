@@ -11,7 +11,7 @@
  *
  * 2. The search box moves to the CENTER of the nav row: it keeps the
  *    pagefind plugin's `flex: 1` (so it owns the space between the
- *    slider and the right-hand controls) and centers its trigger button
+ *    tabs and the right-hand controls) and centers its trigger button
  *    inside that region.
  *
  * 3. The appearance controls sit behind the gear-icon Settings
@@ -34,7 +34,7 @@
  *    sidebar. VitePress keys four geometry rules on its own
  *    `has-sidebar` class, which insets the row's left edge to the sidebar
  *    width on generated pages and to `32px + title width` everywhere
- *    else — a 97px difference here. Because item 1 puts the slider in the
+ *    else — a 97px difference here. Because item 1 puts the tabs in the
  *    leading slot, that inset showed up as controls MOVING between the
  *    home page and a reference page. The non-sidebar pages are brought
  *    onto the full-width geometry below.
@@ -205,15 +205,15 @@
  * the selector here). The plugin's `flex: 1` is kept: it makes the
  * search own the middle region; centering the trigger inside it is what
  * places the search visually mid-row. The plugin's 32px left padding
- * would skew that centering, so it moves onto the slider instead (the
- * slider now provides the gap from the site title that the search's
+ * would skew that centering, so it moves onto the tab group instead (the
+ * tab group now provides the gap from the site title that the search's
  * padding used to). */
 @media (min-width: 768px) {
   .VPNavBar .content-body > .language-toggle {
     order: -2;
     /* 10px (was the search's 32px padding): the row's spare width comes out
-     * of chrome like this margin and the tabs' `--tab-pad`, never out of the
-     * tabs' 44px minimum width. */
+     * of chrome like this margin and the tabs' `--tab-pad` first; only the
+     * 960-1023px band also lets go of the tabs' 44px minimum width. */
     margin-left: 10px;
   }
 
@@ -372,7 +372,7 @@
     margin-left: 4px;
   }
 
-  /* The five full language names take more of the row than the slider
+  /* The five full language names take more of the row than the tabs
    * leaves at these widths: compact the search button to its magnifier icon
    * (VitePress's own narrow-viewport treatment) to make room. The "Search"
    * text is visually hidden (not display:none) so it keeps supplying the
@@ -637,6 +637,12 @@
     border-radius: 0;
     box-shadow: none;
     background-color: transparent;
+  }
+
+  /* The pill's hover ring would still outrank the bare icon (same selector
+   * plus :hover), including the sticky hover after a tap. */
+  .VPNavBar .content-body > .search .nav-search-btn-wait:hover {
+    box-shadow: none;
   }
 }
 
