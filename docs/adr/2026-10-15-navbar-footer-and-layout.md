@@ -256,7 +256,7 @@ rule. The `.title` selector uses a child chain (`> .wrapper > .container >
 .title`) because these unscoped rules would otherwise also match the anchor
 inside `VPNavBarTitle`.
 
-With the Explorer preview on, `--vp-sidebar-width` is 392px on every page, so the title lane is 72px wider and the bar's controls start 72px further right, and from 1280px so do the `/versions` content and its footer; the geometry stays page-independent within each mode. From 960px to 1119px the version badge is hidden in the bar, because the wider lane leaves no room for it; the Versions link leads to the same page.
+With the Explorer preview on, `--vp-sidebar-width` is 392px on every page, so the title lane is 72px wider and the bar's controls start 72px further right, and from 1280px so do the `/versions` content and its footer; the geometry stays page-independent within each mode. From 960px to 1119px the version badge is hidden in the bar, so the gear keeps its 32px inset from the viewport edge as with the preview off; the Versions link leads to the same page.
 
 These geometry rules are **not** gated on the tabs' presence — they are page
 geometry, not control arrangement, so a single-language build also gets one

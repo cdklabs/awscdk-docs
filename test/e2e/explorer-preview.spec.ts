@@ -511,23 +511,34 @@ test.describe('explorer preview on a phone', () => {
     expect((await page.locator('.explorer-rail-scrim').boundingBox())!.width).toBe(375);
   });
 
-  test('tabbing out of the unfolded rail folds it and leaves the drawer open', async ({ page }) => {
+  test('the unfolded rail makes what it covers inert, and Tab wraps between its view buttons', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
     await page.locator('.VPLocalNav button.menu').click();
     const views = page.getByRole('button', { name: /^Views/ });
+    const covered = page.locator('.VPSidebar .sidebar-header, .VPSidebar .api-sidebar');
+    await expect(covered.first()).toBeAttached();
+    expect(await covered.evaluateAll((els) => els.every((el) => !(el as HTMLElement).inert))).toBe(true);
     await views.click();
     await expect(rail(page)).toBeVisible();
-    await rail(page).getByRole('button', { name: 'Favorites' }).focus();
-    // The Views button sits under the rail and the scrim, so tabbing onto it folds the rail and focus stays there.
+    // The Views button, the filter, the Favorites list and the tree leave the accessibility tree and the tab order.
+    expect(await covered.evaluateAll((els) => els.length > 0 && els.every((el) => (el as HTMLElement).inert))).toBe(true);
+    await expect(rail(page).getByRole('button', { name: 'API' })).toBeFocused();
     await page.keyboard.press('Tab');
+    await expect(rail(page).getByRole('button', { name: 'Favorites' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(rail(page).getByRole('button', { name: 'API' })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(rail(page).getByRole('button', { name: 'Favorites' })).toBeFocused();
+    await expect(rail(page)).toBeVisible();
+    // Folding hands everything back and returns focus to the Views button, with the drawer still open.
+    await page.keyboard.press('Escape');
+    await expect(rail(page)).toBeHidden();
     await expect(views).toBeFocused();
-    await expect(rail(page)).toBeHidden();
-    // The next stop is the filter; the rail stays folded.
-    await page.keyboard.press('Tab');
-    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
-    await expect(rail(page)).toBeHidden();
+    expect(await covered.evaluateAll((els) => els.every((el) => !(el as HTMLElement).inert))).toBe(true);
     await expect(views).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+    await page.keyboard.press('Tab');
+    await expect(page.locator('.VPSidebar .nav-filter-input')).toBeFocused();
   });
 
   test('a modifier released before Escape does not let the Escape release close the drawer', async ({ page }) => {

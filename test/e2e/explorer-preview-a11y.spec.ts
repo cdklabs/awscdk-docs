@@ -44,6 +44,15 @@ async function open(page: Page, stored: Record<string, string>): Promise<void> {
   await expect(page.locator('#explorer-rail')).toBeAttached();
 }
 
+// Removes the seeded favorites one by one, so the Favorites view shows its empty line.
+async function emptyFavorites(page: Page): Promise<void> {
+  const section = page.locator('.favorites-section');
+  for (const { title } of FAVORITES) {
+    await section.getByRole('button', { name: `Remove ${title} from favorites` }).click();
+  }
+  await expect(section.locator('.favorites-empty')).toBeVisible();
+}
+
 test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
   test.describe.configure({ timeout: 300_000 });
 
@@ -61,12 +70,16 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
       await open(page, { [VIEW_KEY]: 'favorites' });
       await expect(page.locator('.favorites-static-heading')).toBeVisible();
       await audit(page, 'the Favorites view');
+      await emptyFavorites(page);
+      await audit(page, 'the empty Favorites view');
     });
 
     test('dark mode has no critical or serious violations', async ({ page }) => {
       await open(page, { 'vitepress-theme-appearance': 'dark', [VIEW_KEY]: 'favorites' });
       await expect(page.locator('html')).toHaveClass(/dark/);
       await audit(page, 'the Favorites view in dark mode');
+      await emptyFavorites(page);
+      await audit(page, 'the empty Favorites view in dark mode');
       await page.locator('.VPNavBar .settings-trigger').click();
       await expect(page.locator('#settings-menu-panel')).toBeVisible();
       await audit(page, 'the Settings panel in dark mode');

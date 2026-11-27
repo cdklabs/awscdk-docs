@@ -5,7 +5,9 @@
 //
 // Below 960px the rail stays hidden until ExplorerViewsButton.vue unfolds it over a scrim; picking a view,
 // Escape from anywhere, a route change, a tap on the scrim or moving keyboard focus out of the rail folds it
-// again. The scrim keeps pointers off the tree behind it, and the focus rule does the same for the keyboard.
+// again. The scrim keeps pointers off the tree behind it. The covered controls (the Views button, the filter,
+// the Favorites list and the tree) are `inert` while the rail is unfolded, so they leave the accessibility tree
+// and the tab order too, and Tab wraps between the two view buttons. The focus rule below is the fallback.
 import { useRoute } from "vitepress";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
@@ -76,6 +78,32 @@ function onDocumentFocusin(event: FocusEvent): void {
   railOpen.value = false;
 }
 
+// Everything the unfolded rail and its scrim cover. Set synchronously with the fold state, so a fold can move
+// focus back to the Views button in the same tick.
+function setCoveredInert(inert: boolean): void {
+  const covered = document.querySelectorAll<HTMLElement>(".VPSidebar .sidebar-header, .VPSidebar .api-sidebar");
+  for (const element of covered) element.inert = inert;
+}
+
+// Tab wraps inside the unfolded rail: nothing behind it can take focus, and leaving it for the browser's own UI
+// would skip the way back to the Views button.
+function onRailKeydown(event: KeyboardEvent): void {
+  if (event.key !== "Tab" || !railOpen.value) return;
+  const buttons = [...document.querySelectorAll<HTMLElement>(".ExplorerRail .explorer-rail-button")];
+  const first = buttons[0];
+  const last = buttons[buttons.length - 1];
+  if (!first || !last) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+watch(railOpen, (open) => setCoveredInert(open), { flush: "sync" });
+
 watch(
   () => route.path,
   () => {
@@ -89,11 +117,14 @@ onMounted(() => {
   railOpen.value = false;
   document.addEventListener("keydown", onDocumentKeydown);
   document.addEventListener("focusin", onDocumentFocusin);
+  document.addEventListener("keydown", onRailKeydown);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", onDocumentKeydown);
   document.removeEventListener("focusin", onDocumentFocusin);
+  document.removeEventListener("keydown", onRailKeydown);
+  setCoveredInert(false);
 });
 </script>
 
