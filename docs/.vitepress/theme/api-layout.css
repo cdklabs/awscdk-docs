@@ -374,7 +374,7 @@
   outline-offset: 2px;
 }
 
-/* ---------- API kind badge: one row, one color per kind ---------- */
+/* ---------- Kind palette and the H1 Added-in badge alignment ---------- */
 
 /* VitePress 1.6.4 ships `.vp-doc h1 > .VPBadge { margin-top: 4px;
    vertical-align: top }` on top of `.VPBadge { transform: translateY(-2px) }`.
