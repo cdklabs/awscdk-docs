@@ -24,7 +24,7 @@ work started.
 ## Decision
 
 - **Decide per token, from the grammar.** The shared highlight hook in
-  `docs/.vitepress/config.mts` asks Shiki for each token's scope names
+  `docs/.vitepress/highlight.ts` asks Shiki for each token's scope names
   (`includeExplanation: "scopeName"`). A transformer,
   `codeNolinkTransformer` in `docs/.vitepress/type-links.ts`, adds the class
   `code-nolink` to every token that is in a string or a comment.
@@ -42,15 +42,15 @@ work started.
 - **The linker skips marked tokens.** `applyTypeLinks` leaves any text run
   whose token span carries `code-nolink` as it is. Everything else about it is
   unchanged: names must be plain identifiers and hrefs site-relative.
-- **The cache key stays `(lang, code)`.** The class is part of the
-  highlighted HTML, so a cached fence already carries it.
+- **The cache key is `(marks, lang, code)`.** The class is part of the
+  highlighted HTML, so whether a fence asked for marks is part of the key. A
+  fence then gets the same HTML whatever was highlighted before it.
 - **Only where a link could land.** Reporting scope names roughly doubles the
   time to highlight a fence, so the hook asks for it only on a fence that
   offers type links and holds a quote, `#`, `//` or `/*`, or a capitalized key
   or property (see [no type links on field
-  names](./2026-11-16-no-type-links-on-field-names.md)). A cached entry made
-  without marks is redone once if the same code later arrives with type
-  links, so the cache key stays `(lang, code)`.
+  names](./2026-11-16-no-type-links-on-field-names.md)). The same code with
+  and without marks is two cache entries.
 - **Every fence goes through it**, including third-party README fences and
   signature fences. Signature fences have no strings or comments, so they
   link exactly as before.

@@ -148,14 +148,16 @@ and can OOM the shard off-heap), with a dual `github-light`/`github-dark` theme
 blocks follow the site light/dark toggle. Only the languages docgen emits are
 loaded, so Shiki skips its full grammar set.
 
-The hook memoizes output in a per-process `Map` keyed on
-`` `${language}\u0000${code}` `` — the resolved language (loaded lang, else the
-`txt` fallback) and the **exact, non-normalized** code string (a trailing
+The hook memoizes output in a per-process `Map` keyed on whether the fence asks
+for string/comment marks, the resolved language (loaded lang, else the `txt`
+fallback) and the **exact, non-normalized** code string (a trailing
 newline changes the emitted tokens, so it must not be collapsed; the NUL
 separator can never appear in a language id). Generated docs repeat identical
 fences (imports, `declare const` stubs, escape-hatch pairs) heavily, so a hit
-returns byte-identical HTML. Type links are applied per call *after* the cache,
-because two pages can share the same signature text with different link targets.
+returns byte-identical HTML. Marks change the HTML, so they are part of the key:
+a fence renders the same whatever was highlighted before it. Type links are
+applied per call *after* the cache, because two pages can share the same
+signature text with different link targets.
 The cache lives for one shard's build and captures all its intra-shard repeats.
 
 - Rejected alternative: single-pass dual-color highlighting would beat the ~2×
