@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { makeHighlight } from '../docs/.vitepress/highlight.js';
 import { applyTypeLinks } from '../docs/.vitepress/type-links.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -9,30 +10,30 @@ const ROOT = resolve(import.meta.dirname, '..');
 // ts+python tree ~26% of fences are EXACT duplicates (repeated imports,
 // `declare const` stubs, the DynamoDB CFN `addOverride` escape-hatch pair on
 // every property page), and highlighting is ~35% of a shard's build
-// wall-clock — so the hook memoizes its output keyed on (language, exact
-// code).
+// wall-clock — so the hook memoizes its output keyed on (marks, language,
+// exact code).
 //
 // These guard the invariants that keep the cache CORRECT (byte-identical to
 // the uncached path). The behavioral byte-for-byte equivalence is proven by
 // building the real site; here we pin the source-level contract so a later
 // edit cannot silently break it.
 describe('VitePress highlight cache', () => {
-  const config = readFileSync(resolve(ROOT, 'docs/.vitepress/config.mts'), 'utf-8');
+  const config = readFileSync(resolve(ROOT, 'docs/.vitepress/highlight.ts'), 'utf-8');
   const fn = config.slice(
     config.indexOf('async function makeHighlight()'),
     config.indexOf('async function makeHighlight()') + 4800,
   );
 
   test('makeHighlight memoizes with a Map', () => {
-    expect(fn).toMatch(/const cache = new Map<string, \{ html: string; marked: boolean \}>\(\)/);
+    expect(fn).toMatch(/const cache = new Map<string, string>\(\)/);
     expect(fn).toMatch(/cache\.get\(key\)/);
-    expect(fn).toMatch(/cache\.set\(key, \{ html, marked: needsMarks \}\)/);
+    expect(fn).toMatch(/cache\.set\(key, html\)/);
   });
 
-  test('cache key is (language, EXACT code) with a NUL separator', () => {
+  test('cache key is (marks, language, EXACT code) with a NUL separator', () => {
     // Must key on `language` (the loaded-or-txt fallback), NOT the raw `lang`,
     // so two fences that both fall back to txt share a cache entry correctly.
-    expect(fn).toMatch(/const key = `\$\{language\}\\u0000\$\{code\}`/);
+    expect(fn).toMatch(/const key = `\$\{needsMarks \? "marked" : "plain"\}\\u0000\$\{language\}\\u0000\$\{code\}`/);
   });
 
   test('code is NOT whitespace-normalized in the key', () => {
@@ -44,21 +45,53 @@ describe('VitePress highlight cache', () => {
   });
 
   test('a cache hit short-circuits before codeToHtml', () => {
-    const hitIdx = fn.indexOf('return applyTypeLinks(cached.html, attrs)');
+    const hitIdx = fn.indexOf('return applyTypeLinks(cached, attrs)');
     const htmlIdx = fn.indexOf('highlighter.codeToHtml');
     expect(hitIdx).toBeGreaterThan(-1);
     expect(hitIdx).toBeLessThan(htmlIdx);
   });
 
-  test('an entry highlighted without string/comment marks is redone when type links need them', () => {
-    // Scope reporting is costly, so only fences that offer type links and can hold a string or comment ask
-    // for it. A cached entry made without marks must not serve a later fence with the same code that needs
-    // them, or a string in that fence would get a link; the key itself stays (language, code).
+  test('only fences that offer type links ask for string/comment marks', () => {
+    // Scope reporting is costly, so only fences that offer type links and can hold a string or comment ask for it.
     expect(fn).toContain('const needsMarks = !!attrs && TYPE_LINKS_RE.test(attrs) && mayHoldLiterals(code);');
-    expect(fn).toContain('if (cached !== undefined && (cached.marked || !needsMarks))');
     expect(fn).toContain('includeExplanation: needsMarks ? ("scopeName" as const) : false');
   });
 
+});
+
+// A fence must render the same whatever the hook highlighted before it, so a page's HTML does not depend on page
+// order. Each case is compared with a fresh hook (an empty cache), which is what a page gets when highlighted alone.
+const CODE = 'const bucket = new Bucket(this, "MyBucket"); // keep it';
+const LINKED = 'type-links=Bucket:/v2/docs/b.html';
+
+describe('highlight hook output does not depend on fence order', () => {
+  test('a plain fence after a linked fence with the same code matches a fresh hook', async () => {
+    const alone = (await makeHighlight())(CODE, 'ts');
+    const highlight = await makeHighlight();
+    highlight(CODE, 'ts', LINKED);
+    expect(highlight(CODE, 'ts')).toBe(alone);
+  });
+
+  test('a linked fence after a plain fence with the same code matches a fresh hook', async () => {
+    const alone = (await makeHighlight())(CODE, 'ts', LINKED);
+    const highlight = await makeHighlight();
+    highlight(CODE, 'ts');
+    expect(highlight(CODE, 'ts', LINKED)).toBe(alone);
+  });
+
+  test('both orders give the same HTML for each fence', async () => {
+    const first = await makeHighlight();
+    const a = [first(CODE, 'ts', LINKED), first(CODE, 'ts')];
+    const second = await makeHighlight();
+    const b = [second(CODE, 'ts'), second(CODE, 'ts', LINKED)].reverse();
+    expect(a).toEqual(b);
+  });
+
+  test('a repeated fence is served from the cache with identical HTML', async () => {
+    const highlight = await makeHighlight();
+    expect(highlight(CODE, 'ts', LINKED)).toBe(highlight(CODE, 'ts', LINKED));
+    expect(highlight(CODE, 'ts')).toBe(highlight(CODE, 'ts'));
+  });
 });
 
 // Inline type links in generated signature fences: docgen emits
@@ -69,15 +102,14 @@ describe('VitePress highlight cache', () => {
 // targets on different pages, so a linkified cached value would poison
 // duplicate-fence hits.
 describe('signature fence type links', () => {
-  const config = readFileSync(resolve(ROOT, 'docs/.vitepress/config.mts'), 'utf-8');
+  const config = readFileSync(resolve(ROOT, 'docs/.vitepress/highlight.ts'), 'utf-8');
 
   test('type links are applied on BOTH return paths, outside the cache', () => {
     // Hit path and miss path both post-process; the stored value is pure.
-    expect(config).toContain('return applyTypeLinks(cached.html, attrs)');
+    expect(config).toContain('return applyTypeLinks(cached, attrs)');
     expect(config).toContain('return applyTypeLinks(html, attrs)');
-    expect(config).toContain('cache.set(key, { html, marked: needsMarks })');
+    expect(config).toContain('cache.set(key, html)');
     expect(config).not.toContain('cache.set(key, applyTypeLinks');
-    expect(config).not.toMatch(/cache\.set\(key, \{ html: applyTypeLinks/);
   });
 
   // Behavioral coverage of the extracted helper — the hook runs on every
