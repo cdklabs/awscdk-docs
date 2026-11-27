@@ -175,6 +175,53 @@ test.describe('favorite pages', () => {
     expect(metrics.height).toBeGreaterThanOrEqual(44);
   });
 
+  test('the capped message stays in the row without overlapping the pills or widening the page', async ({ page }) => {
+    // Starring past the cap puts a sentence inside the star's wrapper, which on
+    // a type page sits in the chip row beside two pills. The row is a wrapping
+    // flex box, so the message takes the width left over: measured 291x24 at
+    // 1280px between the pills, and 104x96 at 375px, inside the viewport and
+    // clear of both pills in each case.
+    for (const width of [1280, 375]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(TOPIC_PAGE);
+      await page.evaluate(() => {
+        const entries = Array.from({ length: 20 }, (_, i) => ({
+          path: `/v2/docs/filler-${i}`,
+          title: `Filler ${i}`,
+        }));
+        localStorage.setItem('cdk-docs:favourites', JSON.stringify(entries));
+      });
+      await page.reload();
+      const star = page.locator('.type-header-row .favorite-star-button');
+      await expect(star).toBeVisible();
+      await star.click();
+
+      const cap = page.locator('.favorite-star-cap');
+      await expect(cap).toBeVisible();
+      const geometry = await page.evaluate(() => {
+        const box = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
+        const message = box('.favorite-star-cap');
+        const overlaps = (other: DOMRect) =>
+          message.left < other.right && other.left < message.right
+          && message.top < other.bottom && other.top < message.bottom;
+        return {
+          left: message.left,
+          right: message.right,
+          onCopy: overlaps(box('.copy-markdown-main')),
+          onOptions: overlaps(box('.copy-markdown-options')),
+          onStar: overlaps(box('.favorite-star-button')),
+          scrolls: document.documentElement.scrollWidth > window.innerWidth,
+        };
+      });
+      expect(geometry.left, `${width}px`).toBeGreaterThanOrEqual(0);
+      expect(geometry.right, `${width}px`).toBeLessThanOrEqual(width);
+      expect(geometry.onCopy, `${width}px`).toBe(false);
+      expect(geometry.onOptions, `${width}px`).toBe(false);
+      expect(geometry.onStar, `${width}px`).toBe(false);
+      expect(geometry.scrolls, `${width}px`).toBe(false);
+    }
+  });
+
   test('the star does not add height to the breadcrumb bar', async ({
     page,
   }) => {

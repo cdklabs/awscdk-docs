@@ -49,7 +49,7 @@ test.describe('breadcrumb copies as the FQN', () => {
     expect(chevron.gap).toBeGreaterThan(0);
     expect(parseFloat(chevron.border)).toBeGreaterThan(0);
     // Drawn from borders, so it contributes no text to a selection.
-    expect(chevron.content).toMatch(/^("")|('')|(none)$/);
+    expect(chevron.content).toMatch(/^(""|''|none)$/);
 
     const rendered = await page.locator('.breadcrumb-trail').innerText();
     expect(rendered).not.toContain('›');
