@@ -35,8 +35,12 @@ our custom layer:
 - mobile sizing for docgen `pre.signature` blocks (momentum scrolling, tighter
   padding below 768px; generated initializer signatures wrap rather than scroll);
 - heading/badge wrapping so title badges never widen the page;
-- WCAG 2.5.5 touch targets (>= 44x44px) for the hamburger, TOC dropdown button,
-  sidebar drawer rows, and the breadcrumb favorite star, below 960px;
+- WCAG 2.5.5 touch targets (>= 44x44px) below 960px for the hamburger, TOC
+  dropdown button, sidebar drawer rows, the breadcrumb favorite star, and every
+  control in the top bar and the hamburger menu: the logo link, the version
+  badge, the search trigger, the Settings gear, the language tabs, and the
+  menu's theme and navigation picker segments (whose 40px tracks grow with them
+  and whose theme picker wraps inside a 320px menu);
 - a full-width Pagefind dialog below 768px with a 16px input font size to stop
   iOS Safari zoom-on-focus.
 
@@ -106,18 +110,31 @@ offers and are repositioned with flex `order` in `nav-controls.css`.
 `[LanguageToggle, ThemePicker, NavStylePicker]`. The navigation style row is
 specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.md).
 
-- **Language slider leads** (`.language-toggle { order: -2 }`), taking the slot
+- **Language tabs lead** (`.language-toggle { order: -2 }`), taking the slot
   the search box used to occupy and the leading gap the search's `padding-left`
   used to provide (now a 10px margin). It is the primary control on a
-  multi-language docs site. Its segmented radio-group behavior and labels are
-  owned by [multi-language](./2026-10-15-multi-language.md).
+  multi-language docs site. Its radio-group behavior and labels are owned by
+  [multi-language](./2026-10-15-multi-language.md). The options are drawn as
+  text tabs on the bar itself, with no track and no fill: muted text when idle,
+  a hover fill, and the selected tab in the brand color with a 3px underline
+  that sits on the bar's bottom edge, because the group spans the control row's
+  full height. The earlier bordered track with an elevated selected segment had
+  a 1.3:1 edge against the bar and, in light mode, a selected fill identical to
+  the track, so the only cue left was a bolder label.
 - **Search is centered** (`.search { order: -1; justify-content: center;
   padding-left: 0 }`), keeping the pagefind plugin's `flex: 1` so it owns the
-  region between the slider and the right-hand controls and centers its trigger
+  region between the tabs and the right-hand controls and centers its trigger
   within it. True viewport-centering is not attempted — it breaks the search
   dropdown's anchoring and collides with controls at narrow widths — and
   centering within the free middle region is visually equivalent at real widths.
-- **Version badge then Settings gear** sit at the right end.
+  The trigger is an outlined pill: the bar's own background with a 1px edge
+  (`--tb-input-border`, 5.6:1 light, 6.9:1 dark against the bar) instead of the
+  plugin's near-white fill with a transparent border, which has no visible box
+  on a white bar. Hover adds a 1px brand ring; keyboard focus a 2px outline
+  2px outside. The `Ctrl K` chip takes the same edge.
+- **Version badge then Settings gear** sit at the right end, in the same muted
+  ink as the idle tabs and the search label (`--tb-muted`, 9.4:1 light, 10:1
+  dark) with the same hover fill (`--tb-hover-bg`).
 - The medium-width (768–1279px) `VPNavBarExtra` "extra navigation" flyout
   embeds its own `VPSwitchAppearance`; it is hidden (and its emptied group
   collapsed) so **exactly one appearance control is reachable at every
@@ -134,11 +151,13 @@ arrangement. Browsers without `:has()` degrade gracefully: the slider still
 renders and keeps its leading position (its rule is not gated), only the
 search's centering falls back to the theme's default position.
 
-All custom nav controls (slider, search trigger, version badge, Settings
-trigger) are pinned to the same 40px rendered height. The pagefind plugin
-hard-codes `height: 40px` on `.nav-search-btn-wait` and exposes no variable, so
-the value is pinned in each component and guarded by a regression test that
-reads the plugin's source.
+The search trigger, version badge and Settings trigger are pinned to the same
+40px rendered height from 960px up. The pagefind plugin hard-codes `height:
+40px` on `.nav-search-btn-wait` and exposes no variable, so the value is pinned
+in each component and guarded by a regression test that reads the plugin's
+source. The language tabs are the exception: they stretch to the control row's
+full height so their underline meets the bar's edge, and they are centered on
+the same line as the 40px controls.
 
 #### Fitting the medium breakpoint (768–1279px)
 
@@ -148,12 +167,21 @@ item that yields (`flex-shrink: 1`, ellipsis) so the row never overhangs the
 viewport. From 960px the title is the fixed `--vp-sidebar-width` lane and cannot
 yield, so the version badge and the Settings gear drop their 8px gaps across the
 whole band (not just where it binds, so the arrangement does not jump at 960px).
-The slider keeps every language's name visible; only TypeScript shortens, to
-`TS` below 1100px (the full name stays in the accessible name). The search
-button compacts to its magnifier icon. Every control keeps its place in the row — the version must stay visible,
-and a control a click away is not visible. E2e assertions pin the row fitting
-inside 768px, 800px, 960px, 1000px, 1100px, and 1279px viewports; the 768px case
-has a positive control that widens the title and expects the row to overflow.
+The tabs keep every language's name visible; only TypeScript shortens, to
+`TS` below 1100px (the full name stays in the accessible name). The width comes
+out of padding, stepped per band through one variable (`--tab-pad`): 14px side
+padding on the tabs from 1280px, 10px below it, and 8px in the 960–1023px band,
+where the tabs' 44px minimum width also yields and the nav links tighten from
+12px to 8px (below 1100px) and 6px (960–1023px). 768–959px reuses the 1024–1099px
+values because the logo-only title gives that band its room. The search button
+compacts to its magnifier icon from 1279px down, as a 44px disc from 959px down.
+Every control keeps its place in the row — the version must stay visible, and a
+control a click away is not visible. E2e assertions pin the row fitting inside
+768px, 800px, 900px, 960px, 1000px, 1024px, 1099px, 1100px, and 1279px viewports,
+and the page scroll width equaling the viewport with no two bar controls
+overlapping at 1440, 1359, 1280, 1180, 1100, 1099, 1024, 960, 959, 900, 768,
+767, 375 and 320px in both color schemes; the 768px case has a positive control
+that widens the title and expects the row to overflow.
 
 ### Tri-state theme pickers behind the Settings gear
 

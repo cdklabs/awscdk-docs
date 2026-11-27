@@ -174,7 +174,7 @@ test.describe('navbar layout', () => {
     expect(focusedNavControls).not.toContain('extra navigation');
   });
 
-  for (const width of [768, 800, 960, 1100, 1279]) {
+  for (const width of [768, 800, 900, 960, 1024, 1099, 1100, 1279]) {
     test(`the row stays inside the viewport at ${width}px`, async ({ page }) => {
       // Below 960px the title shares the row with the controls and yields its
       // width; from 960px it is the fixed sidebar lane and the badge and gear
@@ -299,6 +299,251 @@ test.describe('navbar layout', () => {
       (el as HTMLElement).style.maxWidth = '';
     });
   });
+
+  // Every width the one-row layout has to hold at: the desktop tiers, both
+  // sides of each tab-padding step (1280/1279 is covered above, 1100/1099 and
+  // 1024/960 here), both sides of the 960px title lane, both sides of the
+  // 768px phone switch, and two phone widths.
+  const ROW_WIDTHS = [1440, 1359, 1280, 1180, 1100, 1099, 1024, 960, 959, 900, 768, 767, 375, 320];
+
+  for (const theme of ['light', 'dark'] as const) {
+    test(`no horizontal scroll and no overlapping bar controls at any width (${theme})`, async ({
+      page,
+    }) => {
+      await page.addInitScript((t) => localStorage.setItem('vitepress-theme-appearance', t), theme);
+      for (const width of ROW_WIDTHS) {
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto(TOPIC_PAGE);
+        await expect(page.locator('.VPNavBar .content-body > .search')).toBeVisible();
+        const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+        expect(scrollWidth, `scroll width at ${width}px`).toBe(width);
+        // The painted boxes of the title link and every visible control in the
+        // row, left to right; each must end before the next one starts.
+        const boxes = await page.evaluate(() => {
+          const nodes = [
+            document.querySelector('.VPNavBar .VPNavBarTitle > a.title'),
+            ...document.querySelectorAll('.VPNavBar .content-body > *'),
+          ];
+          return nodes
+            .filter((el): el is HTMLElement => el instanceof HTMLElement)
+            .map((el) => ({ name: el.className.split(' ')[0] || el.tagName, box: el.getBoundingClientRect() }))
+            .filter(({ box }) => box.width > 0 && box.height > 0)
+            .map(({ name, box }) => ({ name, left: box.left, right: box.right }))
+            .sort((a, b) => a.left - b.left);
+        });
+        expect(boxes.length, `controls at ${width}px`).toBeGreaterThanOrEqual(3);
+        for (let i = 1; i < boxes.length; i++) {
+          expect(
+            boxes[i].left,
+            `${boxes[i - 1].name} overlaps ${boxes[i].name} at ${width}px (${theme})`,
+          ).toBeGreaterThanOrEqual(boxes[i - 1].right - 1);
+        }
+        expect(boxes[boxes.length - 1].right, `last control at ${width}px`).toBeLessThanOrEqual(width);
+      }
+    });
+  }
+
+  test('from 768px up the bar is one row and the first tab reads TS below 1100px', async ({ page }) => {
+    for (const width of [1099, 1024, 960, 900, 768]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      const tabs = page.getByRole('radiogroup', { name: 'Select programming language' }).getByRole('radio');
+      await expect(tabs).toHaveCount(5);
+      const tops = new Set(
+        (await tabs.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))),
+      );
+      expect(tops.size, `tabs on one line at ${width}px`).toBe(1);
+      await expect(tabs.first().locator('.language-abbr')).toHaveText('TS');
+      await expect(tabs.first().locator('.language-abbr')).toBeVisible();
+      await expect(page.locator('.VPNavBar .VPNavBarHamburger')).toBeHidden();
+    }
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      const tabs = page.getByRole('radiogroup', { name: 'Select programming language' }).getByRole('radio');
+      await expect(tabs).toHaveCount(5);
+      // The painted text is the full name on every tab: the badge is out of the
+      // paint and the name is in flow (both forms sit in the markup).
+      const painted = await tabs.evaluateAll((els) =>
+        els.map((el) =>
+          [...el.querySelectorAll<HTMLElement>('span')]
+            .filter((span) => span.getBoundingClientRect().width > 1)
+            .map((span) => span.textContent?.trim())
+            .join(''),
+        ),
+      );
+      expect(painted).toEqual(['TypeScript', 'Python', 'Java', 'C#', 'Go']);
+      await expect(page.locator('.VPNavBar .content-body > .search .metaKey')).toBeVisible();
+    }
+  });
+
+  for (const width of [768, 375, 320]) {
+    test(`every bar and menu control is at least 44x44px at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      const atLeast44 = async (name: string, selector: string) => {
+        const boxes = await page.locator(selector).evaluateAll((els) =>
+          els
+            .map((el) => el.getBoundingClientRect())
+            .filter((box) => box.width > 0 && box.height > 0)
+            // Whole pixels: a laid-out 44px box can report 43.9999 mid-paint.
+            .map((box) => ({ width: Math.round(box.width), height: Math.round(box.height) })),
+        );
+        expect(boxes.length, `${name} is painted at ${width}px`).toBeGreaterThan(0);
+        for (const box of boxes) {
+          expect(box.width, `${name} width at ${width}px`).toBeGreaterThanOrEqual(44);
+          expect(box.height, `${name} height at ${width}px`).toBeGreaterThanOrEqual(44);
+        }
+      };
+      await atLeast44('logo link', '.VPNavBar .VPNavBarTitle > a.title');
+      await atLeast44('version', '.VPNavBar .content-body > .version-badge');
+      await atLeast44('search', '.VPNavBar .content-body > .search .nav-search-btn-wait');
+      if (width >= 768) {
+        await atLeast44('gear', '.VPNavBar .content-body > .SettingsMenu .settings-trigger');
+        await atLeast44('tabs', '.VPNavBar .language-toggle .language-option');
+      } else {
+        await atLeast44('menu button', '.VPNavBar .VPNavBarHamburger');
+        await page.locator('.VPNavBarHamburger').click();
+        await expect(page.locator('.VPNavScreen')).toBeVisible();
+        await atLeast44('menu languages', '.VPNavScreen .language-toggle .language-option');
+        await atLeast44('menu theme options', '.VPNavScreen .ThemePicker .theme-picker-option');
+        await atLeast44('menu navigation options', '.VPNavScreen .NavStylePicker .nav-style-option');
+        // The picker groups grow with their 44px segments and wrap inside the
+        // menu instead of overflowing it.
+        const menu = (await page.locator('.VPNavScreen .container').boundingBox())!;
+        for (const box of await page
+          .locator('.VPNavScreen .theme-picker-group, .VPNavScreen .nav-style-group')
+          .evaluateAll((els) => els.map((el) => el.getBoundingClientRect()))) {
+          expect(box.height).toBeGreaterThanOrEqual(44);
+          expect(box.right).toBeLessThanOrEqual(menu.x + menu.width + 1);
+        }
+      }
+    });
+  }
+
+  for (const [theme, edge, bar, focus] of [
+    ['light', 'rgb(101, 104, 113)', 'rgb(255, 255, 255)', 'rgb(0, 108, 224)'],
+    ['dark', 'rgb(164, 164, 173)', 'rgb(22, 29, 38)', 'rgb(66, 180, 255)'],
+  ] as const) {
+    test(`the search box is an outlined pill on the bar, an icon below 960px, bare below 768px (${theme})`, async ({
+      page,
+    }) => {
+      await page.addInitScript((t) => localStorage.setItem('vitepress-theme-appearance', t), theme);
+      const search = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
+      const paint = (el: Element) => {
+        const s = getComputedStyle(el);
+        return {
+          border: `${s.borderTopWidth} ${s.borderTopStyle} ${s.borderTopColor}`,
+          radius: s.borderTopLeftRadius,
+          fill: s.backgroundColor,
+          ring: s.boxShadow,
+        };
+      };
+
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      expect(await search.evaluate(paint)).toEqual({
+        border: `1px solid ${edge}`,
+        radius: '20px',
+        fill: bar,
+        ring: 'none',
+      });
+      const box = (await search.boundingBox())!;
+      expect(box.height).toBeCloseTo(40, 0);
+      // The shortcut chip takes the same edge, so it reads as part of the box.
+      expect(
+        await search.locator('.metaKey').evaluate((el) => getComputedStyle(el).borderTopColor),
+      ).toBe(edge);
+      await search.hover();
+      await expect
+        .poll(() => search.evaluate((el) => getComputedStyle(el).borderTopColor))
+        .toBe(focus);
+      expect((await search.evaluate(paint)).ring).toBe(`${focus} 0px 0px 0px 1px`);
+
+      // Tablet: the pill is a 44px disc holding only the icon.
+      await page.setViewportSize({ width: 800, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      expect((await search.evaluate(paint)).border).toBe(`1px solid ${edge}`);
+      const disc = (await search.boundingBox())!;
+      expect(disc.width).toBeCloseTo(44, 0);
+      expect(disc.height).toBeCloseTo(44, 0);
+      await expect(search.locator('.metaKey')).toBeHidden();
+
+      // Phone: the plugin's bare icon, no edge and no fill.
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      const phone = await search.evaluate(paint);
+      // `border: 0` leaves the color in the computed style; the width and style
+      // are what remove the edge.
+      expect(phone.border).toMatch(/^0px none /);
+      expect(phone.radius).toBe('0px');
+      expect(phone.fill).toBe('rgba(0, 0, 0, 0)');
+      expect(phone.ring).toBe('none');
+      expect((await search.boundingBox())!.width).toBeCloseTo(48, 0);
+    });
+  }
+
+  test('keyboard focus draws the ring inside a tab and outside the search box', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(TOPIC_PAGE);
+    const ring = (el: Element) => {
+      const s = getComputedStyle(el);
+      return `${s.outlineStyle} ${s.outlineWidth} ${s.outlineOffset}`;
+    };
+    const tab = page.getByRole('radiogroup', { name: 'Select programming language' }).getByRole('radio', {
+      name: 'TypeScript',
+    });
+    await tab.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(tab).toBeFocused();
+    expect(await tab.evaluate(ring)).toBe('solid 2px -3px');
+
+    const search = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
+    await search.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(search).toBeFocused();
+    expect(await search.evaluate(ring)).toBe('solid 2px 2px');
+  });
+
+  for (const [theme, muted] of [
+    ['light', 'rgb(66, 70, 80)'],
+    ['dark', 'rgb(198, 198, 205)'],
+  ] as const) {
+    test(`idle tabs, the search label, the version and the gear share one muted ink (${theme})`, async ({
+      page,
+    }) => {
+      await page.addInitScript((t) => localStorage.setItem('vitepress-theme-appearance', t), theme);
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      const color = (el: Element) => getComputedStyle(el).color;
+      const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
+      expect(await slider.getByRole('radio', { name: 'Python' }).evaluate(color)).toBe(muted);
+      expect(await page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait').evaluate(color)).toBe(muted);
+      expect(await page.locator('.VPNavBar .content-body > .search .search-tip').evaluate(color)).toBe(muted);
+      expect(await page.locator('.VPNavBar .content-body > .version-badge').evaluate(color)).toBe(muted);
+      expect(await page.getByRole('button', { name: 'Settings' }).evaluate(color)).toBe(muted);
+      // Hovering the version or the gear fills it and paints it in the primary
+      // text color (which the muted ink already equals in dark mode).
+      const primary = await page.evaluate(() => {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--vp-c-text-1)';
+        document.body.appendChild(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        return resolved;
+      });
+      const gear = page.getByRole('button', { name: 'Settings' });
+      await gear.hover();
+      await expect.poll(() => gear.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+      await expect.poll(() => gear.evaluate(color)).toBe(primary);
+      const version = page.locator('.VPNavBar .content-body > .version-badge');
+      await version.hover();
+      await expect.poll(() => version.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+      await expect.poll(() => version.evaluate(color)).toBe(primary);
+    });
+  }
 
   test('the disclosure closes on Escape and on an outside click', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
