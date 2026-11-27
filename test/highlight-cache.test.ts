@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { makeHighlight } from '../docs/.vitepress/highlight.js';
-import { applyTypeLinks } from '../docs/.vitepress/type-links.js';
+import { NOLINK_CLASS, applyTypeLinks } from '../docs/.vitepress/type-links.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -68,7 +68,9 @@ describe('highlight hook output does not depend on fence order', () => {
   test('a plain fence after a linked fence with the same code matches a fresh hook', async () => {
     const alone = (await makeHighlight())(CODE, 'ts');
     const highlight = await makeHighlight();
-    highlight(CODE, 'ts', LINKED);
+    // The linked fence marks its string and comment; the plain fence alone does not.
+    expect(alone).not.toContain(NOLINK_CLASS);
+    expect(highlight(CODE, 'ts', LINKED)).toContain(NOLINK_CLASS);
     expect(highlight(CODE, 'ts')).toBe(alone);
   });
 
@@ -87,7 +89,7 @@ describe('highlight hook output does not depend on fence order', () => {
     expect(a).toEqual(b);
   });
 
-  test('a repeated fence is served from the cache with identical HTML', async () => {
+  test('a repeated fence renders identical HTML', async () => {
     const highlight = await makeHighlight();
     expect(highlight(CODE, 'ts', LINKED)).toBe(highlight(CODE, 'ts', LINKED));
     expect(highlight(CODE, 'ts')).toBe(highlight(CODE, 'ts'));
