@@ -741,9 +741,14 @@ describe('API kind badge palette', () => {
     });
 
     test('the experimental chip keeps its chip ink against the prose link color', () => {
-      // `.vp-doc a` would otherwise paint it as a link; the chip rule carries
-      // `.vp-doc` too, so it wins on specificity rather than on source order.
+      // `.vp-doc a` would otherwise paint it as a link. The resting selector
+      // carries `.vp-doc` too, which beats it; the hover selector adds the
+      // pseudo-class, because VitePress's `.vp-doc a:hover` has the same
+      // specificity as the resting rule and would otherwise win on load order.
+      // The ink itself is measured in the browser, hover included, in
+      // `test/e2e/type-page-header.spec.ts`.
       expect(bare).toContain('.vp-doc a.type-chip-experimental');
+      expect(bare).toContain('.vp-doc a.type-chip-experimental:hover');
       expect(ruleBody('.vp-doc a.type-chip-stability')).toContain('text-decoration: underline');
     });
 

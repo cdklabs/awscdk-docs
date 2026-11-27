@@ -264,6 +264,7 @@
   color: var(--th-stable-text);
 }
 
+.vp-doc a.type-chip-experimental:hover,
 .vp-doc a.type-chip-experimental,
 .type-chip-experimental {
   background-color: var(--th-exp-bg);
@@ -389,8 +390,9 @@
 }
 
 /* Per-kind colors. The kind travels as an `api-badge-<kind>` class on the
-   header row's chip and on the hover preview's chip, and each rule sets the
-   fill and the ink; the chip's edge is `currentColor`.
+   header row's kind chip; the hover preview's `.type-tooltip-kind-<kind>`
+   chips read the same `--cdk-badge-*` tokens. Each rule sets the fill and the
+   ink; the chip's edge is `currentColor`.
 
    The hues are this repo's own, not VitePress ramps: the palette needs
    eight mutually distinct kinds and the theme's blue `--vp-c-brand-*` /

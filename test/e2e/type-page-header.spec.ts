@@ -235,6 +235,15 @@ test.describe('type page header', () => {
       expect(measured.color, scheme).toBe(measured.token);
       expect(measured.border, scheme).toBe(measured.token);
       expect(measured.decoration, scheme).toContain('underline');
+
+      // And under the pointer. VitePress's `.vp-doc a:hover` has the same
+      // specificity as the resting chip rule, so the hover selector is what
+      // makes the chip ink win whatever order the stylesheets load in. This
+      // measurement cannot show that part, since the shipped order already
+      // favors `api-layout.css`; it pins the hover ink itself.
+      await chip.hover();
+      const hovered = await chip.evaluate((el) => getComputedStyle(el).color);
+      expect(hovered, `${scheme} hover`).toBe(measured.token);
     }
     await page.emulateMedia({ colorScheme: 'light' });
   });

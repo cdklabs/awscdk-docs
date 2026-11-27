@@ -96,7 +96,8 @@ twin 34.1 KB to 109.1 KB, three times its size, all of it before the first
 24.0 KB to 72.1 KB. Tens of kilobytes of URLs, not hundreds, but still several
 times the API surface the twin carries, for a list whose entries a reader of
 the rendered page sees folded away), the type header's chip row becomes one
-`Kind · Stability` line and a deprecated type's note a `Deprecated:
+`Kind · Stability` line, the kind alone when the type's stability is
+`external` or unset, and a deprecated type's note becomes a `Deprecated:
 <reason>` paragraph, the type-metadata table becomes `- Label: value`
 bullets, `:::` containers become titled blockquotes. The type-metadata table is the only
 `<table>` the transform parses; every other table-shaped text passes through
