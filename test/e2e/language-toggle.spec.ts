@@ -16,17 +16,17 @@ test.describe('language toggle', () => {
     // Exactly the build-enabled set, as radio segments, rendered in the
     // LANGUAGES canonical order (ts, python, java, dotnet, go) — NOT
     // docgen.config.json array order. The slider filters the enabled set out
-    // of that list, so Java precedes C# / .NET even though the config array
-    // lists dotnet first, and Golang comes last.
+    // of that list, so Java precedes C# even though the config array
+    // lists dotnet first, and Go comes last.
     const options = slider.getByRole('radio');
     await expect(options).toHaveCount(5);
-    // The visible abbreviation leads the accessible name rather than being
-    // replaced by it, so the name reads "<abbreviation> <language>".
-    await expect(options.nth(0)).toHaveAccessibleName('TS TypeScript');
-    await expect(options.nth(1)).toHaveAccessibleName('Py Python');
-    await expect(options.nth(2)).toHaveAccessibleName('Ja Java');
-    await expect(options.nth(3)).toHaveAccessibleName('C# C# / .NET');
-    await expect(options.nth(4)).toHaveAccessibleName('Go Golang');
+    // Each option is named by its language alone: the badges are not
+    // painted from 1100px, so they are not part of the name either.
+    await expect(options.nth(0)).toHaveAccessibleName('TypeScript');
+    await expect(options.nth(1)).toHaveAccessibleName('Python');
+    await expect(options.nth(2)).toHaveAccessibleName('Java');
+    await expect(options.nth(3)).toHaveAccessibleName('C#');
+    await expect(options.nth(4)).toHaveAccessibleName('Go');
     await expect(options.nth(0)).toHaveAttribute('aria-checked', 'true');
     // Selecting a language reflects into ?lang= without touching the path.
     await slider.getByRole('radio', { name: 'Python' }).click();
@@ -34,7 +34,7 @@ test.describe('language toggle', () => {
     await expect(page).toHaveURL(/[?&]lang=python/);
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sns\.Topic/);
     // Switching to Go does the same: ?lang=go, path untouched.
-    await slider.getByRole('radio', { name: 'Golang' }).click();
+    await slider.getByRole('radio', { name: 'Go', exact: true }).click();
     await expect(options.nth(4)).toHaveAttribute('aria-checked', 'true');
     await expect(page).toHaveURL(/[?&]lang=go/);
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sns\.Topic/);
@@ -42,39 +42,40 @@ test.describe('language toggle', () => {
     await expect(page.locator('.language-switcher')).toHaveCount(0);
   });
 
-  test('every segment shows its abbreviation and keeps its full accessible name', async ({ page }) => {
+  test('every option shows its language by name, with no two-letter badge', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
+    const options = slider.getByRole('radio');
+    await expect(options).toHaveCount(5);
+    // The painted text of every option, checked or not, is its full label.
+    await expect(options).toHaveText(['TypeScript', 'Python', 'Java', 'C#', 'Go'], { useInnerText: true });
+    // No badge is painted anywhere in the bar.
+    const badges = slider.locator('.language-abbr');
+    await expect(badges).toHaveCount(5);
+    for (const display of await badges.evaluateAll((els) => els.map((el) => getComputedStyle(el).display))) {
+      expect(display).toBe('none');
+    }
     const java = slider.getByRole('radio', { name: 'Java' });
-    const badge = java.locator('.language-abbr');
-    await expect(badge).toHaveText('Ja');
-    await expect(badge.locator('*')).toHaveCount(0);
     await expect(java).toHaveAttribute('title', 'Java');
-    const paint = await badge.evaluate((el) => {
-      const s = getComputedStyle(el);
-      return {
-        mask: s.maskImage !== 'none' ? s.maskImage : s.webkitMaskImage,
-        background: s.backgroundImage,
-        before: getComputedStyle(el, '::before').content,
-      };
-    });
-    expect(paint.mask).toBe('none');
-    expect(paint.background).toBe('none');
-    expect(paint.before).toMatch(/^(none|normal|"")$/);
-    const abbrs = await slider.locator('.language-abbr').allInnerTexts();
-    expect(abbrs.length).toBe(await slider.getByRole('radio').count());
-    expect(abbrs.every((a) => a.trim().length > 0)).toBe(true);
-    expect(new Set(abbrs).size).toBe(abbrs.length);
+    // innerText counts clipped text, so check that every unchecked name is
+    // actually painted at full width rather than visually hidden.
+    const hiddenWidths = await slider
+      .locator('.language-option:not(.active) .visually-hidden')
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    expect(hiddenWidths).toHaveLength(4);
+    for (const width of hiddenWidths) {
+      expect(width).toBeGreaterThan(10);
+    }
     // Selecting it still activates Java through the shared state.
     await java.click();
     await expect(java).toHaveAttribute('aria-checked', 'true');
     await expect(page).toHaveURL(/[?&]lang=java/);
   });
 
-  test('the checked segment keeps its full accessible name where the label is unpainted', async ({
+  test('under 1100px TypeScript reads TS and keeps its full accessible name', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1000, height: 900 });
+    await page.setViewportSize({ width: 1099, height: 900 });
     await page.goto(TOPIC_PAGE);
     const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
     const checked = slider.getByRole('radio', { name: 'TypeScript' });
@@ -88,7 +89,123 @@ test.describe('language toggle', () => {
     });
     expect(box.display).not.toBe('none');
     expect(box.width).toBeLessThanOrEqual(1);
+    // The badge text "TS" is what is painted; the other options keep their
+    // full names.
+    await expect(checked.locator('.language-abbr')).toBeVisible();
+    await expect(checked.locator('.language-abbr')).toHaveText('TS');
+    const radios = slider.getByRole('radio');
+    for (const [i, name] of ['Python', 'Java', 'C#', 'Go'].entries()) {
+      await expect(radios.nth(i + 1)).toHaveText(name, { useInnerText: true });
+    }
+    // innerText counts clipped text, so check that the four unchecked names
+    // are painted at real width in this band too.
+    const idleWidths = await slider
+      .locator('.language-option:not(.active) .visually-hidden')
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    expect(idleWidths).toHaveLength(4);
+    for (const width of idleWidths) {
+      expect(width).toBeGreaterThan(10);
+    }
+    // Unchecked, TypeScript still reads "TS" and keeps its full name.
+    await slider.getByRole('radio', { name: 'Python' }).click();
+    // The newly selected name is painted at real width as well.
+    expect(
+      await slider.getByRole('radio', { name: 'Python' }).locator('.language-label').evaluate((el) => el.getBoundingClientRect().width),
+    ).toBeGreaterThan(10);
+    await expect(slider.getByRole('radio').nth(0)).toHaveAccessibleName('TS TypeScript');
+    const ts = slider.getByRole('radio').nth(0);
+    await expect(ts.locator('.language-abbr')).toBeVisible();
+    await expect(ts.locator('.language-abbr')).toHaveText('TS');
+    expect(await ts.locator('.visually-hidden').evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
   });
+
+  for (const [theme, brand] of [
+    ['light', 'rgb(0, 108, 224)'],
+    ['dark', 'rgb(66, 180, 255)'],
+  ] as const) {
+    test(`the bar marks the selected language in the brand color (${theme})`, async ({ page }) => {
+      await page.addInitScript((t) => localStorage.setItem('vitepress-theme-appearance', t), theme);
+      await page.goto(TOPIC_PAGE);
+      const slider = page.getByRole('radiogroup', { name: 'Select programming language' });
+      const selected = slider.getByRole('radio', { name: 'TypeScript' });
+      await expect(selected).toHaveAttribute('aria-checked', 'true');
+      const paint = (el: Element) => {
+        const s = getComputedStyle(el);
+        return { color: s.color, shadow: s.boxShadow };
+      };
+      // The fill matches the track in light mode, so the cue is the brand
+      // text color plus a 2px inset underline in the same color.
+      expect(await selected.evaluate(paint)).toEqual({
+        color: brand,
+        shadow: `${brand} 0px -2px 0px 0px inset`,
+      });
+      const idle = await slider.getByRole('radio', { name: 'Python' }).evaluate(paint);
+      expect(idle.color).not.toBe(brand);
+      expect(idle.shadow).not.toContain('inset');
+    });
+  }
+
+  for (const [theme, rowFill, rowText, hoverFill] of [
+    ['light', 'rgb(0, 108, 224)', 'rgb(255, 255, 255)', 'rgb(233, 235, 237)'],
+    ['dark', 'rgb(66, 180, 255)', 'rgb(15, 20, 26)', 'rgb(42, 51, 64)'],
+  ] as const) {
+    test(`the phone menu stacks the languages as one segmented control (${theme})`, async ({ page }) => {
+      await page.addInitScript((t) => localStorage.setItem('vitepress-theme-appearance', t), theme);
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto(TOPIC_PAGE);
+      await page.locator('.VPNavBarHamburger').click();
+      const group = page
+        .locator('.VPNavScreen')
+        .getByRole('radiogroup', { name: 'Select programming language' });
+      await expect(group).toBeVisible();
+      const rows = group.getByRole('radio');
+      // The menu always shows the full names, TypeScript included.
+      await expect(rows).toHaveText(['TypeScript', 'Python', 'Java', 'C#', 'Go'], { useInnerText: true });
+      const layout = await group.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { direction: s.flexDirection, radius: s.borderTopLeftRadius, edge: s.borderTopWidth };
+      });
+      expect(layout).toEqual({ direction: 'column', radius: '8px', edge: '1px' });
+      const groupBox = (await group.boundingBox())!;
+      let previousBottom = -Infinity;
+      for (const row of await rows.all()) {
+        const box = (await row.boundingBox())!;
+        // One full-width row per language, stacked top to bottom, each 48px high.
+        expect(Math.round(box.height)).toBeGreaterThanOrEqual(48);
+        expect(box.width).toBeGreaterThanOrEqual(groupBox.width - 2);
+        expect(box.y).toBeGreaterThanOrEqual(previousBottom - 1);
+        previousBottom = box.y + box.height;
+      }
+      // The group must grow to hold every row: its overflow is hidden, so a
+      // fixed track height would clip the list to its first row.
+      const groupBottom = await group.evaluate((el) => el.getBoundingClientRect().bottom);
+      const lastBottom = await rows.last().evaluate((el) => el.getBoundingClientRect().bottom);
+      expect(lastBottom).toBeLessThanOrEqual(groupBottom + 0.5);
+      // The selected row is filled; the others are not.
+      const fill = (el: Element) => getComputedStyle(el).backgroundColor;
+      expect(await rows.nth(0).evaluate(fill)).toBe(rowFill);
+      expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).color)).toBe(rowText);
+      expect(await rows.nth(1).evaluate(fill)).toBe('rgba(0, 0, 0, 0)');
+      // Hovering an idle row paints the hover fill.
+      await rows.nth(2).hover();
+      await expect.poll(() => rows.nth(2).evaluate(fill)).toBe(hoverFill);
+      // The hovered row keeps the muted text the contrast suite measures on that fill.
+      const idleText = await rows.nth(3).evaluate((el) => getComputedStyle(el).color);
+      expect(await rows.nth(2).evaluate((el) => getComputedStyle(el).color)).toBe(idleText);
+      // Arrow keys move focus and selection together, so keyboard focus sits
+      // on the filled row. Its ring is drawn in the row's text color so it
+      // stays visible against the fill.
+      const ring = (el: Element) => {
+        const s = getComputedStyle(el);
+        return `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor} ${s.outlineOffset}`;
+      };
+      await rows.nth(0).focus();
+      await page.keyboard.press('ArrowDown');
+      await expect(rows.nth(1)).toBeFocused();
+      await expect(rows.nth(1)).toHaveAttribute('aria-checked', 'true');
+      expect(await rows.nth(1).evaluate(ring)).toBe(`solid 2px ${rowText} -4px`);
+    });
+  }
 
   test('renders at the same height as the search box', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
@@ -134,14 +251,33 @@ test.describe('language toggle', () => {
     await expect(page).toHaveURL(/\/v2\/docs\/aws-cdk-lib\.aws_sns\.Topic/);
   });
 
+  for (const [where, width] of [['bar', 1280], ['phone menu', 375]] as const) {
+    test(`forced colors still mark the selected language in the ${where}`, async ({ page }) => {
+      await page.emulateMedia({ forcedColors: 'active' });
+      await page.setViewportSize({ width, height: 812 });
+      await page.goto(TOPIC_PAGE);
+      let scope = page.locator('.VPNavBar');
+      if (where === 'phone menu') {
+        await page.locator('.VPNavBarHamburger').click();
+        scope = page.locator('.VPNavScreen');
+      }
+      const picker = scope.getByRole('radiogroup', { name: 'Select programming language' });
+      await expect(picker).toBeVisible();
+      const decoration = (el: Element) => getComputedStyle(el).textDecorationLine;
+      // Forced colors drops the fill and the inset underline, so the selected
+      // label is underlined in the system text color; the others are not.
+      expect(await picker.getByRole('radio', { name: 'TypeScript' }).evaluate(decoration)).toBe('underline');
+      expect(await picker.getByRole('radio', { name: 'Python' }).evaluate(decoration)).toBe('none');
+    });
+  }
+
   test('the search trigger does not move when the language changes', async ({
     page,
   }) => {
-    // A slider that renders the full label only for the ACTIVE segment tracks
-    // whichever label is selected. The search trigger is centered in the region
-    // between the slider and the fixed-width right controls, so a large
-    // label-width delta ("TypeScript" vs "Java") shifts the button by half of
-    // it. Only visible at >=1280px, where the label is shown at all.
+    // Every option paints its own label, so the slider's width must not
+    // depend on which one is selected. The search trigger is centered in the
+    // region between the slider and the fixed-width right controls, so any
+    // width change there would shift the button by half of it.
     //
     // Off-center is acceptable; MOVING is the bug. So this measures the
     // trigger's bounding-box x across a switch rather than its centeredness.
@@ -159,10 +295,10 @@ test.describe('language toggle', () => {
     );
     const before = await search.boundingBox();
 
-    // Java is the shortest label in the enabled set, so switching to it from
+    // Go is the shortest label in the enabled set, so switching to it from
     // TypeScript is the widest swing the row can produce.
-    await slider.getByRole('radio', { name: 'Java' }).click();
-    await expect(slider.getByRole('radio', { name: 'Java' })).toHaveAttribute(
+    await slider.getByRole('radio', { name: 'Go', exact: true }).click();
+    await expect(slider.getByRole('radio', { name: 'Go', exact: true })).toHaveAttribute(
       'aria-checked',
       'true',
     );

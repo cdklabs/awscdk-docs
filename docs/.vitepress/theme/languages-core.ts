@@ -11,11 +11,11 @@ export const LANGUAGE_LABELS: Record<TabLanguage, string> = {
   ts: 'TypeScript',
   python: 'Python',
   java: 'Java',
-  dotnet: 'C# / .NET',
-  go: 'Golang',
+  dotnet: 'C#',
+  go: 'Go',
 };
 
-/** Badge-width abbreviations for the language slider's segments. */
+/** Short forms; the bar paints `TS` for TypeScript below 1100px. */
 export const LANGUAGE_SHORT_LABELS: Record<TabLanguage, string> = {
   ts: 'TS',
   python: 'Py',

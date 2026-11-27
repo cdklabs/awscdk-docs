@@ -225,34 +225,85 @@
   }
 }
 
-/* Medium breakpoint (where VitePress itself compacts the navbar into
- * the "extra" flyout): take the active segment's text label out of the
- * painted row so the slider is abbreviations-only and a 3+ language build
- * never overflows. Visually hidden rather than display:none, so the label
- * keeps supplying the checked segment's full accessible name at this width
- * (the .search-tip rule below gets the same treatment for the same reason). */
-@media (min-width: 768px) and (max-width: 1279px) {
-  .VPNavBar .language-toggle .language-label {
+/* --- Language labels --- */
+/* Every option paints its language name (LANGUAGE_LABELS) as plain text in
+ * the bar and the menu; the badges are hidden. In the bar the selected option
+ * is brand-colored with a 2px inset underline, so it does not depend on the
+ * fill, which matches the track in light mode. */
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option .language-abbr {
+  display: none;
+}
+
+.VPNavBar .language-toggle .language-option.active {
+  color: var(--vp-c-brand-1);
+  box-shadow: inset 0 -2px 0 var(--vp-c-brand-1);
+}
+
+/* Two-letter labels ("C#", "Go", and "TS" below 1100px) under the medium
+ * breakpoint's 4px padding render just under 24px wide: hold every option at
+ * the WCAG 2.5.8 floor. */
+.VPNavBar .language-toggle .language-option {
+  min-width: 24px;
+  justify-content: center;
+}
+
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option:not(.active) .visually-hidden,
+:is(.VPNavBar, .VPNavScreen) .language-toggle .language-option.active .language-label {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: inherit;
+}
+
+/* Under 1100px the bar shortens TypeScript to "TS": the badge text is shown
+ * plain and the full name is visually hidden, so it still reaches assistive
+ * tech. The option's accessible name is then "TS TypeScript", which contains
+ * the visible "TS" (WCAG 2.5.3). The phone menu always shows "TypeScript". */
+@media (max-width: 1099px) {
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]) .language-abbr {
+    display: inline;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    color: inherit;
+  }
+
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]):not(.active) .visually-hidden,
+  .VPNavBar .language-toggle .language-option:has(> .language-abbr[data-lang="ts"]).active .language-label {
     position: absolute;
     width: 1px;
     height: 1px;
-    padding: 0;
     margin: -1px;
+    padding: 0;
     overflow: hidden;
     clip-path: inset(50%);
-    white-space: nowrap;
   }
+}
 
+/* Medium breakpoint (where VitePress itself compacts the navbar into
+ * the "extra" flyout): compact the row so a 3+ language build never
+ * overflows. The language labels stay visible here (see the label rules
+ * above); only TypeScript shortens, under 1100px. */
+@media (min-width: 768px) and (max-width: 1279px) {
   .VPNavBar .content-body > .language-toggle {
     margin-left: 4px;
   }
 
-  /* With the five-language set the abbreviations-only slider
-   * alone no longer keeps the row inside the viewport at ~1000px: compact the
-   * search button to its magnifier icon (VitePress's own narrow-viewport
-   * treatment). The "Search" text is visually hidden (not display:none)
-   * so it keeps supplying the button's accessible name; the
-   * keyboard-shortcut hint is decorative and dropped outright. */
+  /* The five full language names take more of the row than the slider
+   * leaves at these widths: compact the search button to its magnifier icon
+   * (VitePress's own narrow-viewport treatment) to make room. The "Search"
+   * text is visually hidden (not display:none) so it keeps supplying the
+   * button's accessible name; the keyboard-shortcut hint is decorative and
+   * dropped outright. */
   .VPNavBar .content-body:has(> .language-toggle) > .search .search-tip {
     position: absolute;
     width: 1px;
@@ -404,12 +455,102 @@
   }
 }
 
-/* Mobile nav screen: the language slider as a full-width row above the
- * theme picker row (see theme-picker.css for the picker's row). */
-.VPNavScreen .language-toggle {
-  margin-top: 12px;
-  width: 100%;
-  justify-content: center;
+/* --- Language picker in the phone menu --- */
+/* Mobile nav screen: the language picker as one vertical segmented control
+ * above the theme picker row (see theme-picker.css for the picker's row):
+ * one bordered group, a 48px row per language, the selected row filled.
+ * Five full names do not fit a 320px menu side by side; stacked, they do,
+ * and every row stays above the 44px touch-target minimum. The fill and the
+ * focus ring use the palette's brand color, so they follow custom.css. The
+ * other values are hand-written copies of the palette; each notes the
+ * custom.css value it mirrors, and test/theme.test.ts measures their contrast. */
+:root {
+  --seg-edge: #656871; /* no custom.css token */
+  --seg-on-bg: var(--vp-c-brand-1);
+  --seg-on-fg: #ffffff; /* = light --vp-c-bg */
+  --tb-muted: #424650; /* = light --vp-code-lang-color */
+  --tb-hover-bg: #e9ebed; /* no custom.css token */
+  --tb-focus: var(--vp-c-brand-1);
+}
+
+.dark {
+  --seg-edge: #a4a4ad; /* = dark --vp-code-lang-color */
+  --seg-on-fg: #0f141a; /* = light --vp-c-text-1 */
+  --tb-muted: #c6c6cd; /* = dark --vp-c-text-1 */
+  --tb-hover-bg: #2a3340; /* no custom.css token */
+}
+
+@media (max-width: 767px) {
+  /* [role] lifts this above the component's scoped .language-toggle rule, so
+   * the group height does not depend on stylesheet order. */
+  .VPNavScreen .language-toggle[role="radiogroup"] {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    height: auto;
+    margin-top: 12px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--seg-edge);
+    border-radius: 8px;
+    background: var(--vp-c-bg);
+  }
+
+  .VPNavScreen .language-toggle .language-option {
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 0;
+    border-top: 1px solid var(--vp-c-divider);
+    box-shadow: none;
+    background: transparent;
+    color: var(--tb-muted);
+  }
+
+  .VPNavScreen .language-toggle .language-option:first-child {
+    border-top: 0;
+  }
+
+  .VPNavScreen .language-toggle .language-option.active {
+    background: var(--seg-on-bg);
+    color: var(--seg-on-fg);
+  }
+
+  .VPNavScreen .language-toggle .language-option.active .language-label {
+    color: inherit;
+  }
+
+  .VPNavScreen .language-toggle .language-option:not(.active):hover {
+    background: var(--tb-hover-bg);
+    color: var(--tb-muted);
+  }
+
+  .VPNavScreen .language-toggle .language-option:focus-visible {
+    outline: 2px solid var(--tb-focus);
+    outline-offset: -4px;
+  }
+
+  /* Arrow keys select as they move, so focus usually sits on the filled row,
+   * where a brand-colored ring would vanish into the fill. Draw it in the
+   * row's text color there instead. */
+  .VPNavScreen .language-toggle .language-option.active:focus-visible {
+    outline-color: var(--seg-on-fg);
+  }
+}
+
+/* Forced colors (high contrast) replaces the selected option's author colors
+ * and drops its inset underline, which would leave five identical options.
+ * Underline the selected label in the system text color instead, which
+ * survives forced colors and does not change the option's size. */
+@media (forced-colors: active) {
+  :is(.VPNavBar, .VPNavScreen) .language-toggle .language-option.active {
+    text-decoration: underline 3px;
+    text-underline-offset: 4px;
+  }
 }
 
 /* Mobile nav screen: the navigation style as a full-width row under the

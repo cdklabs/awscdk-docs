@@ -793,11 +793,12 @@ describe('API kind badge palette', () => {
 
 });
 
-// The checked segment tints its abbreviation box with the brand soft layer over
-// the elevated surface, so neither the page background nor an opaque swatch is
-// the measurement. The accessibility gate audits the default scheme only.
-describe('language abbreviation contrast', () => {
+// The bar's selected option paints its label in brand-1 on the elevated segment
+// fill, so that pair is measured in both schemes. The accessibility gate audits
+// the default scheme only.
+describe('selected language label contrast', () => {
   const themeCss = readFileSync(resolve(THEME_DIR, 'custom.css'), 'utf-8');
+  const navCss = readFileSync(resolve(THEME_DIR, 'nav-controls.css'), 'utf-8');
   const toggle = readFileSync(resolve(THEME_DIR, 'LanguageToggle.vue'), 'utf-8');
   const lightBlock = themeCss.slice(themeCss.indexOf(':root {'), themeCss.indexOf('.dark {'));
   const darkBlock = themeCss.slice(themeCss.indexOf('.dark {'));
@@ -808,23 +809,6 @@ describe('language abbreviation contrast', () => {
       throw new Error(`variable ${name} not found as a hex color`);
     }
     return match[1];
-  };
-
-  const rgba = (block: string, name: string): number[] => {
-    const match = block.match(new RegExp(`${name}:\\s*rgba\\(([^)]+)\\)`));
-    if (!match) {
-      throw new Error(`variable ${name} not found as an rgba color`);
-    }
-    return match[1].split(',').map((part) => parseFloat(part.trim()));
-  };
-
-  const composite = (soft: number[], overHex: string): string => {
-    const [r, g, b, a] = soft;
-    const channels = [r, g, b].map((layer, i) => {
-      const base = parseInt(overHex.slice(1 + i * 2, 3 + i * 2), 16);
-      return Math.round(a * layer + (1 - a) * base);
-    });
-    return `#${channels.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
   };
 
   const luminance = (value: string): number => {
@@ -842,32 +826,57 @@ describe('language abbreviation contrast', () => {
 
   const AA = 4.5;
 
-  const surface = (block: string): string =>
-    composite(rgba(block, '--vp-c-brand-soft'), hex(block, '--vp-c-bg-elv'));
-
-  test('light mode: the checked abbreviation clears AA on its tinted box', () => {
-    expect(contrast(hex(lightBlock, '--vp-c-brand-2'), surface(lightBlock))).toBeGreaterThanOrEqual(AA);
+  test.each([
+    ['light', () => lightBlock],
+    ['dark', () => darkBlock],
+  ])('%s mode: the selected language label clears AA on its segment', (_mode, block) => {
+    expect(contrast(hex(block(), '--vp-c-brand-1'), hex(block(), '--vp-c-bg-elv'))).toBeGreaterThanOrEqual(AA);
   });
 
-  test('dark mode: the checked abbreviation clears AA on its tinted box', () => {
-    expect(contrast(hex(darkBlock, '--vp-c-brand-2'), surface(darkBlock))).toBeGreaterThanOrEqual(AA);
-  });
-
-  test('the unused brand step is under AA on that tinted box', () => {
-    expect(contrast(hex(lightBlock, '--vp-c-brand-1'), surface(lightBlock))).toBeLessThan(AA);
-  });
-
-  test('the checked abbreviation is colored by the pinned step on the pinned surface', () => {
+  test('the selected label is colored by the measured step on the measured surface', () => {
     // Holds the measurement to the tokens the rules actually carry.
-    const rule = (selector: string): string => {
-      const start = toggle.indexOf(selector);
+    const rule = (source: string, selector: string): string => {
+      const start = source.indexOf(selector);
       expect(start).toBeGreaterThan(-1);
-      return toggle.slice(start, toggle.indexOf('}', start));
+      return source.slice(start, source.indexOf('}', start));
     };
-    expect(rule('.language-option.active .language-abbr {')).toContain('color: var(--vp-c-brand-2)');
-    expect(rule('.language-option.active .language-abbr {')).toContain(
-      'background-color: var(--vp-c-brand-soft)',
+    expect(rule(navCss, '.VPNavBar .language-toggle .language-option.active {')).toContain(
+      'color: var(--vp-c-brand-1)',
     );
-    expect(rule('.language-option.active {')).toContain('background-color: var(--vp-c-bg-elv)');
+    expect(rule(toggle, '.language-option.active {')).toContain('background-color: var(--vp-c-bg-elv)');
+  });
+
+  // The phone menu's picker copies its row colors into nav-controls.css, so the
+  // pairs it paints are measured here from its own :root and .dark blocks.
+  const navLight = navCss.slice(navCss.indexOf('\n:root {'), navCss.indexOf('\n.dark {'));
+  const navDark = navCss.slice(navCss.indexOf('\n.dark {'));
+  const navDarkBlock = navDark.slice(0, navDark.indexOf('}'));
+
+  test.each([
+    ['light', () => navLight, () => lightBlock],
+    ['dark', () => navDarkBlock, () => darkBlock],
+  ])('%s mode: the phone menu rows clear their contrast targets', (_mode, nav, palette) => {
+    // Selected row: its text on the brand fill.
+    expect(contrast(hex(nav(), '--seg-on-fg'), hex(palette(), '--vp-c-brand-1'))).toBeGreaterThanOrEqual(AA);
+    // Unselected rows: muted text on the menu background.
+    expect(contrast(hex(nav(), '--tb-muted'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(7);
+    // Hovered idle rows: muted text on the hover fill.
+    expect(contrast(hex(nav(), '--tb-muted'), hex(nav(), '--tb-hover-bg'))).toBeGreaterThanOrEqual(AA);
+    // The group edge is a non-text boundary (WCAG 1.4.11).
+    expect(contrast(hex(nav(), '--seg-edge'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(3);
+  });
+
+  test('every phone-menu copy that names a palette token still equals it', () => {
+    // nav-controls.css marks each copy as `--name: #hex; /* = light|dark --token */`.
+    const copies = [...navCss.matchAll(/--[\w-]+:\s*(#[0-9a-fA-F]{6});\s*\/\*\s*=\s*(light|dark)\s+(--[\w-]+)\s*\*\//g)];
+    expect(copies.length).toBeGreaterThanOrEqual(4);
+    for (const [, value, scheme, token] of copies) {
+      const source = scheme === 'light' ? lightBlock : darkBlock;
+      expect({ token, scheme, value: value.toLowerCase() }).toEqual({
+        token,
+        scheme,
+        value: hex(source, token).toLowerCase(),
+      });
+    }
   });
 });

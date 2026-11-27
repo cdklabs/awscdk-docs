@@ -37,7 +37,7 @@ test.describe('README example translation', () => {
     const queueGroup = page.locator('.lang-tabs', { hasText: 'new sqs.Queue(this,' }).first();
     await expect(queueGroup).toBeVisible();
 
-    await navSlider(page).getByRole('radio', { name: 'Golang' }).click();
+    await navSlider(page).getByRole('radio', { name: 'Go', exact: true }).click();
 
     await expect(queueGroup).toHaveAttribute('data-active', 'go');
     const goVariant = queueGroup.locator('.lang-variant[data-lang="go"]');

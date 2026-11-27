@@ -522,8 +522,8 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     ]);
     const { markdown } = toAgentMarkdown(page);
     expect(markdown).toContain('Python:\n\n```python');
-    expect(markdown).toContain('TypeScript (shown for Java, Golang):\n\n```ts');
-    expect(markdown).not.toMatch(/^(Java|Golang):/m);
+    expect(markdown).toContain('TypeScript (shown for Java, Go):\n\n```ts');
+    expect(markdown).not.toMatch(/^(Java|Go):/m);
     expect(markdown.match(/```ts/g)).toHaveLength(1);
   });
 
@@ -535,7 +535,7 @@ describe('toAgentMarkdown keeps documentation text that looks like markup', () =
     ]);
     const { markdown } = toAgentMarkdown(page);
     expect(markdown).not.toMatch(/^Python:/m);
-    const order = ['TypeScript (shown for Python):\n\n```ts', 'Java:\n\n```java', 'Golang:\n\n```go']
+    const order = ['TypeScript (shown for Python):\n\n```ts', 'Java:\n\n```java', 'Go:\n\n```go']
       .map((label) => markdown.indexOf(label));
     expect(order.every((at) => at >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);

@@ -62,7 +62,7 @@ language.
 config at build time, so enabling a language is a config flip plus any
 language-specific snippet polish. Canonical display order is defined by
 `LANGUAGES` in `src/docgen/languages.ts` (TypeScript, Python, Java,
-C# / .NET, Golang); `DEFAULT_LANGUAGE`/`CANONICAL_URL_PREFIX` is `ts`.
+C#, Go); `DEFAULT_LANGUAGE`/`CANONICAL_URL_PREFIX` is `ts`.
 
 ### Algorithmic transliteration from jsii metadata
 

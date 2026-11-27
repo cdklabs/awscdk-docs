@@ -5,8 +5,8 @@ const LANGUAGES = [
   { radio: 'TypeScript', id: 'ts', marker: 'queueName' },
   { radio: 'Python', id: 'python', marker: 'queue_name' },
   { radio: 'Java', id: 'java', marker: 'Builder.create' },
-  { radio: 'C# / .NET', id: 'dotnet', marker: 'new CfnQueueProps' },
-  { radio: 'Golang', id: 'go', marker: 'awssqs.NewCfnQueue' },
+  { radio: 'C#', id: 'dotnet', marker: 'new CfnQueueProps' },
+  { radio: 'Go', id: 'go', marker: 'awssqs.NewCfnQueue' },
 ] as const;
 
 function navSlider(page: Page) {
@@ -50,7 +50,7 @@ test.describe('construct library overview', () => {
     test(`code examples follow every language in the navbar slider at ${path}`, async ({ page }) => {
       await page.goto(path);
       for (const { radio, id, marker } of LANGUAGES) {
-        await navSlider(page).getByRole('radio', { name: radio }).click();
+        await navSlider(page).getByRole('radio', { name: radio, exact: true }).click();
         await expectOnlyVisible(page, id);
         await expect(examples(page).first().locator(`.lang-variant[data-lang="${id}"]`)).toContainText(marker);
       }

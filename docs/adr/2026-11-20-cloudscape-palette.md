@@ -60,7 +60,9 @@ Hand-written copies follow the palette: the decoupled code-theme chrome in
 `code-theme.css` mirrors the new surfaces and dividers, the signature keyword
 color and the API badge pair use the hover blue (`#001a99` / `#75cfff` on
 `#e6f0fc` / `#1d3549`), and the member-row flash starts at `#f2f8fd` light and
-`#1b2a3a` dark.
+`#1b2a3a` dark. The phone-menu language picker in `nav-controls.css` copies
+its edge, row text, hover fill and selected-row text from the palette; each
+copy notes the token it mirrors, or that it has none.
 
 Every variable in `:root` that sets a text color MUST be re-declared in `.dark`
 with an explicit value, not a `var()` reference. `custom.css` loads after the
@@ -81,4 +83,7 @@ the light page and 7.44:1 on the dark page, and body text 18.5:1 and 9.99:1.
 - Contrast pins in the theme and accessibility tests read both sides of each
   pair from these tokens. Composited backgrounds, such as code chips and tints,
   are computed from the surface tokens and VitePress's gray soft layer, so a
-  surface change re-measures every pair.
+  surface change re-measures every pair. The phone-menu picker's copies in
+  `nav-controls.css` are measured as written; a test checks that each copy
+  naming a token still equals that token, so a palette change fails it until
+  the copy is updated.

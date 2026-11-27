@@ -174,7 +174,7 @@ test.describe('navbar layout', () => {
     expect(focusedNavControls).not.toContain('extra navigation');
   });
 
-  for (const width of [768, 800, 960]) {
+  for (const width of [768, 800, 960, 1100, 1279]) {
     test(`the row stays inside the viewport at ${width}px`, async ({ page }) => {
       // Below 960px the title shares the row with the controls and yields its
       // width; from 960px it is the fixed sidebar lane and the badge and gear

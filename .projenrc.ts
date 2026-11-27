@@ -1006,7 +1006,7 @@ project.jest!.config.collectCoverageFrom = [
 ];
 // The coverage floor sits a little under today's numbers so the full suite fails when coverage drops.
 // It is passed on the test task, not the Jest config, so a bare `npx jest path` run is not held to it.
-const COVERAGE_FLOOR = { global: { lines: 82, statements: 82, branches: 92, functions: 90 } };
+const COVERAGE_FLOOR = { global: { lines: 87, statements: 87, branches: 92, functions: 93 } };
 const jestStep = project.testTask.steps.findIndex((step) => step.execArgs?.[0] === 'jest');
 project.testTask.updateStep(jestStep, {
   ...project.testTask.steps[jestStep],
