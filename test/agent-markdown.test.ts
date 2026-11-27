@@ -21,7 +21,14 @@ describe('withFrontmatterKey', () => {
 
 // A page shaped like the real emission: frontmatter, breadcrumb nav, badged H1 with a Pagefind weight span, a
 // LanguageTabs block with one variant per language, inline variant spans in a table, a container and the trailing
-// hidden filter spans.
+// hidden filter spans. The H1 and the chip row come from the renderer, so the fixture cannot drift from the markup
+// a type page actually carries.
+const [BUCKET_H1, ...BUCKET_HEADER] = renderTypeHeader({
+  name: 'Bucket',
+  kind: { text: 'L2 construct', kindClass: 'api-badge-l2' },
+  stability: 'stable',
+});
+
 const PAGE = [
   '---',
   'title: "Bucket"',
@@ -35,15 +42,8 @@ const PAGE = [
   '',
   '</nav>',
   '',
-  '# <span data-pagefind-weight="10">Bucket</span> <Badge type="tip" class="api-badge" text="Added in v2.200.0" />',
-  '',
-  '<div class="type-header">',
-  '<div class="type-header-row" data-pagefind-ignore><span class="type-chip type-chip-kind api-badge-l2">L2'
-    + ' construct</span><span class="type-chip type-chip-stability type-chip-stable">Stable</span>'
-    + '<span class="type-header-gap"></span><span class="type-actions"><span class="type-action-copy"></span>'
-    + '<span class="type-action-fav"></span></span></div>',
-  '</div>',
-  '',
+  `${BUCKET_H1} <Badge type="tip" class="api-badge" text="Added in v2.200.0" />`,
+  ...BUCKET_HEADER,
   'An S3 bucket with helpers.',
   '',
   '::: warning Separate package',
