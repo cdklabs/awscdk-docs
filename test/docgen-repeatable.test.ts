@@ -20,10 +20,11 @@ function tree(dir: string): Map<string, Buffer> {
   return files;
 }
 
-/** The `date` frontmatter value of a generated page, or undefined when it has none. */
+/** The `date` frontmatter value of a generated page, or undefined when it has no closed frontmatter or no `date`. */
 function dateOf(page: string): string | undefined {
-  const head = page.slice(0, page.indexOf('\n---\n', 3));
-  const line = head.split('\n').find((l) => l.startsWith('date: '));
+  const end = page.indexOf('\n---\n', 3);
+  if (!page.startsWith('---\n') || end < 0) return undefined;
+  const line = page.slice(0, end).split('\n').find((l) => l.startsWith('date: '));
   return line ? JSON.parse(line.slice('date: '.length)) : undefined;
 }
 
