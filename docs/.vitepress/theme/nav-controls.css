@@ -543,9 +543,9 @@
 }
 
 /* From 960px the title is the fixed sidebar lane, so the row cannot borrow
- * from it; 960-974px falls 15px short. The badge and the gear give up their
- * 8px gaps across the medium band (the badge has its own 8px padding) and
- * the row fits at 960px with 1px to spare. */
+ * from it. The badge and the gear give up their 8px gaps across the medium
+ * band (the badge has its own padding) so the row fits from 960px; the e2e
+ * row-fit tests pin it. */
 @media (min-width: 768px) and (max-width: 1279px) {
   .VPNavBar .content-body > .version-badge,
   .VPNavBar .content-body > .SettingsMenu {
