@@ -1117,7 +1117,7 @@ describe('docgen generation', () => {
     }
   });
 
-  test('every type page states its stability as a chip, stable ones included', () => {
+  test('a stable, experimental or deprecated type states its stability as a chip', () => {
     // The banner is keyed on the PACKAGE and says nothing on a stable one, so
     // the chip is what makes a stable type distinguishable from a page that
     // does not mention stability.
@@ -1136,6 +1136,14 @@ describe('docgen generation', () => {
     // A type marked experimental inside the stable library gets the chip even
     // though its package-level banner does not fire.
     expect(chip('aws-cdk-lib.interfaces.aws_s3.IBucketRef.md')).toBe('experimental');
+
+    // An L1 type is `external` in jsii, which is not a stability this project
+    // can claim, so its row carries the kind chip alone. The kind assertion is
+    // the positive control: without it the absence below would also hold for a
+    // page that rendered no row at all.
+    const cfn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
+    expect(cfn).toContain('<span class="type-chip type-chip-kind api-badge-l1">L1 construct</span>');
+    expect(cfn).not.toContain('type-chip-stability');
   });
 
   test('type pages mark experimental types in the metadata block and stable ones not at all', () => {
