@@ -21,7 +21,7 @@ import { escapeVueText, removeAll } from './escape.js';
 import { FENCE_LANG, withoutLiteralsAndComments } from './examples.js';
 import { codeFence, mapProse, tokenizeFences } from './fences.js';
 import { injectBadges } from './freshness.js';
-import { BreadcrumbSegment, renderBreadcrumb } from './header.js';
+import { BreadcrumbSegment, renderBreadcrumb, renderTypeHeader } from './header.js';
 import {
   addedInBadge,
   emptyLedger,
@@ -990,7 +990,12 @@ function renderTypePage(
   if (spec.isEnumType(type)) {
     return renderEnumPage({ type, assembly, index, usage, linkFor, languages, tablet, emitExamples, history });
   }
-  return [`# ${entry.name}`, '', entry.summary, ''].join('\n');
+  // Exhaustiveness fallback, unreachable today: `@jsii/spec` declares `Type` as class | interface | enum, and the
+  // three guards above cover all three. It still emits the chip row, because `typePageFrontmatter` writes
+  // `typeHeader: true` on EVERY type page and the theme reads that as a promise: `CopyMarkdown.vue` waits for the
+  // row to teleport into and `FavoriteStar.vue` renders the star only inside it. A row-less page would hide both
+  // for good. The chip states the entry's own kind, which is the classification the module list and sidebar use.
+  return [...renderTypeHeader({ name: entry.name, kind: { text: entry.kind } }), entry.summary, ''].join('\n');
 }
 
 /**

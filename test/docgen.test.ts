@@ -1144,6 +1144,10 @@ describe('docgen generation', () => {
     const cfn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
     expect(cfn).toContain('<span class="type-chip type-chip-kind api-badge-l1">L1 construct</span>');
     expect(cfn).not.toContain('type-chip-stability');
+
+    // A deprecated type chips the third stability value, from the same page the
+    // struck title and the deprecation note are asserted on elsewhere.
+    expect(chip('aws-cdk-lib.aws_cloudwatch.Statistic.md')).toBe('deprecated');
   });
 
   test('type pages mark experimental types in the metadata block and stable ones not at all', () => {

@@ -79,6 +79,18 @@ describe('type page header below the tablet breakpoint', () => {
     const mobileRules = rulesInMediaBlock(css, '@media (max-width: 959px)');
     expect(mobileRules.get('.type-breadcrumb a')).toContain('display: inline-flex');
   });
+
+  test('the linking stability chip reaches the touch target through an overlay, not its own box', () => {
+    const mobileRules = rulesInMediaBlock(css, '@media (max-width: 959px)');
+    // The chip keeps its 24px painted height next to the kind chip, so the
+    // 44px comes from a positioned pseudo-element the overlay anchors.
+    expect(mobileRules.get('.vp-doc a.type-chip-stability')).toContain('position: relative');
+    const overlay = mobileRules.get('.vp-doc a.type-chip-stability::before');
+    expect(overlay).toContain('position: absolute');
+    // Vertical only: 10px above and below the 24px chip reaches 44px, and 0 to
+    // the sides keeps the area off the neighboring chip and the row's gap.
+    expect(overlay).toContain('inset: -10px 0');
+  });
 });
 
 describe('responsive mobile layout', () => {
