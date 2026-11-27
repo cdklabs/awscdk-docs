@@ -66,8 +66,8 @@ divider.
 **Both chip edges are `currentColor`.** The edge is then the ink, so whatever
 clears a chip's label against its fill clears its edge against that fill too,
 and the edge needs no tuning pass of its own. Every chip's ink/fill pair is
-pinned by hex: the nine kind pairs in the palette, the three stability pairs,
-and the neutral pair a plain class or a level-less construct takes. That last
+pinned by hex: the eight per-kind pairs in the palette, the three stability
+pairs, and the neutral pair a plain class or a level-less construct takes. That last
 one is why the neutral chip has an opaque `--th-chip-neutral-bg` rather than
 the translucent `--vp-c-default-soft` it could have inherited: a translucent
 fill has to be composited against the page before its contrast can be read,

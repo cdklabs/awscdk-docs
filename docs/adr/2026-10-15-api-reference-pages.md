@@ -703,14 +703,16 @@ No anchor carries a numeric `-1` disambiguation suffix.
 ### Kind palette
 
 The kind travels as a class on the header row's kind chip
-(`class="type-chip type-chip-kind api-badge-l2"`), giving each of nine kinds a
+(`class="type-chip type-chip-kind api-badge-l2"`), giving each of eight kinds a
 distinct hue, declared once as `--cdk-badge-<kind>-{bg,text,border}`
 in `:root` and shadowed in `.dark` (an unshadowed `:root` color wins in dark
-mode). All eighteen contrast pairs clear WCAG AA, and every dark pair clears
-7:1 (narrowest 8.02:1). In light mode every pair clears 7:1 except L3 (6.49:1)
-and Facade (6.73:1): darkening Struct, Enum and L1 is what closed the last
-three, leaving L1 the narrowest of those at 7.79:1. Every pair is pinned by hex
-in `test/theme.test.ts`.
+mode). A plain class and a level-less construct carry no `api-badge-*` class at
+all: their chip reads the neutral `--th-chip-neutral-{bg,text}`, the ninth row
+of the table below. All eighteen contrast pairs, nine rows in two schemes,
+clear WCAG AA, and every dark pair clears 7:1 (narrowest 8.02:1). In light mode
+every pair clears 7:1 except L3 (6.49:1) and Facade (6.73:1): darkening Struct,
+Enum and L1 is what closed the last three, leaving L1 the narrowest of those at
+7.79:1. Every pair is pinned by hex in `test/theme.test.ts`.
 
 | Kind | Light text / bg | Dark text / bg |
 |---|---|---|
