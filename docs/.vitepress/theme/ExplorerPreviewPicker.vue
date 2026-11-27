@@ -114,4 +114,13 @@ function choose(value: ExplorerPreview): void {
   background-color: var(--vp-c-bg-elv);
   box-shadow: var(--vp-shadow-1);
 }
+
+/* Forced colors replace the author colors, so the pressed segment keeps a system color. */
+@media (forced-colors: active) {
+  .explorer-preview-option.active {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}
 </style>

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CFN_QUEUE_PAGE, QUEUE_PAGE } from './fixture.js';
+import { CFN_QUEUE_PAGE, QUEUE_PAGE, VERSIONS_PAGE } from './fixture.js';
 
 const PREVIEW_KEY = 'cdk-docs-explorer-preview';
 const VIEW_KEY = 'cdk-docs-explorer-view';
@@ -187,7 +187,7 @@ test.describe('explorer preview on desktop', () => {
     ['/', 'the home page'],
     ['/skills', 'the skills page'],
   ] as const) {
-    for (const width of [960, 1000, 1280]) {
+    for (const width of [960, 1000, 1024, 1280]) {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 });
         await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
@@ -223,6 +223,28 @@ test.describe('explorer preview on desktop', () => {
     }
   }
 
+  test('the Favorites view keeps the tree and filter until the view has rendered', async ({ page }) => {
+    // Without the theme's scripts the heading never renders, which is the window before hydration.
+    await page.route('**/*.js', (route) => route.abort());
+    await page.addInitScript(
+      ([preview, view]) => {
+        window.localStorage.setItem(preview, 'on');
+        window.localStorage.setItem(view, 'favorites');
+      },
+      [PREVIEW_KEY, VIEW_KEY],
+    );
+    await page.goto(QUEUE_PAGE);
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-view', 'favorites');
+    await expect(page.locator('.favorites-static-heading')).toHaveCount(0);
+    await expect(page.locator('.VPSidebar .nav-filter')).toBeVisible();
+    // Positive control: the same rule without the heading condition hides the filter.
+    await page.addStyleTag({
+      content:
+        'html[data-explorer-preview="on"][data-explorer-view="favorites"] .VPSidebar :is(.nav-filter, .api-sidebar) { display: none; }',
+    });
+    await expect(page.locator('.VPSidebar .nav-filter')).toBeHidden();
+  });
+
   test('in forced colors the selected rail button keeps a visible marker and the other does not', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' });
     await open(page, { [PREVIEW_KEY]: 'on' });
@@ -239,6 +261,15 @@ test.describe('explorer preview on desktop', () => {
     expect(selected.marker, 'the selected marker is not transparent').not.toMatch(/, 0\)$/);
     expect(selected.marker, 'the selected marker differs from the rail background').not.toBe(selected.background);
     expect((await colors('Favorites')).marker, 'the other button has no marker').toMatch(/, 0\)$/);
+    await page.locator('.VPNavBar .settings-trigger').click();
+    const panel = page.locator('#settings-menu-panel');
+    // The pressed switch segment stands out from the panel, since the gear panel is the only cue on pages without the rail.
+    const segment = (name: string) =>
+      panel
+        .getByRole('button', { name, exact: true })
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+    const panelBackground = await panel.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await segment('On'), 'the pressed On segment differs from the panel background').not.toBe(panelBackground);
   });
 
   for (const [pagePath, label] of [
@@ -264,13 +295,13 @@ test.describe('explorer preview on desktop', () => {
   test('the title lane is 392px on every page with the preview on and 320px with it off', async ({ page }) => {
     const lane = async () => (await page.locator('.VPNavBar .container > .title').boundingBox())!.width;
     await open(page, { [PREVIEW_KEY]: 'on' });
-    for (const path of [QUEUE_PAGE, '/', '/skills']) {
+    for (const path of [QUEUE_PAGE, '/', '/skills', VERSIONS_PAGE]) {
       await page.goto(path);
       expect(await lane(), `${path} with the preview on`).toBe(392);
     }
     const off = await page.context().newPage();
     await open(off, { [PREVIEW_KEY]: 'off' });
-    for (const path of [QUEUE_PAGE, '/', '/skills']) {
+    for (const path of [QUEUE_PAGE, '/', '/skills', VERSIONS_PAGE]) {
       await off.goto(path);
       expect((await off.locator('.VPNavBar .container > .title').boundingBox())!.width, `${path} with it off`).toBe(320);
     }

@@ -103,7 +103,7 @@ re-implement the navbar the custom controls stay mounted in the slots the theme
 offers and are repositioned with flex `order` in `nav-controls.css`.
 `nav-bar-content-after` renders `[LanguageToggle, VersionBadge, SettingsMenu]`;
 `nav-screen-content-after` (the mobile hamburger menu) renders
-`[LanguageToggle, ThemePicker, NavStylePicker]`. The navigation style row is
+`[LanguageToggle, ThemePicker, NavStylePicker, ExplorerPreviewPicker]`. The navigation style row is
 specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.md).
 
 - **Language slider leads** (`.language-toggle { order: -2 }`), taking the slot
@@ -215,7 +215,7 @@ rule. The `.title` selector uses a child chain (`> .wrapper > .container >
 .title`) because these unscoped rules would otherwise also match the anchor
 inside `VPNavBarTitle`.
 
-With the Explorer preview on, the title lane is 392px on every page; the geometry stays page-independent within each mode.
+With the Explorer preview on, `--vp-sidebar-width` is 392px on every page, so the title lane, the `/versions` content and its footer all start 72px further right; the geometry stays page-independent within each mode. From 960px to 1023px the nav links' side padding drops to 8px, an exception to the whole-band rule above. The nav screen also carries `ExplorerPreviewPicker` after `NavStylePicker`.
 
 These geometry rules are **not** gated on the slider's presence — they are page
 geometry, not control arrangement, so a single-language build also gets one
