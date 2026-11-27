@@ -343,6 +343,60 @@ test.describe('navbar layout', () => {
     });
   }
 
+  // A single-language build renders no language toggle, so the rules gated on
+  // `.content-body:has(> .language-toggle)` do not apply and the search keeps
+  // its label and padding at 768-959px. The fixture is multi-language, so the
+  // toggle is removed from the DOM before the row is measured.
+  test('a single-language bar fits, does not overlap and keeps 44px targets', async ({ page }) => {
+    for (const width of [959, 800, 768, 375]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(TOPIC_PAGE);
+      await page.locator('.VPNavBar .language-toggle').evaluateAll((els) => els.forEach((el) => el.remove()));
+      await expect(page.locator('.VPNavBar .language-toggle')).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth), `scroll width at ${width}px`).toBe(
+        width,
+      );
+      const boxes = await page.evaluate(() => {
+        const nodes = [
+          document.querySelector('.VPNavBar .VPNavBarTitle > a.title'),
+          ...document.querySelectorAll('.VPNavBar .content-body > *'),
+        ];
+        return nodes
+          .filter((el): el is HTMLElement => el instanceof HTMLElement)
+          .map((el) => ({ name: el.className.split(' ')[0] || el.tagName, box: el.getBoundingClientRect() }))
+          .filter(({ box }) => box.width > 0 && box.height > 0)
+          .map(({ name, box }) => ({ name, left: box.left, right: box.right }))
+          .sort((a, b) => a.left - b.left);
+      });
+      expect(boxes.length, `controls at ${width}px`).toBeGreaterThanOrEqual(3);
+      for (let i = 1; i < boxes.length; i++) {
+        expect(boxes[i].left, `${boxes[i - 1].name} overlaps ${boxes[i].name} at ${width}px`).toBeGreaterThanOrEqual(
+          boxes[i - 1].right - 1,
+        );
+      }
+      expect(boxes[boxes.length - 1].right, `last control at ${width}px`).toBeLessThanOrEqual(width);
+      const atLeast44 = async (name: string, selector: string) => {
+        const box = (await page.locator(selector).boundingBox())!;
+        expect(box, `${name} is painted at ${width}px`).not.toBeNull();
+        expect(Math.round(box.width), `${name} width at ${width}px`).toBeGreaterThanOrEqual(44);
+        expect(Math.round(box.height), `${name} height at ${width}px`).toBeGreaterThanOrEqual(44);
+      };
+      await atLeast44('logo link', '.VPNavBar .VPNavBarTitle > a.title');
+      await atLeast44('version', '.VPNavBar .content-body > .version-badge');
+      await atLeast44('search', '.VPNavBar .content-body > .search .nav-search-btn-wait');
+      const search = page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait');
+      if (width >= 768) {
+        await atLeast44('gear', '.VPNavBar .content-body > .SettingsMenu .settings-trigger');
+        // Without the toggle the search stays a labeled pill, not a 44px disc.
+        await expect(search.locator('.search-tip')).toBeVisible();
+        expect(await search.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('20px');
+        expect((await search.boundingBox())!.width).toBeGreaterThan(44);
+      } else {
+        await expect(search.locator('.search-tip')).toBeHidden();
+      }
+    }
+  });
+
   test('from 768px up the bar is one row and the first tab reads TS below 1100px', async ({ page }) => {
     for (const width of [1099, 1024, 960, 900, 768]) {
       await page.setViewportSize({ width, height: 800 });

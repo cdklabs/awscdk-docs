@@ -280,9 +280,8 @@
   --tb-muted: #c6c6cd; /* = dark --vp-c-text-1 */
   --tb-hover-bg: #2a3340; /* no custom.css token */
   /* The dark idle ink equals --vp-c-text-1, so hover needs its own, lighter
-   * text (10.7:1 on the hover fill) for the change to read as more than a
-   * fill. No custom.css token. */
-  --tb-hover-fg: #ebebf0;
+   * text (10.7:1 on the hover fill) for the change to read as more than a fill. */
+  --tb-hover-fg: #ebebf0; /* = dark --vp-code-color */
   --tb-input-border: #a4a4ad; /* = dark --vp-code-lang-color */
 }
 
