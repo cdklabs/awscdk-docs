@@ -56,6 +56,24 @@ test.describe('Copy Markdown control', () => {
     await expect(page.locator('.copy-markdown')).toHaveCount(1);
   });
 
+  test('a client-side navigation to an overview hands the control back out of the row', async ({ page }) => {
+    // The row the control was teleported into no longer exists on the new
+    // page, so the Teleport has to be disabled and the control fall back to
+    // its standalone placement. Until the mount is re-resolved it still points
+    // at a removed span, which no assertion on the type page can see.
+    await open(page);
+    await expect(page.locator('.type-header-row .type-action-copy .copy-markdown')).toHaveCount(1);
+
+    await page.locator('.type-breadcrumb a').last().click();
+    await expect(page.locator('.vp-doc h1')).toHaveText(/Construct Library/);
+    await expect(page.locator('.type-header-row')).toHaveCount(0);
+
+    const control = page.locator('.copy-markdown');
+    await expect(control).toHaveCount(1);
+    await expect(control).toBeVisible();
+    await expect(control).toHaveClass(/standalone/);
+  });
+
   test('copies the page Markdown and shows Copied, then restores the label', async ({ page, request }) => {
     await open(page);
     const expected = await (await request.get(twin)).text();

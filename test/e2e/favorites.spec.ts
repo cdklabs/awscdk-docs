@@ -164,6 +164,27 @@ test.describe('favorite pages', () => {
     await expect(page.locator('.favorite-star-button')).toHaveCount(1);
   });
 
+  test('a client-side navigation to an overview hands the star back to the breadcrumb bar', async ({ page }) => {
+    // The row the star was teleported into no longer exists on the new page,
+    // so the mount has to be re-resolved to `breadcrumb-fav`. Until that
+    // happens the Teleport still points at a removed span, which no assertion
+    // on the type page can see.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(TOPIC_PAGE);
+    await expect(page.locator('.type-header-row .type-action-fav .favorite-star')).toHaveCount(1);
+
+    await page.locator('.type-breadcrumb a').last().click();
+    await expect(page.locator('.vp-doc h1')).toHaveText(/Construct Library/);
+    await expect(page.locator('.type-header-row')).toHaveCount(0);
+
+    const star = page.locator('.type-breadcrumb .breadcrumb-fav .favorite-star-button');
+    await expect(star).toBeVisible();
+    await expect(page.locator('.favorite-star-button')).toHaveCount(1);
+    // And it is styled for the bar it landed in, not still for the row.
+    await expect(page.locator('.favorite-star')).toHaveClass(/in-bar/);
+    await expect(page.locator('.favorite-star')).not.toHaveClass(/in-row/);
+  });
+
   test('the star keeps a 44px target on a narrow viewport', async ({
     page,
   }) => {

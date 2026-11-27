@@ -364,7 +364,10 @@ test.describe('type page header', () => {
     // stock one, so that pull has to be capped where the gutter is narrowest
     // or the glyph lands off the left edge of the screen. The anchor is hidden
     // until hover or focus, which makes a keyboard user the one who meets it.
-    for (const width of [320, 375, 500, 767, 1280]) {
+    // The widths cover both title sizes and every gutter width the doc uses,
+    // including 768px, where the 42px title starts against the narrowest
+    // gutter it ever meets.
+    for (const width of [320, 375, 500, 639, 767, 768, 959, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(QUEUE_PAGE);
       const anchor = page.locator('h1 a.header-anchor');

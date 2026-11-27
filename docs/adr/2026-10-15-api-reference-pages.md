@@ -90,8 +90,9 @@ the level in order, first match wins:
    `CfnOutput`, `CfnParameter`, etc. lacking CFN metadata). Last so an
    override or genuine `Resource` descendant has already matched.
 
-Constructs matching none (e.g. `constructs.Construct` itself, `CfnJson`) get
-no badge rather than a wrong one. The level is also a sort key: `byLevelThenName`
+Constructs matching none (e.g. `constructs.Construct` itself, `CfnJson`) take
+the neutral `Construct` chip, with no `api-badge-*` color class, rather than a
+chip claiming a level they do not have. The level is also a sort key: `byLevelThenName`
 (`src/docgen/ordering.ts`) ranks L3 > L2 > L1 > unleveled in sidebar leaf
 lists and module type lists, so the overrides and the `CfnElement` subtree reorder
 listings too. Source links pin the assembly version tag with any prerelease
@@ -108,7 +109,7 @@ see [docgen sources](./2026-10-15-docgen-sources-and-modules.md). Implementor
 discovery walks each class's base chain and takes the transitive closure of
 every `implements` clause, so `Bucket` counts as an implementor of `IResource`
 even when the clause lives on an ancestor. `renderMixinPage` emits name with a
-`Mixin` badge, summary, methods, properties, and the implementing classes as
+`Mixin` kind chip, summary, methods, properties, and the implementing classes as
 the hierarchy block's `implemented by` row. The heuristic is intentionally
 inclusive: any implemented behavioral interface gets a useful page. Marker
 interfaces get no mixin page but still appear in module type lists as `Interface`.
@@ -187,11 +188,14 @@ measurement step. The breadcrumb is generated per language prefix, so it stays
 correct under the multi-language URL scheme
 ([multi-language](./2026-10-15-multi-language.md)).
 
-The favorite star is an icon-only button that `<Teleport>`s into a
-`breadcrumb-fav` mount the breadcrumb bar emits, sharing the breadcrumb's row.
-The target is re-resolved on `onContentUpdated`; where no mount exists (module
-overview pages) the Teleport is disabled and the star keeps its standalone
-`doc-before` placement.
+The favorite star is an icon-only button that `<Teleport>`s into whichever
+mount the page offers. A type page carries a chip row, so the star goes to its
+`type-action-fav` spot beside Copy Markdown
+([chip row](./2026-11-26-type-page-header-chip-row.md)); a module or submodule
+overview has no row, so the star goes to the `breadcrumb-fav` spot the
+breadcrumb bar emits and shares that row. The target is re-resolved on
+`onContentUpdated`, and a page offering neither mount leaves the Teleport
+disabled, which keeps the star in its standalone `doc-before` placement.
 
 ### One type-hierarchy block: every relation as a row
 
@@ -846,7 +850,8 @@ outline, only overview pages suppress it.
   losslessly instead.
 - **A `copy`-event handler rewriting clipboard data** for the FQN breadcrumb —
   makes the clipboard disagree with the DOM and fails for readers who do not
-  fire the event; CSS padding achieves it for free.
+  fire the event; collapsed join dots and CSS-drawn chevrons achieve it for
+  free.
 - **A CSS `max-width` cap on the property type** — a second number that binds
   where nothing is wrong; the shrink weighting orders type-over-description in
   one declaration.
