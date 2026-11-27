@@ -253,8 +253,9 @@
 }
 
 /* The Experimental chip is the only chip that links. It keeps the chip's own
-   ink rather than the link color `.vp-doc a` would give it. */
+   ink and weight rather than the color and the 500 `.vp-doc a` would give it. */
 .vp-doc a.type-chip-stability {
+  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -295,9 +296,11 @@
 }
 
 /* The reason is Markdown, so markdown-it wraps it in a paragraph. Drop that
-   paragraph's `.vp-doc p` margins: the note's own padding owns the spacing. */
+   paragraph's `.vp-doc p` margins: the note's own padding owns the spacing. Its
+   28px line height goes too, so the reason reads at the note's own 20px. */
 .vp-doc .type-deprecated-note p {
   margin: 0;
+  line-height: inherit;
 }
 
 /* A deprecation reason can carry a web link, which `escapeProse` turns into a

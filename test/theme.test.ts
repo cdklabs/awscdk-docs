@@ -754,7 +754,11 @@ describe('API kind badge palette', () => {
       // `test/e2e/type-page-header.spec.ts`.
       expect(bare).toContain('.vp-doc a.type-chip-experimental');
       expect(bare).toContain('.vp-doc a.type-chip-experimental:hover');
-      expect(ruleBody('.vp-doc a.type-chip-stability')).toContain('text-decoration: underline');
+      const linking = ruleBody('.vp-doc a.type-chip-stability');
+      expect(linking).toContain('text-decoration: underline');
+      // `.vp-doc a` sets weight 500 and outranks `.type-chip`, so the chip's
+      // own 700 is restated here to keep both chips at one weight.
+      expect(linking).toContain('font-weight: 700');
     });
 
     test('a deprecated title is struck in the deprecation tone', () => {
@@ -767,9 +771,13 @@ describe('API kind badge palette', () => {
       const note = exactRuleBody('.type-deprecated-note');
       expect(note).toContain('border-left: 4px solid var(--th-dep-edge)');
       expect(note).toContain('background-color: var(--th-dep-bg)');
+      expect(note).toContain('line-height: 20px');
       expect(exactRuleBody('.type-deprecated-label')).toContain('var(--th-dep-text)');
-      // The reason renders as Markdown, so its paragraph drops the default theme's margins.
-      expect(exactRuleBody('.vp-doc .type-deprecated-note p')).toContain('margin: 0');
+      // The reason renders as Markdown, so its paragraph drops the default theme's
+      // margins and its 28px line height, which would beat what the note declares.
+      const paragraph = exactRuleBody('.vp-doc .type-deprecated-note p');
+      expect(paragraph).toContain('margin: 0');
+      expect(paragraph).toContain('line-height: inherit');
     });
   });
 
