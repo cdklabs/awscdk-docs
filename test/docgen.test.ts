@@ -1007,12 +1007,13 @@ describe('docgen generation', () => {
   });
 
   test('gives every type page an explicit title, so H1 markup cannot leak into it', () => {
-    // The H1 line carries raw HTML: the weighted-title span and the kind
+    // The H1 line still carries raw HTML: the weighted-title span, the
+    // `type-title-deprecated` wrapper on a deprecated type and any `Added in`
     // badge. VitePress infers a page title from the H1 with
     // `shouldAllowHtml: false`, which drops the tags but KEEPS their inner
     // text — which is how raw HTML in an H1 leaks its words into `<title>`
-    // and into the Favorites list, which snapshots `page.title`. Explicit
-    // frontmatter is what stops the badge text leaking that way.
+    // and into the Favorites list, which snapshots `page.title`. The explicit
+    // frontmatter title is what holds the inferred title to the bare name.
     const cases: [string, string][] = [
       // Source-link chip (has an upstream location).
       ['aws-cdk-lib.aws_s3.Bucket.md', 'Bucket'],
@@ -1162,7 +1163,8 @@ describe('docgen generation', () => {
     // A per-type mark inside the stable library surfaces too.
     const refInterface = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.interfaces.aws_s3.IBucketRef.md'), 'utf-8');
     expect(refInterface).toContain(stabilityRow);
-    // Stable types stay silent: the absence of the row is the stable indicator.
+    // A stable type carries no Stability row: the header's Stable chip states
+    // its stability, which the chip test above asserts.
     const bucket = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.Bucket.md'), 'utf-8');
     expect(bucket).not.toContain('type-metadata-label">Stability<');
   });
