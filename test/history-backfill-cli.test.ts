@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { jest } from '@jest/globals';
 import { runCli, scratchDir } from './cli-run.js';
@@ -27,6 +27,7 @@ jest.unstable_mockModule('../src/docgen/history-backfill.js', () => ({
 }));
 
 const CLI = '../src/docgen/history-backfill-cli.js';
+const realFetch = globalThis.fetch;
 const VERSIONS = ['2.10.0', '2.11.0', '2.12.0', '2.13.0'];
 
 let dir: string;
@@ -70,7 +71,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete (globalThis as Record<string, unknown>).fetch;
+  globalThis.fetch = realFetch;
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -128,6 +129,7 @@ describe('history-backfill-cli', () => {
     expect(result.exitCode).toBe(1);
     expect(out.join('')).toContain('failed to fetch aws-cdk-lib packument: 503 Service Unavailable');
     expect(loaded).toEqual([]);
+    expect(existsSync(join(dir, 'ledger.json'))).toBe(false);
   });
 
   test.each([
