@@ -82,8 +82,11 @@ export function escapeCell(text: string): string {
 /**
  * Convert external JSDoc links, then escape prose so raw `<` and `{` don't
  * break Vue compilation. Fenced code blocks and inline code spans stay
- * untouched (VitePress renders those with v-pre, so they are already safe).
- * Non-URL symbol link tags retain their existing escaped output.
+ * untouched. A fence is safe on its own, because the highlighter marks its
+ * `<pre>` `v-pre`; an inline code span is not, so prose that can hold one must
+ * be emitted inside a `v-pre` container or Vue reads `{{ … }}` in it as an
+ * interpolation and renders nothing. Non-URL symbol link tags retain their
+ * existing escaped output.
  */
 export function escapeProse(text: string): string {
   return mapProse(text, (prose) => convertInlineUrlLinks(prose)

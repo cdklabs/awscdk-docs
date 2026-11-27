@@ -270,9 +270,9 @@ describe('type page header', () => {
     expect(block.indexOf('type-deprecated-note')).toBeLessThan(block.lastIndexOf('</div>'));
   });
 
-  test('a deprecated reason naming Vue syntax in backticks cannot reach the compiler', () => {
-    // escapeProse leaves inline code spans alone, so the note's v-pre is what keeps `{{ x }}` out of the
-    // Vue compiler, the same guard the member lists use.
+  test('the deprecation note is v-pre and carries the reason verbatim', () => {
+    // escapeProse leaves inline code spans alone, so the note's v-pre is what keeps `{{ x }}` out of Vue,
+    // which would otherwise read it as an interpolation and render nothing in its place.
     const block = header({
       name: 'Statistic',
       kind: { text: 'Enum' },
