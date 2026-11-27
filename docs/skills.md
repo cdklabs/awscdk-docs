@@ -1,3 +1,7 @@
+---
+date: "2026-11-03T15:17:28Z"
+---
+
 # Agent Skills
 
 The **AWS CDK agent skill** teaches a coding agent how to work in a CDK codebase:

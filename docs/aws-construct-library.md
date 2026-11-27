@@ -1,3 +1,7 @@
+---
+date: "2026-11-20T17:52:56Z"
+---
+
 # AWS Construct Library
 
 The AWS Construct Library is the set of classes you use to describe AWS

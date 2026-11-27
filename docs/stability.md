@@ -1,3 +1,7 @@
+---
+date: "2026-10-19T18:42:41Z"
+---
+
 # API Stability
 
 Every type in this reference carries a stability level, taken from the package
