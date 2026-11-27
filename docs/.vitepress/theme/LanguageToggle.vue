@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Prominent global language slider. Reads and writes the shared client-side
+// Prominent global language tabs. Reads and writes the shared client-side
 // language state that drives every <LanguageTabs> group and the sidebar display
 // labels — one selection, reflected everywhere, with the URL path unchanged
 // (`?lang=` carries the choice).

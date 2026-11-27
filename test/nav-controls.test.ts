@@ -10,7 +10,7 @@ const THEME_DIR = resolve(ROOT, 'docs/.vitepress/theme');
 const PAGEFIND_SEARCH_TRIGGER_HEIGHT_PX = 40;
 
 // Navbar layout:
-// - the language slider takes the LEADING slot, right after the site title,
+// - the language tabs take the LEADING slot, right after the site title,
 //   where the stock theme puts search,
 // - the search box moves to the CENTER of the nav row,
 // - the two tri-state theme groups (Site + Code) sit behind the gear-icon
@@ -37,7 +37,7 @@ describe('navbar layout', () => {
       expect(menu).toContain('import ThemePicker from "./ThemePicker.vue"');
       expect(menu).toContain('<ThemePicker');
       expect(entry).toContain('import SettingsMenu from "./SettingsMenu.vue"');
-      // The slider still leads and the gear still closes the row; the
+      // The tabs still lead and the gear still closes the row; the
       // aws-cdk-lib version badge sits between them.
       expect(entry).toMatch(
         /"nav-bar-content-after":\s*\(\)\s*=>\s*\[\s*h\(LanguageToggle\),(?:\s*h\(\w+\),)*\s*h\(SettingsMenu\)\s*\]/,
@@ -124,7 +124,7 @@ describe('navbar layout', () => {
     });
   });
 
-  describe('language slider', () => {
+  describe('language tabs', () => {
     test('is a segmented radio-group picker that names every language', () => {
       expect(toggle).toContain('role="radiogroup"');
       expect(toggle).toContain('aria-label="Select programming language"');
@@ -258,11 +258,11 @@ describe('navbar layout', () => {
     });
 
     test('leads the nav row while the search centers', () => {
-      // The slider takes the leading slot via flex ordering, where the stock
+      // The tab group takes the leading slot via flex ordering, where the stock
       // theme puts search;
       // the search keeps the pagefind plugin's flex-grow and centers its
       // trigger inside the middle region. Both overrides only fire when
-      // the slider actually renders (`:has()`), so the single-language
+      // the tabs actually render (`:has()`), so the single-language
       // build keeps the stock layout. The selector is the `.search`
       // passthrough class, NOT .VPNavBarSearch — the pagefind plugin
       // aliases that component away.
@@ -283,7 +283,7 @@ describe('navbar layout', () => {
       // which in this repo is set on /api/** but not on / (layout: home) or
       // /skills (themeConfig.sidebar is keyed only on /api/). Bringing the
       // non-sidebar pages onto the same full-width geometry is what stops
-      // the leading slider and the centered search trigger moving between
+      // the leading tabs and the centered search trigger moving between
       // page types.
       //
       // The pin is a MIRROR of VitePress's own has-sidebar declarations,
@@ -361,7 +361,7 @@ describe('navbar layout', () => {
       // the sidebar width.
       expect(rules).not.toMatch(/\.VPNavBar:not\(\.has-sidebar\) \.title\s*\{/);
 
-      // Page geometry, so NOT gated on the slider's presence the way the
+      // Page geometry, so NOT gated on the tabs' presence the way the
       // control-arrangement rules above are: the single-language build gets
       // the same one-shape-everywhere bar. A gated selector would not match
       // the pattern the mirror comparison above uses, so that comparison
