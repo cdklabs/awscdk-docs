@@ -238,11 +238,20 @@ test.describe('type page header', () => {
         const token = getComputedStyle(probe).color;
         probe.remove();
         const style = getComputedStyle(el);
-        return { color: style.color, token, decoration: style.textDecorationLine, border: style.borderTopColor };
+        return {
+          color: style.color,
+          token,
+          decoration: style.textDecorationLine,
+          border: style.borderTopColor,
+          weight: style.fontWeight,
+        };
       });
       expect(measured.color, scheme).toBe(measured.token);
       expect(measured.border, scheme).toBe(measured.token);
       expect(measured.decoration, scheme).toContain('underline');
+      // `.vp-doc a` sets weight 500 and outranks `.type-chip`, so only a
+      // measurement shows the chip matching the kind chip beside it.
+      expect(measured.weight, scheme).toBe('700');
 
       // And under the pointer. VitePress's `.vp-doc a:hover` has the same
       // specificity as the resting chip rule, so the hover selector is what
@@ -266,6 +275,10 @@ test.describe('type page header', () => {
     // The reason is Markdown, so its code span renders as code instead of printing backticks.
     await expect(page.locator('.type-deprecated-note code')).toHaveText('<SERVICE>.amazonaws.com');
     await expect(page.locator('.type-deprecated-note')).not.toContainText('`');
+    // That paragraph also has to shed VitePress's own 28px line height, which
+    // beats the note's declared 20px wherever the stylesheet is only read as text.
+    expect(await page.locator('.type-deprecated-note p')
+      .evaluate((el) => getComputedStyle(el).lineHeight)).toBe('20px');
     // The struck title wraps the weighted span in one more element, which the
     // permalink's accessible name has to see through.
     await expect(page.locator('.vp-doc h1 a.header-anchor')).toHaveAttribute('aria-label', 'Permalink to "Default"');

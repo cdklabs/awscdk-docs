@@ -133,9 +133,8 @@ an unscoped rule would restyle module overviews and authored pages too.
   twin renders the row as one line, `L2 construct · Stable`, so an agent still
   gets the classification.
 - The header block costs about 460 bytes of HTML per type page, and the page's
-  lean hydration chunk gives most of it back. Measured base `a0f033c`, the
-  `main` commit this branch merges, against `d90fa57`, its last commit that
-  changes built output, on the baseline fixture
+  lean hydration chunk gives most of it back. Measured base `a0f033c` against
+  `d90fa57` on the baseline fixture
   (`E2E_FIXTURE_SERVICES=aws-sns,aws-sqs E2E_FIXTURE_MODULES=constructs`, 77
   pages and 78 built HTML pages both times): `docs:generate`, then
   `scripts/e2e-fixture-prune.cjs`, then `vitepress build docs`, then
