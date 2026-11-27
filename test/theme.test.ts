@@ -488,8 +488,8 @@ describe('API kind badge palette', () => {
 
     test('the tag keeps its neutral chip', () => {
       // The level may tint the text, never the chip: recoloring the chip
-      // would make the tag as loud as the H1 badge, which the sidebar-tag
-      // ADR decided against.
+      // would make the tag as loud as the page's kind chip, which the
+      // sidebar-tag ADR decided against.
       const sidebar = readFileSync(resolve(THEME_DIR, 'api-sidebar.css'), 'utf-8');
       for (const level of ['L1', 'L2', 'L3']) {
         const start = sidebar.indexOf(`.api-sidebar-level[data-level='${level}']`);

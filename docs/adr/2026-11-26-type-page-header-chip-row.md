@@ -36,7 +36,8 @@ drawn to sit *inside* a tinted fill, and had never been checked against it.
 
 ## Decision
 
-A type page's header is, in order: the breadcrumb, the H1, one row, a divider.
+A type page's header is, in order: the breadcrumb, the experimental banner on an
+alpha package's pages, the H1, one row, a divider.
 
 **The kind leaves the H1 and becomes a chip of the row.** The heading is the
 name alone. Classification is not part of a name, and its natural neighbors
@@ -138,15 +139,18 @@ an unscoped rule would restyle module overviews and authored pages too.
   pages and 83 page chunks both times): `docs:generate`, then
   `scripts/e2e-fixture-prune.cjs`, then `vitepress build docs`, then
   `scripts/package-site.sh`. Per page, HTML goes +400 B and the full page chunk
-  +208 B, while the lean chunk goes -462 B, because a page no longer uses the
-  `<Badge>` component. All three scale with the page count. One-time: the shared
+  +208 B, while the lean chunk goes -462 B, because a page without an `Added in`
+  badge no longer uses the `<Badge>` component. All three scale with the page
+  count. One-time: the shared
   chunks +610 B and the stylesheet +3,358 B. On the fixture that nets raw `dist`
   45,414,905 to 45,430,335 B (+0.03%) and the deploy zip 4,650,844 to 4,642,367
   B (-0.18%). The corpus carries 29,154 type pages: `docs:generate` writes
   29,892 pages under `docs/v2/docs`, of which 738 are `-readme.md` module
   overviews, which have no chip row. Extrapolating the per-page figures alone
   over those 29,154 gives about +11.7 MB of HTML, +6.1 MB of full chunks and
-  -13.5 MB of lean chunks. The zip is deliberately not extrapolated, because a
+  -13.5 MB of lean chunks, that last figure an upper bound: no fixture page
+  carries an `Added in` badge, and a page that does still loads `<Badge>`. The
+  zip is deliberately not extrapolated, because a
   repeated block's compression ratio does not scale linearly, so the fixture
   figure is the measurement and the deployed zip is what `package-site.sh`
   reports on each release.

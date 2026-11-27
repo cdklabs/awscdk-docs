@@ -311,8 +311,8 @@ export interface ConstructPageOptions {
 }
 
 /**
- * The construct level as a reader-facing label. One function, so the H1 badge and the hover preview cannot drift
- * into two formats for the same determination.
+ * The construct level as a reader-facing label. One function, so the page's kind chip and the hover preview cannot
+ * drift into two formats for the same determination.
  */
 export function constructLevelLabel(level: ConstructLevel): string {
   return `${level} construct`;
