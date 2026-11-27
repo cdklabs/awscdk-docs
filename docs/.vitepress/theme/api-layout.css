@@ -372,9 +372,11 @@
    vertical-align: top }` on top of `.VPBadge { transform: translateY(-2px) }`.
    The `Added in vX.Y.Z` badge is the one badge an API H1 still carries, and
    this override is what holds it on the title's baseline: stock alignment
-   lifts it off the line the name sits on. No fixture page in the e2e build
-   carries that badge, so the guard here is the stylesheet assertion in
-   `test/theme.test.ts`, not a browser measurement.
+   lifts it off the line the name sits on. No fixture page carries that badge,
+   so `test/e2e/type-page-header.spec.ts` appends one to a live H1 and compares
+   the shipped alignment with VitePress's stock alignment; `test/theme.test.ts`
+   pins these declarations. The synthetic badge goes at the end of the H1, where
+   `injectBadges` puts the real one.
 
    The selector carries `.api-badge` for two reasons: it outranks
    VitePress's own `.vp-doc h1 > .VPBadge` whatever order the stylesheets

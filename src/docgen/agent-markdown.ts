@@ -452,12 +452,13 @@ function literalTag(el: Element): string {
 }
 
 /**
- * The type page's chip row: the kind and the stability, joined so the twin still names both. The row's other
- * children are empty mount points the theme teleports its buttons into, which have no text and no twin.
+ * The type page's chip row: the kind and the stability, joined so the twin still names both. A chip that is a link,
+ * as the experimental stability chip is, keeps its target like every other cross-page link in the twin. The row's
+ * other children are empty mount points the theme teleports its buttons into, which have no text and no twin.
  */
 function renderHeaderRow(el: Element): string {
   const chips = DomUtils.findAll((n) => classes(n).has('type-chip'), el.children)
-    .map((chip) => textOf(chip).trim())
+    .map((chip) => render(chip).replace(/\s+/g, ' ').trim())
     .filter((text) => text.length > 0);
   return chips.length > 0 ? `\n${chips.join(' · ')}\n` : '';
 }

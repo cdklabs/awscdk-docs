@@ -5,6 +5,7 @@ import {
   EXPERIMENTAL_TYPE_PAGE,
   QUEUE_GRANTS_PAGE,
   QUEUE_PAGE,
+  SQS_OVERVIEW_PAGE,
 } from './fixture.js';
 
 /** Computed foreground and background, as one comparable string. */
@@ -35,7 +36,6 @@ test.describe('type page header', () => {
     const stability = page.locator('.type-header-row .type-chip-stability');
     await expect(kind).toHaveText('L2 construct');
     await expect(stability).toHaveText('Stable');
-
     // The row sits below the title, and the two chips share its first line.
     const titleBox = (await title.boundingBox())!;
     const kindBox = (await kind.boundingBox())!;
@@ -43,6 +43,14 @@ test.describe('type page header', () => {
     expect(kindBox.y).toBeGreaterThan(titleBox.y + titleBox.height - 1);
     expect(Math.abs(kindBox.y - stabilityBox.y)).toBeLessThanOrEqual(1);
     expect(stabilityBox.x).toBeGreaterThan(kindBox.x);
+
+    // The larger title is keyed on an H1 the header block follows, so whether
+    // it lands depends on the rendered DOM. A module overview keeps the stock
+    // size, which is what says the rule is scoped.
+    const titleSize = (el: Element) => getComputedStyle(el).fontSize;
+    expect(await title.evaluate(titleSize)).toBe('42px');
+    await page.goto(SQS_OVERVIEW_PAGE);
+    expect(await page.locator('h1').evaluate(titleSize)).not.toBe('42px');
   });
 
   test('the Added in badge sits on the H1 text baseline row', async ({ page }) => {
@@ -348,6 +356,25 @@ test.describe('type page header', () => {
     });
     expect(edge.style).toBe('solid');
     expect(parseFloat(edge.width)).toBeGreaterThanOrEqual(1);
+  });
+
+  test('the permalink stays inside the viewport at the narrow title sizes', async ({ page }) => {
+    // VitePress parks the permalink in the gutter left of the heading, pulled
+    // by an em of the title's own size. The type page title is larger than a
+    // stock one, so that pull has to be capped where the gutter is narrowest
+    // or the glyph lands off the left edge of the screen. The anchor is hidden
+    // until hover or focus, which makes a keyboard user the one who meets it.
+    for (const width of [320, 375, 500, 767, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(QUEUE_PAGE);
+      const anchor = page.locator('h1 a.header-anchor');
+      await anchor.focus();
+      const box = (await anchor.boundingBox())!;
+      const title = (await page.locator('h1 span[data-pagefind-weight]').boundingBox())!;
+      expect(box.x, `permalink off the left edge at ${width}px`).toBeGreaterThanOrEqual(0);
+      // And still in the gutter, not over the name.
+      expect(box.x + box.width, `permalink over the title at ${width}px`).toBeLessThanOrEqual(title.x);
+    }
   });
 
   test('at 375px the chips keep one line, the actions take the next, and nothing scrolls sideways', async ({ page }) => {

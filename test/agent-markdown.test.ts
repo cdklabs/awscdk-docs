@@ -112,6 +112,19 @@ describe('toAgentMarkdown', () => {
     expect(markdown).toContain('# Bucket\n\nL2 construct · Stable\n');
   });
 
+  test('an experimental type keeps the stability chip as a link', () => {
+    // The chip is the only link in the row, and it leaves the page, so it
+    // keeps its target like every other cross-page link in the twin.
+    const page = renderTypeHeader({
+      name: 'GitHubRepository',
+      kind: { text: 'L2 construct', kindClass: 'api-badge-l2' },
+      stability: 'experimental',
+    }).join('\n');
+    const twin = toAgentMarkdown(page).markdown;
+    expect(twin).toContain(`L2 construct · [Experimental](${docsSiteUrl()}stability.html)`);
+    expect(twin).not.toContain('<a');
+  });
+
   test('a deprecated type keeps its reason and brings no markup with it', () => {
     // The note's label has to be a tag the module knows, or `protectCode`
     // treats it as author text and restores it verbatim into the twin.

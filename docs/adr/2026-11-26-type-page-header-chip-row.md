@@ -100,8 +100,9 @@ that no reported problem names is a change without an argument behind it.
 
 **The H1 badge alignment override stays.** The `Added in vX.Y.Z` badge lives in
 the H1, and stock VitePress alignment lifts it off the baseline the name sits
-on. No page in the e2e fixture carries that badge, so a stylesheet assertion
-holds it rather than a browser measurement.
+on. No page in the e2e fixture carries that badge, so the browser test appends
+one to a live H1 and compares the shipped alignment with the stock one; a
+stylesheet assertion pins the declarations themselves.
 
 The title treatment itself is keyed on the H1 that the header block follows
 (`.vp-doc h1:has(+ .type-header)`). `api-layout.css` is imported globally, so

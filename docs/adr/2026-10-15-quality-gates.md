@@ -50,8 +50,9 @@ production-identical data. `region-info` and `aws-cdk-aws-codestar-alpha` each e
 their place with one page the other services cannot supply: `region_info.Default` is
 a type whose own stability is `deprecated`, and the alpha package is what renders the
 experimental banner and the Experimental stability chip, the only link in the chip
-row. Both are small, and the suite builds under a hundred pages in well
-under a minute and needs no special memory settings.
+row. Both are small. `scripts/e2e-fixture-prune.cjs` prints the number of pages it
+keeps on every run, 88 with these defaults, and the build of that many pages
+needs no special memory settings.
 
 **The suite owns its server; never reuses one.** Playwright boots
 `scripts/e2e-serve.cjs`, a plain localhost static server over the built `dist`, and

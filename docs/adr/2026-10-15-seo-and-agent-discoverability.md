@@ -95,8 +95,10 @@ twin 34.1 KB to 109.1 KB, three times its size, all of it before the first
 `##` heading; `aws_iam.IGrantable` goes 19.8 KB to 67.9 KB and `aws_iam.Grant`
 24.0 KB to 72.1 KB. Tens of kilobytes of URLs, not hundreds, but still several
 times the API surface the twin carries, for a list whose entries a reader of
-the rendered page sees folded away), the type-metadata table becomes `- Label: value` bullets, `:::`
-containers become titled blockquotes. The type-metadata table is the only
+the rendered page sees folded away), the type header's chip row becomes one
+`Kind · Stability` line and a deprecated type's note a `Deprecated:
+<reason>` paragraph, the type-metadata table becomes `- Label: value`
+bullets, `:::` containers become titled blockquotes. The type-metadata table is the only
 `<table>` the transform parses; every other table-shaped text passes through
 literally. Headings, prose, fenced code and tables pass through. Links keep
 their text and external target. Site page links use `pageHref()` for the
