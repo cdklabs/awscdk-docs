@@ -187,7 +187,7 @@ test.describe('explorer preview on desktop', () => {
     ['/', 'the home page'],
     [SKILLS_PAGE, 'the skills page'],
   ] as const) {
-    for (const width of [960, 1000, 1024, 1280]) {
+    for (const width of [960, 1000, 1024, 1119, 1120, 1280]) {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 });
         await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
@@ -285,7 +285,7 @@ test.describe('explorer preview on desktop', () => {
     ['/', 'the home page'],
     [SKILLS_PAGE, 'the skills page'],
   ] as const) {
-    test(`hiding the version badge is what keeps the 960px row inside the viewport on ${label}`, async ({ page }) => {
+    test(`hiding the version badge keeps the gear at its 32px inset at 960px on ${label}`, async ({ page }) => {
       await page.setViewportSize({ width: 960, height: 800 });
       await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
       const gearEnd = async () => {
@@ -293,10 +293,12 @@ test.describe('explorer preview on desktop', () => {
         return box.x + box.width;
       };
       const withRule = await gearEnd();
+      expect(960 - withRule, 'the gear sits 32px from the viewport edge').toBeCloseTo(32, 0);
       // Positive control: show the badge again and the row needs more room, so the gear moves right.
       await page.addStyleTag({ content: '.VPNavBar .content-body > .version-badge { display: flex !important; }' });
       const withoutRule = await gearEnd();
       expect(withoutRule - withRule, 'hiding the badge gives the row room back').toBeGreaterThanOrEqual(16);
+      expect(960 - withoutRule, 'with the badge shown the gear loses its 32px inset').toBeLessThan(31);
     });
   }
 

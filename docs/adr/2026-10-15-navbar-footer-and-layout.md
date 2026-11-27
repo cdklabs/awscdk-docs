@@ -185,8 +185,10 @@ build the search button compacts to its magnifier icon from 1279px down, inside
 a 44px disc at 768–959px; below 768px it is the plugin's bare 48px icon on every
 build, with the pill's edge, fill and hover ring dropped. A single-language build
 keeps the labeled button.
-Every control keeps its place in the row — the version must stay visible, and a
-control a click away is not visible. E2e assertions pin the row fitting inside
+With the Explorer preview off, every control keeps its place in the row — the
+version must stay visible, and a control a click away is not visible. The
+preview's one exception, the version badge between 960px and 1119px, is
+recorded under the geometry rules below and in the preview ADR. E2e assertions pin the row fitting inside
 768px, 800px, 900px, 960px, 1024px, 1099px, 1100px, and 1279px viewports,
 and the page scroll width equaling the viewport with no two bar controls
 overlapping at 1440, 1359, 1280, 1180, 1100, 1099, 1024, 960, 959, 900, 768,
