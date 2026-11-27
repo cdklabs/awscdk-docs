@@ -211,9 +211,9 @@
 @media (min-width: 768px) {
   .VPNavBar .content-body > .language-toggle {
     order: -2;
-    /* 10px (was the search's 32px padding): the row's spare width comes out
-     * of chrome like this margin and the tabs' `--tab-pad` first; only the
-     * 960-1023px band also lets go of the tabs' 44px minimum width. */
+    /* 10px: the row's spare width comes out of chrome like this margin and
+     * the tabs' `--tab-pad` first; only the 960-1023px band also lets go of
+     * the tabs' 44px minimum width. */
     margin-left: 10px;
   }
 
@@ -266,6 +266,7 @@
   --seg-on-fg: #ffffff; /* = light --vp-c-bg */
   --tb-muted: #424650; /* = light --vp-code-lang-color */
   --tb-hover-bg: #e9ebed; /* no custom.css token */
+  --tb-hover-fg: var(--vp-c-text-1);
   --tb-focus: var(--vp-c-brand-1);
   --tb-tab-on: var(--vp-c-brand-1);
   --tb-input-border: #656871; /* no custom.css token */
@@ -278,6 +279,10 @@
   --seg-on-fg: #0f141a; /* = light --vp-c-text-1 */
   --tb-muted: #c6c6cd; /* = dark --vp-c-text-1 */
   --tb-hover-bg: #2a3340; /* no custom.css token */
+  /* The dark idle ink equals --vp-c-text-1, so hover needs its own, lighter
+   * text (10.7:1 on the hover fill) for the change to read as more than a
+   * fill. No custom.css token. */
+  --tb-hover-fg: #ebebf0;
   --tb-input-border: #a4a4ad; /* = dark --vp-code-lang-color */
 }
 
@@ -309,7 +314,7 @@
 
 .VPNavBar .language-toggle .language-option:hover {
   background-color: var(--tb-hover-bg);
-  color: var(--vp-c-text-1);
+  color: var(--tb-hover-fg);
 }
 
 .VPNavBar .language-toggle .language-option:focus-visible {
@@ -458,8 +463,8 @@
 }
 
 /* The gear reads in the same muted ink as the idle tabs and the version, and
- * takes the same hover fill. The component's own rules carry Vue's scoping
- * attribute, so these name the dropdown as well to outrank them. */
+ * takes the same hover fill and hover text. The component's own rules carry
+ * Vue's scoping attribute, so these name the dropdown as well to outrank them. */
 .VPNavBar .SettingsMenu .settings-trigger {
   color: var(--tb-muted);
 }
@@ -467,14 +472,14 @@
 .VPNavBar .SettingsMenu .settings-trigger:hover,
 .VPNavBar .SettingsMenu .settings-trigger[aria-expanded="true"] {
   background-color: var(--tb-hover-bg);
-  color: var(--vp-c-text-1);
+  color: var(--tb-hover-fg);
 }
 
 /* --- aws-cdk-lib version badge --- */
 /* Low-emphasis, compact, and on the same 40px baseline as the search
  * trigger and the gear — a second baseline here would show up as a
- * half-pixel wobble across the row. Its ink and hover fill are the top bar
- * tokens above, shared with the idle tabs and the gear. */
+ * half-pixel wobble across the row. Its ink, hover fill and hover text are
+ * the top bar tokens above, shared with the idle tabs and the gear. */
 .VPNavBar .content-body > .version-badge {
   margin-left: 8px;
 }
@@ -495,7 +500,7 @@
 }
 
 .version-badge:hover {
-  color: var(--vp-c-text-1);
+  color: var(--tb-hover-fg);
   background-color: var(--tb-hover-bg);
 }
 
@@ -528,8 +533,9 @@
     min-width: 0;
   }
 
+  /* The 44px touch-target floor further below is the link's minimum here;
+   * overflow still clips the hidden full title's box. */
   .VPNavBarTitle .title {
-    min-width: 0;
     overflow: hidden;
   }
 
@@ -566,11 +572,12 @@
 }
 
 /* --- Touch targets below 960px --- */
-/* Under the desktop tier the bar is used on tablets and phones, so every bar
- * and menu control is at least 44x44px (WCAG 2.5.5). The search trigger grows
- * from the plugin's 40px; the version and the gear from 40px and 32px; the
- * logo link gets a floor; the menu's picker segments grow from 24px, their
- * tracks follow, and the theme picker wraps instead of overflowing a 320px
+/* Under the desktop tier the bar is used on tablets and phones, so every
+ * control in the bar, the Settings dropdown (768-959px) and the hamburger
+ * menu (below 768px) is at least 44x44px (WCAG 2.5.5). The search trigger
+ * grows from the plugin's 40px; the version and the gear from 40px and 32px;
+ * the logo link gets a floor; the picker segments grow from 24px, their tracks
+ * follow, and the menu's theme picker wraps instead of overflowing a 320px
  * menu. The component rules carry Vue's scoping attribute, so the selectors
  * name the host as well to outrank them. */
 @media (max-width: 959px) {
@@ -596,13 +603,17 @@
   }
 
   .VPNavScreen .ThemePicker .theme-picker-option,
-  .VPNavScreen .NavStylePicker .nav-style-option {
+  .VPNavScreen .NavStylePicker .nav-style-option,
+  .VPNavBar .SettingsMenu .theme-picker-option,
+  .VPNavBar .SettingsMenu .nav-style-option {
     min-width: 44px;
     min-height: 44px;
   }
 
   .VPNavScreen .ThemePicker .theme-picker-group,
-  .VPNavScreen .NavStylePicker .nav-style-group {
+  .VPNavScreen .NavStylePicker .nav-style-group,
+  .VPNavBar .SettingsMenu .theme-picker-group,
+  .VPNavBar .SettingsMenu .nav-style-group {
     height: auto;
   }
 

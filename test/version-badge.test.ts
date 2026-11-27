@@ -66,11 +66,11 @@ describe('navbar version badge', () => {
     expect(start).toBeGreaterThan(-1);
     const rules = css.slice(start);
     const block = rules.slice(0, rules.indexOf('/* ---', 1));
-    // The palette's text color on hover, and the top bar's shared ink and
-    // hover fill otherwise, so the badge matches the idle tabs and the gear.
-    expect(block).toMatch(/var\(--vp-c-/);
+    // The top bar's shared ink, hover fill and hover text, so the badge
+    // matches the idle tabs and the gear.
     expect(block).toMatch(/color: var\(--tb-muted\)/);
     expect(block).toMatch(/background-color: var\(--tb-hover-bg\)/);
+    expect(block).toMatch(/color: var\(--tb-hover-fg\)/);
     // No literal hex/rgb color introduced for this control.
     expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(block).not.toMatch(/rgba?\(/);

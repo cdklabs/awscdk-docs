@@ -380,7 +380,7 @@ describe('navbar layout', () => {
       );
     });
 
-    test('spans the bar instead of matching the search trigger height', () => {
+    test('spans the full height of the control row', () => {
       // The tabs stretch to the bar's full height so the selected underline
       // sits on the bar's bottom edge; no fixed height competes with that.
       // The search trigger, version and gear keep their 40px baseline.
@@ -440,7 +440,7 @@ describe('navbar layout', () => {
       );
     });
 
-    test('every bar and menu control has a 44px floor below 960px', () => {
+    test('every bar, dropdown and menu control has a 44px floor below 960px', () => {
       const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
       const start = stripped.indexOf('@media (max-width: 959px)');
       expect(start).toBeGreaterThan(-1);
@@ -449,12 +449,14 @@ describe('navbar layout', () => {
       expect(block).toMatch(/\.version-badge \{\s*height: 44px;\s*min-width: 44px;/);
       expect(block).toMatch(/\.settings-trigger \{\s*width: 44px;\s*height: 44px;/);
       expect(block).toMatch(/\.VPNavBarTitle \.title \{\s*min-width: 44px;/);
+      // The pickers in the hamburger menu and in the Settings dropdown (which
+      // the gear still opens at 768-959px).
       expect(block).toMatch(
-        /\.theme-picker-option,\s*\.VPNavScreen \.NavStylePicker \.nav-style-option \{\s*min-width: 44px;\s*min-height: 44px;/,
+        /\.VPNavScreen \.NavStylePicker \.nav-style-option,\s*\.VPNavBar \.SettingsMenu \.theme-picker-option,\s*\.VPNavBar \.SettingsMenu \.nav-style-option \{\s*min-width: 44px;\s*min-height: 44px;/,
       );
       // The 40px tracks grow with their segments, and the theme picker wraps
       // rather than overflowing a 320px menu.
-      expect(block).toMatch(/\.nav-style-group \{\s*height: auto;/);
+      expect(block).toMatch(/\.VPNavBar \.SettingsMenu \.nav-style-group \{\s*height: auto;/);
       expect(block).toMatch(/\.ThemePicker \{\s*flex-wrap: wrap;\s*gap: 8px;/);
     });
 

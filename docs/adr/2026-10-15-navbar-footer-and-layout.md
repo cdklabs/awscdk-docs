@@ -37,10 +37,11 @@ our custom layer:
 - heading/badge wrapping so title badges never widen the page;
 - WCAG 2.5.5 touch targets (>= 44x44px) below 960px for the hamburger, TOC
   dropdown button, sidebar drawer rows, the breadcrumb favorite star, and every
-  control in the top bar and the hamburger menu: the logo link, the version
-  badge, the search trigger, the Settings gear, the language tabs, and the
-  menu's theme and navigation picker segments (whose 40px tracks grow with them
-  and whose theme picker wraps inside a 320px menu);
+  control in the top bar, the Settings dropdown (768–959px) and the hamburger
+  menu (below 768px): the logo link, the version badge, the search trigger,
+  the Settings gear, the language tabs, and the theme and navigation picker
+  segments (whose 40px tracks grow with them and whose theme picker wraps
+  inside a 320px menu);
 - a full-width Pagefind dialog below 768px with a 16px input font size to stop
   iOS Safari zoom-on-focus.
 
@@ -134,7 +135,9 @@ specified in [sidebar navigation styles](./2026-10-23-sidebar-navigation-styles.
   2px outside. The `Ctrl K` chip takes the same edge.
 - **Version badge then Settings gear** sit at the right end, in the same muted
   ink as the idle tabs and the search label (`--tb-muted`, 9.4:1 light, 10:1
-  dark) with the same hover fill (`--tb-hover-bg`).
+  dark) with the same hover fill (`--tb-hover-bg`) and hover text
+  (`--tb-hover-fg`: the primary text in light mode; `#ebebf0` in dark mode,
+  10.7:1 on the fill, because the dark idle ink already is the primary text).
 - The medium-width (768–1279px) `VPNavBarExtra` "extra navigation" flyout
   embeds its own `VPSwitchAppearance`; it is hidden (and its emptied group
   collapsed) so **exactly one appearance control is reachable at every

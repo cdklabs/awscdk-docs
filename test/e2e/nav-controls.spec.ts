@@ -378,7 +378,7 @@ test.describe('navbar layout', () => {
   });
 
   for (const width of [768, 375, 320]) {
-    test(`every bar and menu control is at least 44x44px at ${width}px`, async ({ page }) => {
+    test(`every bar, dropdown and menu control is at least 44x44px at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto(TOPIC_PAGE);
       const atLeast44 = async (name: string, selector: string) => {
@@ -401,6 +401,11 @@ test.describe('navbar layout', () => {
       if (width >= 768) {
         await atLeast44('gear', '.VPNavBar .content-body > .SettingsMenu .settings-trigger');
         await atLeast44('tabs', '.VPNavBar .language-toggle .language-option');
+        // The gear still opens the dropdown here, so its pickers grow too.
+        await page.getByRole('button', { name: 'Settings' }).click();
+        await expect(page.locator('#settings-menu-panel')).toBeVisible();
+        await atLeast44('dropdown theme options', '.VPNavBar .SettingsMenu .theme-picker-option');
+        await atLeast44('dropdown navigation options', '.VPNavBar .SettingsMenu .nav-style-option');
       } else {
         await atLeast44('menu button', '.VPNavBar .VPNavBarHamburger');
         await page.locator('.VPNavBarHamburger').click();
@@ -511,9 +516,10 @@ test.describe('navbar layout', () => {
     expect(await search.evaluate(ring)).toBe('solid 2px 2px');
   });
 
-  for (const [theme, muted] of [
-    ['light', 'rgb(66, 70, 80)'],
-    ['dark', 'rgb(198, 198, 205)'],
+  for (const [theme, muted, hoverText] of [
+    ['light', 'rgb(66, 70, 80)', 'rgb(15, 20, 26)'],
+    // Dark idle ink equals the primary text, so hover lightens it further.
+    ['dark', 'rgb(198, 198, 205)', 'rgb(235, 235, 240)'],
   ] as const) {
     test(`idle tabs, the search label, the version and the gear share one muted ink (${theme})`, async ({
       page,
@@ -528,24 +534,21 @@ test.describe('navbar layout', () => {
       expect(await page.locator('.VPNavBar .content-body > .search .search-tip').evaluate(color)).toBe(muted);
       expect(await page.locator('.VPNavBar .content-body > .version-badge').evaluate(color)).toBe(muted);
       expect(await page.getByRole('button', { name: 'Settings' }).evaluate(color)).toBe(muted);
-      // Hovering the version or the gear fills it and paints it in the primary
-      // text color (which the muted ink already equals in dark mode).
-      const primary = await page.evaluate(() => {
-        const probe = document.createElement('span');
-        probe.style.color = 'var(--vp-c-text-1)';
-        document.body.appendChild(probe);
-        const resolved = getComputedStyle(probe).color;
-        probe.remove();
-        return resolved;
-      });
+      // Hovering an idle tab, the version or the gear fills it and paints it
+      // in the bar's hover text, which is darker than the idle ink in light
+      // mode and lighter in dark mode.
+      const python = slider.getByRole('radio', { name: 'Python' });
+      await python.hover();
+      await expect.poll(() => python.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+      await expect.poll(() => python.evaluate(color)).toBe(hoverText);
       const gear = page.getByRole('button', { name: 'Settings' });
       await gear.hover();
       await expect.poll(() => gear.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
-      await expect.poll(() => gear.evaluate(color)).toBe(primary);
+      await expect.poll(() => gear.evaluate(color)).toBe(hoverText);
       const version = page.locator('.VPNavBar .content-body > .version-badge');
       await version.hover();
       await expect.poll(() => version.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
-      await expect.poll(() => version.evaluate(color)).toBe(primary);
+      await expect.poll(() => version.evaluate(color)).toBe(hoverText);
     });
   }
 

@@ -643,8 +643,11 @@ describe('selected language label contrast', () => {
     expect(contrast(hex(nav(), '--seg-on-fg'), hex(palette(), '--vp-c-brand-1'))).toBeGreaterThanOrEqual(AA);
     // Idle tabs, search placeholder, version and gear: muted text on the bar.
     expect(contrast(hex(nav(), '--tb-muted'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(7);
-    // Hovered idle controls: muted text on the hover fill.
+    // Hovered idle controls: muted text (phone rows) and the bar's hover text
+    // (tabs, version, gear) on the hover fill.
     expect(contrast(hex(nav(), '--tb-muted'), hex(nav(), '--tb-hover-bg'))).toBeGreaterThanOrEqual(AA);
+    const hoverFg = nav().includes('--tb-hover-fg: #') ? hex(nav(), '--tb-hover-fg') : hex(palette(), '--vp-c-text-1');
+    expect(contrast(hoverFg, hex(nav(), '--tb-hover-bg'))).toBeGreaterThanOrEqual(7);
     // The phone group edge is a non-text boundary (WCAG 1.4.11).
     expect(contrast(hex(nav(), '--seg-edge'), hex(palette(), '--vp-c-bg'))).toBeGreaterThanOrEqual(3);
     // The search box edge and the shortcut chip edge sit on the bar's fill.

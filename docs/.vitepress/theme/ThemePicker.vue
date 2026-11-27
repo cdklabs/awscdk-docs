@@ -201,8 +201,8 @@ onMounted(() => {
 
 /* Labeled layout (SettingsMenu.vue's panel): the three groups stack under
  * their captions instead of competing for nav-row width. Segments and the
- * 40px track are unchanged, so state, target sizes and accessible names
- * are identical in both layouts. */
+ * track are unchanged, so state, target sizes and accessible names are
+ * identical in both layouts. */
 .ThemePicker.theme-picker-labeled {
   flex-direction: column;
   align-items: stretch;
@@ -232,11 +232,11 @@ onMounted(() => {
   border-radius: 8px;
   padding: 2px 1px;
   background-color: var(--vp-c-bg-alt);
-  /* Same rendered height as the adjacent search trigger and language
-   * slider so the three controls share a baseline. The pagefind plugin
-   * hard-codes `height: 40px` on `.nav-search-btn-wait` with no CSS
-   * variable, so the value is pinned here and guarded by a regression
-   * test that reads the plugin's source. */
+  /* From 960px up the track pins 40px to match the search trigger and the
+   * Settings gear. The pagefind plugin hard-codes `height: 40px` on
+   * `.nav-search-btn-wait` with no CSS variable, so the value is pinned
+   * here. Below 960px (nav-controls.css) the track grows with its 44px
+   * segments instead. */
   box-sizing: border-box;
   height: 40px;
 }
@@ -263,9 +263,8 @@ onMounted(() => {
   border-radius: 6px;
   color: var(--vp-c-text-2);
   transition: color 0.25s, background-color 0.25s;
-  /* Segments stretch to fill the 40px track so the active "thumb"
-   * highlight spans the control's full inner height (mirrors the
-   * language slider). */
+  /* Segments stretch to fill the track so the active "thumb" highlight
+   * spans the control's full inner height. */
   align-self: stretch;
 }
 
