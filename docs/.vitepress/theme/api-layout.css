@@ -294,6 +294,12 @@
   font-weight: 700;
 }
 
+/* The reason is Markdown, so markdown-it wraps it in a paragraph. Drop that
+   paragraph's `.vp-doc p` margins: the note's own padding owns the spacing. */
+.vp-doc .type-deprecated-note p {
+  margin: 0;
+}
+
 /* A deprecation reason can carry a web link, which `escapeSummaryHtml` renders
    as an anchor. brand-1 on the note's tint is 4.07:1 in light mode, under what
    body text owes, so the note re-points its links the way the info and note

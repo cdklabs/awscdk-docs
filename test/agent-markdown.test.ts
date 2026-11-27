@@ -144,8 +144,8 @@ describe('toAgentMarkdown', () => {
   });
 
   test('a deprecation reason with a paragraph break stays inside its note', () => {
-    // A raw HTML block in markdown ends at a blank line, so an uncollapsed
-    // reason would split the header block and strand its closing tags.
+    // The note's reason is Markdown, so blank lines delimit it on purpose. The collapse is what keeps the
+    // reason itself one line: a second paragraph would close the note early and strand its closing tags.
     const page = renderTypeHeader({
       name: 'Statistic',
       kind: { text: 'Enum' },
@@ -153,9 +153,8 @@ describe('toAgentMarkdown', () => {
       deprecationReason: 'Superseded.\n\nUse `Stats` instead.',
     }).join('\n');
     expect(page).toContain('Superseded. Use `Stats` instead.');
-    // No blank line between the block's opening tag and its close.
-    const block = page.slice(page.indexOf('<div class="type-header">'), page.lastIndexOf('</div>')).trim();
-    expect(block.split('\n').some((line) => line.trim() === '')).toBe(false);
+    const note = page.slice(page.indexOf('<div class="type-deprecated-note">'));
+    expect(note.split('\n\n')).toHaveLength(3);
     expect(toAgentMarkdown(page).markdown).toContain('Deprecated: Superseded. Use `Stats` instead.');
   });
 

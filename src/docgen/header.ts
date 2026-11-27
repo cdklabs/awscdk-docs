@@ -1,7 +1,8 @@
 import * as spec from '@jsii/spec';
 import { STABILITY_ROUTE } from '../site-routes.js';
-import { escapeAttr, escapeSummaryHtml, escapeVueText } from './escape.js';
+import { escapeAttr, escapeVueText } from './escape.js';
 import { pageHref } from './links.js';
+import { escapeProse } from './layout.js';
 import { PAGEFIND_IGNORE, weightedTitle } from './search.js';
 import { typeStability } from './stability.js';
 
@@ -155,7 +156,8 @@ const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: strin
  *
  * The reason's whitespace is collapsed before it is escaped, like the member summaries it reads beside: a raw HTML
  * block in markdown ends at a blank line, so a reason carrying a paragraph break would otherwise split this block
- * and strand its closing tags. `escapeSummaryHtml` also turns a web link in the reason into an anchor.
+ * and strand its closing tags. The note opens and closes with a blank line so markdown-it renders the reason's
+ * inline Markdown, the way a member row's extra prose does, and `escapeProse` keeps a web link a link.
  */
 export function renderTypeHeader(options: TypeHeaderOptions): string[] {
   const title = weightedTitle(options.name);
@@ -170,8 +172,13 @@ export function renderTypeHeader(options: TypeHeaderOptions): string[] {
       + '<span class="type-actions"><span class="type-action-copy"></span><span class="type-action-fav"></span>'
       + '</span></div>',
     ...(deprecated && reason
-      ? ['<p class="type-deprecated-note"><span class="type-deprecated-label">Deprecated:</span> '
-        + `${escapeSummaryHtml(reason.replace(/\s+/g, ' '))}</p>`]
+      ? [
+        '<div class="type-deprecated-note">',
+        '',
+        `<span class="type-deprecated-label">Deprecated:</span> ${escapeProse(reason.replace(/\s+/g, ' '))}`,
+        '',
+        '</div>',
+      ]
       : []),
     '</div>',
     '',

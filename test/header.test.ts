@@ -259,9 +259,28 @@ describe('type page header', () => {
     });
     expect(block).toContain('# <span class="type-title-deprecated"><span data-pagefind-weight="10">Statistic</span></span>');
     expect(block).toContain('<span class="type-chip type-chip-stability type-chip-deprecated">Deprecated</span>');
-    expect(block).toContain('<p class="type-deprecated-note"><span class="type-deprecated-label">Deprecated:</span> Use `Stats` instead.</p>');
+    // The reason is left as Markdown and the blank lines around it end the raw-HTML block, so markdown-it
+    // renders the code span instead of printing its backticks.
+    expect(block).toContain(
+      '<div class="type-deprecated-note">\n\n'
+      + '<span class="type-deprecated-label">Deprecated:</span> Use `Stats` instead.\n\n'
+      + '</div>',
+    );
     // The note sits inside the header block, so the divider closes below it.
     expect(block.indexOf('type-deprecated-note')).toBeLessThan(block.lastIndexOf('</div>'));
+  });
+
+  test('a deprecated reason keeps its paragraph on one line so the note cannot end early', () => {
+    const block = header({
+      name: 'Statistic',
+      kind: { text: 'Enum' },
+      stability: 'deprecated',
+      deprecationReason: 'Gone.\n\nUse `Stats`.',
+    });
+    const note = block.slice(block.indexOf('<div class="type-deprecated-note">'));
+    expect(note).toContain('Gone. Use `Stats`.');
+    // One blank line before the reason and one after it; a third would strand the closing tag.
+    expect(note.split('\n\n')).toHaveLength(3);
   });
 
   test('a deprecated type with no stated reason shows the chip and no empty note', () => {
@@ -288,9 +307,12 @@ describe('type page header', () => {
       deprecationReason: 'see <b>docs</b> {{ y }}',
     });
     expect(block).toContain('&lt;img src=x&gt; &#123;&#123; x &#125;&#125;');
-    expect(block).toContain('see &lt;b&gt;docs&lt;/b&gt; &#123;&#123; y &#125;&#125;');
+    // The reason is Markdown now, so it is escaped as prose: the `<` that could open a tag and the braces Vue
+    // would interpolate are entities. A bare `>` stays text, which is what the browser renders it as.
+    expect(block).toContain('see &lt;b>docs&lt;/b> &#123;&#123; y &#125;&#125;');
     expect(block).not.toContain('<img');
     expect(block).not.toContain('<b>');
+    expect(block).not.toContain('{{');
   });
 
   test('the stability is the type\'s own when set, otherwise its package\'s', () => {

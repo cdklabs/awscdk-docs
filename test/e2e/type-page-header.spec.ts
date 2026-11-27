@@ -263,6 +263,9 @@ test.describe('type page header', () => {
     expect(await title.evaluate((el) => getComputedStyle(el).textDecorationLine)).toContain('line-through');
     await expect(page.locator('.type-header-row .type-chip-deprecated')).toHaveText('Deprecated');
     await expect(page.locator('.type-deprecated-note')).toContainText('Deprecated:');
+    // The reason is Markdown, so its code span renders as code instead of printing backticks.
+    await expect(page.locator('.type-deprecated-note code')).toHaveText('<SERVICE>.amazonaws.com');
+    await expect(page.locator('.type-deprecated-note')).not.toContainText('`');
     // The struck title wraps the weighted span in one more element, which the
     // permalink's accessible name has to see through.
     await expect(page.locator('.vp-doc h1 a.header-anchor')).toHaveAttribute('aria-label', 'Permalink to "Default"');

@@ -768,6 +768,8 @@ describe('API kind badge palette', () => {
       expect(note).toContain('border-left: 4px solid var(--th-dep-edge)');
       expect(note).toContain('background-color: var(--th-dep-bg)');
       expect(exactRuleBody('.type-deprecated-label')).toContain('var(--th-dep-text)');
+      // The reason renders as Markdown, so its paragraph drops the default theme's margins.
+      expect(exactRuleBody('.vp-doc .type-deprecated-note p')).toContain('margin: 0');
     });
   });
 
