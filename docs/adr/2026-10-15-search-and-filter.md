@@ -29,7 +29,8 @@ registered in the VitePress config's `vite.plugins`; it runs the Pagefind
 indexer over the rendered output after the build and replaces the default navbar
 search UI. The built-in VitePress local search (MiniSearch) is not configured.
 Generated pages carry a stable Pagefind date from docgen's `date` frontmatter (see the versions and history ADR),
-so the plugin's date meta does not change from build to build.
+so the plugin's date meta on those pages does not change from build to build; handwritten pages are still dated by
+the plugin.
 
 Pagefind indexes the built site into sharded static files, so a query downloads
 only small index fragments on demand rather than one monolithic in-memory index.
