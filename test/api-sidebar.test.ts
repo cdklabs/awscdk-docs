@@ -762,6 +762,13 @@ describe('Services view', () => {
     expect(constructCount(s3Items)).toBe(serviceNodes(skeleton).find((s) => s.text === 'S3')!.count);
     // A single-resource service keeps its constructs at the top level; they still count, its overview does not.
     expect(serviceRows(polly).constructs.map((r) => r.text)).toEqual(['CfnLexicon']);
+    // A construct docgen routes to `General` sits in a `Constructs` kind group: a construct row, not a kind.
+    const withGeneralConstructs: ApiSidebarNode[] = [
+      { text: 'General', collapsed: true, items: [kindGroup('Constructs', [type('Rule', 'aws-cdk-lib.aws_x.events.Rule', 'construct')])] },
+    ];
+    expect(serviceRows(withGeneralConstructs).constructs.map((r) => r.text)).toEqual(['Rule']);
+    expect(serviceRows(withGeneralConstructs).kinds.has('Constructs')).toBe(false);
+    expect(constructCount(withGeneralConstructs)).toBe(1);
   });
 
   test('the list is the Services section A to Z, case-insensitive, with EKS as two plain rows', () => {
