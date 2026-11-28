@@ -188,7 +188,7 @@ test.describe('explorer preview on desktop', () => {
     [SKILLS_PAGE, 'the skills page'],
     [VERSIONS_PAGE, 'the versions page'],
   ] as const) {
-    for (const width of [960, 1000, 1024, 1119, 1120, 1135, 1136, 1280, 1282, 1295, 1296]) {
+    for (const width of [960, 1000, 1024, 1100, 1119, 1120, 1135, 1136, 1280, 1282, 1295, 1296]) {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 });
         await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
