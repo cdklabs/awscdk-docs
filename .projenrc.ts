@@ -40,8 +40,8 @@ const CDK_ALPHA_PACKAGES = ['@aws-cdk/mixins-preview'];
 // @aws-cdk/cloud-assembly-schema is re-exported as the aws-cdk-lib `cloud_assembly_schema` submodule, so
 // documenting the standalone package would duplicate its pages.
 
-// The project type supplies `typescript`. Held below the newest TypeScript the typescript-eslint and ts-jest peer
-// ranges accept.
+// The project type supplies `typescript`. Held within the TypeScript versions the typescript-eslint and ts-jest
+// peer ranges accept.
 const project = new CdkTypeScriptProject({
   name: '@cdklabs/awscdk-docs',
   private: true,
