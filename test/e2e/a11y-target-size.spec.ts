@@ -118,6 +118,66 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
     });
   }
 
+  // The Favorites view's row and heading buttons exist only with the Explorer
+  // preview on and favorites stored, so the page scans above never measure
+  // them. Its menu exists only while open.
+  for (const width of [1280, 375]) {
+    test(`the Favorites view meets the 24px floor at ${width}px`, async ({ page }) => {
+      await page.addInitScript(() => {
+        window.localStorage.setItem('cdk-docs-explorer-preview', 'on');
+        window.localStorage.setItem('cdk-docs-explorer-view', 'favorites');
+        window.localStorage.setItem(
+          'cdk-docs:favourites',
+          JSON.stringify([
+            { path: '/v2/docs/aws-cdk-lib.aws_sns.Topic', title: 'Topic' },
+            { path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue', title: 'Queue' },
+            { path: '/v2/docs/constructs.Construct', title: 'Construct' },
+          ]),
+        );
+      });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(TOPIC_PAGE);
+      await expect(page.locator('.VPNav')).toBeVisible();
+      if (width < 960) {
+        await page.locator('.VPLocalNav button.menu').click();
+      }
+      await expect(page.locator('.favorites-static-heading')).toBeVisible();
+
+      const scan = async (include: string) => {
+        const results = await new AxeBuilder({ page })
+          .include(include)
+          .options({ rules: { 'target-size': { enabled: true } } })
+          .withRules(['target-size'])
+          .analyze();
+        return results.violations
+          .flatMap((violation) => violation.nodes)
+          .map((node) => `${node.target.join(' ')} — ${node.failureSummary ?? ''}`)
+          .join('\n');
+      };
+
+      // The rows and headings with nothing open. An open menu covers the rows
+      // under it, which axe reads as an obscured target, so the menu is
+      // measured on its own below.
+      const rows = await scan('.favorites-section');
+      expect(rows, `target-size violations on the Favorites rows at ${width}px:\n${rows}`).toBe('');
+
+      const row = page.locator('.favorites-section .favorites-item').first();
+      await row.getByRole('button', { name: /^Actions for / }).click();
+      await expect(row.getByRole('menu')).toBeVisible();
+      const menu = await scan('.favorites-menu');
+      expect(menu, `target-size violations in the row menu at ${width}px:\n${menu}`).toBe('');
+
+      // Below 960px the 44px target comes from an overlay, which axe reads
+      // from the box, so the overlay's own height is measured here.
+      if (width < 960) {
+        const overlay = await row
+          .getByRole('button', { name: /^Actions for / })
+          .evaluate((el) => getComputedStyle(el, '::before').height);
+        expect(parseFloat(overlay)).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
   // The sidebar filter's hint button exists only while a query is active and the symbol index has loaded, so the
   // scans above (empty filter) never evaluate it.
   test('the filter hint button meets target size and contrast while a query is active', async ({ page }) => {

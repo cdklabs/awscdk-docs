@@ -54,17 +54,86 @@ async function emptyFavorites(page: Page): Promise<void> {
   await expect(section.locator('.favorites-empty')).toBeVisible();
 }
 
-/** Opens the first row's menu and its group list, which exist only while open. */
+/** Opens the first row's menu, which exists only while it is open. */
 async function openRowMenu(page: Page): Promise<void> {
   const row = page.locator('.favorites-section .favorites-item').first();
   await row.getByRole('button', { name: /^Actions for / }).click();
   await expect(row.getByRole('menu')).toBeVisible();
 }
 
-/** Removes one favorite, which is what puts the Undo toast on the page. */
+/** Takes an open row menu to its "Move to group" level, a second set of items. */
+async function openMoveLevel(page: Page): Promise<void> {
+  const row = page.locator('.favorites-section .favorites-item').first();
+  await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+  await expect(row.getByRole('menuitemradio').first()).toBeVisible();
+}
+
+/** Opens the first group heading's menu, once the sidebar has stopped moving. */
+async function openGroupMenu(page: Page): Promise<void> {
+  const head = page.locator('.favorites-section .favorites-group-head').first();
+  await settle(page);
+  await head.getByRole('button', { name: /^Actions for group / }).click();
+  await expect(head.getByRole('menu')).toBeVisible();
+}
+
+/** Waits for the sidebar's own transitions, so a click does not chase a moving button. */
+async function settle(page: Page): Promise<void> {
+  await expect
+    .poll(() =>
+      page
+        .locator('.VPSidebar')
+        .evaluate((el) => el.getAnimations({ subtree: true }).length === 0),
+    )
+    .toBe(true);
+}
+
+/** Leaves a name field showing its error, which is a state of its own. */
+async function refuseGroupName(page: Page): Promise<void> {
+  const section = page.locator('.favorites-section');
+  await section.getByRole('button', { name: 'New group' }).click();
+  const field = section.getByRole('textbox', { name: 'New group name' });
+  const taken = await section.locator('.favorites-group-name').first().textContent();
+  await field.fill(taken!.trim());
+  await field.press('Enter');
+  await expect(section.locator('.favorites-name-error')).toBeVisible();
+}
+
+/**
+ * The states of the Favorites view that exist only while something is open:
+ * each menu level, a refused name and the Undo toast.
+ */
+async function auditFavoritesStates(page: Page, label: string): Promise<void> {
+  await audit(page, `the Favorites view ${label}`);
+  await openRowMenu(page);
+  await audit(page, `the Favorites view with a row menu open ${label}`);
+  await openMoveLevel(page);
+  await audit(page, `the Favorites view with the Move to group list open ${label}`);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await openGroupMenu(page);
+  await audit(page, `the Favorites view with a group menu open ${label}`);
+  await page.keyboard.press('Escape');
+  await refuseGroupName(page);
+  await audit(page, `the Favorites view with a refused group name ${label}`);
+  await page.keyboard.press('Escape');
+  await showToast(page);
+  await audit(page, `the Favorites view with the Undo toast showing ${label}`);
+}
+
+/**
+ * Removes one favorite, which is what puts the Undo toast on the page. Below
+ * 960px the row has no ✕, so the removal goes through its menu, as a reader's
+ * would.
+ */
 async function showToast(page: Page): Promise<void> {
   const section = page.locator('.favorites-section');
-  await section.getByRole('button', { name: /^Remove / }).first().click();
+  const remove = section.getByRole('button', { name: /^Remove / }).first();
+  if (await remove.isVisible()) {
+    await remove.click();
+  } else {
+    await openRowMenu(page);
+    await section.getByRole('menuitem', { name: 'Remove from Favorites' }).click();
+  }
   await expect(section.locator('.favorites-toast')).toBeVisible();
 }
 
@@ -84,14 +153,7 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
     test('the Favorites view has no critical or serious violations', async ({ page }) => {
       await open(page, { [VIEW_KEY]: 'favorites' });
       await expect(page.locator('.favorites-static-heading')).toBeVisible();
-      await audit(page, 'the Favorites view');
-      // The menu and the toast exist only while they are open, so the scan
-      // above never evaluates them.
-      await openRowMenu(page);
-      await audit(page, 'the Favorites view with a row menu open');
-      await page.keyboard.press('Escape');
-      await showToast(page);
-      await audit(page, 'the Favorites view with the Undo toast showing');
+      await auditFavoritesStates(page, 'at 1280px');
       await emptyFavorites(page);
       await audit(page, 'the empty Favorites view');
     });
@@ -99,12 +161,7 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
     test('dark mode has no critical or serious violations', async ({ page }) => {
       await open(page, { 'vitepress-theme-appearance': 'dark', [VIEW_KEY]: 'favorites' });
       await expect(page.locator('html')).toHaveClass(/dark/);
-      await audit(page, 'the Favorites view in dark mode');
-      await openRowMenu(page);
-      await audit(page, 'the Favorites view with a row menu open in dark mode');
-      await page.keyboard.press('Escape');
-      await showToast(page);
-      await audit(page, 'the Favorites view with the Undo toast showing in dark mode');
+      await auditFavoritesStates(page, 'in dark mode');
       await emptyFavorites(page);
       await audit(page, 'the empty Favorites view in dark mode');
       await page.locator('.VPNavBar .settings-trigger').click();
@@ -115,6 +172,21 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
 
   test.describe('phone', () => {
     test.use({ viewport: { width: 375, height: 760 } });
+
+    test('the Favorites view with a row menu open has no critical or serious violations at 375px', async ({
+      page,
+    }) => {
+      // One scan here: the markup of the view and its menus does not change
+      // with the viewport, the desktop pass audits every state of it, and what
+      // the phone does change — the sizes and the menu width — is measured in
+      // `a11y-target-size.spec.ts`. A second scan at this width does not fit
+      // the suite's time budget.
+      await open(page, { [VIEW_KEY]: 'favorites' });
+      await page.locator('.VPLocalNav button.menu').click();
+      await expect(page.locator('.favorites-static-heading')).toBeVisible();
+      await openRowMenu(page);
+      await audit(page, 'the Favorites view with a row menu open at 375px');
+    });
 
     test('the unfolded rail and the Views button have no critical or serious violations', async ({ page }) => {
       await open(page, {});
