@@ -181,26 +181,27 @@ test.describe('explorer preview on desktop', () => {
   });
 
   // The 392px sidebar variable moves where the top bar's controls start, so the row, gear included,
-  // is measured at the tightest one-row widths on a page with the sidebar and on one without.
+  // is measured at the tightest one-row widths on a page with the sidebar and on ones without.
   for (const [pagePath, label] of [
     [QUEUE_PAGE, 'an API page'],
     ['/', 'the home page'],
     [SKILLS_PAGE, 'the skills page'],
+    [VERSIONS_PAGE, 'the versions page'],
   ] as const) {
-    for (const width of [960, 1000, 1024, 1119, 1120, 1280]) {
+    for (const width of [960, 1000, 1024, 1100, 1119, 1120, 1135, 1136, 1280, 1282, 1295, 1296]) {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 });
         await open(page, { [PREVIEW_KEY]: 'on' }, false, pagePath);
-        // The version badge leaves the bar from 960px to 1119px with the preview on; the Versions link covers it.
+        // The version badge leaves the bar from 960px to 1135px with the preview on; the Versions link covers it.
         const badge = '.VPNavBar .content-body > .version-badge';
-        if (width < 1120) {
-          await expect(page.locator(badge), 'the version badge is hidden below 1120px').toBeHidden();
+        if (width < 1136) {
+          await expect(page.locator(badge), 'the version badge is hidden below 1136px').toBeHidden();
         }
         const controls = [
           '.VPNavBar .language-toggle',
           '.VPNavBar .content-body > .search',
           '.VPNavBar .content-body > .VPNavBarMenu',
-          ...(width < 1120 ? [] : [badge]),
+          ...(width < 1136 ? [] : [badge]),
           '.VPNavBar .settings-trigger',
         ];
         const boxes = [];
@@ -215,6 +216,11 @@ test.describe('explorer preview on desktop', () => {
         expect(boxes[0].x, 'the first control starts after the title lane').toBeGreaterThanOrEqual(title!.x + title!.width);
         // The search button keeps at least its 36px icon width where the row is tightest.
         expect(boxes[1].width, 'the search button keeps its icon width').toBeGreaterThanOrEqual(36);
+        // The last language tab keeps at least 8px from the search button, so a hovered tab's fill does not touch it.
+        // The button sits inside the search wrapper, which itself starts flush with the tabs.
+        const searchButton = await page.locator('.VPNavBar .content-body > .search .nav-search-btn-wait').boundingBox();
+        expect(searchButton, 'the search button has a box').not.toBeNull();
+        expect(searchButton!.x - (boxes[0].x + boxes[0].width), 'the tabs keep 8px from the search').toBeGreaterThanOrEqual(8);
         for (let i = 1; i < boxes.length; i++) {
           expect(boxes[i].x, 'controls do not overlap').toBeGreaterThanOrEqual(boxes[i - 1].x + boxes[i - 1].width - 1);
         }

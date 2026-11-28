@@ -194,7 +194,7 @@ build, with the pill's edge, fill and hover ring dropped. A single-language buil
 keeps the labeled button.
 With the Explorer preview off, every control keeps its place in the row — the
 version must stay visible, and a control a click away is not visible. The
-preview's one exception, the version badge between 960px and 1119px, is
+preview's one exception, the version badge between 960px and 1135px, is
 recorded under the geometry rules below and in the preview ADR. E2e assertions pin the row fitting inside
 768px, 800px, 900px, 960px, 1024px, 1099px, 1100px, and 1279px viewports,
 and the page scroll width equaling the viewport with no two bar controls
@@ -263,7 +263,7 @@ rule. The `.title` selector uses a child chain (`> .wrapper > .container >
 .title`) because these unscoped rules would otherwise also match the anchor
 inside `VPNavBarTitle`.
 
-With the Explorer preview on, `--vp-sidebar-width` is 392px on every page, so the title lane is 72px wider and the bar's controls start 72px further right, and from 1280px so do the `/versions` content and its footer; the geometry stays page-independent within each mode. From 960px to 1119px the version badge is hidden in the bar, so the gear keeps its 32px inset from the viewport edge as with the preview off; the Versions link leads to the same page.
+With the Explorer preview on, `--vp-sidebar-width` is 392px on every page, so the title lane is 72px wider and the bar's controls start 72px further right, and from 1280px so do the `/versions` content and its footer; the geometry stays page-independent within each mode. From 960px to 1135px the version badge is hidden in the bar, so the gear keeps its 32px inset from the viewport edge as with the preview off and the language tabs keep at least 8px from the search; from 1280px to 1295px the tabs' side padding is 12px for the same reason. The Versions link leads to the same page.
 
 These geometry rules are **not** gated on the tabs' presence — they are page
 geometry, not control arrangement, so a single-language build also gets one
