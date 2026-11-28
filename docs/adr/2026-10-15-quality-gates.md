@@ -74,7 +74,7 @@ different ports (`ERR_CONNECTION_REFUSED`). No spec may fall back to a hardcoded
 server URL — a fallback would resolve against some other server instead of failing.
 The load-bearing config fields (port strategy, reuse flag, agreement between
 reserved port and server command, absence of hardcoded spec URLs, determinism
-settings, CI worker count) are pinned by a unit test, each mutation-proved to fail when flipped.
+settings) are pinned by a unit test, each mutation-proved to fail when flipped.
 `e2e-serve.cjs` keeps a `4173` default for bare manual invocation; the suite always
 passes an explicit port.
 

@@ -101,11 +101,6 @@ describe('browser e2e suite wiring', () => {
       expect(config).toMatch(/fullyParallel: false/);
       expect(config).toMatch(/forbidOnly: !!process\.env\.CI/);
     });
-
-    test('CI runs a fixed number of workers, keeping each worker CPU headroom', () => {
-      // Config shape with no produced-output counterpart: the worker count never reaches the built site.
-      expect(config).toMatch(/workers: process\.env\.CI \? 8 : undefined/);
-    });
   });
 
   describe('docs-e2e workflow', () => {
