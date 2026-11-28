@@ -88,8 +88,8 @@ test.describe('type hover tooltips', () => {
   });
 });
 
-// The same previews open on keyboard focus (`focusin`) and close when focus
-// leaves the link (`focusout`), so keyboard and screen reader users get them too.
+// Previews also open on keyboard focus (`focusin`) and close when focus leaves the link (`focusout`).
+// Keyboard focus that scrolls the page does not show a preview yet (see the fixme below).
 test.describe('type tooltips on keyboard focus', () => {
   const METRIC_OPTIONS = '.VPDoc a[href$="/aws-cdk-lib.aws_cloudwatch.MetricOptions.html"]';
 
@@ -188,6 +188,7 @@ test.describe('type tooltips on keyboard focus', () => {
     // The scroll that focus causes fires after `focusin`, and the scroll handler hides the pending preview.
     await page.goto(TOPIC_PAGE);
     const link = page.locator(METRIC_OPTIONS).last();
+    await expect(link).not.toBeInViewport();
     await link.evaluate((target) => {
       const links = [...document.querySelectorAll<HTMLElement>('a[href]')];
       links[links.indexOf(target as HTMLElement) - 1].focus({ preventScroll: true });
