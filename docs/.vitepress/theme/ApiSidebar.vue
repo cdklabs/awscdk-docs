@@ -422,7 +422,8 @@ function initStyle(style: NavStyle) {
   const stored = memory.entries().map(([key]) => key);
   const live = style === "package" ? groupKeys(styleTree) : retainedGroupKeys(styleTree, stored);
   // The service store also holds the Services view's keys (a service at the
-  // root, its kind groups under it), which the API view's tree does not have.
+  // root, its parts and their kind groups under it), which the API view's tree
+  // does not have.
   if (style === "service") {
     for (const key of retainedGroupKeys(servicesViewTree(serviceTree.value), stored)) live.add(key);
   }

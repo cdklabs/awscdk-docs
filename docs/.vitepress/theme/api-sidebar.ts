@@ -524,7 +524,8 @@ export function serviceViewItems(items: readonly ApiSidebarNode[], flat = false)
  * The Services view's tree: the generated Services section's nodes, A to Z, each loaded one carrying the rows of
  * `serviceViewItems` and each unloaded one kept as the skeleton node (its `chunk` names the file to fetch, its
  * `count` is docgen's construct count). The service nodes are the roots, so a service's group key is its text and
- * the keys of its kind groups nest under it, apart from the API view's keys under `Services`.
+ * the keys of its parts and their kind groups nest under it (`S3` › `Types` › `Others`), apart from the API view's
+ * keys under `Services`.
  */
 export function servicesViewTree(nodes: readonly ApiSidebarNode[], flat = false): ApiSidebarNode[] {
   return serviceNodes(nodes).map((service) => (isUnloadedChunk(service) ? service : serviceViewNode(service, flat)));
