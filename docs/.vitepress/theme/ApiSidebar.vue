@@ -385,8 +385,11 @@ function loadOpenPackageChunks() {
 // closed headings are preloaded, so without this its child list would render
 // empty under an open caret.
 function loadOpenServiceChunks() {
+  // Only the showing list: the store also holds the other view's open groups (the API view's under
+  // `Services`, the Services view's at the root), whose chunks this view never shows.
+  const showing = servicesView.value ? servicesTree.value : serviceTree.value;
   for (const key of expandedByStyle.value.service) {
-    const chunk = unloadedServiceChunk(key);
+    const chunk = unloadedChunkForKey(showing, key);
     if (chunk) loadChunk(chunk).catch(() => undefined);
   }
 }

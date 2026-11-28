@@ -462,13 +462,14 @@ function mainOverview(overviews: readonly ApiSidebarNode[]): ApiSidebarNode | un
 
 /**
  * The rows of one open service, as the Services view lists them. In order, each part only when it has rows:
- * `Overview` (the main module's overview page), `Modules` (the other overview pages, named by module id with the
- * generated per-language labels, each counting the type rows of its module), `Constructs` (every construct, flat, in the order of the generated
- * service tree) and `Types` (one closed kind group per kind the service has, merged across its resources, rows
- * A to Z). A kind group's `Type index` row (a kind-less leaf docgen adds for types without a page of their own)
- * is listed after the sorted type rows and counted by no count. With `flat` set (the filter is active) the same
- * rows come back as one flat list without parts or kind groups: overview, modules, constructs, then the types kind
- * by kind, so the filter prunes rows rather than groups.
+ * `Overview` (the main module's overview page), `Modules` (the other overview pages, named by module id with
+ * the generated per-language labels, each counting the type rows of its module), `Constructs` (every construct,
+ * flat, in the order of the generated service tree) and `Types` (one closed kind group per kind the service
+ * has, merged across its resources, rows A to Z). A kind group's `Type index` row (a kind-less leaf docgen adds
+ * for types without a page of their own) is listed after the sorted type rows and left out of the type and
+ * construct counts; while filtering, a service's count is its visible rows, this one included. With `flat` set
+ * (the filter is active) the same rows come back as one flat list without parts or kind groups: overview,
+ * modules, constructs, then the types kind by kind, so the filter prunes rows rather than groups.
  */
 export function serviceViewItems(items: readonly ApiSidebarNode[], flat = false): ApiSidebarNode[] {
   const rows = serviceRows(items);

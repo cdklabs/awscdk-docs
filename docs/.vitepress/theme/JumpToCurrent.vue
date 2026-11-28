@@ -175,7 +175,10 @@ onBeforeUnmount(() => {
   top: calc(100% + 4px);
   right: 0;
   z-index: 3;
-  padding: 4px 8px;
+  /* 3px 7px plus the 1px border: the box is the 4px 8px of the design, and in forced colors, where author
+     backgrounds and shadows are dropped, the border draws the outline in the system text color. */
+  padding: 3px 7px;
+  border: 1px solid transparent;
   border-radius: 6px;
   background-color: var(--vp-c-text-1);
   color: var(--vp-c-bg);
