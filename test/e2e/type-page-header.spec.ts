@@ -457,7 +457,7 @@ test.describe('type page header', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
-  test('at 375px the pills keep their 32px box and still take a tap 7px outside it', async ({ page }) => {
+  test('at 375px the pills keep their 32px box and still take a tap 5px outside it', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 900 });
     await page.goto(QUEUE_PAGE);
     await page.locator('.copy-markdown[data-ready]').waitFor();

@@ -9,7 +9,8 @@ const THEME_DIR = resolve(ROOT, 'docs/.vitepress/theme');
  *
  * Brace-matched rather than sliced to end of file, so a declaration in a
  * later breakpoint cannot satisfy an assertion about this one. A shared
- * selector list maps every selector in it to the same body.
+ * selector list maps every selector in it to the same body, and a selector
+ * that appears in several rules gets their bodies joined, as the cascade does.
  */
 function rulesInMediaBlock(source: string, query: string): Map<string, string> {
   const start = source.indexOf(query);
@@ -43,7 +44,7 @@ function rulesInMediaBlock(source: string, query: string): Map<string, string> {
     for (const selector of selectors.split(',')) {
       const clean = selector.trim().replace(/\s+/g, ' ');
       if (clean) {
-        rules.set(clean, body);
+        rules.set(clean, (rules.get(clean) ?? '') + body);
       }
     }
   }
@@ -108,10 +109,20 @@ describe('type page header below the tablet breakpoint', () => {
       const body = mobileRules.get(selector);
       expect(body).toContain('height: 32px');
       expect(body).toContain('min-height: 32px');
-      expect(body).toContain('min-width: 32px');
       expect(body).toContain('border-width: 1.5px');
       expect(body).toContain('font-weight: 600');
       expect(body).toContain('position: relative');
+    });
+
+    test.each(PILLS.slice(1))('%s drops the 44px width floor to its 32px box', (selector) => {
+      // Copy Markdown is left out: its component sets an 8.5em floor that keeps
+      // the row still when the label changes to Copied, and this rule's higher
+      // specificity would override it.
+      expect(mobileRules.get(selector)).toContain('min-width: 32px');
+    });
+
+    test('Copy Markdown keeps its own width floor on a phone', () => {
+      expect(mobileRules.get(PILLS[0])).not.toContain('min-width');
     });
 
     test.each(PILLS)('%s reaches 44px through an overlay, not its own box', (selector) => {
@@ -122,7 +133,7 @@ describe('type page header below the tablet breakpoint', () => {
       expect(overlay).toContain('inset: -7.5px 0');
     });
 
-    test('the actions box no longer reserves 44px, so the row is as tall as its pills', () => {
+    test('the actions box reserves no phone-only height, so the row is as tall as its pills', () => {
       expect(mobileRules.get('.type-actions')).toBeUndefined();
     });
   });

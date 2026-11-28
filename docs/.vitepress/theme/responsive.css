@@ -156,10 +156,16 @@ pre.signature {
   .vp-doc .type-actions .favorite-star-button {
     position: relative;
     min-height: 32px;
-    min-width: 32px;
     height: 32px;
     border-width: 1.5px;
     font-weight: 600;
+  }
+
+  /* Copy Markdown keeps the component's own width floor, so the label change
+     after a tap does not move the two controls beside it. */
+  .vp-doc .type-actions .copy-markdown-options,
+  .vp-doc .type-actions .favorite-star-button {
+    min-width: 32px;
   }
 
   .vp-doc .type-actions .copy-markdown-main::before,

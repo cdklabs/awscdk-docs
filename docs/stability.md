@@ -47,8 +47,10 @@ strikes its title, and carries a `Deprecated:` note under the row giving the
 reason.
 
 Generated L1 types (the `Cfn*` classes and their props), which the published
-metadata marks `external`, show **External**: their stability is the
-CloudFormation resource's, not a level of this library. The few types that
+metadata marks `external`, show **External**: they are generated from AWS
+service data, and the [AWS CDK versioning
+guide](https://docs.aws.amazon.com/cdk/v2/guide/versioning.html) notes that
+generated code might contain backward incompatible changes. The few types that
 declare no stability at all show the kind chip alone.
 
 Every type page of an experimental package also opens with an **Experimental**

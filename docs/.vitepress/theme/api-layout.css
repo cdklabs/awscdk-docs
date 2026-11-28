@@ -282,8 +282,8 @@
 }
 
 /* The External chip, on every generated L1 type. Gray rather than a signal
-   color: `external` says the stability is CloudFormation's to state, not a
-   level of its own. */
+   color: `external` is jsii's own word for generated code and not a level the
+   stability guide ranks. */
 .type-chip-external {
   background-color: var(--th-ext-bg);
   color: var(--th-ext-text);
