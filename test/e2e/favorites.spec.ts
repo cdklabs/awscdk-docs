@@ -196,50 +196,28 @@ test.describe('favorite pages', () => {
     expect(metrics.height).toBeGreaterThanOrEqual(44);
   });
 
-  test('the capped message stays in the row without overlapping the pills or widening the page', async ({ page }) => {
-    // Starring past the cap puts a sentence inside the star's wrapper, which on
-    // a type page sits in the chip row beside two pills. The chip row wraps, but
-    // the actions box holding the pills and the star does not, so the message has
-    // to fit beside them on one line. 320px is the width reflow measures against.
-    for (const width of [1280, 375, 320]) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto(TOPIC_PAGE);
-      await page.evaluate(() => {
-        const entries = Array.from({ length: 20 }, (_, i) => ({
-          path: `/v2/docs/filler-${i}`,
-          title: `Filler ${i}`,
-        }));
-        localStorage.setItem('cdk-docs:favourites', JSON.stringify(entries));
-      });
-      await page.reload();
-      const star = page.locator('.type-header-row .favorite-star-button');
-      await expect(star).toBeVisible();
-      await star.click();
+  test('more than twenty pages can be favorited, with no cap message', async ({ page }) => {
+    // The cap used to refuse the twenty-first page and say so in the chip row.
+    await page.goto(TOPIC_PAGE);
+    await page.evaluate(() => {
+      const entries = Array.from({ length: 20 }, (_, i) => ({
+        path: `/v2/docs/filler-${i}`,
+        title: `Filler ${i}`,
+      }));
+      localStorage.setItem('cdk-docs:favourites', JSON.stringify(entries));
+    });
+    await page.reload();
+    const star = page.locator('.type-header-row .favorite-star-button');
+    await expect(star).toBeVisible();
+    await star.click();
 
-      const cap = page.locator('.favorite-star-cap');
-      await expect(cap).toBeVisible();
-      const geometry = await page.evaluate(() => {
-        const box = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
-        const message = box('.favorite-star-cap');
-        const overlaps = (other: DOMRect) =>
-          message.left < other.right && other.left < message.right
-          && message.top < other.bottom && other.top < message.bottom;
-        return {
-          left: message.left,
-          right: message.right,
-          onCopy: overlaps(box('.copy-markdown-main')),
-          onOptions: overlaps(box('.copy-markdown-options')),
-          onStar: overlaps(box('.favorite-star-button')),
-          scrolls: document.documentElement.scrollWidth > window.innerWidth,
-        };
-      });
-      expect(geometry.left, `${width}px`).toBeGreaterThanOrEqual(0);
-      expect(geometry.right, `${width}px`).toBeLessThanOrEqual(width);
-      expect(geometry.onCopy, `${width}px`).toBe(false);
-      expect(geometry.onOptions, `${width}px`).toBe(false);
-      expect(geometry.onStar, `${width}px`).toBe(false);
-      expect(geometry.scrolls, `${width}px`).toBe(false);
-    }
+    await expect(star).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.favorite-star-cap')).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem('cdk-docs:favourites')!).length,
+      ),
+    ).toBe(21);
   });
 
   test('the star does not add height to the breadcrumb bar', async ({
@@ -349,5 +327,326 @@ test.describe('favorite pages', () => {
     await page.locator('.type-breadcrumb .favorite-star-button').click();
     await expect(page.locator('.type-breadcrumb .favorite-star-button')).toHaveAttribute('aria-pressed', 'false');
     await expect(page.locator('.favorites-section')).toHaveCount(0);
+  });
+});
+
+// The grouped Favorites view of the Explorer preview. Only a browser shows
+// what the grouping, the menus, the inline fields and the Undo toast do: the
+// unit suite pins the stored JSON these actions write, and the view is
+// assembled client-side from it.
+test.describe('grouped favorites view', () => {
+  const PREVIEW_KEY = 'cdk-docs-explorer-preview';
+  const VIEW_KEY = 'cdk-docs-explorer-view';
+  const FAVORITES_KEY = 'cdk-docs:favourites';
+  const GROUPS_KEY = 'cdk-docs:favourites:groups';
+  const ALIASES_KEY = 'cdk-docs:favourites:aliases';
+  const COLLAPSED_KEY = 'cdk-docs:favourites:collapsed-groups';
+
+  const STARRED = [
+    { path: '/v2/docs/aws-cdk-lib.aws_sns.Topic', title: 'Topic' },
+    { path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue', title: 'Queue' },
+    { path: '/v2/docs/constructs.Construct', title: 'Construct' },
+  ];
+
+  /** The view, with the preview on and the given pages already starred. */
+  async function openView(
+    page: Page,
+    entries: readonly { path: string; title: string; group?: string | null }[] = STARRED,
+    extra: Record<string, string> = {},
+  ): Promise<void> {
+    await page.addInitScript(
+      ([preview, view, favorites, stored, keys]) => {
+        const [previewKey, viewKey, favoritesKey] = keys as string[];
+        window.localStorage.setItem(previewKey, preview as string);
+        window.localStorage.setItem(viewKey, view as string);
+        // Only when nothing is there yet: the script runs on every navigation,
+        // so overwriting would undo what the view just stored.
+        if (window.localStorage.getItem(favoritesKey) === null) {
+          window.localStorage.setItem(favoritesKey, JSON.stringify(favorites));
+          for (const [key, value] of Object.entries(stored as Record<string, string>)) {
+            window.localStorage.setItem(key, value);
+          }
+        }
+      },
+      ['on', 'favorites', entries, extra, [PREVIEW_KEY, VIEW_KEY, FAVORITES_KEY]] as const,
+    );
+    await page.goto(QUEUE_PAGE);
+    const accept = page.getByRole('button', { name: 'Accept' });
+    if (await accept.count()) {
+      await accept.first().click();
+    }
+    await expect(page.locator('.favorites-static-heading')).toBeVisible();
+  }
+
+  const view = (page: Page) => page.locator('.favorites-section');
+
+  const stored = (page: Page, key: string) =>
+    page.evaluate((k) => JSON.parse(window.localStorage.getItem(k) ?? 'null'), key);
+
+  test.describe('desktop', () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    test('favorites sit in groups named by the map, A to Z with rows A to Z', async ({ page }) => {
+      await openView(page);
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+        'Framework',
+      ]);
+      await expect(view(page).locator('.favorites-group-count')).toHaveText(['(2)', '(1)']);
+      await expect(view(page).locator('.favorites-link')).toHaveText([
+        'Queue · SQS',
+        'Topic · SNS',
+        'Construct · constructs',
+      ]);
+      // Each group is a list named after itself, under its heading button.
+      await expect(page.getByRole('list', { name: 'Application integration' })).toBeVisible();
+      // The full page id is the hover text, so two favorites with one name tell apart.
+      await expect(view(page).locator('.favorites-link').first()).toHaveAttribute(
+        'title',
+        'aws-cdk-lib.aws_sqs.Queue',
+      );
+      // The map's answer is written back on the first read.
+      expect(await stored(page, FAVORITES_KEY)).toEqual([
+        { path: STARRED[0].path, title: 'Topic', group: 'Application integration' },
+        { path: STARRED[1].path, title: 'Queue', group: 'Application integration' },
+        { path: STARRED[2].path, title: 'Construct', group: 'Framework' },
+      ]);
+    });
+
+    test('an unmapped page lands in Ungrouped, which sorts last', async ({ page }) => {
+      await openView(page, [
+        ...STARRED,
+        { path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' },
+      ]);
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+        'Framework',
+        'Ungrouped',
+      ]);
+      // Ungrouped has no actions menu: it cannot be renamed or deleted.
+      const ungrouped = view(page).locator('.favorites-group').last();
+      await expect(ungrouped.getByRole('button', { name: /Actions for group/ })).toHaveCount(0);
+    });
+
+    test('a removal offers Undo, and Undo puts the row back where it was', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toHaveText(/Removed “Queue” from Favorites\./);
+      await expect(view(page).getByRole('heading', { name: 'Favorites (2)' })).toBeVisible();
+      await expect(view(page).locator('.favorites-link')).toHaveText([
+        'Topic · SNS',
+        'Construct · constructs',
+      ]);
+
+      await toast.getByRole('button', { name: 'Undo' }).click();
+      await expect(view(page).locator('.favorites-link')).toHaveText([
+        'Queue · SQS',
+        'Topic · SNS',
+        'Construct · constructs',
+      ]);
+      // Focus lands on the restored row, so the keyboard stays where the reader was.
+      await expect(view(page).locator('.favorites-link').first()).toBeFocused();
+    });
+
+    test('the row menu moves a favorite to another group, and the move survives a reload', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Actions for Queue' }).click();
+      await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+
+      // The current group is checked, and Ungrouped is the last group offered.
+      await expect(row.getByRole('menuitemradio')).toHaveText([
+        '✓Application integration',
+        'Framework',
+        'Ungrouped',
+      ]);
+      await expect(
+        row.getByRole('menuitemradio', { name: 'Application integration' }),
+      ).toHaveAttribute('aria-checked', 'true');
+      await row.getByRole('menuitemradio', { name: 'Framework' }).click();
+
+      await expect(view(page).locator('.favorites-group-count')).toHaveText(['(1)', '(2)']);
+      await page.reload();
+      await expect(view(page).locator('.favorites-group-count')).toHaveText(['(1)', '(2)']);
+      expect(await stored(page, FAVORITES_KEY)).toEqual([
+        { path: STARRED[0].path, title: 'Topic', group: 'Application integration' },
+        { path: STARRED[1].path, title: 'Queue', group: 'Framework' },
+        { path: STARRED[2].path, title: 'Construct', group: 'Framework' },
+      ]);
+    });
+
+    test('New group creates an empty group that survives a reload, and a duplicate name is refused', async ({ page }) => {
+      await openView(page);
+      await view(page).getByRole('button', { name: 'New group' }).click();
+      const field = view(page).getByRole('textbox', { name: 'New group name' });
+      await field.fill('Framework');
+      await field.press('Enter');
+      await expect(view(page).locator('.favorites-name-error')).toHaveText(
+        'A group named “Framework” already exists.',
+      );
+
+      await field.fill('Mine');
+      await field.press('Enter');
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+        'Framework',
+        'Mine',
+      ]);
+      await expect(view(page).locator('.favorites-group-empty').last()).toHaveText(
+        'No favorites in this group.',
+      );
+      expect(await stored(page, GROUPS_KEY)).toEqual(['Mine']);
+
+      await page.reload();
+      await expect(view(page).locator('.favorites-group-name')).toContainText(['Mine']);
+    });
+
+    test('renaming a map group keeps a later page from that service in the new name', async ({ page }) => {
+      await openView(page);
+      const heading = view(page).locator('.favorites-group').first();
+      await heading.hover();
+      await heading
+        .getByRole('button', { name: 'Actions for group Application integration' })
+        .click();
+      await heading.getByRole('menuitem', { name: 'Rename' }).click();
+      const field = view(page).getByRole('textbox', { name: 'Group name' });
+      await expect(field).toHaveValue('Application integration');
+      await field.fill('Messaging');
+      await field.press('Enter');
+
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Framework',
+        'Messaging',
+      ]);
+      expect(await stored(page, ALIASES_KEY)).toEqual({
+        'Application integration': 'Messaging',
+      });
+
+      // A page the map puts in the renamed group joins the reader's name.
+      await page.goto(SQS_OVERVIEW_PAGE);
+      await page.locator('.favorite-star-button').click();
+      await page.goto(QUEUE_PAGE);
+      await expect(
+        page.getByRole('list', { name: 'Messaging' }).locator('.favorites-link'),
+      ).toHaveCount(3);
+    });
+
+    test('deleting a group moves its favorites to Ungrouped, and Undo brings the group back', async ({ page }) => {
+      await openView(page);
+      const group = view(page).locator('.favorites-group').first();
+      await group.hover();
+      await group
+        .getByRole('button', { name: 'Actions for group Application integration' })
+        .click();
+      await group.getByRole('menuitem', { name: 'Delete group' }).click();
+
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toHaveText(
+        /Deleted group “Application integration”\. 2 favorites moved to Ungrouped\./,
+      );
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Framework',
+        'Ungrouped',
+      ]);
+
+      await toast.getByRole('button', { name: 'Undo' }).click();
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+        'Framework',
+      ]);
+    });
+
+    test('a group folds and the choice is saved, with the count still on the heading', async ({ page }) => {
+      await openView(page);
+      const toggle = view(page).locator('.favorites-group-toggle').first();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.getByRole('list', { name: 'Application integration' })).toBeHidden();
+      await expect(view(page).locator('.favorites-group-count').first()).toHaveText('(2)');
+      expect(await stored(page, COLLAPSED_KEY)).toEqual(['Application integration']);
+
+      await page.reload();
+      await expect(view(page).locator('.favorites-group-toggle').first()).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+    });
+
+    test('the keyboard removes a focused row and Ctrl+Z takes the Undo back', async ({ page }) => {
+      await openView(page);
+      await view(page).locator('.favorites-link').first().focus();
+      await page.keyboard.press('Delete');
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+      await expect(view(page).locator('.favorites-link')).toHaveCount(2);
+
+      await page.keyboard.press('Control+z');
+      await expect(view(page).locator('.favorites-link')).toHaveCount(3);
+      await expect(view(page).locator('.favorites-toast')).toHaveCount(0);
+    });
+
+    test('the row menu opens from the keyboard and Escape returns focus to its button', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      await actions.focus();
+      await page.keyboard.press('ArrowDown');
+      await expect(row.getByRole('menuitem', { name: 'Move to group…' })).toBeFocused();
+      await page.keyboard.press('ArrowDown');
+      await expect(row.getByRole('menuitem', { name: 'Remove from Favorites' })).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(actions).toBeFocused();
+      await expect(actions).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('the row buttons stay out of sight until the row is hovered or focused', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      await expect(actions).toHaveCSS('opacity', '0');
+      await row.hover();
+      await expect(actions).toHaveCSS('opacity', '1');
+    });
+  });
+
+  test.describe('phone', () => {
+    test.use({ viewport: { width: 375, height: 760 } });
+
+    test('every row keeps its ⋯ button, loses the x, and the menu removes', async ({ page }) => {
+      await openView(page);
+      // The sidebar is a drawer here: the local nav's Menu opens it, and the
+      // Views button inside it unfolds the rail.
+      await page.locator('.VPLocalNav button.menu').click();
+      await page.getByRole('button', { name: /^Views/ }).click();
+      await page.getByRole('navigation', { name: 'Sidebar views' })
+        .getByRole('button', { name: 'Favorites' })
+        .click();
+
+      const row = view(page).locator('.favorites-item').first();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      // Always visible here: there is no hover on a touch screen.
+      await expect(actions).toHaveCSS('opacity', '1');
+      await expect(row.getByRole('button', { name: /^Remove/ })).toBeHidden();
+      const box = (await actions.boundingBox())!;
+      expect(box.height).toBeCloseTo(28, 0);
+      // The 44px target comes from an overlay, so it cannot be read from the box.
+      expect(
+        parseFloat(
+          await actions.evaluate((el) => getComputedStyle(el, '::before').height),
+        ),
+      ).toBeGreaterThanOrEqual(44);
+
+      await actions.click();
+      await expect(row.getByRole('menuitem', { name: 'Remove from Favorites' })).toBeVisible();
+      await row.getByRole('menuitem', { name: 'Remove from Favorites' }).click();
+      await expect(view(page).locator('.favorites-link')).toHaveCount(2);
+      // Using a menu does not fold the drawer away under the reader.
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+    });
   });
 });

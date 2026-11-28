@@ -44,13 +44,28 @@ async function open(page: Page, stored: Record<string, string>): Promise<void> {
   await expect(page.locator('#explorer-rail')).toBeAttached();
 }
 
-// Removes the seeded favorites one by one, so the Favorites view shows its empty line.
+// Removes whatever favorites are left, so the Favorites view shows its empty line.
 async function emptyFavorites(page: Page): Promise<void> {
   const section = page.locator('.favorites-section');
-  for (const { title } of FAVORITES) {
-    await section.getByRole('button', { name: `Remove ${title} from favorites` }).click();
+  const remove = section.getByRole('button', { name: /^Remove / });
+  for (let left = await remove.count(); left > 0; left--) {
+    await remove.first().click();
   }
   await expect(section.locator('.favorites-empty')).toBeVisible();
+}
+
+/** Opens the first row's menu and its group list, which exist only while open. */
+async function openRowMenu(page: Page): Promise<void> {
+  const row = page.locator('.favorites-section .favorites-item').first();
+  await row.getByRole('button', { name: /^Actions for / }).click();
+  await expect(row.getByRole('menu')).toBeVisible();
+}
+
+/** Removes one favorite, which is what puts the Undo toast on the page. */
+async function showToast(page: Page): Promise<void> {
+  const section = page.locator('.favorites-section');
+  await section.getByRole('button', { name: /^Remove / }).first().click();
+  await expect(section.locator('.favorites-toast')).toBeVisible();
 }
 
 test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
@@ -70,6 +85,13 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
       await open(page, { [VIEW_KEY]: 'favorites' });
       await expect(page.locator('.favorites-static-heading')).toBeVisible();
       await audit(page, 'the Favorites view');
+      // The menu and the toast exist only while they are open, so the scan
+      // above never evaluates them.
+      await openRowMenu(page);
+      await audit(page, 'the Favorites view with a row menu open');
+      await page.keyboard.press('Escape');
+      await showToast(page);
+      await audit(page, 'the Favorites view with the Undo toast showing');
       await emptyFavorites(page);
       await audit(page, 'the empty Favorites view');
     });
@@ -78,6 +100,11 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
       await open(page, { 'vitepress-theme-appearance': 'dark', [VIEW_KEY]: 'favorites' });
       await expect(page.locator('html')).toHaveClass(/dark/);
       await audit(page, 'the Favorites view in dark mode');
+      await openRowMenu(page);
+      await audit(page, 'the Favorites view with a row menu open in dark mode');
+      await page.keyboard.press('Escape');
+      await showToast(page);
+      await audit(page, 'the Favorites view with the Undo toast showing in dark mode');
       await emptyFavorites(page);
       await audit(page, 'the empty Favorites view in dark mode');
       await page.locator('.VPNavBar .settings-trigger').click();

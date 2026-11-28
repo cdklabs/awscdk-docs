@@ -597,8 +597,8 @@ function cssEscape(value: string): string {
                 :data-fav-link="entry.path"
                 @keydown="onViewKey($event, entry)"
                 >{{ entry.title
-                }}<span v-if="serviceOf(entry)" class="favorites-service">
-                  <span aria-hidden="true">·&nbsp;</span>{{ serviceOf(entry) }}</span
+                }}<span v-if="serviceOf(entry)" class="favorites-service"
+                  >{{ ' ' }}<span aria-hidden="true">·&nbsp;</span>{{ serviceOf(entry) }}</span
                 ></a
               >
               <button
