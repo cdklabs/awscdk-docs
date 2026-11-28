@@ -718,9 +718,9 @@ describe('Services view', () => {
     kindGroup('Mixins', [type('CfnLexiconMixin', 'aws-cdk-lib.aws_polly.mixins.CfnLexiconMixin', 'mixin')]),
     kindGroup('Others', [type('CfnLexiconProps', 'aws-cdk-lib.aws_polly.CfnLexiconProps', 'struct')]),
   ];
-  // An alpha-only service: its only overview is the scoped package's, labeled Developer Preview in today's tree.
+  // An alpha-only service: its only overview is the scoped package's readme.
   const amplify: ApiSidebarNode[] = [
-    readme('Developer Preview', '@aws-cdk_aws-amplify-alpha'),
+    readme('Overview', '@aws-cdk_aws-amplify-alpha'),
     type('App', '@aws-cdk_aws-amplify-alpha.App', 'construct', 'L2'),
   ];
   const service = (text: string, chunk: string, modules: string[], items?: ApiSidebarNode[], count?: number): ApiSidebarNode => ({
