@@ -290,6 +290,7 @@ describe('API type hover tooltips', () => {
     expect(anchor.hasAttribute('aria-describedby')).toBe(false);
 
     await hover(anchor);
+    expect(tooltip()!.getAttribute('aria-hidden')).toBe('false');
     dom.dispatch('keydown', anchor, { key: 'Escape' });
     expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
   });

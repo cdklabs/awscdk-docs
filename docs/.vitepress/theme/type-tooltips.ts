@@ -27,7 +27,7 @@ let summariesAsset = "";
 let loading: Promise<SummaryMap> | undefined;
 let tooltip: HTMLElement | undefined;
 let currentAnchor: HTMLAnchorElement | undefined;
-// Set for a short time after a keyboard focus move, while the scroll that move causes may still arrive.
+// Set for a short time after focus moves to a new link, while the scroll that move causes may still arrive.
 let focusScrollTimer: ReturnType<typeof setTimeout> | undefined;
 
 // How long after a focus move a scroll counts as caused by that move.
@@ -181,7 +181,7 @@ function handleLeave(event: Event): void {
 // Hide on scroll, but only when the scrolled element can displace the tooltip's
 // anchor: the document itself, or an ancestor of the anchor. The sidebar is an
 // independent scroller whose scroll never moves a hovered content link. A scroll within
-// FOCUS_SCROLL_MS of a keyboard focus move moves the tooltip with the link instead.
+// FOCUS_SCROLL_MS of focus moving to a new link moves the tooltip with the link instead.
 function handleScroll(event: Event): void {
   const target = event.target as Node | null;
   if (
