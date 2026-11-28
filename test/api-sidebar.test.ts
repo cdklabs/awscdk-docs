@@ -9,15 +9,22 @@ import {
   filterSidebarTree,
   groupKey,
   isActiveLink,
+  isUnloadedChunk,
   loadedGroupKeys,
+  moduleRowText,
   normalizePath,
   preOpenedRootKeys,
   retainedGroupKeys,
+  serviceForPath,
+  serviceNodes,
+  servicesViewTree,
+  serviceViewItems,
   unloadedChunkForKey,
   withChunk,
   type ApiSidebarNode,
 } from '../docs/.vitepress/theme/api-sidebar.js';
 import { splitTerms, termRank } from '../docs/.vitepress/theme/filterSymbols.js';
+import { constructCount, serviceRows } from '../src/sidebar-rows.js';
 
 describe('preOpenedRootKeys', () => {
   const leaf = (text: string): ApiSidebarNode => ({ text, link: `/${text}` });
@@ -644,5 +651,216 @@ describe('sticky sidebar header', () => {
     // Above the pinned group headings (1); the layer plan is pinned in
     // test/sidebar-sticky.test.ts.
     expect(declarations).toContain('z-index: 2');
+  });
+});
+
+// The Explorer's Services view: one A to Z list of services derived from the generated tree, each open service
+// listing Overview, Modules, Constructs and Types (docs/adr/2026-11-28-explorer-services-view.md).
+describe('Services view', () => {
+  const D = '/v2/docs/';
+  const type = (text: string, id: string, kind: string, level?: 'L1' | 'L2' | 'L3', label?: string): ApiSidebarNode => ({
+    text,
+    ...(label ? { label } : {}),
+    link: `${D}${id}`,
+    module: id.slice(0, id.lastIndexOf('.')),
+    kind: kind as ApiSidebarNode['kind'],
+    ...(level ? { level } : {}),
+  });
+  const readme = (text: string, id: string): ApiSidebarNode => ({ text, link: `${D}${id}-readme` });
+  const kindGroup = (text: string, items: ApiSidebarNode[]): ApiSidebarNode => ({ text, collapsed: true, kindGroup: true, items });
+  // S3 in the shape of its generated chunk: four overview pages, then resource groups (a leaf per construct, the
+  // L2 before its L1, kind groups after), then the `General` group holding only kind groups.
+  const s3Items: ApiSidebarNode[] = [
+    readme('Overview', 'aws-cdk-lib.aws_s3'),
+    readme('aws_s3_assets', 'aws-cdk-lib.aws_s3_assets'),
+    readme('aws_s3_deployment', 'aws-cdk-lib.aws_s3_deployment'),
+    readme('aws_s3_notifications', 'aws-cdk-lib.aws_s3_notifications'),
+    {
+      text: 'Asset',
+      collapsed: true,
+      items: [
+        type('Asset', 'aws-cdk-lib.aws_s3_assets.Asset', 'construct'),
+        kindGroup('Others', [type('AssetProps', 'aws-cdk-lib.aws_s3_assets.AssetProps', 'struct')]),
+      ],
+    },
+    {
+      text: 'Bucket',
+      collapsed: true,
+      items: [
+        type('Bucket', 'aws-cdk-lib.aws_s3.Bucket', 'construct', 'L2'),
+        type('CfnBucket', 'aws-cdk-lib.aws_s3.CfnBucket', 'cfn-resource', 'L1'),
+        kindGroup('Mixins', [type('BucketMixin', 'aws-cdk-lib.aws_s3.mixins.BucketMixin', 'mixin')]),
+        kindGroup('Facades', [type('BucketFacade', 'aws-cdk-lib.aws_s3.BucketFacade', 'class')]),
+        kindGroup('Others', [
+          type('CfnBucket.PolicyProperty', 'aws-cdk-lib.aws_s3.CfnBucket.PolicyProperty', 'cfn-property', undefined, 'PolicyProperty'),
+          type('BucketProps', 'aws-cdk-lib.aws_s3.BucketProps', 'struct'),
+        ]),
+      ],
+    },
+    {
+      text: 'BucketDeployment',
+      collapsed: true,
+      items: [type('BucketDeployment', 'aws-cdk-lib.aws_s3_deployment.BucketDeployment', 'construct')],
+    },
+    {
+      text: 'General',
+      collapsed: true,
+      items: [
+        kindGroup('Events', [type('BucketEvents', 'aws-cdk-lib.aws_s3.events.BucketEvents', 'class')]),
+        kindGroup('Others', [type('IBucketRef', 'aws-cdk-lib.interfaces.aws_s3.IBucketRef', 'interface')]),
+      ],
+    },
+  ];
+  // A service with one resource: its constructs and kind groups sit at the top level.
+  const polly: ApiSidebarNode[] = [
+    readme('Overview', 'aws-cdk-lib.aws_polly'),
+    type('CfnLexicon', 'aws-cdk-lib.aws_polly.CfnLexicon', 'cfn-resource', 'L1'),
+    kindGroup('Mixins', [type('CfnLexiconMixin', 'aws-cdk-lib.aws_polly.mixins.CfnLexiconMixin', 'mixin')]),
+    kindGroup('Others', [type('CfnLexiconProps', 'aws-cdk-lib.aws_polly.CfnLexiconProps', 'struct')]),
+  ];
+  // An alpha-only service: its only overview is the scoped package's, labeled Developer Preview in today's tree.
+  const amplify: ApiSidebarNode[] = [
+    readme('Developer Preview', '@aws-cdk_aws-amplify-alpha'),
+    type('App', '@aws-cdk_aws-amplify-alpha.App', 'construct', 'L2'),
+  ];
+  const service = (text: string, chunk: string, modules: string[], items?: ApiSidebarNode[], count?: number): ApiSidebarNode => ({
+    text,
+    collapsed: true,
+    modules,
+    chunk,
+    ...(count !== undefined ? { count } : {}),
+    ...(items ? { items } : {}),
+  });
+  const skeleton: ApiSidebarNode[] = [
+    {
+      text: 'Framework',
+      section: true,
+      collapsed: false,
+      items: [{ text: 'constructs', collapsed: true, modules: ['constructs'], chunk: 'constructs' }],
+    },
+    {
+      text: 'Services',
+      section: true,
+      collapsed: false,
+      items: [
+        service('Amplify', 'amplify', ['@aws-cdk_aws-amplify-alpha'], amplify, 1),
+        service('EKS (legacy)', 'eks_legacy', ['aws-cdk-lib.aws_eks', 'aws-cdk-lib.interfaces.aws_eks'], undefined, 25),
+        service('EKS V2', 'eks_v2', ['aws-cdk-lib.aws_eks_v2'], undefined, 24),
+        service('Polly', 'polly', ['aws-cdk-lib.aws_polly'], polly, 1),
+        service('S3', 's3', ['aws-cdk-lib.aws_s3', 'aws-cdk-lib.aws_s3_assets', 'aws-cdk-lib.aws_s3_deployment', 'aws-cdk-lib.aws_s3_notifications', 'aws-cdk-lib.interfaces.aws_s3'], s3Items, 4),
+        service('eBay-like lowercase', 'ebay', ['aws-cdk-lib.aws_ebay'], undefined, 0),
+      ],
+    },
+  ];
+
+  test('the construct rows follow one rule in docgen and the client: S3 lists four, the skeleton says four', () => {
+    const rows = serviceRows(s3Items);
+    expect(rows.constructs.map((r) => r.text)).toEqual(['Asset', 'Bucket', 'CfnBucket', 'BucketDeployment']);
+    expect(rows.overviews.map((r) => r.text)).toEqual(['Overview', 'aws_s3_assets', 'aws_s3_deployment', 'aws_s3_notifications']);
+    expect([...rows.kinds.keys()]).toEqual(['Others', 'Mixins', 'Facades', 'Events']);
+    expect(rows.kinds.get('Others')!.map((r) => r.text)).toEqual(['AssetProps', 'CfnBucket.PolicyProperty', 'BucketProps', 'IBucketRef']);
+    expect(constructCount(s3Items)).toBe(serviceNodes(skeleton).find((s) => s.text === 'S3')!.count);
+    // A single-resource service keeps its constructs at the top level; they still count, its overview does not.
+    expect(serviceRows(polly).constructs.map((r) => r.text)).toEqual(['CfnLexicon']);
+  });
+
+  test('the list is the Services section A to Z, case-insensitive, with EKS as two plain rows', () => {
+    expect(servicesViewTree(skeleton).map((s) => s.text)).toEqual(['Amplify', 'eBay-like lowercase', 'EKS (legacy)', 'EKS V2', 'Polly', 'S3']);
+    expect(servicesViewTree([])).toEqual([]);
+    expect(servicesViewTree([skeleton[0]])).toEqual([]);
+  });
+
+  test('an unloaded service keeps its skeleton node, so the chunk is fetched on open and the count shows closed', () => {
+    const eks = servicesViewTree(skeleton).find((s) => s.text === 'EKS (legacy)')!;
+    expect(eks).toBe(serviceNodes(skeleton).find((s) => s.text === 'EKS (legacy)'));
+    expect(isUnloadedChunk(eks)).toBe(true);
+    expect(eks.count).toBe(25);
+    expect(unloadedChunkForKey(servicesViewTree(skeleton), 'EKS (legacy)')).toBe('eks_legacy');
+    expect(unloadedChunkForKey(servicesViewTree(skeleton), 'S3')).toBeUndefined();
+  });
+
+  test('an open service lists Overview, Modules, Constructs and Types in that order', () => {
+    const items = serviceViewItems(s3Items);
+    expect(items.map((n) => n.text)).toEqual(['Overview', 'Modules', 'Constructs', 'Types']);
+    const [overview, modules, constructs, types] = items;
+    // The main module is the aws-cdk-lib module with the shortest page id.
+    expect(overview).toEqual({ text: 'Overview', link: `${D}aws-cdk-lib.aws_s3-readme` });
+    expect(modules.part).toBe(true);
+    expect(modules.count).toBeUndefined();
+    // Module rows are named by module id, in mono, and count the type rows of their module.
+    expect(modules.items!.map((m) => [m.text, m.moduleRow, m.count])).toEqual([
+      ['aws_s3_assets', true, 2],
+      ['aws_s3_deployment', true, 1],
+      ['aws_s3_notifications', true, 0],
+    ]);
+    expect(modules.items![0].link).toBe(`${D}aws-cdk-lib.aws_s3_assets-readme`);
+    // Constructs: flat, resource by resource, the L2 before its L1, with their level tags; the count is the rows.
+    expect(constructs.part).toBe(true);
+    expect(constructs.count).toBe(4);
+    expect(constructs.items!.map((c) => [c.text, c.level])).toEqual([
+      ['Asset', undefined],
+      ['Bucket', 'L2'],
+      ['CfnBucket', 'L1'],
+      ['BucketDeployment', undefined],
+    ]);
+    // Types: kind groups merged across resources, in the fixed order, each closed, rows A to Z by display label.
+    expect(types.part).toBe(true);
+    expect(types.count).toBe(7);
+    expect(types.items!.map((k) => [k.text, k.kindGroup, k.collapsed, k.count])).toEqual([
+      ['Mixins', true, true, 1],
+      ['Facades', true, true, 1],
+      ['Events', true, true, 1],
+      ['Others', true, true, 4],
+    ]);
+    expect(types.items![3].items!.map((r) => r.label ?? r.text)).toEqual(['AssetProps', 'BucketProps', 'IBucketRef', 'PolicyProperty']);
+    // The nested type keeps its owner-qualified text as identity and its short label for display.
+    expect(types.items![3].items![3]).toMatchObject({ text: 'CfnBucket.PolicyProperty', label: 'PolicyProperty' });
+  });
+
+  test('parts a service lacks are left out; a lone scoped overview is the Overview', () => {
+    expect(serviceViewItems(polly).map((n) => n.text)).toEqual(['Overview', 'Constructs', 'Types']);
+    expect(serviceViewItems(amplify).map((n) => n.text)).toEqual(['Overview', 'Constructs']);
+    expect(serviceViewItems(amplify)[0].link).toBe(`${D}@aws-cdk_aws-amplify-alpha-readme`);
+    expect(serviceViewItems([type('Lone', 'aws-cdk-lib.aws_x.Lone', 'construct')]).map((n) => n.text)).toEqual(['Constructs']);
+    expect(moduleRowText('@aws-cdk_aws-amplify-alpha')).toBe('@aws-cdk/aws-amplify-alpha');
+    expect(moduleRowText('aws-cdk-lib.aws_s3_assets')).toBe('aws_s3_assets');
+  });
+
+  test('while filtering the rows come back flat, so the filter keeps matching rows and the count is the matches', () => {
+    const flat = serviceViewItems(s3Items, true);
+    expect(flat.every((n) => !n.part && !n.kindGroup)).toBe(true);
+    expect(flat.map((n) => n.text)).toEqual([
+      'Overview', 'aws_s3_assets', 'aws_s3_deployment', 'aws_s3_notifications',
+      'Asset', 'Bucket', 'CfnBucket', 'BucketDeployment',
+      'BucketMixin', 'BucketFacade', 'BucketEvents', 'AssetProps', 'BucketProps', 'IBucketRef', 'CfnBucket.PolicyProperty',
+    ]);
+    const matches = (text: string, term: string) => termRank(text, term) !== undefined;
+    const filtered = filterSidebarTree(servicesViewTree(skeleton, true), ['bucket'], matches);
+    // S3 stays with its matching rows only; a service whose name matches keeps every row; the rest leave.
+    expect(filtered.map((s) => s.text)).toEqual(['S3']);
+    expect(filtered[0].items!.map((n) => n.text)).toEqual([
+      'Bucket', 'CfnBucket', 'BucketDeployment', 'BucketMixin', 'BucketFacade', 'BucketEvents', 'BucketProps', 'IBucketRef', 'CfnBucket.PolicyProperty',
+    ]);
+    const byName = filterSidebarTree(servicesViewTree(skeleton, true), ['polly'], matches);
+    expect(byName[0].items!.length).toBe(serviceViewItems(polly, true).length);
+  });
+
+  test('serviceForPath names the service owning a page, and none for a framework page', () => {
+    const DOCS = 'v2/docs/';
+    expect(serviceForPath(skeleton, 'v2/docs/aws-cdk-lib.aws_s3.Bucket', DOCS)?.text).toBe('S3');
+    expect(serviceForPath(skeleton, 'v2/docs/aws-cdk-lib.aws_s3_deployment-readme', DOCS)?.text).toBe('S3');
+    expect(serviceForPath(skeleton, 'v2/docs/aws-cdk-lib.interfaces.aws_eks.IClusterRef', DOCS)?.text).toBe('EKS (legacy)');
+    expect(serviceForPath(skeleton, 'v2/docs/aws-cdk-lib.aws_eks_v2.Cluster', DOCS)?.text).toBe('EKS V2');
+    expect(serviceForPath(skeleton, 'v2/docs/constructs.Construct', DOCS)).toBeUndefined();
+    expect(serviceForPath(skeleton, 'v2/docs/aws-cdk-lib.Stack', DOCS)).toBeUndefined();
+    expect(serviceForPath(skeleton, 'v2/', DOCS)).toBeUndefined();
+  });
+
+  test('the active page opens its service and, inside Types, its kind group', () => {
+    const tree = servicesViewTree(skeleton);
+    expect(activeAncestorKeys(tree, 'v2/docs/aws-cdk-lib.aws_s3.Bucket')).toEqual(new Set(['S3', groupKey('S3', 'Constructs')]));
+    expect(activeAncestorKeys(tree, 'v2/docs/aws-cdk-lib.aws_s3.BucketProps')).toEqual(
+      new Set(['S3', groupKey('S3', 'Types'), groupKey(groupKey('S3', 'Types'), 'Others')]),
+    );
   });
 });

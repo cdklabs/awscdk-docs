@@ -1,12 +1,12 @@
 // Explorer preview state, mirroring density.ts.
 //
-// The preview is an opt-in sidebar variant: a view rail at the sidebar's left edge with an API view
-// (today's tree and filter) and a Favorites view. The top-bar gear stays. Every CSS rule that changes the
+// The preview is an opt-in sidebar variant: a view rail at the sidebar's left edge with a Services view (one
+// A to Z list of AWS services), an API view (today's tree and filter) and a Favorites view. The top-bar gear stays. Every CSS rule that changes the
 // preview-off layout keys on two attributes on <html>, and the components read the `explorerPreview` ref, so a
 // reader who never opts in sees only the switch itself:
 //
 // - `data-explorer-preview="on"` is present only while the preview is on.
-// - `data-explorer-view="api" | "favorites"` is present only while the preview is on.
+// - `data-explorer-view="services" | "api" | "favorites"` is present only while the preview is on.
 //
 // Persistence: localStorage. A pre-hydration inline script in config.mts sets both attributes before first
 // paint, so a reload never jumps by the rail's width. This module is the single source for the keys, the
@@ -14,7 +14,7 @@
 import { ref } from 'vue';
 
 export type ExplorerPreview = 'on' | 'off';
-export type ExplorerView = 'api' | 'favorites';
+export type ExplorerView = 'services' | 'api' | 'favorites';
 
 /** localStorage key holding the switch; also hard-coded in config.mts's bootstrap script. */
 export const EXPLORER_PREVIEW_KEY = 'cdk-docs-explorer-preview';
@@ -38,7 +38,7 @@ export const explorerView = ref<ExplorerView>(DEFAULT_EXPLORER_VIEW);
 export const railOpen = ref(false);
 
 export function isExplorerView(value: string | null): value is ExplorerView {
-  return value === 'api' || value === 'favorites';
+  return value === 'services' || value === 'api' || value === 'favorites';
 }
 
 function applyAttributes(): void {

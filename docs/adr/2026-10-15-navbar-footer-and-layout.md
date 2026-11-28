@@ -51,7 +51,9 @@ our custom layer:
   painted height it shares with the kind chip beside it. The type page's action
   pills (Copy Markdown, its ▾ and the star) keep their 32px painted box and
   reach 44px tall through the same kind of overlay; ▾ and the star are 32px
-  wide (see the [type page header ADR](./2026-11-26-type-page-header-chip-row.md));
+  wide (see the [type page header ADR](./2026-11-26-type-page-header-chip-row.md)).
+  The rows of the Explorer's Services view keep their desktop height and reach
+  44px the same way (see the [Services view ADR](./2026-11-28-explorer-services-view.md));
 - a full-width Pagefind dialog below 768px with a 16px input font size to stop
   iOS Safari zoom-on-focus.
 

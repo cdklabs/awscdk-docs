@@ -1,5 +1,6 @@
 import { moduleReadmeLink } from '../src/docgen/links.js';
 import { assemblyOwner, buildPackageSidebarModules, buildServiceSidebar, CONSTRUCTS_SECTION, encodePackageSidebarModules, frameworkSectionCompare, frameworkSectionName, FRAMEWORK_SECTION, isConstructsPackage, isCore, isEventsSubmodule, isPackageServiceModule, isServiceSubmodule, packageSidebarKind, resourceStem, sectionName, SERVICES_SECTION, serviceSubmodule, shortTypeName, SidebarEntry, SidebarItem, splitSidebarChunks } from '../src/docgen/sidebar.js';
+import { constructCount } from '../src/sidebar-rows.js';
 
 function entry(overrides: Partial<SidebarEntry>): SidebarEntry {
   return {
@@ -1939,6 +1940,29 @@ describe('section modules and splitSidebarChunks', () => {
     // Names come from the section text, lower-cased and URL-safe.
     expect(skeletonSections.find((s) => s.text === 'S3')!.chunk).toBe('s3');
     expect(skeletonSections.find((s) => s.text === 'Amplify')!.chunk).toBe('amplify');
+  });
+
+  test('every Services section carries its construct count; Framework sections carry none', () => {
+    const tree = buildServiceSidebar([
+      ...entries,
+      // A second S3 resource with an L1 and an L2 plus supporting types, so the count spans resources and
+      // skips kind groups and the overview rows.
+      entry({ name: 'CfnBucket', kind: 'Construct (L1)', link: '/v2/docs/aws-cdk-lib.aws_s3.CfnBucket' }),
+      entry({ name: 'BucketPolicy', kind: 'Construct (L2)', link: '/v2/docs/aws-cdk-lib.aws_s3.BucketPolicy' }),
+      entry({ name: 'BucketProps', kind: 'Struct', link: '/v2/docs/aws-cdk-lib.aws_s3.BucketProps' }),
+      entry({ name: 'BucketMixin', kind: 'Mixin', submodule: 'aws_s3.mixins', link: '/v2/docs/aws-cdk-lib.aws_s3.mixins.BucketMixin' }),
+    ]);
+    const { skeleton, chunks } = splitSidebarChunks(tree);
+    const services = skeleton.find((r) => r.text === SERVICES_SECTION)!.items!;
+    const framework = skeleton.find((r) => r.text === FRAMEWORK_SECTION)!.items!;
+    expect(services.find((s) => s.text === 'S3')!.count).toBe(3);
+    expect(services.find((s) => s.text === 'SNS')!.count).toBe(1);
+    expect(framework.every((s) => s.count === undefined)).toBe(true);
+    // The count is the number of construct rows the client lists once the chunk is open: the leaves outside
+    // kind groups, overview pages excluded.
+    const s3 = chunks.find((c) => c.chunk === 's3')!.items;
+    expect(constructCount(s3)).toBe(3);
+    expect(s3[0]).toEqual({ text: 'Overview', link: expect.any(String) });
   });
 
   test('colliding chunk names are made unique in tree order', () => {

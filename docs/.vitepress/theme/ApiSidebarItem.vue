@@ -24,6 +24,8 @@ interface ApiSidebarContext {
   sticky: StickyHeadings;
   /** The sidebar's scroll container, once mounted. */
   findScrollContainer: () => HTMLElement | null;
+  /** True while the Explorer's Services view is showing; only it renders counts. */
+  servicesView: Ref<boolean>;
 }
 
 const props = defineProps<{
@@ -39,6 +41,28 @@ const ctx = inject<ApiSidebarContext>("apiSidebar")!;
 const isGroup = computed(
   () => !!props.node.chunk || (Array.isArray(props.node.items) && props.node.items.length > 0),
 );
+// The number at a row's right edge, in the Services view only: a closed
+// service's construct count from the skeleton (which the API view's service
+// rows carry too, and do not show), a part's or kind group's row count, a
+// module's type count. While filtering, a service's count is its matching
+// rows, so it follows the pruned items rather than the skeleton.
+const count = computed(() => {
+  if (!ctx.servicesView.value || props.node.count === undefined) return undefined;
+  if (ctx.filtering.value && isGroup.value && !props.node.kindGroup) return props.node.items?.length ?? 0;
+  return props.node.count;
+});
+// A service row reads as one name with its count: `S3, 16 constructs`, or
+// `S3, 5 matches` while filtering. The name is composed from the row's own
+// content (the visible name, then the count with hidden text around it)
+// rather than an `aria-label`: an override would have to repeat the visible
+// text exactly, count included, to keep label-in-name (WCAG 2.5.3), and the
+// count is itself part of the visible text. Kind groups and module rows keep
+// their visible text as their name; their counts are decorative.
+const countNoun = computed(() => {
+  if (count.value === undefined || props.node.kindGroup || !isGroup.value) return undefined;
+  if (ctx.filtering.value) return count.value === 1 ? " match" : " matches";
+  return count.value === 1 ? " construct" : " constructs";
+});
 const key = computed(() => groupKey(props.parentKey, props.node.text));
 // The active language's display label: flips in place on a language switch while
 // the key, link target, and filter stay on the canonical `node.text`.
@@ -168,6 +192,30 @@ onBeforeUnmount(() => {
       />
     </ul>
   </li>
+  <!-- A part of an open service in the Services view (Modules, Constructs,
+       Types): a sub-heading that is not a control, over a list named by it.
+       Its rows sit at the part's own depth, under the service's row, so the
+       part adds a heading but no indent. -->
+  <li
+    v-else-if="node.part"
+    class="api-sidebar-item api-sidebar-part"
+    :style="{ '--api-sidebar-depth': depth }"
+    :data-part="node.text"
+  >
+    <p class="api-sidebar-part-title">
+      <span class="api-sidebar-part-name">{{ label }}</span>
+      <span v-if="count !== undefined" class="api-sidebar-count">{{ count }}</span>
+    </p>
+    <ul class="api-sidebar-list" :aria-label="label">
+      <ApiSidebarItem
+        v-for="child in node.items"
+        :key="child.text + (child.link || '')"
+        :node="child"
+        :parent-key="key"
+        :depth="depth"
+      />
+    </ul>
+  </li>
   <li v-else ref="itemEl" class="api-sidebar-item" :style="{ '--api-sidebar-depth': depth }" :data-depth="depth" :data-kind-group="node.kindGroup ? '' : undefined" :data-active-parent="activeParent ? '' : undefined">
     <button
       v-if="isGroup"
@@ -178,12 +226,20 @@ onBeforeUnmount(() => {
       @click="onToggle"
     >
       <span class="api-sidebar-caret" :class="{ open }" aria-hidden="true">›</span>
-      <span class="api-sidebar-text">{{ label }}</span>
+      <!-- The row's name and count are flex items, which the name computation separates with a space, so the
+           hidden comma ends the name span and the hidden noun ends the count: `S3, 16 constructs`. -->
+      <span class="api-sidebar-text"
+        >{{ label }}<span v-if="countNoun !== undefined" class="api-sidebar-hidden">,</span></span
+      >
+      <span v-if="countNoun !== undefined" class="api-sidebar-count"
+        >{{ count }}<span class="api-sidebar-hidden">{{ countNoun }}</span></span
+      >
+      <span v-else-if="count !== undefined" class="api-sidebar-count" aria-hidden="true">{{ count }}</span>
     </button>
     <a
       v-else
       class="api-sidebar-link"
-      :class="{ active }"
+      :class="{ active, 'api-sidebar-module': node.moduleRow }"
       :href="pageHref(node.link || '')"
       :title="canonicalName"
       :aria-label="accessibleName"
@@ -195,7 +251,8 @@ onBeforeUnmount(() => {
            text, so the link's visible text stays the name alone. Only leveled
            constructs render it. -->
       <span v-if="node.level" class="api-sidebar-level" aria-hidden="true" :data-level="node.level"></span
-      ><span class="api-sidebar-name">{{ label }}</span></a
+      ><span class="api-sidebar-name">{{ label }}</span
+      ><span v-if="count !== undefined" class="api-sidebar-count" aria-hidden="true">{{ count }}</span></a
     >
 
     <!-- Collapsed subtrees are not rendered. `v-show` would create every

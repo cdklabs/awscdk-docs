@@ -52,3 +52,6 @@
 .glyph-star {
   --glyph: url("./icons/star.svg");
 }
+.glyph-services {
+  --glyph: url("./icons/services.svg");
+}

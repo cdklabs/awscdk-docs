@@ -1,10 +1,16 @@
 <script setup lang="ts">
 // "Locate current page" asks the API sidebar to reveal the active entry or flash it when already visible.
-import { computed } from "vue";
+//
+// In the Explorer's Services view a page that is in no service (a framework or `constructs` page) has nothing to
+// locate: the control stays in place and focusable but is dimmed (`aria-disabled`, not `disabled`, so keyboard
+// focus still reaches it), activation does nothing, and a tooltip says why. The tooltip shows on hover and on
+// keyboard focus, hides on Escape and on blur, and on a touch screen it shows on tap and hides on the next tap
+// elsewhere. It is always in the DOM while the control is dimmed, so `aria-describedby` has a target.
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useData, useRoute } from "vitepress";
 import { API_ROOT } from "../../../src/site-routes";
 import { normalizePath } from "./api-sidebar";
-import { requestJumpToCurrent } from "./sidebar-jump";
+import { jumpToCurrentUnavailable, requestJumpToCurrent } from "./sidebar-jump";
 
 const route = useRoute();
 const { site } = useData();
@@ -12,21 +18,74 @@ const { site } = useData();
 const base = computed(() => site.value.base || "/");
 const activePath = computed(() => normalizePath(route.path, base.value));
 const show = computed(() => activePath.value.startsWith(API_ROOT.replace(/^\//, "")));
+const unavailable = computed(() => jumpToCurrentUnavailable.value);
+
+const TOOLTIP_ID = "sidebar-jump-current-tip";
+const tipOpen = ref(false);
+const rootEl = ref<HTMLElement | null>(null);
+
+function activate(): void {
+  if (!unavailable.value) {
+    requestJumpToCurrent();
+    return;
+  }
+  // A tap on a touch screen has no hover: the tap toggles the tooltip instead.
+  tipOpen.value = !tipOpen.value;
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape" && tipOpen.value) {
+    tipOpen.value = false;
+    event.stopPropagation();
+  }
+}
+
+// A tap (or click) anywhere outside the control hides a tooltip a tap opened.
+function onDocumentPointerDown(event: PointerEvent): void {
+  if (!tipOpen.value) return;
+  const target = event.target as Node | null;
+  if (rootEl.value && target && rootEl.value.contains(target)) return;
+  tipOpen.value = false;
+}
+
+onMounted(() => document.addEventListener("pointerdown", onDocumentPointerDown));
+onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPointerDown));
 </script>
 
 <template>
-  <button
-    v-if="show"
-    type="button"
-    class="sidebar-jump-current"
-    @click="requestJumpToCurrent()"
-  >
-    <span class="glyph glyph-locate jump-to-current-glyph" aria-hidden="true" />
-    <span class="sidebar-jump-current-text">Locate current page</span>
-  </button>
+  <span v-if="show" ref="rootEl" class="sidebar-jump-current-root">
+    <button
+      type="button"
+      class="sidebar-jump-current"
+      :class="{ unavailable }"
+      :aria-disabled="unavailable ? 'true' : undefined"
+      :aria-describedby="unavailable ? TOOLTIP_ID : undefined"
+      @click="activate"
+      @keydown="onKeydown"
+      @mouseenter="tipOpen = true"
+      @mouseleave="tipOpen = false"
+      @focus="tipOpen = true"
+      @blur="tipOpen = false"
+    >
+      <span class="glyph glyph-locate jump-to-current-glyph" aria-hidden="true" />
+      <span class="sidebar-jump-current-text">Locate current page</span>
+    </button>
+    <span
+      v-if="unavailable"
+      :id="TOOLTIP_ID"
+      role="tooltip"
+      class="sidebar-jump-current-tip"
+      :class="{ open: tipOpen }"
+    >This page is not in Services</span>
+  </span>
 </template>
 
 <style scoped>
+.sidebar-jump-current-root {
+  position: relative;
+  display: inline-flex;
+}
+
 .sidebar-jump-current {
   display: flex;
   align-items: center;
@@ -54,6 +113,38 @@ const show = computed(() => activePath.value.startsWith(API_ROOT.replace(/^\//, 
 .sidebar-jump-current:focus-visible {
   outline: 1px solid var(--vp-c-brand-1);
   outline-offset: 1px;
+}
+
+/* Nothing to locate: dimmed, still focusable, and no hover accent. A dimmed
+   control is exempt from the contrast rule. */
+.sidebar-jump-current.unavailable,
+.sidebar-jump-current.unavailable:hover {
+  opacity: 0.6;
+  cursor: not-allowed;
+  color: var(--vp-c-text-2);
+}
+
+/* Right-aligned under the button with a 4px gap, over the sidebar content.
+   Hidden with `visibility`, not `display`, so it keeps its box for
+   `aria-describedby` and shows without reflow. */
+.sidebar-jump-current-tip {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 3;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background-color: var(--vp-c-text-1);
+  color: var(--vp-c-bg);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 7, 22, 0.22);
+  visibility: hidden;
+}
+
+.sidebar-jump-current-tip.open {
+  visibility: visible;
 }
 
 .jump-to-current-glyph {

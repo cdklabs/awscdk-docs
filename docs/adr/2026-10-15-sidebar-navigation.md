@@ -389,6 +389,10 @@ button overhangs the header, meeting WCAG 2.5.8's 24px minimum; the 44px floor
 here without reinstating the route-dependent height difference, and the
 control is outside that test's enumerated selectors.
 
+*With the Explorer preview's Services view showing, the control is dimmed
+(`aria-disabled`, with a tooltip) on a page that is in no service, and
+activation does nothing; see the [Services view ADR](./2026-11-28-explorer-services-view.md).*
+
 ### Client-side favorite pages
 
 *With the Explorer preview on, the Favorites view replaces this section: its list is always open and shows an empty-state line with zero favorites; see [Explorer preview](./2026-11-26-explorer-preview-rail.md).*

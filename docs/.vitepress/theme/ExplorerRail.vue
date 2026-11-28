@@ -1,19 +1,20 @@
 <script setup lang="ts">
-// Explorer rail: a 72px column at the sidebar's left edge with the API and Favorites views, and nothing else.
-// It renders only while the Explorer preview is on and the page has the API sidebar, and it is a plain
-// disclosure of two views, not a tablist: each view is a <button> with aria-pressed.
+// Explorer rail: a 72px column at the sidebar's left edge with the Services, API and Favorites views, and nothing
+// else. It renders only while the Explorer preview is on and the page has the API sidebar, and it is a plain
+// disclosure of views, not a tablist: each view is a <button> with aria-pressed.
 //
 // Below 960px the rail stays hidden until ExplorerViewsButton.vue unfolds it over a scrim; picking a view,
 // Escape from anywhere, a route change, a tap on the scrim or moving keyboard focus out of the rail folds it
 // again. The scrim keeps pointers off the tree behind it. The covered controls (the Views button, the filter,
 // the Favorites list and the tree) are `inert` while the rail is unfolded, so they leave the accessibility tree
-// and the tab order too, and Tab wraps between the two view buttons. The focus rule below is the fallback.
+// and the tab order too, and Tab wraps between the first and last view button. The focus rule below is the fallback.
 import { useRoute } from "vitepress";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
 import { explorerPreview, explorerView, railOpen, setExplorerView, type ExplorerView } from "./explorer-preview";
 
 const VIEWS: { value: ExplorerView; label: string; glyph: string }[] = [
+  { value: "services", label: "Services", glyph: "glyph-services" },
   { value: "api", label: "API", glyph: "glyph-api" },
   { value: "favorites", label: "Favorites", glyph: "glyph-star" },
 ];

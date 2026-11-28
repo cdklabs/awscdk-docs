@@ -402,9 +402,9 @@ describe('filter-session folds', () => {
     expect(watchBody).toMatch(/if \(active\) \{[\s\S]*?return;[\s\S]*?\}[\s\S]*?filterCollapsed\.value = new Set\(\)/);
   });
 
-  test('the session set resets on a navigation style switch', () => {
+  test('the session set resets on a navigation style or Explorer view switch', () => {
     const sidebar = readFileSync(resolve(THEME_DIR, 'ApiSidebar.vue'), 'utf-8');
-    const watchBody = /watch\(navStyle, \(\) => \{[\s\S]*?\n\}\);/.exec(sidebar)?.[0] ?? '';
+    const watchBody = /watch\(\[navStyle, servicesView\], \(\) => \{[\s\S]*?\n\}\);/.exec(sidebar)?.[0] ?? '';
     // Before the ready check, so a switch while the skeleton is in flight
     // still starts the new style's filtered tree fully open.
     expect(watchBody).toMatch(/filterCollapsed\.value = new Set\(\);[\s\S]*?if \(status\.value !== "ready"\) return;/);
