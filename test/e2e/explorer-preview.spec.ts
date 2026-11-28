@@ -95,7 +95,10 @@ test.describe('explorer preview on desktop', () => {
     await expect(rail(page).getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
     const section = page.locator('.favorites-section');
     await expect(section.getByRole('heading', { name: 'Favorites (2)' })).toBeVisible();
-    await expect(section.locator('.favorites-link')).toHaveText(['Topic', 'Queue']);
+    // Grouped by service, so the rows read A to Z inside their group rather
+    // than in the order they were starred.
+    await expect(section.locator('.favorites-group-name')).toHaveText(['Application integration']);
+    await expect(section.locator('.favorites-link')).toHaveText(['Queue · SQS', 'Topic · SNS']);
     await expect(section.locator('.favorites-toggle')).toHaveCount(0);
     await expect(page.locator('.VPSidebar .nav-filter')).toBeHidden();
     await expect(page.locator('.VPSidebar .api-sidebar')).toBeHidden();
@@ -107,11 +110,11 @@ test.describe('explorer preview on desktop', () => {
     await expect(page.locator('.favorites-section')).toHaveCount(0);
     await rail(page).getByRole('button', { name: 'Favorites' }).click();
 
-    await section.getByRole('button', { name: 'Remove Topic from favorites' }).click();
-    await section.getByRole('button', { name: 'Remove Queue from favorites' }).click();
+    await section.getByRole('button', { name: 'Remove Topic (SNS) from Favorites' }).click();
+    await section.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
     await expect(section.getByRole('heading', { name: 'Favorites (0)' })).toBeVisible();
     await expect(section.locator('.favorites-empty')).toHaveText(
-      'No favorites yet. Select Add to favorites (☆) on an API page to add one.',
+      /No favorites yet\.\s*Select the star \(☆\) on an API page to add it\./,
     );
   });
 
@@ -432,7 +435,10 @@ test.describe('explorer preview on a phone', () => {
     await expect(rail(page)).toBeHidden();
     await expect(views).toBeFocused();
     await expect(views).toContainText('Favorites');
-    await expect(page.locator('.favorites-section .favorites-link')).toHaveText(['Topic', 'Queue']);
+    await expect(page.locator('.favorites-section .favorites-link')).toHaveText([
+      'Queue · SQS',
+      'Topic · SNS',
+    ]);
   });
 
   test('Escape and a tap on the scrim fold the rail', async ({ page }) => {

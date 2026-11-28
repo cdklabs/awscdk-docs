@@ -52,12 +52,6 @@
   line-height: 1;
 }
 
-.favorite-star-cap {
-  color: var(--vp-c-text-2);
-  font-size: 12px;
-  font-family: var(--vp-font-family-base);
-}
-
 /* Sidebar favorites section */
 .favorites-section {
   padding: 4px 0 8px;
@@ -103,6 +97,12 @@
 
 .favorites-caret.open {
   transform: rotate(90deg);
+}
+
+/* The grouped view's own carets, on the muted token the counts and service
+   names use. The preview-off section keeps the lighter one. */
+.favorites-grouped .favorites-caret {
+  color: var(--fv-sub);
 }
 
 .favorites-heading {
@@ -166,4 +166,421 @@
 .favorites-remove:hover {
   background-color: var(--vp-c-default-soft);
   color: var(--vp-c-text-1);
+}
+
+/* ---------- Favorites view (Explorer preview): grouped list ---------- */
+
+/* The heading line: the count on the left, the New group button on the right. */
+.favorites-view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.favorites-new-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--vp-c-brand-2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.favorites-new-group:hover {
+  background-color: var(--vp-c-default-soft);
+}
+
+.favorites-plus {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.favorites-group + .favorites-group {
+  margin-top: 8px;
+}
+
+/* A heading row carries the fold button and, except on Ungrouped, its menu.
+   `position: relative` is what the menu panel anchors to. */
+.favorites-group-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 32px;
+}
+
+.favorites-group-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 4px;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.favorites-group-toggle:hover {
+  background-color: var(--vp-c-default-soft);
+}
+
+/* A group name is a reader's own text and the field takes 40 characters, so it
+   wraps inside a word rather than reaching over the ⋯ button beside it. */
+.favorites-group-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--vp-c-text-1);
+}
+
+.favorites-group-count {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--fv-sub);
+}
+
+.favorites-group-empty {
+  margin: 0;
+  padding: 5px 4px 5px 16px;
+  color: var(--fv-sub);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* A row is the hover target, so its buttons appear with it. `position: relative`
+   anchors the row's own menu panel. Scoped to the grouped view: the flat list
+   of the preview-off sidebar keeps the 8px gap its own rule gives it, which is
+   what holds its ✕ clear of the link beside it. */
+.favorites-grouped .favorites-item {
+  position: relative;
+  gap: 2px;
+  border-radius: 4px;
+}
+
+.favorites-grouped .favorites-item:hover,
+.favorites-grouped .favorites-item:focus-within {
+  background-color: var(--vp-c-default-soft);
+}
+
+/* A long title wraps and may break inside a word: nothing is cut off, and the
+   row grows instead. */
+.favorites-grouped .favorites-link {
+  overflow: visible;
+  color: var(--vp-c-text-1);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+
+.favorites-grouped .favorites-link:hover {
+  color: var(--vp-c-brand-2);
+  text-decoration: underline;
+}
+
+/* The service name after the title. The non-breaking space after the dot
+   in the template is what keeps the dot off the end of a line. */
+.favorites-service {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--fv-sub);
+  text-decoration: none;
+  white-space: normal;
+}
+
+.favorites-link:hover .favorites-service {
+  color: var(--fv-sub);
+  text-decoration: none;
+}
+
+/* The two row buttons and the heading button. Hidden until the row is hovered,
+   has focus inside, or its menu is open — still focusable, so Tab reaches them. */
+.favorites-actions,
+.favorites-grouped .favorites-remove {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 4px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0;
+}
+
+.favorites-item:hover .favorites-actions,
+.favorites-item:focus-within .favorites-actions,
+.favorites-group-head:hover .favorites-actions,
+.favorites-group-head:focus-within .favorites-actions,
+.favorites-actions[aria-expanded="true"],
+.favorites-item:hover .favorites-remove,
+.favorites-item:focus-within .favorites-remove {
+  opacity: 1;
+}
+
+.favorites-actions:hover,
+.favorites-grouped .favorites-remove:hover {
+  background-color: var(--vp-c-default-soft);
+  color: var(--vp-c-text-1);
+}
+
+/* ---------- Menus ---------- */
+
+.favorites-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 20;
+  width: 232px;
+  padding: 4px;
+  border: 1px solid var(--fv-edge);
+  border-radius: 8px;
+  background-color: var(--vp-c-bg);
+  box-shadow: 0 4px 16px rgba(0, 7, 22, 0.22);
+}
+
+/* Flipped above its button when the panel would run past the bottom of the
+   sidebar it scrolls in. */
+.favorites-menu-above {
+  top: auto;
+  bottom: calc(100% + 2px);
+}
+
+.favorites-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.favorites-menu-item:hover {
+  background-color: var(--vp-c-default-soft);
+}
+
+.favorites-menu-more {
+  margin-left: auto;
+}
+
+.favorites-menu-check {
+  display: inline-flex;
+  width: 14px;
+  flex: none;
+  color: var(--vp-c-brand-2);
+}
+
+.favorites-menu-label {
+  margin: 0;
+  padding: 4px 8px;
+  color: var(--fv-sub);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.favorites-menu-divider {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+/* ---------- Inline name field ---------- */
+
+.favorites-name-field {
+  padding: 4px 0;
+}
+
+/* A rename field sits in the heading row, which is one flex line, so the field
+   and its message need a block of their own to stack in. */
+.favorites-rename-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.favorites-name-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--fv-edge);
+  border-radius: 4px;
+  background-color: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.favorites-name-error {
+  margin: 4px 0 0;
+  color: var(--fv-sub);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---------- Undo toast ---------- */
+
+/* Sticky at the end of the view, so it stays in sight while the list scrolls. */
+.favorites-toast {
+  position: sticky;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--fv-edge);
+  border-radius: 8px;
+  background-color: var(--vp-c-bg);
+  box-shadow: 0 4px 16px rgba(0, 7, 22, 0.22);
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* The message quotes a page title or a group name, either of which can be one
+   long word. It shrinks and wraps, so Undo stays inside the sidebar. */
+.favorites-toast-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.favorites-undo {
+  flex: none;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--vp-c-brand-2);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.favorites-undo:hover {
+  background-color: var(--vp-c-default-soft);
+}
+
+/* The shortcut beside Undo, so a sighted keyboard user sees the way back the
+   live region names. */
+.favorites-toast-key {
+  flex: none;
+  padding: 1px 4px;
+  border: 1px solid var(--fv-edge);
+  border-radius: 4px;
+  color: var(--fv-sub);
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* The view's polite live region: read by a screen reader, never painted. */
+.favorites-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.favorites-actions:focus-visible,
+.favorites-group-toggle:focus-visible,
+.favorites-menu-item:focus-visible,
+.favorites-new-group:focus-visible,
+.favorites-name-input:focus-visible,
+.favorites-undo:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+}
+
+/* ---------- Phones: same sizes, bigger targets ---------- */
+
+/* Below the sidebar-drawer breakpoint the ⋯ button is always shown and the x
+   is gone, so a removal goes through the menu. The buttons grow from 24 to
+   28px and take their 40px touch area from a transparent overlay, so what the
+   reader sees stays as it is on desktop. */
+@media (max-width: 959px) {
+  .favorites-grouped .favorites-actions {
+    opacity: 1;
+    width: 28px;
+    height: 28px;
+  }
+
+  .favorites-grouped .favorites-remove {
+    display: none;
+  }
+
+  .favorites-grouped .favorites-new-group,
+  .favorites-grouped .favorites-undo {
+    height: 28px;
+  }
+
+  .favorites-grouped .favorites-actions,
+  .favorites-grouped .favorites-new-group,
+  .favorites-grouped .favorites-undo {
+    position: relative;
+  }
+
+  /* `-6px` top and bottom on a 28px button reaches the row's own 40px and no
+     further. A 44px area would reach 2px into the rows either side, and the
+     later row in the DOM would win that band, so a finger at the bottom of one
+     row would open the next row's menu. */
+  .favorites-grouped .favorites-new-group::before,
+  .favorites-grouped .favorites-undo::before {
+    content: '';
+    position: absolute;
+    inset: -6px -8px;
+  }
+
+  /* The ⋯ button sits 2px from the row link and the group toggle, so its own
+     overlay stops at that gap on the left. Reaching 8px there would put a tap
+     on the end of the link, or of the toggle, into the menu instead. */
+  .favorites-grouped .favorites-actions::before {
+    content: '';
+    position: absolute;
+    inset: -6px -8px -6px -2px;
+  }
+
+  .favorites-grouped .favorites-link,
+  .favorites-grouped .favorites-group-toggle {
+    min-height: 40px;
+  }
+
+  /* The 280px panel the spec names, bounded by the drawer when the drawer is
+     narrower than that, so the menu never hangs off its edge. */
+  .favorites-grouped .favorites-menu {
+    width: min(280px, 100vw - 48px);
+    max-width: 100%;
+  }
+
+  .favorites-grouped .favorites-menu-item {
+    min-height: 44px;
+  }
+}
+
+/* A touch screen has no hover, whatever its width: a tablet in landscape gets
+   the desktop rules, so without this its reader never sees the row and group
+   buttons at all. Below 960px the block above still hides the ✕. */
+@media (hover: none) {
+  .favorites-grouped .favorites-actions,
+  .favorites-grouped .favorites-remove {
+    opacity: 1;
+  }
 }

@@ -3,14 +3,20 @@ import { resolve } from 'path';
 import { withFavoritesSearchBoost } from '../docs/.vitepress/theme/favorites-client.js';
 import {
   apiPathFrom,
+  ALIASES_STORAGE_KEY,
+  categoryFor,
+  COLLAPSED_GROUPS_STORAGE_KEY,
   COLLAPSED_STORAGE_KEY,
   FavoritesStore,
-  MAX_FAVORITES,
+  GROUPS_STORAGE_KEY,
   normalizePath,
+  pageId,
   rankFavoritesFirst,
   readCollapsed,
+  serviceNameFor,
   STORAGE_KEY,
   StorageLike,
+  UNGROUPED,
   writeCollapsed,
 } from '../docs/.vitepress/theme/favorites.js';
 import {
@@ -32,11 +38,11 @@ class FakeStorage implements StorageLike {
 }
 
 const bucket = {
-  path: '/api/modules/ts/aws-cdk-lib/aws-s3/Bucket',
+  path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket',
   title: 'Bucket',
 };
 const queue = {
-  path: '/api/modules/ts/aws-cdk-lib/aws-sqs/Queue',
+  path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue',
   title: 'Queue',
 };
 
@@ -70,14 +76,14 @@ describe('favorite pages', () => {
       expect(store.toggle(bucket)).toEqual({ favorited: false, rejected: false });
     });
 
-    test('cap: adding beyond MAX_FAVORITES is rejected', () => {
+    test('no cap: the twenty-first page can be starred', () => {
       const store = new FavoritesStore(new FakeStorage());
-      for (let i = 0; i < MAX_FAVORITES; i++) {
-        expect(store.add({ path: `/api/page-${i}`, title: `Page ${i}` })).toBe(true);
+      for (let i = 0; i < 25; i++) {
+        expect(store.add({ path: `/v2/docs/pkg.Page${i}`, title: `Page ${i}` })).toBe(true);
       }
-      expect(store.add(bucket)).toBe(false);
-      expect(store.toggle(bucket)).toEqual({ favorited: false, rejected: true });
-      expect(store.list()).toHaveLength(MAX_FAVORITES);
+      expect(store.add(bucket)).toBe(true);
+      expect(store.toggle(queue)).toEqual({ favorited: true, rejected: false });
+      expect(store.list()).toHaveLength(27);
     });
 
     test('subscribe notifies on changes and unsubscribe stops it', () => {
@@ -100,7 +106,10 @@ describe('favorite pages', () => {
       first.add(queue);
 
       const second = new FavoritesStore(storage);
-      expect(second.list()).toEqual([bucket, queue]);
+      expect(second.list()).toEqual([
+        { ...bucket, group: 'Storage' },
+        { ...queue, group: 'Application integration' },
+      ]);
     });
 
     test('works without any storage (SSR)', () => {
@@ -116,19 +125,17 @@ describe('favorite pages', () => {
       storage.setItem(STORAGE_KEY, '{"a":1}');
       expect(new FavoritesStore(storage).list()).toEqual([]);
       storage.setItem(STORAGE_KEY, '[{"path":1,"title":2},{"path":"/api/x","title":"X"}]');
-      expect(new FavoritesStore(storage).list()).toEqual([
-        { path: '/api/x', title: 'X' },
-      ]);
+      expect(new FavoritesStore(storage).list()).toEqual([{ path: '/api/x', title: 'X' }]);
     });
 
-    test('stored entries beyond the cap are truncated on load', () => {
+    test('every stored entry loads, however many there are', () => {
       const storage = new FakeStorage();
-      const oversized = Array.from({ length: MAX_FAVORITES + 5 }, (_, i) => ({
-        path: `/api/page-${i}`,
+      const oversized = Array.from({ length: 25 }, (_, i) => ({
+        path: `/v2/docs/pkg.Page${i}`,
         title: `Page ${i}`,
       }));
       storage.setItem(STORAGE_KEY, JSON.stringify(oversized));
-      expect(new FavoritesStore(storage).list()).toHaveLength(MAX_FAVORITES);
+      expect(new FavoritesStore(storage).list()).toHaveLength(25);
     });
 
     test('reload picks up external storage changes (cross-tab sync)', () => {
@@ -137,7 +144,7 @@ describe('favorite pages', () => {
       storage.setItem(STORAGE_KEY, JSON.stringify([bucket]));
       expect(store.list()).toEqual([]);
       store.reload();
-      expect(store.list()).toEqual([bucket]);
+      expect(store.list()).toEqual([{ ...bucket, group: 'Storage' }]);
     });
   });
 
@@ -302,6 +309,524 @@ describe('favorite pages', () => {
 
   });
 
+  describe('groups from the category map', () => {
+    test('a page id drops the base, the extension and a readme suffix', () => {
+      expect(pageId('/v2/docs/aws-cdk-lib.aws_sqs.Queue.html')).toBe(
+        'aws-cdk-lib.aws_sqs.Queue',
+      );
+      expect(pageId('/v2/docs/aws-cdk-lib.aws_sqs-readme')).toBe('aws-cdk-lib.aws_sqs');
+      expect(pageId('/v2/')).toBeUndefined();
+    });
+
+    test('a submodule page takes its submodule category', () => {
+      expect(categoryFor('/v2/docs/aws-cdk-lib.aws_s3.Bucket')).toBe('Storage');
+      expect(categoryFor('/v2/docs/aws-cdk-lib.aws_lambda.Function')).toBe('Compute');
+      expect(categoryFor('/v2/docs/aws-cdk-lib.aws_sqs-readme')).toBe(
+        'Application integration',
+      );
+    });
+
+    test('a root type and the constructs library take the package category', () => {
+      // The second part starts upper case, so it is a type name and the
+      // package decides.
+      expect(categoryFor('/v2/docs/aws-cdk-lib.Stack')).toBe('Framework');
+      expect(categoryFor('/v2/docs/constructs.Construct')).toBe('Framework');
+    });
+
+    test('a scoped package reads its first underscore as the scope separator', () => {
+      expect(categoryFor('/v2/docs/@aws-cdk_aws-amplify-alpha.App')).toBe(
+        'Front-end and mobile',
+      );
+    });
+
+    test('a submodule the map does not name has no category, even under a mapped package', () => {
+      for (const submodule of [
+        'aws_awsexternalanthropic',
+        'aws_healthagent',
+        'aws_rtbfabric',
+        'aws_scn',
+        'aws_uxc',
+      ]) {
+        expect(categoryFor(`/v2/docs/aws-cdk-lib.${submodule}.Thing`)).toBeUndefined();
+      }
+    });
+
+    test('an unmapped page shows in Ungrouped and keeps no stored group', () => {
+      const storage = new FakeStorage();
+      const store = new FavoritesStore(storage);
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' });
+      expect(store.grouped()).toEqual([
+        {
+          name: UNGROUPED,
+          entries: [{ path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' }],
+        },
+      ]);
+      // No `group` written, so a category added to the map later places it.
+      expect(JSON.parse(storage.getItem(STORAGE_KEY)!)).toEqual([
+        { path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' },
+      ]);
+    });
+
+    test('an entry with no group is placed by the map on read', () => {
+      const storage = new FakeStorage();
+      // Stored with no group, as an unmapped page is.
+      storage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([{ path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', title: 'Bucket' }]),
+      );
+      expect(new FavoritesStore(storage).grouped()[0].name).toBe('Storage');
+    });
+
+    test('groups sort A to Z with Ungrouped last, and rows A to Z inside', () => {
+      const store = new FavoritesStore(new FakeStorage());
+      store.add(queue);
+      store.add(bucket);
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_sqs.QueuePolicy', title: 'QueuePolicy' });
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' });
+      expect(store.grouped().map((group) => [group.name, group.entries.map((e) => e.title)]))
+        .toEqual([
+          ['Application integration', ['Queue', 'QueuePolicy']],
+          ['Storage', ['Bucket']],
+          [UNGROUPED, ['Thing']],
+        ]);
+    });
+
+    test('an entry stored without a group is placed and written back', () => {
+      const storage = new FakeStorage();
+      storage.setItem(STORAGE_KEY, JSON.stringify([{ path: bucket.path, title: 'Bucket' }]));
+      const store = new FavoritesStore(storage);
+      expect(store.grouped()[0].name).toBe('Storage');
+      expect(JSON.parse(storage.getItem(STORAGE_KEY)!)).toEqual([
+        { path: bucket.path, title: 'Bucket', group: 'Storage' },
+      ]);
+    });
+
+    test('a stored group wins over the map, including an explicit Ungrouped', () => {
+      const storage = new FakeStorage();
+      storage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([
+          { path: bucket.path, title: 'Bucket', group: 'Mine' },
+          { path: queue.path, title: 'Queue', group: null },
+        ]),
+      );
+      const store = new FavoritesStore(storage);
+      expect(store.grouped().map((group) => group.name)).toEqual(['Mine', UNGROUPED]);
+    });
+  });
+
+  describe('service name on a row', () => {
+    const sections = [
+      {
+        items: [
+          { text: 'aws-cdk-lib', modules: ['aws-cdk-lib', 'constructs'] },
+          { text: 'aws-cdk-lib.triggers', modules: ['aws-cdk-lib.triggers'] },
+        ],
+      },
+      {
+        items: [
+          { text: 'SQS', modules: ['aws-cdk-lib.aws_sqs', 'aws-cdk-lib.interfaces.aws_sqs'] },
+          { text: 'S3', modules: ['aws-cdk-lib.aws_s3'] },
+          { text: 'EKS (legacy)', modules: ['aws-cdk-lib.aws_eks'] },
+          { text: 'EKS V2', modules: ['aws-cdk-lib.aws_eks_v2'] },
+        ],
+      },
+    ];
+
+    test('a page takes the name its Services entry shows', () => {
+      expect(serviceNameFor(queue.path, sections)).toBe('SQS');
+      expect(serviceNameFor(bucket.path, sections)).toBe('S3');
+    });
+
+    test('the two EKS modules keep their own names', () => {
+      expect(serviceNameFor('/v2/docs/aws-cdk-lib.aws_eks.Cluster', sections)).toBe(
+        'EKS (legacy)',
+      );
+      expect(serviceNameFor('/v2/docs/aws-cdk-lib.aws_eks_v2.Cluster', sections)).toBe(
+        'EKS V2',
+      );
+    });
+
+    test('the longest matching module stem wins, so a root type reads as its package', () => {
+      // `aws-cdk-lib` owns every root type, but `aws-cdk-lib.aws_sqs` owns the
+      // SQS pages, so a prefix match alone would label every page aws-cdk-lib.
+      expect(serviceNameFor('/v2/docs/aws-cdk-lib.Stack', sections)).toBe('aws-cdk-lib');
+      expect(serviceNameFor('/v2/docs/aws-cdk-lib.triggers.Trigger', sections)).toBe(
+        'aws-cdk-lib.triggers',
+      );
+    });
+
+    test('a page in neither list has no service', () => {
+      expect(serviceNameFor('/v2/docs/pkg.Thing', sections)).toBeUndefined();
+      expect(serviceNameFor('/v2/', sections)).toBeUndefined();
+    });
+  });
+
+  describe('group editing', () => {
+    function withTwo(): { store: FavoritesStore; storage: FakeStorage } {
+      const storage = new FakeStorage();
+      const store = new FavoritesStore(storage);
+      store.add(bucket);
+      store.add(queue);
+      return { store, storage };
+    }
+
+    test('move puts a favorite in another group and the move is stored', () => {
+      const { store, storage } = withTwo();
+      expect(store.move(queue.path, 'Storage')).toBe(true);
+      expect(store.grouped().map((group) => [group.name, group.entries.length])).toEqual([
+        ['Storage', 2],
+      ]);
+      expect(JSON.parse(storage.getItem(STORAGE_KEY)!)).toEqual([
+        { path: bucket.path, title: 'Bucket', group: 'Storage' },
+        { path: queue.path, title: 'Queue', group: 'Storage' },
+      ]);
+    });
+
+    test('move to Ungrouped is stored as null, which the map does not override', () => {
+      const { store, storage } = withTwo();
+      store.move(queue.path, null);
+      expect(JSON.parse(storage.getItem(STORAGE_KEY)!)[1]).toEqual({
+        path: queue.path,
+        title: 'Queue',
+        group: null,
+      });
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_sqs.QueuePolicy', title: 'QueuePolicy' });
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Application integration',
+        'Storage',
+        UNGROUPED,
+      ]);
+    });
+
+    test('a new group is kept while it is empty', () => {
+      const { store, storage } = withTwo();
+      expect(store.createGroup('  Mine  ')).toBe(true);
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Application integration',
+        'Mine',
+        'Storage',
+      ]);
+      expect(JSON.parse(storage.getItem(GROUPS_STORAGE_KEY)!)).toEqual(['Mine']);
+      expect(new FavoritesStore(storage).grouped().map((group) => group.name)).toContain(
+        'Mine',
+      );
+    });
+
+    test('a name that is empty, reserved, too long or taken is refused', () => {
+      const { store } = withTwo();
+      expect(store.checkGroupName('   ')).toBe('empty');
+      expect(store.checkGroupName('ungrouped')).toBe('reserved');
+      expect(store.checkGroupName('x'.repeat(41))).toBe('too-long');
+      expect(store.checkGroupName('x'.repeat(40))).toBe('ok');
+      expect(store.checkGroupName('storage')).toBe('duplicate');
+      // Renaming a group to the name it already has is not a clash with itself.
+      expect(store.checkGroupName('Storage', 'Storage')).toBe('ok');
+      expect(store.createGroup('storage')).toBe(false);
+    });
+
+    test('renaming a map group carries its favorites and stores an alias', () => {
+      const { store, storage } = withTwo();
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function' });
+      expect(store.renameGroup('Compute', 'Servers')).toBeDefined();
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Application integration',
+        'Servers',
+        'Storage',
+      ]);
+      expect(JSON.parse(storage.getItem(ALIASES_STORAGE_KEY)!)).toEqual({
+        Compute: 'Servers',
+      });
+
+      // A Compute page favorited later joins the reader's name, also after a reload.
+      const reloaded = new FavoritesStore(storage);
+      reloaded.add({ path: '/v2/docs/aws-cdk-lib.aws_ec2.Instance', title: 'Instance' });
+      expect(
+        reloaded.grouped().find((group) => group.name === 'Servers')?.entries.map((e) => e.title),
+      ).toEqual(['Function', 'Instance']);
+    });
+
+    test('renaming again moves the alias, and renaming back drops it', () => {
+      const { store, storage } = withTwo();
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function' });
+      store.renameGroup('Compute', 'Servers');
+      store.renameGroup('Servers', 'Hosts');
+      expect(JSON.parse(storage.getItem(ALIASES_STORAGE_KEY)!)).toEqual({ Compute: 'Hosts' });
+      store.renameGroup('Hosts', 'Compute');
+      expect(JSON.parse(storage.getItem(ALIASES_STORAGE_KEY)!)).toEqual({});
+    });
+
+    test('renaming a group the reader made stores no alias', () => {
+      const { store, storage } = withTwo();
+      store.createGroup('Mine');
+      store.move(queue.path, 'Mine');
+      store.renameGroup('Mine', 'Ours');
+      expect(JSON.parse(storage.getItem(ALIASES_STORAGE_KEY)!)).toEqual({});
+      expect(store.grouped().map((group) => group.name)).toEqual(['Ours', 'Storage']);
+    });
+
+    test('deleting a group moves its favorites to Ungrouped and drops its alias', () => {
+      const { store, storage } = withTwo();
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function' });
+      store.renameGroup('Compute', 'Servers');
+      expect(store.countIn('Servers')).toBe(1);
+      expect(store.deleteGroup('Servers')).toBeDefined();
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Application integration',
+        'Storage',
+        UNGROUPED,
+      ]);
+      expect(JSON.parse(storage.getItem(ALIASES_STORAGE_KEY)!)).toEqual({});
+
+      // The next Compute page creates the map's own group again.
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_ec2.Instance', title: 'Instance' });
+      expect(store.grouped().map((group) => group.name)).toContain('Compute');
+    });
+
+    test('Ungrouped cannot be renamed or deleted', () => {
+      const { store } = withTwo();
+      store.move(queue.path, null);
+      expect(store.deleteGroup(UNGROUPED)).toBeUndefined();
+      expect(store.renameGroup(UNGROUPED, 'Rest')).toBeUndefined();
+    });
+
+    test('undo of a delete restores the favorites, the group and the alias', () => {
+      const { store, storage } = withTwo();
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function' });
+      store.renameGroup('Compute', 'Servers');
+      const undo = store.deleteGroup('Servers')!;
+      store.restore(undo);
+      expect(
+        store.grouped().find((group) => group.name === 'Servers')?.entries.map((e) => e.title),
+      ).toEqual(['Function']);
+      expect(JSON.parse(storage.getItem(ALIASES_STORAGE_KEY)!)).toEqual({
+        Compute: 'Servers',
+      });
+    });
+
+    test('undo of a removal puts the favorite back in the group it was in', () => {
+      const { store } = withTwo();
+      store.move(queue.path, 'Storage');
+      const undo = store.snapshot();
+      store.remove(queue.path);
+      expect(store.list()).toHaveLength(1);
+      store.restore(undo);
+      expect(
+        store.grouped().find((group) => group.name === 'Storage')?.entries.map((e) => e.title),
+      ).toEqual(['Bucket', 'Queue']);
+    });
+
+    test('a reader group spelled differently in case takes in the map category', () => {
+      const { store } = withTwo();
+      store.createGroup('compute');
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_ec2.Instance', title: 'Instance' });
+      // One group, under the reader's spelling, rather than compute and Compute.
+      expect(store.grouped().map((group) => [group.name, group.entries.map((e) => e.title)]))
+        .toEqual([
+          ['Application integration', ['Queue']],
+          ['compute', ['Instance']],
+          ['Storage', ['Bucket']],
+        ]);
+    });
+
+    test('a group unfolds when a favorite lands in it, whichever path put it there', () => {
+      const { store } = withTwo();
+      store.setGroupCollapsed('Storage', true);
+      store.remove(bucket.path);
+      expect(store.isGroupCollapsed('Storage')).toBe(true);
+      // Starring an S3 page again.
+      store.add(bucket);
+      expect(store.isGroupCollapsed('Storage')).toBe(false);
+
+      store.setGroupCollapsed('Storage', true);
+      store.move(queue.path, 'Storage');
+      expect(store.isGroupCollapsed('Storage')).toBe(false);
+    });
+
+    test('renaming a group to its own name changes nothing', () => {
+      const { store, storage } = withTwo();
+      const before = store.revision();
+      expect(store.renameGroup('Storage', 'Storage')).toBeUndefined();
+      expect(JSON.parse(storage.getItem(GROUPS_STORAGE_KEY) ?? '[]')).toEqual([]);
+      expect(store.revision()).toBe(before);
+      // A group the map produced still goes when its last favorite does.
+      store.remove(bucket.path);
+      expect(store.groupNames()).not.toContain('Storage');
+    });
+
+    test('a rename that changes only the case goes through', () => {
+      const { store } = withTwo();
+      expect(store.renameGroup('Storage', 'storage')).toBeDefined();
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Application integration',
+        'storage',
+      ]);
+      // The alias points at the new spelling, so the next S3 page joins it
+      // instead of recreating the map's own.
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_s3.CfnBucket', title: 'CfnBucket' });
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Application integration',
+        'storage',
+      ]);
+    });
+
+    test('a fold follows a rename and does not outlive a delete', () => {
+      const { store } = withTwo();
+      store.setGroupCollapsed('Storage', true);
+      store.renameGroup('Storage', 'Files');
+      expect(store.isGroupCollapsed('Files')).toBe(true);
+      expect(store.isGroupCollapsed('Storage')).toBe(false);
+
+      store.setGroupCollapsed('Files', true);
+      store.deleteGroup('Files');
+      // A group recreated under that name must not come back folded.
+      expect(store.isGroupCollapsed('Files')).toBe(false);
+    });
+
+    test('the revision counts favorite changes, so an Undo offer can tell one happened', () => {
+      const { store } = withTwo();
+      const start = store.revision();
+      store.move(queue.path, 'Storage');
+      expect(store.revision()).toBeGreaterThan(start);
+      const afterMove = store.revision();
+      // Folding changes no favorite, so an Undo offer survives it.
+      store.setGroupCollapsed('Storage', true);
+      expect(store.revision()).toBe(afterMove);
+      store.remove(queue.path);
+      expect(store.revision()).toBeGreaterThan(afterMove);
+    });
+
+    test('a reload moves the revision only when it changed what Undo restores', () => {
+      const storage = new FakeStorage();
+      const store = new FavoritesStore(storage);
+      store.add(bucket);
+      const before = store.revision();
+      // What a fold in another tab looks like from here.
+      storage.setItem(COLLAPSED_GROUPS_STORAGE_KEY, JSON.stringify(['Storage']));
+      store.reload();
+      expect(store.revision()).toBe(before);
+
+      storage.setItem(STORAGE_KEY, JSON.stringify([{ path: queue.path, title: 'Queue' }]));
+      store.reload();
+      expect(store.revision()).toBeGreaterThan(before);
+    });
+
+    test('folding is saved per group name and defaults to open', () => {
+      const { store, storage } = withTwo();
+      expect(store.isGroupCollapsed('Storage')).toBe(false);
+      store.setGroupCollapsed('Storage', true);
+      expect(JSON.parse(storage.getItem(COLLAPSED_GROUPS_STORAGE_KEY)!)).toEqual(['Storage']);
+      expect(new FavoritesStore(storage).isGroupCollapsed('Storage')).toBe(true);
+      store.setGroupCollapsed('Storage', false);
+      expect(JSON.parse(storage.getItem(COLLAPSED_GROUPS_STORAGE_KEY)!)).toEqual([]);
+    });
+
+    test('malformed group, alias and collapsed storage reads as empty', () => {
+      const storage = new FakeStorage();
+      storage.setItem(GROUPS_STORAGE_KEY, '{"not":"an array"}');
+      storage.setItem(ALIASES_STORAGE_KEY, '["not an object"]');
+      storage.setItem(COLLAPSED_GROUPS_STORAGE_KEY, 'nonsense');
+      const store = new FavoritesStore(storage);
+      store.add(bucket);
+      expect(store.grouped().map((group) => group.name)).toEqual(['Storage']);
+      expect(store.isGroupCollapsed('Storage')).toBe(false);
+    });
+
+    test('an alias whose value is not a usable string is dropped on read', () => {
+      const storage = new FakeStorage();
+      storage.setItem(
+        ALIASES_STORAGE_KEY,
+        JSON.stringify({ Compute: 7, Storage: '  ', Databases: 'Data' }),
+      );
+      const store = new FavoritesStore(storage);
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function' });
+      store.add(bucket);
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_dynamodb.Table', title: 'Table' });
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Compute',
+        'Data',
+        'Storage',
+      ]);
+    });
+  });
+
+  describe('the category map covers the documented modules', () => {
+    // `docgen.baseline.json` is the committed record of what docgen documents,
+    // so a module added to the library shows up here rather than silently
+    // falling into Ungrouped.
+    const baseline = JSON.parse(
+      readFileSync(resolve(ROOT, 'docgen.baseline.json'), 'utf-8'),
+    ) as { readmes: Record<string, unknown> };
+    const map = JSON.parse(
+      readFileSync(resolve(THEME_DIR, 'favorite-categories.json'), 'utf-8'),
+    ) as { categories: string[]; map: Record<string, string> };
+
+    /**
+     * Module ids with no category, which land in Ungrouped. Every one of them
+     * has to be listed here, so a new module cannot slip in unnoticed: a
+     * failure here means deciding its category, not extending this list on
+     * sight.
+     */
+    const UNMAPPED = [
+      '@aws-cdk/metrics-facade-alpha',
+      'aws-cdk-lib.amzn_sdc',
+      'aws-cdk-lib.assets',
+      'aws-cdk-lib.aws_artifact',
+      'aws-cdk-lib.aws_awsexternalanthropic',
+      'aws-cdk-lib.aws_backupsearch',
+      'aws-cdk-lib.aws_codetest',
+      'aws-cdk-lib.aws_cognitosync',
+      'aws-cdk-lib.aws_controlcatalog',
+      'aws-cdk-lib.aws_healthagent',
+      'aws-cdk-lib.aws_iot1click',
+      'aws-cdk-lib.aws_licensemanagerusersubscriptions',
+      'aws-cdk-lib.aws_polly',
+      'aws-cdk-lib.aws_rtbfabric',
+      'aws-cdk-lib.aws_scn',
+      'aws-cdk-lib.aws_states',
+      'aws-cdk-lib.aws_thinclient',
+      'aws-cdk-lib.aws_usernotifications',
+      'aws-cdk-lib.aws_uxc',
+      'aws-cdk-lib.interfaces',
+      'aws-cdk-lib.lambda_layer_kubectl',
+    ];
+
+    test('every documented module reaches a category through the real lookup', () => {
+      // Through `categoryFor`, not the map keys: a key the lookup can never
+      // build (a three-part id) or a break in the scoped `_` rewrite would
+      // both pass a direct key check while the site sent those pages to
+      // Ungrouped. `@aws-cdk/x` is the page id `@aws-cdk_x`.
+      const uncovered = Object.keys(baseline.readmes).filter(
+        (id) =>
+          !categoryFor(`/v2/docs/${id.replace('/', '_')}`) && !UNMAPPED.includes(id),
+      );
+      expect(uncovered).toEqual([]);
+    });
+
+    test('the unmapped list names only ids the lookup really cannot place', () => {
+      const placed = UNMAPPED.filter((id) =>
+        categoryFor(`/v2/docs/${id.replace('/', '_')}`),
+      );
+      expect(placed).toEqual([]);
+      // And only ids docgen still documents, or the list drifts from the
+      // count the decision record states.
+      expect(UNMAPPED.filter((id) => !(id in baseline.readmes))).toEqual([]);
+    });
+
+    test('every mapped value is one of the category names', () => {
+      const unknown = Object.entries(map.map)
+        .filter(([, category]) => !map.categories.includes(category))
+        .map(([id]) => id);
+      expect(unknown).toEqual([]);
+    });
+
+    test('the category names are A to Z, which is the order the view shows', () => {
+      expect(map.categories).toEqual(
+        [...map.categories].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())),
+      );
+    });
+  });
+
   describe('collapsed state', () => {
     test('collapsed by default when storage holds no preference', () => {
       expect(readCollapsed(new FakeStorage())).toBe(true);
@@ -327,7 +852,7 @@ describe('favorite pages', () => {
       // The entries key still parses as the entry array — the collapse flag
       // did not change the stored shape of the favorites themselves.
       expect(JSON.parse(storage.getItem(STORAGE_KEY)!)).toEqual([
-        { path: bucket.path, title: bucket.title },
+        { path: bucket.path, title: bucket.title, group: 'Storage' },
       ]);
       expect(new FavoritesStore(storage).list()).toHaveLength(1);
     });

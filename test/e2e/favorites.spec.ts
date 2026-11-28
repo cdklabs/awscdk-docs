@@ -208,50 +208,27 @@ test.describe('favorite pages', () => {
     expect(bar.height).toBeGreaterThanOrEqual(44);
   });
 
-  test('the capped message stays in the row without overlapping the pills or widening the page', async ({ page }) => {
-    // Starring past the cap puts a sentence inside the star's wrapper, which on
-    // a type page sits in the chip row beside two pills. The chip row wraps, but
-    // the actions box holding the pills and the star does not, so the message has
-    // to fit beside them on one line. 320px is the width reflow measures against.
-    for (const width of [1280, 375, 320]) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto(TOPIC_PAGE);
-      await page.evaluate(() => {
-        const entries = Array.from({ length: 20 }, (_, i) => ({
-          path: `/v2/docs/filler-${i}`,
-          title: `Filler ${i}`,
-        }));
-        localStorage.setItem('cdk-docs:favourites', JSON.stringify(entries));
-      });
-      await page.reload();
-      const star = page.locator('.type-header-row .favorite-star-button');
-      await expect(star).toBeVisible();
-      await star.click();
+  test('more than twenty pages can be favorited, with no cap message', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    await page.evaluate(() => {
+      const entries = Array.from({ length: 20 }, (_, i) => ({
+        path: `/v2/docs/filler-${i}`,
+        title: `Filler ${i}`,
+      }));
+      localStorage.setItem('cdk-docs:favourites', JSON.stringify(entries));
+    });
+    await page.reload();
+    const star = page.locator('.type-header-row .favorite-star-button');
+    await expect(star).toBeVisible();
+    await star.click();
 
-      const cap = page.locator('.favorite-star-cap');
-      await expect(cap).toBeVisible();
-      const geometry = await page.evaluate(() => {
-        const box = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
-        const message = box('.favorite-star-cap');
-        const overlaps = (other: DOMRect) =>
-          message.left < other.right && other.left < message.right
-          && message.top < other.bottom && other.top < message.bottom;
-        return {
-          left: message.left,
-          right: message.right,
-          onCopy: overlaps(box('.copy-markdown-main')),
-          onOptions: overlaps(box('.copy-markdown-options')),
-          onStar: overlaps(box('.favorite-star-button')),
-          scrolls: document.documentElement.scrollWidth > window.innerWidth,
-        };
-      });
-      expect(geometry.left, `${width}px`).toBeGreaterThanOrEqual(0);
-      expect(geometry.right, `${width}px`).toBeLessThanOrEqual(width);
-      expect(geometry.onCopy, `${width}px`).toBe(false);
-      expect(geometry.onOptions, `${width}px`).toBe(false);
-      expect(geometry.onStar, `${width}px`).toBe(false);
-      expect(geometry.scrolls, `${width}px`).toBe(false);
-    }
+    await expect(star).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.favorite-star-cap')).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem('cdk-docs:favourites')!).length,
+      ),
+    ).toBe(21);
   });
 
   test('the star does not add height to the breadcrumb bar', async ({
@@ -361,5 +338,765 @@ test.describe('favorite pages', () => {
     await page.locator('.type-breadcrumb .favorite-star-button').click();
     await expect(page.locator('.type-breadcrumb .favorite-star-button')).toHaveAttribute('aria-pressed', 'false');
     await expect(page.locator('.favorites-section')).toHaveCount(0);
+  });
+});
+
+// The grouped Favorites view of the Explorer preview. Only a browser shows
+// what the grouping, the menus, the inline fields and the Undo toast do: the
+// unit suite pins the stored JSON these actions write, and the view is
+// assembled client-side from it.
+test.describe('grouped favorites view', () => {
+  const PREVIEW_KEY = 'cdk-docs-explorer-preview';
+  const VIEW_KEY = 'cdk-docs-explorer-view';
+  const FAVORITES_KEY = 'cdk-docs:favourites';
+  const GROUPS_KEY = 'cdk-docs:favourites:groups';
+  const ALIASES_KEY = 'cdk-docs:favourites:aliases';
+  const COLLAPSED_KEY = 'cdk-docs:favourites:collapsed-groups';
+
+  const STARRED = [
+    { path: '/v2/docs/aws-cdk-lib.aws_sns.Topic', title: 'Topic' },
+    { path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue', title: 'Queue' },
+    { path: '/v2/docs/constructs.Construct', title: 'Construct' },
+  ];
+
+  /** The view, with the preview on and the given pages already starred. */
+  async function openView(
+    page: Page,
+    entries: readonly { path: string; title: string; group?: string | null }[] = STARRED,
+    extra: Record<string, string> = {},
+  ): Promise<void> {
+    await page.addInitScript(
+      ([preview, view, favorites, stored, keys]) => {
+        const [previewKey, viewKey, favoritesKey] = keys as string[];
+        window.localStorage.setItem(previewKey, preview as string);
+        window.localStorage.setItem(viewKey, view as string);
+        // Only when nothing is there yet: the script runs on every navigation,
+        // so overwriting would undo what the view just stored.
+        if (window.localStorage.getItem(favoritesKey) === null) {
+          window.localStorage.setItem(favoritesKey, JSON.stringify(favorites));
+          for (const [key, value] of Object.entries(stored as Record<string, string>)) {
+            window.localStorage.setItem(key, value);
+          }
+        }
+      },
+      ['on', 'favorites', entries, extra, [PREVIEW_KEY, VIEW_KEY, FAVORITES_KEY]] as const,
+    );
+    await page.goto(QUEUE_PAGE);
+    const accept = page.getByRole('button', { name: 'Accept' });
+    if (await accept.count()) {
+      await accept.first().click();
+    }
+    await expect(page.locator('.favorites-static-heading')).toBeVisible();
+  }
+
+  const view = (page: Page) => page.locator('.favorites-section');
+
+  const stored = (page: Page, key: string) =>
+    page.evaluate((k) => JSON.parse(window.localStorage.getItem(k) ?? 'null'), key);
+
+  test.describe('desktop', () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    test('favorites sit in groups named by the map, A to Z with rows A to Z', async ({ page }) => {
+      await openView(page);
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+        'Framework',
+      ]);
+      await expect(view(page).locator('.favorites-group-count')).toHaveText(['(2)', '(1)']);
+      await expect(view(page).locator('.favorites-link')).toHaveText([
+        'Queue · SQS',
+        'Topic · SNS',
+        'Construct · constructs',
+      ]);
+      // Each group is a list named after itself, under its heading button.
+      await expect(page.getByRole('list', { name: 'Application integration' })).toBeVisible();
+      // The full page id is the hover text, so two favorites with one name tell apart.
+      await expect(view(page).locator('.favorites-link').first()).toHaveAttribute(
+        'title',
+        'aws-cdk-lib.aws_sqs.Queue',
+      );
+      // The map's answer is written back on the first read.
+      expect(await stored(page, FAVORITES_KEY)).toEqual([
+        { path: STARRED[0].path, title: 'Topic', group: 'Application integration' },
+        { path: STARRED[1].path, title: 'Queue', group: 'Application integration' },
+        { path: STARRED[2].path, title: 'Construct', group: 'Framework' },
+      ]);
+    });
+
+    test('two favorites with one title have controls that name their services', async ({ page }) => {
+      await openView(page, [
+        { path: '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue', title: 'CfnQueue' },
+        { path: '/v2/docs/aws-cdk-lib.aws_sns.CfnQueue', title: 'CfnQueue' },
+      ]);
+      const rows = view(page).locator('.favorites-item');
+      await expect(rows).toHaveCount(2);
+      await rows.first().hover();
+
+      // Both rows sit in Application integration with the same title, so the
+      // service is what tells their buttons apart.
+      // Same title, so the stored order decides which row comes first.
+      for (const [service, index] of [
+        ['SQS', 0],
+        ['SNS', 1],
+      ] as const) {
+        const row = rows.nth(index);
+        await expect(
+          row.getByRole('button', { name: `Actions for CfnQueue (${service})`, exact: true }),
+        ).toHaveCount(1);
+        await expect(
+          row.getByRole('button', {
+            name: `Remove CfnQueue (${service}) from Favorites`,
+            exact: true,
+          }),
+        ).toHaveCount(1);
+      }
+
+      await rows.first().getByRole('button', { name: /^Actions for / }).click();
+      await expect(
+        rows.first().getByRole('menu', { name: 'Actions for CfnQueue (SQS)', exact: true }),
+      ).toBeVisible();
+      await rows.first().getByRole('menuitem', { name: 'Move to group…' }).click();
+      await expect(
+        rows.first().getByRole('menu', { name: 'Move CfnQueue (SQS) to group', exact: true }),
+      ).toBeVisible();
+    });
+
+    test('an unmapped page lands in Ungrouped, which sorts last', async ({ page }) => {
+      await openView(page, [
+        ...STARRED,
+        { path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' },
+      ]);
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+        'Framework',
+        'Ungrouped',
+      ]);
+      // Ungrouped has no actions menu: it cannot be renamed or deleted.
+      const ungrouped = view(page).locator('.favorites-group').last();
+      await expect(ungrouped.getByRole('button', { name: /Actions for group/ })).toHaveCount(0);
+    });
+
+    test('a removal offers Undo, and Undo puts the row back where it was', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
+
+      const toast = view(page).locator('.favorites-toast');
+      // The service is in the message too: two favorites can share a title.
+      await expect(toast).toHaveText(/Removed “Queue \(SQS\)” from Favorites\./);
+      await expect(view(page).getByRole('heading', { name: 'Favorites (2)' })).toBeVisible();
+      await expect(view(page).locator('.favorites-link')).toHaveText([
+        'Topic · SNS',
+        'Construct · constructs',
+      ]);
+
+      await toast.getByRole('button', { name: 'Undo' }).click();
+      await expect(view(page).locator('.favorites-link')).toHaveText([
+        'Queue · SQS',
+        'Topic · SNS',
+        'Construct · constructs',
+      ]);
+      // Focus lands on the restored row, so the keyboard stays where the reader was.
+      await expect(view(page).locator('.favorites-link').first()).toBeFocused();
+    });
+
+    test('a change after a removal withdraws the Undo offer, so it cannot take that change back', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+
+      // Move another favorite while the offer is up. Undo would restore the
+      // state from before the move as well, so the offer has to go.
+      const topic = view(page).locator('.favorites-item').first();
+      await topic.hover();
+      await topic.getByRole('button', { name: 'Actions for Topic' }).click();
+      await topic.getByRole('menuitem', { name: 'Move to group…' }).click();
+      await topic.getByRole('menuitemradio', { name: 'Framework' }).click();
+
+      await expect(view(page).locator('.favorites-toast')).toHaveCount(0);
+      await expect(view(page).locator('.favorites-group-name')).toHaveText(['Framework']);
+      await expect(view(page).locator('.favorites-link')).toHaveText([
+        'Construct · constructs',
+        'Topic · SNS',
+      ]);
+    });
+
+    test('removing the only row of a group leaves focus inside the view', async ({ page }) => {
+      await openView(page);
+      // Construct is alone in Framework, so its heading goes with the row.
+      await view(page).locator('[data-fav-link$="constructs.Construct"]').focus();
+      await page.keyboard.press('Delete');
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+      ]);
+      expect(
+        await page.evaluate(() =>
+          document.activeElement?.closest('.favorites-section') !== null,
+        ),
+      ).toBe(true);
+    });
+
+    test('a move into a folded group unfolds it, so the row it moved is in sight', async ({ page }) => {
+      await openView(page, STARRED, {
+        'cdk-docs:favourites:collapsed-groups': JSON.stringify(['Framework']),
+      });
+      await expect(page.getByRole('list', { name: 'Framework' })).toBeHidden();
+
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Actions for Queue' }).click();
+      await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+      await row.getByRole('menuitemradio', { name: 'Framework' }).click();
+
+      await expect(page.getByRole('list', { name: 'Framework' })).toBeVisible();
+      await expect(view(page).locator('[data-fav-link$="aws_sqs.Queue"]')).toBeFocused();
+    });
+
+    test('a refused group name is announced and tied to the field', async ({ page }) => {
+      await openView(page);
+      await view(page).getByRole('button', { name: 'New group' }).click();
+      const field = view(page).getByRole('textbox', { name: 'New group name' });
+      await field.fill('Framework');
+      await field.press('Enter');
+
+      await expect(field).toHaveAttribute('aria-invalid', 'true');
+      await expect(field).toHaveAttribute('aria-describedby', 'favorites-name-error');
+      await expect(view(page).locator('.favorites-live')).toHaveText(
+        'A group named “Framework” already exists.',
+      );
+    });
+
+    test('Ctrl+Z in a name field leaves the Undo offer alone', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+
+      await view(page).getByRole('button', { name: 'New group' }).click();
+      const field = view(page).getByRole('textbox', { name: 'New group name' });
+      await field.fill('Mine');
+      await field.press('Control+z');
+
+      // The favorite is still gone: the field's own undo is what that key is for.
+      await expect(view(page).locator('.favorites-link')).toHaveCount(2);
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+    });
+
+    test('the row menu moves a favorite to another group, and the move survives a reload', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Actions for Queue' }).click();
+      await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+
+      // The current group is checked, and Ungrouped is the last group offered.
+      await expect(row.getByRole('menuitemradio')).toHaveText([
+        '✓Application integration',
+        'Framework',
+        'Ungrouped',
+      ]);
+      await expect(
+        row.getByRole('menuitemradio', { name: 'Application integration' }),
+      ).toHaveAttribute('aria-checked', 'true');
+      await row.getByRole('menuitemradio', { name: 'Framework' }).click();
+
+      await expect(view(page).locator('.favorites-group-count')).toHaveText(['(1)', '(2)']);
+      await page.reload();
+      await expect(view(page).locator('.favorites-group-count')).toHaveText(['(1)', '(2)']);
+      expect(await stored(page, FAVORITES_KEY)).toEqual([
+        { path: STARRED[0].path, title: 'Topic', group: 'Application integration' },
+        { path: STARRED[1].path, title: 'Queue', group: 'Framework' },
+        { path: STARRED[2].path, title: 'Construct', group: 'Framework' },
+      ]);
+    });
+
+    test('New group creates an empty group that survives a reload, and a duplicate name is refused', async ({ page }) => {
+      await openView(page);
+      await view(page).getByRole('button', { name: 'New group' }).click();
+      const field = view(page).getByRole('textbox', { name: 'New group name' });
+      await field.fill('Framework');
+      await field.press('Enter');
+      await expect(view(page).locator('.favorites-name-error')).toHaveText(
+        'A group named “Framework” already exists.',
+      );
+
+      await field.fill('Mine');
+      await field.press('Enter');
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+        'Framework',
+        'Mine',
+      ]);
+      await expect(view(page).locator('.favorites-group-empty').last()).toHaveText(
+        'No favorites in this group.',
+      );
+      expect(await stored(page, GROUPS_KEY)).toEqual(['Mine']);
+
+      await page.reload();
+      await expect(view(page).locator('.favorites-group-name')).toContainText(['Mine']);
+    });
+
+    test('renaming a map group keeps a later page from that service in the new name', async ({ page }) => {
+      await openView(page);
+      const heading = view(page).locator('.favorites-group').first();
+      await heading.hover();
+      await heading
+        .getByRole('button', { name: 'Actions for group Application integration' })
+        .click();
+      await heading.getByRole('menuitem', { name: 'Rename' }).click();
+      const field = view(page).getByRole('textbox', { name: 'Group name' });
+      await expect(field).toHaveValue('Application integration');
+      await field.fill('Messaging');
+      await field.press('Enter');
+
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Framework',
+        'Messaging',
+      ]);
+      expect(await stored(page, ALIASES_KEY)).toEqual({
+        'Application integration': 'Messaging',
+      });
+
+      // A page the map puts in the renamed group joins the reader's name.
+      await page.goto(SQS_OVERVIEW_PAGE);
+      await page.locator('.favorite-star-button').click();
+      await page.goto(QUEUE_PAGE);
+      await expect(
+        page.getByRole('list', { name: 'Messaging' }).locator('.favorites-link'),
+      ).toHaveCount(3);
+    });
+
+    test('deleting a group moves its favorites to Ungrouped, and Undo brings the group back', async ({ page }) => {
+      await openView(page);
+      const group = view(page).locator('.favorites-group').first();
+      await group.hover();
+      await group
+        .getByRole('button', { name: 'Actions for group Application integration' })
+        .click();
+      await group.getByRole('menuitem', { name: 'Delete group' }).click();
+
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toHaveText(
+        /Deleted group “Application integration”\. 2 favorites moved to Ungrouped\./,
+      );
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Framework',
+        'Ungrouped',
+      ]);
+
+      await toast.getByRole('button', { name: 'Undo' }).click();
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+        'Framework',
+      ]);
+    });
+
+    test('a group folds and the choice is saved, with the count still on the heading', async ({ page }) => {
+      await openView(page);
+      const toggle = view(page).locator('.favorites-group-toggle').first();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.getByRole('list', { name: 'Application integration' })).toBeHidden();
+      await expect(view(page).locator('.favorites-group-count').first()).toHaveText('(2)');
+      expect(await stored(page, COLLAPSED_KEY)).toEqual(['Application integration']);
+
+      await page.reload();
+      await expect(view(page).locator('.favorites-group-toggle').first()).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+    });
+
+    test('the keyboard removes a focused row and Ctrl+Z takes the Undo back', async ({ page }) => {
+      await openView(page);
+      await view(page).locator('.favorites-link').first().focus();
+      await page.keyboard.press('Delete');
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+      await expect(view(page).locator('.favorites-link')).toHaveCount(2);
+
+      await page.keyboard.press('Control+z');
+      await expect(view(page).locator('.favorites-link')).toHaveCount(3);
+      await expect(view(page).locator('.favorites-toast')).toHaveCount(0);
+    });
+
+    test('the Undo offer expires after eight seconds, and holds while the pointer or focus is on it', async ({
+      page,
+    }) => {
+      await page.clock.install();
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toBeVisible();
+
+      // Held while the pointer is over it, with focus out of the view, so the
+      // pointer is the only hold left. The removal leaves focus on a row.
+      await page.locator('#explorer-rail button').first().focus();
+      await toast.hover();
+      await page.clock.runFor(9000);
+      await expect(toast).toBeVisible();
+
+      // A keyboard user on Undo keeps it, and a mouse leaving the toast must
+      // not resume the timer under them.
+      await toast.getByRole('button', { name: 'Undo' }).focus();
+      await page.mouse.move(5, 5);
+      await page.clock.runFor(9000);
+      await expect(toast).toBeVisible();
+      await expect(toast.getByRole('button', { name: 'Undo' })).toBeFocused();
+
+      // With neither hold left, it goes after its eight seconds.
+      await view(page).locator('.favorites-static-heading').click();
+      await page.clock.runFor(7000);
+      await expect(toast).toBeVisible();
+      await page.clock.runFor(2000);
+      await expect(toast).toHaveCount(0);
+      // Expiry only drops the offer: the removal stands.
+      await expect(view(page).locator('.favorites-link')).toHaveCount(2);
+    });
+
+    test('a replacement offer keeps the holds the one before it had', async ({ page }) => {
+      await page.clock.install();
+      // A short viewport with a long list, so the sidebar scrolls and the
+      // sticky toast stays where it is when a row goes: the pointer resting on
+      // it is still on it afterwards, which is the case under test.
+      await page.setViewportSize({ width: 1280, height: 400 });
+      await openView(page, [
+        ...STARRED,
+        { path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', title: 'Bucket' },
+        { path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function' },
+        { path: '/v2/docs/aws-cdk-lib.aws_iam.Role', title: 'Role' },
+        { path: '/v2/docs/aws-cdk-lib.aws_ecs.Cluster', title: 'Cluster' },
+      ]);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: /^Remove/ }).click();
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toBeVisible();
+
+      // The pointer rests on the toast while the keyboard removes another row,
+      // which replaces the offer in the element the pointer is already on.
+      await toast.hover();
+      await view(page).locator('.favorites-link').first().focus();
+      await page.keyboard.press('Delete');
+      await expect(view(page).locator('.favorites-link')).toHaveCount(5);
+      // The shorter list must not have moved the toast out from under it.
+      expect(await toast.evaluate((el) => el.matches(':hover'))).toBe(true);
+
+      // Focus leaves the view, so the pointer is the only hold the new offer
+      // can be keeping.
+      await page.locator('#explorer-rail button').first().focus();
+      await page.clock.runFor(9000);
+      await expect(toast).toBeVisible();
+    });
+
+    test('the offer waits while the reader is still in the view', async ({ page }) => {
+      await page.clock.install();
+      await openView(page);
+      await view(page).locator('.favorites-link').first().focus();
+      await page.keyboard.press('Delete');
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toBeVisible();
+
+      // Focus is on a row, not on the toast: a reader on a screen reader has
+      // the rest of the list to cross before they reach Undo.
+      await view(page).locator('.favorites-link').first().focus();
+      await page.clock.runFor(9000);
+      await expect(toast).toBeVisible();
+
+      // Focus leaves the view, and the offer goes after its eight seconds.
+      await page.locator('#explorer-rail button').first().focus();
+      await page.clock.runFor(9000);
+      await expect(toast).toHaveCount(0);
+    });
+
+    test('a click outside an open menu closes it', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      await actions.click();
+      await expect(row.getByRole('menu')).toBeVisible();
+
+      await view(page).locator('.favorites-static-heading').click();
+      await expect(row.getByRole('menu')).toHaveCount(0);
+      await expect(actions).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('a menu with no room below it opens upwards', async ({ page }) => {
+      // A short viewport, so the last row sits past the bottom of the sidebar
+      // and a menu under it would open out of sight. Opened from the keyboard:
+      // hovering a row down there scrolls the sidebar and takes the button out
+      // from under the pointer.
+      await page.setViewportSize({ width: 1280, height: 360 });
+      await openView(page, [
+        ...STARRED,
+        { path: '/v2/docs/aws-cdk-lib.aws_sqs.QueuePolicy', title: 'QueuePolicy' },
+        { path: '/v2/docs/constructs.IConstruct', title: 'IConstruct' },
+        { path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' },
+      ]);
+      const row = view(page).locator('.favorites-item').last();
+      await row.getByRole('button', { name: /^Actions for / }).focus();
+      await page.keyboard.press('ArrowDown');
+      const menu = row.getByRole('menu');
+      await expect(menu).toBeVisible();
+      await expect(menu).toHaveClass(/favorites-menu-above/);
+
+      const rowBox = (await row.boundingBox())!;
+      const menuBox = (await menu.boundingBox())!;
+      expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(rowBox.y + 2);
+    });
+
+    test('a tall menu with no room above it stays below its button', async ({ page }) => {
+      // A short viewport again, but opened from the first row, where the room
+      // above is the smaller side. The group list is taller than either side,
+      // so flipping it up would put its last items above the top of the
+      // sidebar, which no amount of scrolling reaches.
+      await page.setViewportSize({ width: 1280, height: 360 });
+      await openView(page, [
+        { path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue', title: 'Queue', group: 'Queues' },
+        { path: '/v2/docs/aws-cdk-lib.aws_sns.Topic', title: 'Topic', group: 'Topics' },
+        { path: '/v2/docs/constructs.Construct', title: 'Construct', group: 'Bases' },
+        { path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', title: 'Bucket', group: 'Buckets' },
+        { path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function', group: 'Code' },
+        { path: '/v2/docs/aws-cdk-lib.aws_iam.Role', title: 'Role', group: 'Access' },
+      ]);
+      const row = view(page).locator('.favorites-item').first();
+      await row.getByRole('button', { name: /^Actions for / }).focus();
+      await page.keyboard.press('ArrowDown');
+      await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+      const menu = row.getByRole('menu');
+      await expect(menu).toBeVisible();
+      await expect(menu).not.toHaveClass(/favorites-menu-above/);
+
+      const sidebarTop = (await page.locator('.VPSidebar').boundingBox())!.y;
+      expect((await menu.boundingBox())!.y).toBeGreaterThanOrEqual(sidebarTop);
+    });
+
+    test('the toast shows the Undo shortcut and names it on the button', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: /^Remove/ }).click();
+
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toBeVisible();
+      await expect(toast.locator('.favorites-toast-key')).toHaveText('Ctrl+Z');
+      await expect(toast.getByRole('button', { name: 'Undo' })).toHaveAttribute(
+        'aria-keyshortcuts',
+        'Control+Z Meta+Z',
+      );
+      // Hidden from a screen reader, which hears the shortcut from the button.
+      await expect(toast.locator('.favorites-toast-key')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    test('the row menu opens from the keyboard and Escape returns focus to its button', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      await actions.focus();
+      await page.keyboard.press('ArrowDown');
+      await expect(row.getByRole('menuitem', { name: 'Move to group…' })).toBeFocused();
+      await page.keyboard.press('ArrowDown');
+      await expect(row.getByRole('menuitem', { name: 'Remove from Favorites' })).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(actions).toBeFocused();
+      await expect(actions).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('the row buttons stay out of sight until the row is hovered or focused', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      await expect(actions).toHaveCSS('opacity', '0');
+      await row.hover();
+      await expect(actions).toHaveCSS('opacity', '1');
+    });
+
+    test('the group carets meet 3:1 against the sidebar in both themes', async ({ page }) => {
+      await openView(page);
+      const caret = view(page).locator('.favorites-group-toggle .favorites-caret').first();
+      await expect(caret).toBeVisible();
+
+      // Measured on the rendered page: a token name says nothing about what
+      // the glyph ends up painted with.
+      const ratio = () =>
+        caret.evaluate((el) => {
+          const channels = (value: string) =>
+            (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+          const luminance = (value: string) =>
+            channels(value)
+              .map((channel) => {
+                const unit = channel / 255;
+                return unit <= 0.04045 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+              })
+              .reduce((sum, linear, index) => sum + [0.2126, 0.7152, 0.0722][index] * linear, 0);
+          const ink = luminance(getComputedStyle(el).color);
+          let surface: Element | null = el;
+          let paint = getComputedStyle(el).backgroundColor;
+          while (surface && paint === 'rgba(0, 0, 0, 0)') {
+            surface = surface.parentElement;
+            if (surface) paint = getComputedStyle(surface).backgroundColor;
+          }
+          const behind = luminance(paint);
+          return (Math.max(ink, behind) + 0.05) / (Math.min(ink, behind) + 0.05);
+        });
+
+      expect(await ratio()).toBeGreaterThanOrEqual(3);
+      await page.evaluate(() => document.documentElement.classList.add('dark'));
+      expect(await ratio()).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  test.describe('phone', () => {
+    test.use({ viewport: { width: 375, height: 760 } });
+
+    test('every row keeps its ⋯ button, loses the x, and the menu removes', async ({ page }) => {
+      await openView(page);
+      // The sidebar is a drawer here: the local nav's Menu opens it, and the
+      // Views button inside it unfolds the rail.
+      await page.locator('.VPLocalNav button.menu').click();
+      await page.getByRole('button', { name: /^Views/ }).click();
+      await page.getByRole('navigation', { name: 'Sidebar views' })
+        .getByRole('button', { name: 'Favorites' })
+        .click();
+
+      const row = view(page).locator('.favorites-item').first();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      // Always visible here: there is no hover on a touch screen.
+      await expect(actions).toHaveCSS('opacity', '1');
+      await expect(row.getByRole('button', { name: /^Remove/ })).toBeHidden();
+      const box = (await actions.boundingBox())!;
+      expect(box.height).toBeCloseTo(28, 0);
+      // The touch area comes from an overlay, so it cannot be read from the
+      // box. It matches the row's own 40px: a 44px area would reach into the
+      // rows either side, and the later one in the DOM would take that band,
+      // so a finger at the edge of one row would open the next row's menu.
+      expect(
+        parseFloat(
+          await actions.evaluate((el) => getComputedStyle(el, '::before').height),
+        ),
+      ).toBeGreaterThanOrEqual(40);
+
+      // On the left the overlay stops at the 2px gap, so the end of the row
+      // link still belongs to the link rather than to the menu button.
+      const actionsBox = (await actions.boundingBox())!;
+      const onTheLink = await page.evaluate(
+        ([x, y]) => {
+          const hit = document.elementFromPoint(x, y);
+          return hit?.closest('.favorites-link') !== null;
+        },
+        [actionsBox.x - 3, actionsBox.y + actionsBox.height / 2] as const,
+      );
+      expect(onTheLink).toBe(true);
+
+      await actions.click();
+      await expect(row.getByRole('menuitem', { name: 'Remove from Favorites' })).toBeVisible();
+      await row.getByRole('menuitem', { name: 'Remove from Favorites' }).click();
+      await expect(view(page).locator('.favorites-link')).toHaveCount(2);
+      // Using a menu does not fold the drawer away under the reader.
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+    });
+
+    test('Escape closes a menu or a name field and leaves the drawer open', async ({ page }) => {
+      await openView(page);
+      await page.locator('.VPLocalNav button.menu').click();
+      const sidebar = page.locator('.VPSidebar');
+      await expect(sidebar).toHaveClass(/open/);
+
+      const row = view(page).locator('.favorites-item').first();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      await actions.click();
+      await expect(row.getByRole('menu')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(row.getByRole('menu')).toHaveCount(0);
+      await expect(sidebar).toHaveClass(/open/);
+
+      await view(page).getByRole('button', { name: 'New group' }).click();
+      const field = view(page).getByRole('textbox', { name: 'New group name' });
+      await expect(field).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(field).toHaveCount(0);
+      await expect(sidebar).toHaveClass(/open/);
+
+      // An Escape the view did not use still closes the drawer.
+      await expect(view(page).getByRole('button', { name: 'New group' })).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(sidebar).not.toHaveClass(/open/);
+    });
+
+    test('an Escape whose release never arrives does not swallow the next one', async ({ page }) => {
+      await openView(page);
+      await page.locator('.VPLocalNav button.menu').click();
+      const sidebar = page.locator('.VPSidebar');
+      const row = view(page).locator('.favorites-item').first();
+      await row.getByRole('button', { name: 'Actions for Queue' }).click();
+      await expect(row.getByRole('menu')).toBeVisible();
+
+      // The window loses focus after the press, so the release the view was
+      // waiting for never arrives.
+      await page.keyboard.down('Escape');
+      await expect(row.getByRole('menu')).toHaveCount(0);
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+      await expect(sidebar).toHaveClass(/open/);
+
+      // The reader's next Escape is their own, with nothing open to close.
+      await page.keyboard.press('Escape');
+      await expect(sidebar).not.toHaveClass(/open/);
+    });
+
+    test('a menu too tall for the room above stays below, where scrolling reaches it', async ({ page }) => {
+      await openView(page, [
+        { path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue', title: 'Queue', group: 'Queues' },
+        { path: '/v2/docs/aws-cdk-lib.aws_sns.Topic', title: 'Topic', group: 'Topics' },
+        { path: '/v2/docs/constructs.Construct', title: 'Construct', group: 'Bases' },
+        { path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', title: 'Bucket', group: 'Buckets' },
+        { path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function', group: 'Code' },
+        { path: '/v2/docs/aws-cdk-lib.aws_iam.Role', title: 'Role', group: 'Access' },
+      ]);
+      await page.locator('.VPLocalNav button.menu').click();
+
+      const row = view(page).locator('.favorites-item').last();
+      await row.getByRole('button', { name: /^Actions for / }).click();
+      await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+      const menu = row.getByRole('menu');
+      await expect(menu).toBeVisible();
+
+      // Whichever way it opened, every item of it must be inside the sidebar's
+      // scrollable content: a scroller cannot reach above its own top.
+      const sidebar = page.locator('.VPSidebar');
+      const sidebarTop = (await sidebar.boundingBox())!.y;
+      const scrollTop = await sidebar.evaluate((el) => el.scrollTop);
+      const menuBox = (await menu.boundingBox())!;
+      expect(menuBox.y - sidebarTop + scrollTop).toBeGreaterThanOrEqual(0);
+      expect(menuBox.height).toBeGreaterThan((await sidebar.boundingBox())!.height / 3);
+    });
+
+    test('a long title still leaves Undo inside the drawer', async ({ page }) => {
+      await openView(page, [
+        {
+          path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue',
+          title: 'ApplicationLoadBalancedFargateServiceWithAnEvenLongerName',
+        },
+      ]);
+      await page.locator('.VPLocalNav button.menu').click();
+
+      const row = view(page).locator('.favorites-item').first();
+      await row.getByRole('button', { name: /^Actions for / }).click();
+      await row.getByRole('menuitem', { name: 'Remove from Favorites' }).click();
+
+      const undo = view(page).getByRole('button', { name: 'Undo' });
+      await expect(undo).toBeVisible();
+      const sidebarBox = (await page.locator('.VPSidebar').boundingBox())!;
+      const undoBox = (await undo.boundingBox())!;
+      expect(undoBox.x + undoBox.width).toBeLessThanOrEqual(sidebarBox.x + sidebarBox.width);
+      expect(undoBox.x).toBeGreaterThanOrEqual(sidebarBox.x);
+    });
   });
 });
