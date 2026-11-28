@@ -102,8 +102,8 @@ describe('browser e2e suite wiring', () => {
       expect(config).toMatch(/forbidOnly: !!process\.env\.CI/);
     });
 
-    test('CI runs a fixed number of workers', () => {
-      // A fixed count keeps each worker's CPU headroom independent of what the runner reports.
+    test('CI runs a fixed number of workers, keeping each worker CPU headroom', () => {
+      // Config shape with no produced-output counterpart: the worker count never reaches the built site.
       expect(config).toMatch(/workers: process\.env\.CI \? 8 : undefined/);
     });
   });

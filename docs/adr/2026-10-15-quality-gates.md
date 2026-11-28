@@ -84,7 +84,8 @@ one static server answers parallel workers without shared state. `fullyParallel`
 off so tests in one file keep their order. The `docs:a11y` gate shares the config and
 runs the same way. On CI the worker count is a fixed number, small enough that each
 worker keeps CPU headroom: some specs race a deliberately delayed fetch against a
-fixed assertion timeout and fail when workers starve each other of CPU. Locally Playwright's default worker count applies.
+fixed assertion timeout and fail when workers starve each other of CPU. Locally Playwright's default worker count applies; in a container whose CPU
+quota is below the host's core count, pass `--workers` to match the quota.
 
 ### Accessibility audit gate (`docs:a11y`)
 
