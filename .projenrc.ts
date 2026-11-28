@@ -40,6 +40,8 @@ const CDK_ALPHA_PACKAGES = ['@aws-cdk/mixins-preview'];
 // @aws-cdk/cloud-assembly-schema is re-exported as the aws-cdk-lib `cloud_assembly_schema` submodule, so
 // documenting the standalone package would duplicate its pages.
 
+// The project type supplies `typescript`. Held within the TypeScript versions the typescript-eslint and ts-jest
+// peer ranges accept.
 const project = new CdkTypeScriptProject({
   name: '@cdklabs/awscdk-docs',
   private: true,
@@ -122,8 +124,8 @@ const project = new CdkTypeScriptProject({
     // Bundled into the theme client code.
     '@vueuse/core',
     // Renders every code block's highlighted HTML; declared explicitly because config.mts imports it directly
-    // to build a JS-regex-engine highlighter. Pinned to the same major VitePress resolves so both share one
-    // shiki instance.
+    // to build a JS-regex-engine highlighter. Held at the major VitePress 1 resolves, so both share one shiki
+    // instance.
     'shiki@^2.1.0',
     '@shikijs/engine-javascript@^2.1.0',
     // Renders GitHub ```math fences in jsii READMEs into the pages' markup.
@@ -158,7 +160,8 @@ const project = new CdkTypeScriptProject({
     // Agent-readiness gate
     'botvisibility',
     // Generates the third-party license list (src/docgen/third-party-licenses.ts). Same package and major as
-    // projen's checkLicenses uses from projen 0.105.
+    // projen's checkLicenses uses from projen 0.105. Held at ^4 because the next major needs a newer Node.js and npm
+    // than the floor in CONTRIBUTING.md.
     'license-checker-rseidelsohn@^4',
   ],
 });
@@ -186,8 +189,9 @@ project.package.addPackageResolutions('@sentry/node@file:projenrc/stubs/sentry-n
 // nothing it imports ships in the site.
 project.eslint?.allowDevDeps('src/**');
 
-// Projen's ESLint component asks for an older major. A later request for the same dependency replaces it; without a
-// version, projen keeps the range in package.json.
+// Projen's ESLint component supplies `eslint`, held at its current major until eslint-plugin-import's peer range
+// accepts the next one. For @stylistic/eslint-plugin the component asks for an older major. A later request for the
+// same dependency replaces it; without a version, projen keeps the range in package.json.
 project.addDevDeps('@stylistic/eslint-plugin');
 // Requires a space between `catch` and its parameter; the other function-paren cases stay unchecked.
 project.eslint?.addRules({

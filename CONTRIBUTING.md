@@ -26,7 +26,7 @@ This project follows an agent-driven development workflow. Humans define *what* 
 
 To run the site yourself:
 
-Prerequisites: Node.js 22.12+
+Prerequisites: Node.js 22.19+
 
 ```bash
 # Install dependencies
