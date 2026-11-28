@@ -198,7 +198,9 @@ VitePress sidebar shell:
   `docs/public/api-sidebar/`.
 - Docgen emits (`splitSidebarChunks`) a **skeleton** (`sidebar.<hash>.js`):
   both roots and every section node with its text, collapse state, and a
-  `modules` list of page-id stems (`<docId>[.<submodule>]`) it owns — but
+  `modules` list of page-id stems (`<docId>[.<submodule>]`) it owns, and,
+  on each Services section, a `count` of its construct rows (see the
+  [Services view ADR](./2026-11-28-explorer-services-view.md)) — but
   no `items`; each section names its `chunk` instead. Each section's
   `items` live in `chunks/<name>.<hash>.js`. The canonical
   `docs/v2/sidebar.json` stays the full tree; the split is serving-only.

@@ -931,6 +931,35 @@ test.describe('explorer preview Services view', () => {
     await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'false');
   });
 
+  test('the Services view keeps its own per-route scroll memory, apart from the API view\'s', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
+    await expect(list(page)).toBeVisible();
+    // The on-load reveal scrolls the active row into view first; scroll away once it has landed.
+    await expect(list(page).getByRole('link', { name: 'Queue (L2 construct)' })).toBeInViewport();
+    const sidebar = page.locator('.VPSidebar');
+    const settled = async () => {
+      const before = await sidebar.evaluate((el) => el.scrollTop);
+      await page.waitForTimeout(400);
+      return (await sidebar.evaluate((el) => el.scrollTop)) === before;
+    };
+    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
+    await sidebar.evaluate((el) => (el.scrollTop = 200));
+    await expect.poll(() => sidebar.evaluate((el) => el.scrollTop)).toBe(200);
+    const stored = (key: string) =>
+      page.evaluate((k) => {
+        const raw = window.sessionStorage.getItem(k);
+        const entries: [string, number][] = raw ? JSON.parse(raw) : [];
+        return entries.find(([path]) => path.endsWith('aws_sqs.Queue'))?.[1];
+      }, key);
+    // The rAF-throttled save lands in the Services view's own store, not the API view's.
+    await expect.poll(() => stored('cdk-docs-sidebar-scroll:services')).toBe(200);
+    expect(await stored('cdk-docs-sidebar-scroll')).toBeUndefined();
+    await page.reload();
+    await dismissConsent(page);
+    await expect(list(page)).toBeVisible();
+    await expect.poll(() => sidebar.evaluate((el) => el.scrollTop), { timeout: 10_000 }).toBe(200);
+  });
+
   test('the head script restores the stored Services view attribute before any bundle runs', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
     await expect(page.locator('html')).toHaveAttribute('data-explorer-view', 'services');

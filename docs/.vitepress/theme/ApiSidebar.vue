@@ -145,7 +145,12 @@ const scrollMemories = {
   service: createScrollMemory(sessionStore, styleStorageKey(SCROLL_STORE_KEY, "service")),
   package: createScrollMemory(sessionStore, styleStorageKey(SCROLL_STORE_KEY, "package")),
 };
-const scrollMemory = computed(() => scrollMemories[styleKey.value]);
+// The Services view is a third list, so it keeps a third store: a position
+// saved in it points nowhere useful in the API view's trees and the reverse.
+const servicesScrollMemory = createScrollMemory(sessionStore, `${SCROLL_STORE_KEY}:services`);
+const scrollMemory = computed(() =>
+  servicesView.value ? servicesScrollMemory : scrollMemories[navStyle.value],
+);
 let scrollContainer: HTMLElement | null = null;
 let lastSidebarScroll = 0; // performance.now() of the last sidebar scroll
 let traversal = false; // set by popstate, consumed by the route watcher
