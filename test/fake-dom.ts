@@ -149,14 +149,14 @@ export function el(tag: string, className = '', ...children: FakeElement[]): Fak
   return element;
 }
 
-type Listener = (event: { target: unknown }) => void;
+type Listener = (event: { target: unknown; key?: string }) => void;
 
 /** A document whose `<html>` holds a `<body>`, recording its listeners so a test can dispatch events. */
 export function installFakeDocument(): {
   html: FakeElement;
   body: FakeElement;
   listeners: Map<string, Listener[]>;
-  dispatch(type: string, target: unknown): void;
+  dispatch(type: string, target: unknown, init?: { key?: string }): void;
   uninstall(): void;
 } {
   const body = new FakeElement('body');
@@ -176,9 +176,9 @@ export function installFakeDocument(): {
     html,
     body,
     listeners,
-    dispatch: (type, target) => {
+    dispatch: (type, target, init = {}) => {
       for (const listener of listeners.get(type) ?? []) {
-        listener({ target });
+        listener({ target, ...init });
       }
     },
     uninstall: () => {

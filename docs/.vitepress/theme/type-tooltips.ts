@@ -27,6 +27,11 @@ let summariesAsset = "";
 let loading: Promise<SummaryMap> | undefined;
 let tooltip: HTMLElement | undefined;
 let currentAnchor: HTMLAnchorElement | undefined;
+// Set for a short time after focus moves to a new link, while the scroll that move causes may still arrive.
+let focusScrollTimer: ReturnType<typeof setTimeout> | undefined;
+
+// How long after a focus move a scroll counts as caused by that move.
+const FOCUS_SCROLL_MS = 500;
 
 function loadSummaries(): Promise<SummaryMap> {
   const asset = apiSidebarAsset(summariesAsset);
@@ -101,17 +106,35 @@ function show(anchor: HTMLAnchorElement, entry: TypeSummary): void {
     el.append(summary);
   }
 
+  place(anchor);
+  el.setAttribute("aria-hidden", "false");
+  anchor.setAttribute("aria-describedby", TOOLTIP_ID);
+}
+
+/** Position the tooltip below `anchor`, kept inside the viewport horizontally. */
+function place(anchor: HTMLAnchorElement): void {
+  const el = ensureTooltip();
   const rect = anchor.getBoundingClientRect();
   el.style.top = `${rect.bottom + 8}px`;
   el.style.left = "0px"; // reset before measuring width
   const width = el.offsetWidth;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
   el.style.left = `${left}px`;
-  el.setAttribute("aria-hidden", "false");
-  anchor.setAttribute("aria-describedby", TOOLTIP_ID);
+}
+
+function endFocusScroll(): void {
+  clearTimeout(focusScrollTimer);
+  focusScrollTimer = undefined;
+}
+
+/** Open the window in which scrolls come from the focus move, not the reader. */
+function startFocusScroll(): void {
+  clearTimeout(focusScrollTimer);
+  focusScrollTimer = setTimeout(endFocusScroll, FOCUS_SCROLL_MS);
 }
 
 function hide(): void {
+  endFocusScroll();
   currentAnchor?.removeAttribute("aria-describedby");
   currentAnchor = undefined;
   tooltip?.setAttribute("aria-hidden", "true");
@@ -128,6 +151,7 @@ function handleEnter(event: Event): void {
     hide();
     return;
   }
+  endFocusScroll();
   currentAnchor = anchor;
   void loadSummaries().then((summaries) => {
     const entry = summaries[key];
@@ -135,6 +159,16 @@ function handleEnter(event: Event): void {
       show(anchor, entry);
     }
   });
+}
+
+// Focusing a link outside the viewport scrolls it into view, and the `scroll` event fires after `focusin`. The
+// browser has already moved the page by then, so the link's position cannot tell whether that event is coming.
+function handleFocus(event: Event): void {
+  const previous = currentAnchor;
+  handleEnter(event);
+  if (currentAnchor && currentAnchor !== previous) {
+    startFocusScroll();
+  }
 }
 
 function handleLeave(event: Event): void {
@@ -146,7 +180,8 @@ function handleLeave(event: Event): void {
 
 // Hide on scroll, but only when the scrolled element can displace the tooltip's
 // anchor: the document itself, or an ancestor of the anchor. The sidebar is an
-// independent scroller whose scroll never moves a hovered content link.
+// independent scroller whose scroll never moves a hovered content link. A scroll within
+// FOCUS_SCROLL_MS of focus moving to a new link moves the tooltip with the link instead.
 function handleScroll(event: Event): void {
   const target = event.target as Node | null;
   if (
@@ -155,6 +190,19 @@ function handleScroll(event: Event): void {
     !(target instanceof Element) ||
     target.contains(currentAnchor)
   ) {
+    if (currentAnchor && focusScrollTimer !== undefined) {
+      if (tooltip?.getAttribute("aria-hidden") === "false") {
+        place(currentAnchor);
+      }
+      return;
+    }
+    hide();
+  }
+}
+
+// Escape dismisses an open tooltip and leaves focus where it is.
+function handleKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape" && currentAnchor) {
     hide();
   }
 }
@@ -169,8 +217,9 @@ export function installTypeTooltips(asset: string): void {
   }
   summariesAsset = asset;
   document.addEventListener("mouseover", handleEnter, { passive: true });
-  document.addEventListener("focusin", handleEnter);
+  document.addEventListener("focusin", handleFocus);
   document.addEventListener("mouseout", handleLeave, { passive: true });
   document.addEventListener("focusout", handleLeave);
+  document.addEventListener("keydown", handleKeydown);
   window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
 }
