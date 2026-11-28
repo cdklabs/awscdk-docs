@@ -180,8 +180,8 @@ function handleLeave(event: Event): void {
 
 // Hide on scroll, but only when the scrolled element can displace the tooltip's
 // anchor: the document itself, or an ancestor of the anchor. The sidebar is an
-// independent scroller whose scroll never moves a hovered content link. A scroll that a
-// keyboard focus move causes moves the tooltip with the link instead.
+// independent scroller whose scroll never moves a hovered content link. A scroll within
+// FOCUS_SCROLL_MS of a keyboard focus move moves the tooltip with the link instead.
 function handleScroll(event: Event): void {
   const target = event.target as Node | null;
   if (

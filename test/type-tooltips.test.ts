@@ -264,6 +264,16 @@ describe('API type hover tooltips', () => {
     expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
   });
 
+  test('focus landing on the link already hovered does not keep the tooltip through a scroll', async () => {
+    await install();
+    const anchor = link(`/cdk/api${QUEUE}.html`);
+    await hover(anchor);
+    dom.dispatch('focusin', anchor);
+
+    dom.dispatch('window:scroll', null);
+    expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
+  });
+
   test('Escape hides the open tooltip; other keys and an Escape with nothing open do nothing', async () => {
     await install();
     dom.dispatch('keydown', null, { key: 'Escape' });
@@ -278,6 +288,10 @@ describe('API type hover tooltips', () => {
     dom.dispatch('keydown', anchor, { key: 'Escape' });
     expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
     expect(anchor.hasAttribute('aria-describedby')).toBe(false);
+
+    await hover(anchor);
+    dom.dispatch('keydown', anchor, { key: 'Escape' });
+    expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
   });
 
   test('a failed or missing summaries file shows no tooltip', async () => {

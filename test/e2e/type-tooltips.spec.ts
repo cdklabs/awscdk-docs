@@ -50,6 +50,22 @@ test.describe('type hover tooltips', () => {
     await expect(tooltip).toHaveAttribute('aria-hidden', 'true');
   });
 
+  test('Escape hides a tooltip opened by hover', async ({ page }) => {
+    await page.goto(TOPIC_PAGE);
+    const link = page
+      .locator('.VPDoc a[href$="/aws-cdk-lib.aws_cloudwatch.MetricOptions.html"]')
+      .first();
+    await link.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
+    await link.hover();
+    const tooltip = page.locator('#api-type-tooltip');
+    await expect(tooltip).toHaveAttribute('aria-hidden', 'false', { timeout: 15_000 });
+
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toHaveAttribute('aria-hidden', 'true');
+    await expect(link).not.toHaveAttribute('aria-describedby', /./);
+  });
+
   test('same-page anchors and the outline never get a preview', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
 
