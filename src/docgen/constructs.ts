@@ -170,7 +170,7 @@ export function sourceUrl(type: spec.Type, assembly: spec.Assembly): string | un
  * does not exist" from "no location information at all", so the metadata block can say `Generated at build time` in the
  * first case and omit the row entirely in the second.
  */
-export function isGeneratedSource(type: spec.Type): boolean {
+function isGeneratedSource(type: spec.Type): boolean {
   const loc = type.locationInModule;
   return (loc !== undefined && /\.generated\./.test(loc.filename))
     || type.docs?.custom?.cloudformationResource !== undefined;

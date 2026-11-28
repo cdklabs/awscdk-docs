@@ -18,7 +18,7 @@
 export const SEARCH_KEYSHORTCUTS = '/ Control+K Meta+K';
 
 /** The plugin's navbar trigger. */
-export const SEARCH_BUTTON_SELECTOR = '.nav-search-btn-wait';
+const SEARCH_BUTTON_SELECTOR = '.nav-search-btn-wait';
 
 /** The plugin's query input; present only while the dialog is open. */
 export const SEARCH_INPUT_ID = 'search-input';

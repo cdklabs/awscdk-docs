@@ -644,7 +644,7 @@ export interface PropsRenderOptions {
 export type OptionalKind = 'input' | 'output';
 
 /** The words a screen reader hears in place of the visible `?`, per kind. */
-export const OPTIONAL_LABELS: Readonly<Record<OptionalKind, string>> = {
+const OPTIONAL_LABELS: Readonly<Record<OptionalKind, string>> = {
   input: 'optional',
   output: 'may be undefined',
 };

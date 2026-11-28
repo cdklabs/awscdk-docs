@@ -42,7 +42,7 @@ interface SearchHandleLike {
  * This is a search-time Pagefind option (`pagefind.options()`), so it must be
  * applied here on the loaded module before searches run.
  */
-export const SEARCH_RANKING = {
+const SEARCH_RANKING = {
   termSimilarity: 3.0,
   termFrequency: 0.4,
   termSaturation: 1.2,

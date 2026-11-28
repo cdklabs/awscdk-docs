@@ -17,16 +17,16 @@ export type ExplorerPreview = 'on' | 'off';
 export type ExplorerView = 'api' | 'favorites';
 
 /** localStorage key holding the switch; also hard-coded in config.mts's bootstrap script. */
-export const EXPLORER_PREVIEW_KEY = 'cdk-docs-explorer-preview';
+const EXPLORER_PREVIEW_KEY = 'cdk-docs-explorer-preview';
 
 /** localStorage key holding the selected view; also hard-coded in config.mts's bootstrap script. */
-export const EXPLORER_VIEW_KEY = 'cdk-docs-explorer-view';
+const EXPLORER_VIEW_KEY = 'cdk-docs-explorer-view';
 
 /** The switch position a reader who never opened the picker sees. */
-export const DEFAULT_EXPLORER_PREVIEW: ExplorerPreview = 'off';
+const DEFAULT_EXPLORER_PREVIEW: ExplorerPreview = 'off';
 
 /** The view shown first, and after a stored value is missing or unknown. */
-export const DEFAULT_EXPLORER_VIEW: ExplorerView = 'api';
+const DEFAULT_EXPLORER_VIEW: ExplorerView = 'api';
 
 /** The shared switch position. SSR-safe default (off). */
 export const explorerPreview = ref<ExplorerPreview>(DEFAULT_EXPLORER_PREVIEW);

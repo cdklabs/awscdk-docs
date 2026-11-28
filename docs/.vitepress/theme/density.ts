@@ -19,7 +19,7 @@ import { nextTick, ref } from 'vue';
 export type Density = 'compact' | 'balanced' | 'spacious';
 
 /** localStorage key; also hard-coded in config.mts's bootstrap script. */
-export const DENSITY_KEY = 'cdk-docs-density';
+const DENSITY_KEY = 'cdk-docs-density';
 
 /** The single shared density selection. SSR-safe default (Balanced). */
 export const density = ref<Density>('balanced');
@@ -47,7 +47,7 @@ export const FOLDOUT_SELECTOR = 'details.member-disclosure, details.chain-more';
  *  a reader can still close one (ADR 2026-10-23-layout-density). Per fold-out
  *  state is not stored: the level's default returns on the next level switch,
  *  navigation or reload. */
-export function applyFoldouts(value: Density, root: ParentNode = document): void {
+function applyFoldouts(value: Density, root: ParentNode = document): void {
   const open = value === 'spacious';
   root.querySelectorAll<HTMLDetailsElement>(FOLDOUT_SELECTOR).forEach((details) => {
     details.open = open;

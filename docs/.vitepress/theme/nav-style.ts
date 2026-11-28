@@ -16,15 +16,15 @@ import { ref } from 'vue';
 export type NavStyle = 'service' | 'package';
 
 /** localStorage key holding the chosen style. */
-export const NAV_STYLE_KEY = 'cdk-docs-nav-style';
+const NAV_STYLE_KEY = 'cdk-docs-nav-style';
 
 /** The style a reader who never opened the picker sees. */
-export const DEFAULT_NAV_STYLE: NavStyle = 'service';
+const DEFAULT_NAV_STYLE: NavStyle = 'service';
 
 /** The single shared selection. SSR-safe default. */
 export const navStyle = ref<NavStyle>(DEFAULT_NAV_STYLE);
 
-export function isNavStyle(value: string | null): value is NavStyle {
+function isNavStyle(value: string | null): value is NavStyle {
   return value === 'service' || value === 'package';
 }
 

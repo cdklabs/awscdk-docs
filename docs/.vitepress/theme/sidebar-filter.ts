@@ -10,7 +10,7 @@ import { ref } from 'vue';
 export const sidebarFilterQuery = ref('');
 
 /** Shortest query that filters. One character matches too much to be useful. */
-export const MIN_FILTER_QUERY_LENGTH = 2;
+const MIN_FILTER_QUERY_LENGTH = 2;
 
 /**
  * Whether a query is long enough to act on. The single definition of that: a
