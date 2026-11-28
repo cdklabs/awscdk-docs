@@ -68,6 +68,8 @@ const collapsed = ref(true);
 // Gated on mount, like the entries, so a stored preview choice never disagrees with the server render.
 const mounted = ref(false);
 const openMenu = ref<OpenMenu | null>(null);
+/** Whether the open menu panel had to flip above its button for want of room below. */
+const menuAbove = ref(false);
 const nameField = ref<NameField | null>(null);
 const toast = ref<{
   text: string;
@@ -113,10 +115,29 @@ onMounted(() => {
   );
   unsubscribe = favoritesStore().subscribe(refresh);
   loadServices();
+  document.addEventListener("pointerdown", onOutsidePointerDown);
 });
+/** A tap or click outside an open menu closes it, which Escape alone cannot do on a touch screen. */
+function onOutsidePointerDown(event: PointerEvent): void {
+  if (!openMenu.value) {
+    return;
+  }
+  const target = event.target;
+  if (
+    target instanceof Element &&
+    (target.closest(".favorites-menu") || target.closest("[data-fav-actions]"))
+  ) {
+    return;
+  }
+  openMenu.value = null;
+}
+
 onUnmounted(() => {
   unsubscribe?.();
   clearToastTimer();
+  if (typeof document !== "undefined") {
+    document.removeEventListener("pointerdown", onOutsidePointerDown);
+  }
 });
 
 /** The skeleton's sections once fetched, so a page starred later still gets its service name. */
@@ -273,10 +294,34 @@ function menuItems(panel: HTMLElement): HTMLElement[] {
 function focusFirstItem(): void {
   void nextTick(() => {
     const panel = document.querySelector<HTMLElement>(".favorites-menu");
-    if (panel) {
-      menuItems(panel)[0]?.focus();
+    if (!panel) {
+      return;
     }
+    placeMenu(panel);
+    // After the placement has rendered, so focusing cannot scroll the panel
+    // into view and hide the fact that it had no room.
+    void nextTick(() => menuItems(panel)[0]?.focus());
   });
+}
+
+/**
+ * Open the panel upwards when it would run past the bottom of the sidebar it
+ * scrolls in, so the last rows of a long list — and the taller group list on a
+ * phone — do not hide their own items below the fold.
+ *
+ * Measured from the button rather than from the panel: the panel's own box
+ * already carries whichever placement is current, so reading it would answer
+ * the question it is being asked.
+ */
+function placeMenu(panel: HTMLElement): void {
+  const scroller = panel.closest(".VPSidebar");
+  const anchor = panel.parentElement;
+  if (!scroller || !anchor) {
+    menuAbove.value = false;
+    return;
+  }
+  const room = scroller.getBoundingClientRect().bottom;
+  menuAbove.value = anchor.getBoundingClientRect().bottom + panel.offsetHeight > room;
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +468,8 @@ function removeGroup(name: string): void {
 
 function showToast(text: string, undo: FavoritesUndo, focusKey: string): void {
   toast.value = { text, undo, focus: focusKey, revision: favoritesStore().revision() };
+  pointerInside = false;
+  focusInside = false;
   toastLeft = TOAST_MS;
   startToastTimer();
   // The toast arrives already filled, which a live region may not announce,
@@ -456,6 +503,28 @@ function startToastTimer(): void {
     toast.value = null;
   }, toastLeft);
   toastStarted = started;
+}
+
+/**
+ * Whether the pointer is over the toast, and whether focus is inside it. Two
+ * reasons, tracked apart: one must not resume what the other is holding, or a
+ * mouse crossing the toast would restart the timer under a keyboard user and
+ * take the focused Undo button out from under them.
+ */
+let pointerInside = false;
+let focusInside = false;
+
+function holdToast(kind: "pointer" | "focus", inside: boolean): void {
+  if (kind === "pointer") {
+    pointerInside = inside;
+  } else {
+    focusInside = inside;
+  }
+  if (pointerInside || focusInside) {
+    pauseToast();
+  } else {
+    resumeToast();
+  }
 }
 
 /** The timer pauses while the pointer is over the toast or focus is inside it. */
@@ -629,6 +698,7 @@ function cssEscape(value: string): string {
               <div
                 v-if="menuOpen('group', group.name)"
                 class="favorites-menu"
+                :class="{ 'favorites-menu-above': menuAbove }"
                 role="menu"
                 :aria-label="`Actions for group ${group.name}`"
                 @keydown="onMenuKey($event, group.name)"
@@ -684,8 +754,13 @@ function cssEscape(value: string): string {
               <div
                 v-if="menuOpen('row', entry.path)"
                 class="favorites-menu"
+                :class="{ 'favorites-menu-above': menuAbove }"
                 role="menu"
-                :aria-label="`Actions for ${entry.title}`"
+                :aria-label="
+                  openMenu?.level === 'groups'
+                    ? `Move ${entry.title} to group`
+                    : `Actions for ${entry.title}`
+                "
                 @keydown="onMenuKey($event, entry.path)"
               >
                 <template v-if="openMenu?.level === 'menu'">
@@ -703,7 +778,7 @@ function cssEscape(value: string): string {
                   </button>
                 </template>
                 <template v-else>
-                  <p class="favorites-menu-label">Move to group</p>
+                  <p class="favorites-menu-label" aria-hidden="true">Move to group</p>
                   <button
                     v-for="name in groupTargets()"
                     :key="name"
@@ -748,10 +823,10 @@ function cssEscape(value: string): string {
       <div
         v-if="toast"
         class="favorites-toast"
-        @pointerenter="pauseToast"
-        @pointerleave="resumeToast"
-        @focusin="pauseToast"
-        @focusout="resumeToast"
+        @pointerenter="holdToast('pointer', true)"
+        @pointerleave="holdToast('pointer', false)"
+        @focusin="holdToast('focus', true)"
+        @focusout="holdToast('focus', false)"
       >
         <span class="favorites-toast-text">{{ toast.text }}</span>
         <button type="button" class="favorites-undo" @click="undoLast">Undo</button>

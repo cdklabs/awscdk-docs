@@ -674,6 +674,77 @@ test.describe('grouped favorites view', () => {
       await expect(view(page).locator('.favorites-toast')).toHaveCount(0);
     });
 
+    test('the Undo offer expires after eight seconds, and holds while the pointer or focus is on it', async ({
+      page,
+    }) => {
+      await page.clock.install();
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toBeVisible();
+
+      // Held while the pointer is over it.
+      await toast.hover();
+      await page.clock.runFor(9000);
+      await expect(toast).toBeVisible();
+
+      // A keyboard user on Undo keeps it, and a mouse leaving the toast must
+      // not resume the timer under them.
+      await toast.getByRole('button', { name: 'Undo' }).focus();
+      await page.mouse.move(5, 5);
+      await page.clock.runFor(9000);
+      await expect(toast).toBeVisible();
+      await expect(toast.getByRole('button', { name: 'Undo' })).toBeFocused();
+
+      // With neither hold left, it goes after its eight seconds.
+      await view(page).locator('.favorites-static-heading').click();
+      await page.clock.runFor(7000);
+      await expect(toast).toBeVisible();
+      await page.clock.runFor(2000);
+      await expect(toast).toHaveCount(0);
+      // Expiry only drops the offer: the removal stands.
+      await expect(view(page).locator('.favorites-link')).toHaveCount(2);
+    });
+
+    test('a click outside an open menu closes it', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      await actions.click();
+      await expect(row.getByRole('menu')).toBeVisible();
+
+      await view(page).locator('.favorites-static-heading').click();
+      await expect(row.getByRole('menu')).toHaveCount(0);
+      await expect(actions).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('a menu with no room below it opens upwards', async ({ page }) => {
+      // A short viewport, so the last row sits past the bottom of the sidebar
+      // and a menu under it would open out of sight. Opened from the keyboard:
+      // hovering a row down there scrolls the sidebar and takes the button out
+      // from under the pointer.
+      await page.setViewportSize({ width: 1280, height: 360 });
+      await openView(page, [
+        ...STARRED,
+        { path: '/v2/docs/aws-cdk-lib.aws_sqs.QueuePolicy', title: 'QueuePolicy' },
+        { path: '/v2/docs/constructs.IConstruct', title: 'IConstruct' },
+        { path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' },
+      ]);
+      const row = view(page).locator('.favorites-item').last();
+      await row.getByRole('button', { name: /^Actions for / }).focus();
+      await page.keyboard.press('ArrowDown');
+      const menu = row.getByRole('menu');
+      await expect(menu).toBeVisible();
+      await expect(menu).toHaveClass(/favorites-menu-above/);
+
+      const rowBox = (await row.boundingBox())!;
+      const menuBox = (await menu.boundingBox())!;
+      expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(rowBox.y + 2);
+    });
+
     test('the row menu opens from the keyboard and Escape returns focus to its button', async ({ page }) => {
       await openView(page);
       const row = view(page).locator('.favorites-item').first();

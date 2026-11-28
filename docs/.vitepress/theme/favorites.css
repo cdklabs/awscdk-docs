@@ -340,6 +340,13 @@
   box-shadow: 0 4px 16px rgba(0, 7, 22, 0.22);
 }
 
+/* Flipped above its button when the panel would run past the bottom of the
+   sidebar it scrolls in. */
+.favorites-menu-above {
+  top: auto;
+  bottom: calc(100% + 2px);
+}
+
 .favorites-menu-item {
   display: flex;
   align-items: center;
@@ -527,5 +534,15 @@
 
   .favorites-grouped .favorites-menu-item {
     min-height: 44px;
+  }
+}
+
+/* A touch screen has no hover, whatever its width: a tablet in landscape gets
+   the desktop rules, so without this its reader never sees the row and group
+   buttons at all. Below 960px the block above still hides the ✕. */
+@media (hover: none) {
+  .favorites-grouped .favorites-actions,
+  .favorites-grouped .favorites-remove {
+    opacity: 1;
   }
 }
