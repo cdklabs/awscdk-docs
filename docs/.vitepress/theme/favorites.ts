@@ -394,6 +394,12 @@ export class FavoritesStore {
    */
   renameGroup(from: string, to: string): FavoritesUndo | undefined {
     const trimmed = to.trim();
+    // The same name is no rename: storing it would turn a group the map
+    // produced into one of the reader's own, which outlives its last favorite.
+    // Exact, so the case-only rename below still goes through.
+    if (trimmed === from) {
+      return undefined;
+    }
     if (!this.groupNames().some((n) => sameName(n, from))) {
       return undefined;
     }

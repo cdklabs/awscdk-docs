@@ -113,6 +113,15 @@ nothing open still closes the drawer. The Undo toast shows `Ctrl+Z` beside its
 button and the button names the shortcut in `aria-keyshortcuts`, so the way
 back is on the screen as well as in the announcement.
 
+**The Undo offer waits while the reader is still in the view.** Its eight
+seconds run while the pointer is outside the toast and focus is outside the
+whole Favorites view, not only outside the toast. The offer is the last thing
+in the view, after every group, so a reader who moves through the rows to
+reach it — which is what a screen reader does — would otherwise watch it
+expire on the way. A replacement offer reads the two holds from the page
+rather than assuming them off, because it arrives in the element the pointer
+may already be resting on.
+
 ## Consequences
 
 - Favorites stored before this change show up grouped on the next load, with no

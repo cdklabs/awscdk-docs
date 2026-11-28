@@ -516,14 +516,28 @@ function removeGroup(name: string): void {
 
 function showToast(text: string, undo: FavoritesUndo, focusKey: string): void {
   toast.value = { text, undo, focus: focusKey, revision: favoritesStore().revision() };
-  pointerInside = false;
-  focusInside = false;
+  // A toast that replaces another reuses the same element, so no fresh
+  // pointerenter or focusin follows: the holds are read from the page instead
+  // of assumed to be off.
+  const showing = document.querySelector(".favorites-section .favorites-toast");
+  pointerInside = showing?.matches(":hover") ?? false;
+  focusInside = isInView(document.activeElement);
   toastLeft = TOAST_MS;
-  startToastTimer();
+  if (pointerInside || focusInside) {
+    clearToastTimer();
+  } else {
+    startToastTimer();
+  }
   // The toast arrives already filled, which a live region may not announce,
   // so the view's own polite region is what speaks it — and it names the way
   // back, because the Undo button is several tab stops away.
   announce(`${text} Undo is available, or press Ctrl+Z.`);
+}
+
+/** Whether a node is inside the view, which is what holds the Undo offer. */
+function isInView(node: EventTarget | Node | null): boolean {
+  const root = document.querySelector(".favorites-section");
+  return node instanceof Node && !!root?.contains(node);
 }
 
 /**
@@ -554,10 +568,14 @@ function startToastTimer(): void {
 }
 
 /**
- * Whether the pointer is over the toast, and whether focus is inside it. Two
- * reasons, tracked apart: one must not resume what the other is holding, or a
- * mouse crossing the toast would restart the timer under a keyboard user and
- * take the focused Undo button out from under them.
+ * Whether the pointer is over the toast, and whether focus is inside the
+ * view. Two reasons, tracked apart: one must not resume what the other is
+ * holding, or a mouse crossing the toast would restart the timer under a
+ * keyboard user and take the focused Undo button out from under them.
+ *
+ * Focus counts anywhere in the view, not only on the toast: the offer sits
+ * after every group, so a reader on a screen reader — who swipes or tabs
+ * through the rows to reach it — would otherwise lose it on the way.
  */
 let pointerInside = false;
 let focusInside = false;
@@ -575,7 +593,15 @@ function holdToast(kind: "pointer" | "focus", inside: boolean): void {
   }
 }
 
-/** The timer pauses while the pointer is over the toast or focus is inside it. */
+/** Focus moving between two controls of the view is not focus leaving it. */
+function onViewFocusOut(event: FocusEvent): void {
+  if (isInView(event.relatedTarget)) {
+    return;
+  }
+  holdToast("focus", false);
+}
+
+/** The timer pauses while the pointer is over the toast or focus is in the view. */
 function pauseToast(): void {
   if (toastTimer === undefined) {
     return;
@@ -654,6 +680,8 @@ function cssEscape(value: string): string {
     aria-label="Favorites"
     @keydown="onViewKey($event)"
     @keyup.esc="keepEscape($event)"
+    @focusin="holdToast('focus', true)"
+    @focusout="onViewFocusOut($event)"
   >
     <template v-if="viewShown">
       <div class="favorites-view-head">
@@ -874,8 +902,6 @@ function cssEscape(value: string): string {
         class="favorites-toast"
         @pointerenter="holdToast('pointer', true)"
         @pointerleave="holdToast('pointer', false)"
-        @focusin="holdToast('focus', true)"
-        @focusout="holdToast('focus', false)"
       >
         <span class="favorites-toast-text">{{ toast.text }}</span>
         <button

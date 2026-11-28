@@ -339,7 +339,7 @@ describe('favorite pages', () => {
       );
     });
 
-    test('the five unmapped submodules have no category', () => {
+    test('a submodule the map does not name has no category, even under a mapped package', () => {
       for (const submodule of [
         'aws_awsexternalanthropic',
         'aws_healthagent',
@@ -641,6 +641,17 @@ describe('favorite pages', () => {
       store.setGroupCollapsed('Storage', true);
       store.move(queue.path, 'Storage');
       expect(store.isGroupCollapsed('Storage')).toBe(false);
+    });
+
+    test('renaming a group to its own name changes nothing', () => {
+      const { store, storage } = withTwo();
+      const before = store.revision();
+      expect(store.renameGroup('Storage', 'Storage')).toBeUndefined();
+      expect(JSON.parse(storage.getItem(GROUPS_STORAGE_KEY) ?? '[]')).toEqual([]);
+      expect(store.revision()).toBe(before);
+      // A group the map produced still goes when its last favorite does.
+      store.remove(bucket.path);
+      expect(store.groupNames()).not.toContain('Storage');
     });
 
     test('a fold follows a rename and does not outlive a delete', () => {

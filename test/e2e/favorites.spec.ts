@@ -708,6 +708,45 @@ test.describe('grouped favorites view', () => {
       await expect(view(page).locator('.favorites-link')).toHaveCount(2);
     });
 
+    test('a replacement offer keeps the holds the one before it had', async ({ page }) => {
+      await page.clock.install();
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: /^Remove/ }).click();
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toBeVisible();
+
+      // The pointer rests on the toast while the keyboard removes another row,
+      // which replaces the offer in the element the pointer is already on.
+      await toast.hover();
+      await view(page).locator('.favorites-link').first().focus();
+      await page.keyboard.press('Delete');
+      await expect(view(page).locator('.favorites-link')).toHaveCount(1);
+      await page.clock.runFor(9000);
+      await expect(toast).toBeVisible();
+    });
+
+    test('the offer waits while the reader is still in the view', async ({ page }) => {
+      await page.clock.install();
+      await openView(page);
+      await view(page).locator('.favorites-link').first().focus();
+      await page.keyboard.press('Delete');
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toBeVisible();
+
+      // Focus is on a row, not on the toast: a reader on a screen reader has
+      // the rest of the list to cross before they reach Undo.
+      await view(page).locator('.favorites-link').first().focus();
+      await page.clock.runFor(9000);
+      await expect(toast).toBeVisible();
+
+      // Focus leaves the view, and the offer goes after its eight seconds.
+      await page.locator('#explorer-rail button').first().focus();
+      await page.clock.runFor(9000);
+      await expect(toast).toHaveCount(0);
+    });
+
     test('a click outside an open menu closes it', async ({ page }) => {
       await openView(page);
       const row = view(page).locator('.favorites-item').first();
