@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { TOPIC_PAGE } from './fixture.js';
+import { SNS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // Mobile-viewport behavior. The unit test pins the CSS
 // declarations; only a browser can measure the boxes they produce, which is
@@ -11,9 +11,11 @@ test.describe('mobile viewport: drawer and tap targets', () => {
   const MIN_TAP = 44;
 
   test('the breadcrumb favorite star is a 44px tap target', async ({ page }) => {
-    await page.goto(TOPIC_PAGE);
+    // The overview keeps the star in the breadcrumb bar; on a type page it sits
+    // in the chip row at 32px and reaches 44px through an overlay instead.
+    await page.goto(SNS_OVERVIEW_PAGE);
 
-    const star = page.locator('.favorite-star-button').first();
+    const star = page.locator('.breadcrumb-fav .favorite-star-button').first();
     await expect(star).toBeVisible();
     const box = await star.boundingBox();
     expect(box).not.toBeNull();

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { QUEUE_PAGE, SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
+import { QUEUE_PAGE, SNS_OVERVIEW_PAGE, SQS_OVERVIEW_PAGE, TOPIC_PAGE } from './fixture.js';
 
 // Favorite pages: the doc-before star toggles a localStorage
 // entry; starred pages appear in the sidebar's Favorites quick-access
@@ -189,11 +189,23 @@ test.describe('favorite pages', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 700 });
+    // In the chip row the star paints at its desktop 32px square and reaches
+    // 44px through an overlay outside that box.
     await page.goto(TOPIC_PAGE);
-
     const metrics = await starMetrics(page);
-    expect(metrics.width).toBeGreaterThanOrEqual(44);
-    expect(metrics.height).toBeGreaterThanOrEqual(44);
+    expect(metrics.width).toBe(32);
+    expect(metrics.height).toBe(32);
+    const overlay = await page.locator('.type-header-row .favorite-star-button').evaluate((el) => {
+      const style = getComputedStyle(el, '::before');
+      return { position: style.position, top: style.top, bottom: style.bottom };
+    });
+    expect(overlay).toEqual({ position: 'absolute', top: '-7.5px', bottom: '-7.5px' });
+
+    // In the breadcrumb bar of an overview the box itself is the target.
+    await page.goto(SNS_OVERVIEW_PAGE);
+    const bar = await starMetrics(page);
+    expect(bar.width).toBeGreaterThanOrEqual(44);
+    expect(bar.height).toBeGreaterThanOrEqual(44);
   });
 
   test('the capped message stays in the row without overlapping the pills or widening the page', async ({ page }) => {

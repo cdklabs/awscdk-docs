@@ -47,8 +47,9 @@ strikes its title, and carries a `Deprecated:` note under the row giving the
 reason.
 
 Generated L1 types (the `Cfn*` classes and their props), which the published
-metadata marks `external`, and the few types that declare no stability at all
-show the kind chip alone.
+metadata marks `external`, show **External**: their stability is the
+CloudFormation resource's, not a level of this library. The few types that
+declare no stability at all show the kind chip alone.
 
 Every type page of an experimental package also opens with an **Experimental**
 banner above the page title. The banner names the package, says that its API may

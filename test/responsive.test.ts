@@ -92,6 +92,40 @@ describe('type page header below the tablet breakpoint', () => {
     // the neighboring chip and the row's gap.
     expect(overlay).toContain('inset: -11px 0');
   });
+
+  describe('the type page action pills keep their desktop box on a phone', () => {
+    const mobileRules = rulesInMediaBlock(css, '@media (max-width: 959px)');
+    const PILLS = [
+      '.vp-doc .type-actions .copy-markdown-main',
+      '.vp-doc .type-actions .copy-markdown-options',
+      '.vp-doc .type-actions .favorite-star-button',
+    ] as const;
+
+    test.each(PILLS)('%s stays 32px tall with a thinner edge and a lighter label', (selector) => {
+      // The row-scoped rule outranks the unscoped 44px pills above it, which
+      // still apply to the same controls on guide pages and the overview
+      // breadcrumb bar.
+      const body = mobileRules.get(selector);
+      expect(body).toContain('height: 32px');
+      expect(body).toContain('min-height: 32px');
+      expect(body).toContain('min-width: 32px');
+      expect(body).toContain('border-width: 1.5px');
+      expect(body).toContain('font-weight: 600');
+      expect(body).toContain('position: relative');
+    });
+
+    test.each(PILLS)('%s reaches 44px through an overlay, not its own box', (selector) => {
+      // The padding box is 29px inside a 1.5px edge, so 7.5px above and below
+      // reaches 44px; 0 to the sides keeps the areas apart across the row gap.
+      const overlay = mobileRules.get(`${selector}::before`);
+      expect(overlay).toContain('position: absolute');
+      expect(overlay).toContain('inset: -7.5px 0');
+    });
+
+    test('the actions box no longer reserves 44px, so the row is as tall as its pills', () => {
+      expect(mobileRules.get('.type-actions')).toBeUndefined();
+    });
+  });
 });
 
 describe('responsive mobile layout', () => {
@@ -182,9 +216,6 @@ describe('responsive mobile layout', () => {
       // horizontal room, and a 44px min-width would stretch a short segment
       // into a ragged trail.
       ['.type-breadcrumb a', 'breadcrumb links', ['min-height']],
-      // The actions box is emitted empty and reserves its children's height,
-      // so its width is the row's to give; only the height binds.
-      ['.type-actions', 'type page actions box', ['min-height']],
     ];
 
     // These two guards pin the parse: the block is brace-bounded, and every
@@ -215,7 +246,6 @@ describe('responsive mobile layout', () => {
         '.VPSidebar .api-sidebar-link',
         '.copy-markdown-item',
         '.type-breadcrumb a',
-        '.type-actions',
       ]);
     });
 

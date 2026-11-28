@@ -632,7 +632,7 @@ describe('API kind badge palette', () => {
 
     test('each stability chip ink clears 7:1 on its own fill in both schemes', () => {
       for (const block of [headerLight, headerDark]) {
-        for (const kind of ['stable', 'exp', 'dep']) {
+        for (const kind of ['stable', 'exp', 'dep', 'ext']) {
           expect(contrast(cssVar(block, `--th-${kind}-text`), cssVar(block, `--th-${kind}-bg`)))
             .toBeGreaterThanOrEqual(7);
         }

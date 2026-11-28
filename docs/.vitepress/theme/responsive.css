@@ -144,10 +144,30 @@ pre.signature {
     min-width: 44px;
   }
 
-  /* The actions box reserves the taller touch-target height here, for the same
-     reason it reserves 32px on desktop: the pills arrive after mount. */
-  .type-actions {
-    min-height: 44px;
+  /* On the type page row the three pills keep their desktop 32px, with a
+     thinner edge and a lighter label, so the actions line stays quieter than
+     the title. They reach 44px the way the linking chip does: an overlay
+     outside the painted box. The inset is measured from the padding box, 29px
+     inside a 1.5px edge, so 7.5px above and below reaches 44px; 0 to the sides
+     keeps the areas apart across the row's 8px gap. The same pills on guide
+     pages and the overview breadcrumb bar keep the 44px boxes above. */
+  .vp-doc .type-actions .copy-markdown-main,
+  .vp-doc .type-actions .copy-markdown-options,
+  .vp-doc .type-actions .favorite-star-button {
+    position: relative;
+    min-height: 32px;
+    min-width: 32px;
+    height: 32px;
+    border-width: 1.5px;
+    font-weight: 600;
+  }
+
+  .vp-doc .type-actions .copy-markdown-main::before,
+  .vp-doc .type-actions .copy-markdown-options::before,
+  .vp-doc .type-actions .favorite-star-button::before {
+    content: '';
+    position: absolute;
+    inset: -7.5px 0;
   }
 
   /* Breadcrumb links above the title. `inline-flex` so a min-height binds at
