@@ -186,7 +186,7 @@ test.describe('explorer preview on desktop', () => {
     [QUEUE_PAGE, 'an API page'],
     ['/', 'the home page'],
     [SKILLS_PAGE, 'the skills page'],
-    ['/versions.html', 'the versions page'],
+    [VERSIONS_PAGE, 'the versions page'],
   ] as const) {
     for (const width of [960, 1000, 1024, 1119, 1120, 1135, 1136, 1280, 1282, 1295, 1296]) {
       test(`the top bar row fits at ${width}px on ${label} with the preview on`, async ({ page }) => {
