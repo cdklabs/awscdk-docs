@@ -142,6 +142,17 @@ describe('toAgentMarkdown', () => {
     expect(twin).not.toContain('<a');
   });
 
+  test('an external type ends its classification line with External', () => {
+    const page = renderTypeHeader({
+      name: 'CfnBucket',
+      kind: { text: 'L1 construct', kindClass: 'api-badge-l1' },
+      stability: 'external',
+    }).join('\n');
+    const twin = toAgentMarkdown(page).markdown;
+    expect(twin).toContain('# CfnBucket\n\nL1 construct · External\n');
+    expect(twin).not.toContain('<span');
+  });
+
   test('a deprecated type keeps its reason and brings no markup with it', () => {
     // The note's label has to be a tag the module knows, or `protectCode`
     // treats it as author text and restores it verbatim into the twin.

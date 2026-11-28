@@ -48,7 +48,10 @@ our custom layer:
   there, because an inline anchor's height is its line box and a min-height
   would not bind. The type page's linking stability chip reaches the target
   through a positioned overlay instead of its own box, so the chip keeps the
-  painted height it shares with the kind chip beside it;
+  painted height it shares with the kind chip beside it. The type page's action
+  pills (Copy Markdown, its ▾ and the star) keep their 32px painted box and
+  reach 44px tall through the same kind of overlay; ▾ and the star are 32px
+  wide (see the [type page header ADR](./2026-11-26-type-page-header-chip-row.md));
 - a full-width Pagefind dialog below 768px with a 16px input font size to stop
   iOS Safari zoom-on-focus.
 

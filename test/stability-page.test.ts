@@ -25,7 +25,8 @@ describe('api stability guide page', () => {
   test('names every chip a type page header can carry', () => {
     expect(page).toContain('**Stable**');
     expect(page).toContain('**Deprecated**');
-    // The two cases where no stability chip appears at all.
+    expect(page).toContain('**External**');
+    // The one case where no stability chip appears at all.
     expect(page).toContain('show the kind chip alone');
   });
 

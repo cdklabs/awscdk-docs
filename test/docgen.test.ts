@@ -1146,13 +1146,11 @@ describe('docgen generation', () => {
     // though its package-level banner does not fire.
     expect(chip('aws-cdk-lib.interfaces.aws_s3.IBucketRef.md')).toBe('experimental');
 
-    // An L1 type is `external` in jsii, which takes no stability chip, so its
-    // row carries the kind chip alone. The kind assertion is the positive
-    // control: without it the absence below would also hold for a page that
-    // rendered no row at all.
+    // An L1 type is `external` in jsii and chips that word beside its kind, so
+    // an L1 page states its stability like every other page.
     const cfn = readFileSync(join(outDir, 'docs', 'aws-cdk-lib.aws_s3.CfnBucket.md'), 'utf-8');
     expect(cfn).toContain('<span class="type-chip type-chip-kind api-badge-l1">L1 construct</span>');
-    expect(cfn).not.toContain('type-chip-stability');
+    expect(chip('aws-cdk-lib.aws_s3.CfnBucket.md')).toBe('external');
 
     // A deprecated type chips the third stability value, from the same page the
     // struck title and the deprecation note are asserted on elsewhere.

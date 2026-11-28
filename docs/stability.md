@@ -47,8 +47,11 @@ strikes its title, and carries a `Deprecated:` note under the row giving the
 reason.
 
 Generated L1 types (the `Cfn*` classes and their props), which the published
-metadata marks `external`, and the few types that declare no stability at all
-show the kind chip alone.
+metadata marks `external`, show **External**: they are generated from AWS
+service data, and the [AWS CDK versioning
+guide](https://docs.aws.amazon.com/cdk/v2/guide/versioning.html) notes that
+generated code might contain backward incompatible changes. The few types that
+declare no stability at all show the kind chip alone.
 
 Every type page of an experimental package also opens with an **Experimental**
 banner above the page title. The banner names the package, says that its API may

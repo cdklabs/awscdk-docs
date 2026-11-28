@@ -130,11 +130,12 @@ export interface TypeHeaderOptions {
   readonly deprecationReason?: string;
 }
 
-/** Stability chips, keyed by jsii stability. `external` and an absent stability show no chip. */
+/** Stability chips, keyed by jsii stability. An absent stability shows no chip. */
 const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: string; link?: string } | undefined>> = {
   stable: { label: 'Stable', chipClass: 'type-chip-stable' },
   experimental: { label: 'Experimental', chipClass: 'type-chip-experimental', link: STABILITY_ROUTE },
   deprecated: { label: 'Deprecated', chipClass: 'type-chip-deprecated' },
+  external: { label: 'External', chipClass: 'type-chip-external' },
 };
 
 /**
@@ -142,11 +143,10 @@ const STABILITY_CHIPS: Readonly<Record<string, { label: string; chipClass: strin
  * chip and the mount points the theme's page actions teleport into, then — for a deprecated type — the reason.
  *
  * The kind sits in the row rather than the H1, so the heading is the name a reader came for and the classification
- * sits beside the controls that act on the page. A type whose stability is stable, experimental or deprecated
- * states it, "Stable" included, so a reader of those pages never has to decide whether a missing chip means
- * "stable" or "not shown". A generated L1 type is `external` in jsii and a few types carry no stability at all;
- * both show the kind chip alone, so on those pages the absence does carry a meaning. Why `external` gets no label
- * is recorded in docs/adr/2026-11-26-type-page-header-chip-row.md.
+ * sits beside the controls that act on the page. Every jsii stability states itself as a chip, "Stable" and
+ * "External" included, so a reader never has to decide whether a missing chip means "stable" or "not shown"; a
+ * generated L1 type is `external` in jsii and chips that word. Only the few types that carry no stability at all
+ * show the kind chip alone.
  *
  * The row is one raw-HTML block, so markdown-it passes it through whole and the chips need no markdown escape; it is
  * excluded from the Pagefind index, because the kind is already a `kind:` search filter and the stability is not a

@@ -127,7 +127,7 @@ pre.signature {
     min-width: 44px;
   }
 
-  /* Copy Markdown split button and its menu row: the chip row on type pages, doc-before elsewhere */
+  /* Copy Markdown split button and its menu row: doc-before; the type page chip row overrides the pills below */
   .copy-markdown-main,
   .copy-markdown-options {
     min-height: 44px;
@@ -138,16 +138,44 @@ pre.signature {
     min-height: 44px;
   }
 
-  /* Icon-only favorite star: the chip row on type pages, the breadcrumb bar on overviews */
+  /* Icon-only favorite star: the overview breadcrumb bar; the type page chip row overrides it below */
   .favorite-star-button {
     min-height: 44px;
     min-width: 44px;
   }
 
-  /* The actions box reserves the taller touch-target height here, for the same
-     reason it reserves 32px on desktop: the pills arrive after mount. */
-  .type-actions {
-    min-height: 44px;
+  /* On the type page row the three pills keep their desktop 32px, with a
+     thinner edge and a lighter label, so the actions line stays quieter than
+     the title. They reach 44px tall the way the linking chip does: an overlay
+     outside the painted box. The inset is measured from the padding box, 29px
+     inside a 1.5px edge, so 7.5px above and below reaches 44px; 0 to the sides
+     keeps the areas apart across the row's 8px gap, so the options and star
+     targets are 32px wide, above the 24px minimum but not a 44x44 box. The
+     same pills on guide pages and the overview breadcrumb bar keep the 44px
+     boxes above. */
+  .vp-doc .type-actions .copy-markdown-main,
+  .vp-doc .type-actions .copy-markdown-options,
+  .vp-doc .type-actions .favorite-star-button {
+    position: relative;
+    min-height: 32px;
+    height: 32px;
+    border-width: 1.5px;
+    font-weight: 600;
+  }
+
+  /* Copy Markdown keeps the component's own width floor, so the label change
+     after a tap does not move the two controls beside it. */
+  .vp-doc .type-actions .copy-markdown-options,
+  .vp-doc .type-actions .favorite-star-button {
+    min-width: 32px;
+  }
+
+  .vp-doc .type-actions .copy-markdown-main::before,
+  .vp-doc .type-actions .copy-markdown-options::before,
+  .vp-doc .type-actions .favorite-star-button::before {
+    content: '';
+    position: absolute;
+    inset: -7.5px 0;
   }
 
   /* Breadcrumb links above the title. `inline-flex` so a min-height binds at

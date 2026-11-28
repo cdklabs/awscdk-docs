@@ -27,6 +27,8 @@
   --th-dep-bg: #fee2e2;
   --th-dep-text: #7f1d1d;
   --th-dep-edge: #b91c1c;
+  --th-ext-bg: #f1f1f5;
+  --th-ext-text: #424650;
 }
 
 .dark {
@@ -47,6 +49,8 @@
   --th-dep-bg: #450a0a;
   --th-dep-text: #fca5a5;
   --th-dep-edge: #f87171;
+  --th-ext-bg: #2a3340;
+  --th-ext-text: #c6c6cd;
 }
 
 /* ---------- Type page header: breadcrumb, title, chip row ---------- */
@@ -275,6 +279,14 @@
 .type-chip-deprecated {
   background-color: var(--th-dep-bg);
   color: var(--th-dep-text);
+}
+
+/* The External chip, on every generated L1 type. Gray rather than a signal
+   color: `external` is jsii's own word for generated code and not a level the
+   stability guide ranks. */
+.type-chip-external {
+  background-color: var(--th-ext-bg);
+  color: var(--th-ext-text);
 }
 
 /* The deprecation reason, in the same left-edged note shape the site's

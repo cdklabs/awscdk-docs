@@ -52,22 +52,22 @@ would move the heading out of `.vp-doc > h1`, which the theme's rules, the page
 outline and VitePress's inferred page title all select on; the ordering the
 header needs is already what the page assembly produces.
 
-**A stable, experimental or deprecated type states its stability, "Stable"
-included.** One chip, from `typeStability` — the type's own `docs.stability`
-when set, otherwise its package's. Experimental links to the stability guide,
-because the word alone does not tell a reader what it costs them. `external`,
-and a type with no stability at all, get no chip, so those pages carry the kind
-chip alone and their Markdown twin's classification line names the kind only.
-Generated L1 types are the corpus case: jsii gives a CloudFormation resource
-`external` stability. On an L1 page, then, the missing chip does carry a
-meaning, which is the one place this design does not remove that ambiguity.
+**Every type with a jsii stability states it, "Stable" included.** One chip,
+from `typeStability` — the type's own `docs.stability` when set, otherwise its
+package's. Experimental links to the stability guide, because the word alone
+does not tell a reader what it costs them. Only a type with no stability at all
+gets no chip; that page carries the kind chip alone and its Markdown twin's
+classification line names the kind only.
 
-No fourth label is invented for `external`, because the AWS guides do not agree
-on what it would say. The v2 migration guide calls L1 constructs always stable;
-the versioning page says generated L1 code may contain backward incompatible
-changes and that IDEs show those APIs as `@stability external`. A chip has to
-pick one of those readings for every L1 page in the corpus, which is a
-maintainer's call rather than a renderer's.
+Generated L1 types are the corpus case: jsii gives a CloudFormation resource
+`external` stability, and every `Cfn*` page chips **External**. The label is
+jsii's own word rather than a reading of it. The AWS guides do not agree on
+what `external` promises — the v2 migration guide calls L1 constructs always
+stable, the versioning page says generated L1 code may contain backward
+incompatible changes — so the chip repeats the metadata and leaves that reading
+to the reader, instead of leaving an L1 page as the one place a missing chip
+still means two things. The chip is gray in both schemes, not a signal color,
+and links nowhere: `external` is not a level the stability guide ranks.
 
 **A deprecated type gets the three signals its members already had.** The title
 is struck in the deprecation tone, the chip reads "Deprecated", and the reason
@@ -77,11 +77,12 @@ divider.
 **Both chip edges are `currentColor`.** The edge is then the ink, so whatever
 clears a chip's label against its fill clears its edge against that fill too,
 and the edge needs no tuning pass of its own. Every chip's ink/fill pair is
-pinned by hex: the eight per-kind pairs in the palette, the three stability
+pinned by hex: the eight per-kind pairs in the palette, the four stability
 pairs, and the neutral pair a plain class or a level-less construct takes. The
 stability pairs take the conventional tones for what they say, amber for
-experimental, green for stable, red for deprecated, drawn from the same palette
-the kind hues come from. Amber is L1's pair in both schemes, and green shares
+experimental, green for stable, red for deprecated, and a neutral gray for
+external, which signals no level, drawn from the same palette the kind hues
+come from. Amber is L1's pair in both schemes, and green shares
 L3's fill in both, with L3's ink as well in dark mode, so an L1 or an L3 page
 can show two chips in one tone; the label and the fixed order tell them apart,
 and picking a second amber for the sake of difference would cost the convention
@@ -97,9 +98,17 @@ H1 no longer carries a kind badge.
 favorite star teleport into two fixed mount points, `type-action-copy` then
 `type-action-fav`, so the copy button always precedes the star whichever
 component mounts first. Both carry a 2px `--vp-c-brand-1` edge, replacing
-hairlines that were not visible. An API page with no chip row — a module or
-submodule overview — keeps the placements it had: the star in the breadcrumb
-bar's `breadcrumb-fav`, Copy Markdown in the `doc-before` slot.
+hairlines that were not visible. Below 960px the pills keep their 32px height
+rather than growing to the 44px touch floor: three 44px controls with a 2px
+edge and a bold label outweighed the title above them. The edge thins to 1.5px
+and the label to 600, and each pill reaches 44px tall through a transparent
+overlay outside its painted box, the way the linking stability chip does. The
+overlay adds height only: Copy Markdown keeps its own width floor, and ▾ and the
+star stay 32px wide, above the 24px minimum target size but below a 44×44 box,
+with the 8px row gap keeping the areas apart. An API page with no chip row — a
+module or submodule overview — keeps the placements it had: the star in the
+breadcrumb bar's `breadcrumb-fav`, Copy Markdown in the `doc-before` slot, both
+at the 44px box on phones.
 
 **The breadcrumb becomes plain text with drawn separators.** Body typeface,
 14px, no fill and no box. The real `.` joins stay in the DOM wrapped in a

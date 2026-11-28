@@ -302,14 +302,22 @@ describe('type page header', () => {
     expect(block).not.toContain('type-deprecated-note');
   });
 
-  test('a stability with no chip of its own renders the kind alone', () => {
-    for (const block of [
-      header({ name: 'T', kind: { text: 'Class' } }),
-      header({ name: 'T', kind: { text: 'Class' }, stability: 'external' }),
-    ]) {
-      expect(block).toContain('type-chip-kind');
-      expect(block).not.toContain('type-chip-stability');
-    }
+  test('an external type chips External, as text and without a link', () => {
+    // Every generated L1 type is `external` in jsii, so without this chip an L1 page would be the one place a
+    // missing stability chip still meant two things.
+    const block = header({
+      name: 'CfnBucket',
+      kind: { text: 'L1 construct', kindClass: 'api-badge-l1' },
+      stability: 'external',
+    });
+    expect(block).toContain('<span class="type-chip type-chip-stability type-chip-external">External</span>');
+    expect(block).not.toContain('<a class="type-chip type-chip-stability type-chip-external"');
+  });
+
+  test('a type with no stability at all renders the kind alone', () => {
+    const block = header({ name: 'T', kind: { text: 'Class' } });
+    expect(block).toContain('type-chip-kind');
+    expect(block).not.toContain('type-chip-stability');
   });
 
   test('chip text and the deprecation reason are text, never markup or Vue syntax', () => {

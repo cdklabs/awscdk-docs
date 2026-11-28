@@ -265,6 +265,35 @@ test.describe('type page header', () => {
     await page.emulateMedia({ colorScheme: 'light' });
   });
 
+  test('an L1 type chips External in its own gray, in both schemes', async ({ page }) => {
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto(CFN_QUEUE_PAGE);
+      const chip = page.locator('.type-header-row .type-chip-stability');
+      await expect(chip).toHaveText('External');
+      await expect(chip).toHaveClass(/type-chip-external/);
+      // Text, not a link: `external` is not a level the stability guide ranks.
+      await expect(page.locator('.type-header-row a.type-chip-stability')).toHaveCount(0);
+      const measured = await chip.evaluate((el) => {
+        const probe = document.createElement('span');
+        document.body.appendChild(probe);
+        probe.style.color = 'var(--th-ext-text)';
+        const ink = getComputedStyle(probe).color;
+        probe.style.color = 'var(--th-ext-bg)';
+        const fill = getComputedStyle(probe).color;
+        probe.remove();
+        const style = getComputedStyle(el);
+        return { ink, fill, color: style.color, background: style.backgroundColor, border: style.borderTopColor };
+      });
+      expect(measured.color, scheme).toBe(measured.ink);
+      expect(measured.border, scheme).toBe(measured.ink);
+      expect(measured.background, scheme).toBe(measured.fill);
+      // Both schemes resolve the token to a different gray, so the dark page is not reading the light pair.
+      expect(measured.fill, scheme).toBe(scheme === 'light' ? 'rgb(241, 241, 245)' : 'rgb(42, 51, 64)');
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+  });
+
   test('a deprecated type strikes its title, chips Deprecated and announces its name', async ({ page }) => {
     await page.goto(DEPRECATED_TYPE_PAGE);
     const title = page.locator('.vp-doc h1 .type-title-deprecated');
@@ -426,6 +455,50 @@ test.describe('type page header', () => {
     // ...and the actions below them.
     expect(copy.y).toBeGreaterThan(chip.y + chip.height - 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test('at 375px the pills keep their 32px box and still take a tap 5px outside it', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.goto(QUEUE_PAGE);
+    await page.locator('.copy-markdown[data-ready]').waitFor();
+
+    for (const selector of [
+      '.type-header-row .copy-markdown-main',
+      '.type-header-row .copy-markdown-options',
+      '.type-header-row .favorite-star-button',
+    ]) {
+      const pill = page.locator(selector);
+      const box = (await pill.boundingBox())!;
+      // The painted box is the desktop one, so the actions line does not outweigh the title.
+      expect(box.height, selector).toBe(32);
+      const style = await pill.evaluate((el) => {
+        const s = getComputedStyle(el);
+        const overlay = getComputedStyle(el, '::before');
+        return { edge: s.borderTopWidth, weight: s.fontWeight, size: s.fontSize, top: overlay.top, bottom: overlay.bottom };
+      });
+      // 1.5px declared; Chromium snaps a fractional edge to the device pixel grid, 1px at this DPR.
+      expect(parseFloat(style.edge), selector).toBeGreaterThanOrEqual(1);
+      expect(parseFloat(style.edge), selector).toBeLessThan(2);
+      expect(style.weight, selector).toBe('600');
+      expect(style.size, selector).toBe('14px');
+      // The overlay starts 7.5px outside the padding box, 6px outside the painted edge: 29px + 15px = 44px.
+      expect(style.top, selector).toBe('-7.5px');
+      expect(style.bottom, selector).toBe('-7.5px');
+      const x = box.x + box.width / 2;
+      for (const y of [box.y - 5, box.y + box.height + 5]) {
+        const hit = await page.evaluate(([px, py, sel]) => {
+          const target = document.querySelector(sel as string);
+          const el = document.elementFromPoint(px as number, py as number);
+          return el === target || (target?.contains(el) ?? false);
+        }, [x, y, selector] as const);
+        expect(hit, `${selector} at y=${y - box.y}`).toBe(true);
+      }
+    }
+    // The star keeps its square, and the overlays stay apart across the gap.
+    const star = (await page.locator('.type-header-row .favorite-star-button').boundingBox())!;
+    expect(star.width).toBe(32);
+    const options = (await page.locator('.type-header-row .copy-markdown-options').boundingBox())!;
+    expect(star.x - (options.x + options.width)).toBeCloseTo(8, 0);
   });
 
   test('the metadata source link reads as a link at rest, the generated marker does not', async ({ page }) => {
