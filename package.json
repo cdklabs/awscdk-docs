@@ -97,7 +97,7 @@
     "@jest/globals": "^30.5.1",
     "@jsii/spec": "^1.143.0",
     "@playwright/test": "^1.65.1",
-    "@stylistic/eslint-plugin": "^5",
+    "@stylistic/eslint-plugin": "^6.0.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.6",
     "@typescript-eslint/eslint-plugin": "^8",
