@@ -170,7 +170,9 @@ support, read from those tools' published peer ranges and APIs, not a wish to st
 current: an upgrade is not forced through by overriding a peer range,
 patching a tool, or swapping a tool out just to admit the new major. While a
 major waits, the repo stays on the current major and keeps taking its minor
-and patch releases through the scheduled tasks. The check is repeated when
+and patch releases through the scheduled tasks. A comment beside the held
+dependency in `.projenrc.ts` names the tool that holds it, so this record
+keeps no list of current holds. The check is repeated when
 one of the blocking tools releases, and the upgrade goes ahead once all of
 them accept the new major.
 
