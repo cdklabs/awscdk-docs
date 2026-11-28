@@ -219,6 +219,7 @@ export class FavoritesStore {
   private groups: string[];
   private aliases: Record<string, string>;
   private collapsedGroups: string[];
+  private changes = 0;
   private readonly listeners = new Set<FavoritesListener>();
 
   constructor(private readonly storage?: StorageLike) {
@@ -231,6 +232,16 @@ export class FavoritesStore {
 
   list(): readonly FavoriteEntry[] {
     return this.entries;
+  }
+
+  /**
+   * How many times the favorites, the groups or the aliases have changed. An
+   * Undo offer records this and is withdrawn once it moves, so Undo can never
+   * take back a change made after the action it offers to reverse. Folding a
+   * group does not count: it changes no favorite.
+   */
+  revision(): number {
+    return this.changes;
   }
 
   isFavorite(path: string): boolean {
@@ -262,7 +273,7 @@ export class FavoritesStore {
 
   /**
    * Star or unstar a page. `favorited` is the resulting state; `rejected`
-   * stays for the callers that read it and is now always false.
+   * is always false, since there is no cap.
    */
   toggle(entry: FavoriteEntry): { favorited: boolean; rejected: boolean } {
     if (this.isFavorite(entry.path)) {
@@ -393,7 +404,10 @@ export class FavoritesStore {
       trimmed,
     ];
     for (const origin of origins) {
-      if (sameName(origin, trimmed)) {
+      // Exact, not case-insensitive: renaming `Compute` to `compute` is a
+      // rename, and dropping the alias there would leave the next Compute
+      // page in a second group spelled the other way.
+      if (origin === trimmed) {
         delete this.aliases[origin];
       } else {
         this.aliases[origin] = trimmed;
@@ -465,6 +479,8 @@ export class FavoritesStore {
     this.collapsedGroups = this.readCollapsedGroups();
     this.entries = this.read();
     this.placeUnplaced();
+    // Another tab wrote these, which is a change like any other here.
+    this.changes += 1;
     this.notify();
   }
 
@@ -499,20 +515,29 @@ export class FavoritesStore {
     return [...origins];
   }
 
+  /**
+   * The entry with the map's category written onto it. A page the map cannot
+   * place keeps no `group` at all, so a category added to the map later still
+   * reaches it; `null` is reserved for the reader's own move to Ungrouped.
+   */
   private placed(entry: FavoriteEntry): FavoriteEntry {
     if (entry.group !== undefined) {
       return entry;
     }
-    const group = this.mappedGroup(entry.path);
-    return { ...entry, group: group === UNGROUPED ? null : group };
+    const category = categoryFor(entry.path);
+    if (!category) {
+      return entry;
+    }
+    return { ...entry, group: this.aliases[category] ?? category };
   }
 
-  /** Give every entry the map has not placed yet its group, and write the result back. */
+  /** Give the entries the map can place their group, and write the result back once. */
   private placeUnplaced(): void {
-    if (!this.entries.some((entry) => entry.group === undefined)) {
+    const next = this.entries.map((entry) => this.placed(entry));
+    if (next.every((entry, index) => entry === this.entries[index])) {
       return;
     }
-    this.entries = this.entries.map((entry) => this.placed(entry));
+    this.entries = next;
     this.write(STORAGE_KEY, this.entries);
   }
 
@@ -591,6 +616,7 @@ export class FavoritesStore {
   }
 
   private persist(): void {
+    this.changes += 1;
     this.write(STORAGE_KEY, this.entries);
     this.write(GROUPS_STORAGE_KEY, this.groups);
     this.write(ALIASES_STORAGE_KEY, this.aliases);

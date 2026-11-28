@@ -125,12 +125,10 @@ describe('favorite pages', () => {
       storage.setItem(STORAGE_KEY, '{"a":1}');
       expect(new FavoritesStore(storage).list()).toEqual([]);
       storage.setItem(STORAGE_KEY, '[{"path":1,"title":2},{"path":"/api/x","title":"X"}]');
-      expect(new FavoritesStore(storage).list()).toEqual([
-        { path: '/api/x', title: 'X', group: null },
-      ]);
+      expect(new FavoritesStore(storage).list()).toEqual([{ path: '/api/x', title: 'X' }]);
     });
 
-    test('stored entries past the old cap all load', () => {
+    test('every stored entry loads, however many there are', () => {
       const storage = new FakeStorage();
       const oversized = Array.from({ length: 25 }, (_, i) => ({
         path: `/v2/docs/pkg.Page${i}`,
@@ -353,17 +351,30 @@ describe('favorite pages', () => {
       }
     });
 
-    test('an unmapped page lands in Ungrouped', () => {
-      const store = new FavoritesStore(new FakeStorage());
+    test('an unmapped page shows in Ungrouped and keeps no stored group', () => {
+      const storage = new FakeStorage();
+      const store = new FavoritesStore(storage);
       store.add({ path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' });
       expect(store.grouped()).toEqual([
         {
           name: UNGROUPED,
-          entries: [
-            { path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing', group: null },
-          ],
+          entries: [{ path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' }],
         },
       ]);
+      // No `group` written, so a category added to the map later places it.
+      expect(JSON.parse(storage.getItem(STORAGE_KEY)!)).toEqual([
+        { path: '/v2/docs/aws-cdk-lib.aws_scn.Thing', title: 'Thing' },
+      ]);
+    });
+
+    test('a page the map gains a category for is placed on the next read', () => {
+      const storage = new FakeStorage();
+      // Stored with no group, as an unmapped page is.
+      storage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([{ path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', title: 'Bucket' }]),
+      );
+      expect(new FavoritesStore(storage).grouped()[0].name).toBe('Storage');
     });
 
     test('groups sort A to Z with Ungrouped last, and rows A to Z inside', () => {
@@ -472,7 +483,7 @@ describe('favorite pages', () => {
       ]);
     });
 
-    test('move to Ungrouped is stored as null, and a later add still follows the map', () => {
+    test('move to Ungrouped is stored as null, which the map does not override', () => {
       const { store, storage } = withTwo();
       store.move(queue.path, null);
       expect(JSON.parse(storage.getItem(STORAGE_KEY)!)[1]).toEqual({
@@ -605,6 +616,19 @@ describe('favorite pages', () => {
       ).toEqual(['Bucket', 'Queue']);
     });
 
+    test('the revision counts favorite changes, so an Undo offer can tell one happened', () => {
+      const { store } = withTwo();
+      const start = store.revision();
+      store.move(queue.path, 'Storage');
+      expect(store.revision()).toBeGreaterThan(start);
+      const afterMove = store.revision();
+      // Folding changes no favorite, so an Undo offer survives it.
+      store.setGroupCollapsed('Storage', true);
+      expect(store.revision()).toBe(afterMove);
+      store.remove(queue.path);
+      expect(store.revision()).toBeGreaterThan(afterMove);
+    });
+
     test('folding is saved per group name and defaults to open', () => {
       const { store, storage } = withTwo();
       expect(store.isGroupCollapsed('Storage')).toBe(false);
@@ -685,11 +709,23 @@ describe('favorite pages', () => {
       'aws-cdk-lib.lambda_layer_kubectl',
     ];
 
-    test('every documented module is mapped or listed as unmapped', () => {
+    test('every documented module reaches a category through the real lookup', () => {
+      // Through `categoryFor`, not the map keys: a key the lookup can never
+      // build (a three-part id) or a break in the scoped `_` rewrite would
+      // both pass a direct key check while the site sent those pages to
+      // Ungrouped. `@aws-cdk/x` is the page id `@aws-cdk_x`.
       const uncovered = Object.keys(baseline.readmes).filter(
-        (id) => !map.map[id] && !UNMAPPED.includes(id),
+        (id) =>
+          !categoryFor(`/v2/docs/${id.replace('/', '_')}`) && !UNMAPPED.includes(id),
       );
       expect(uncovered).toEqual([]);
+    });
+
+    test('the unmapped list names only ids the lookup really cannot place', () => {
+      const placed = UNMAPPED.filter((id) =>
+        categoryFor(`/v2/docs/${id.replace('/', '_')}`),
+      );
+      expect(placed).toEqual([]);
     });
 
     test('every mapped value is one of the category names', () => {

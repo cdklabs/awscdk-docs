@@ -17,9 +17,9 @@ Grouping needs an answer to four questions, and each of them has more than one
 defensible answer:
 
 - **Where does a group come from?** Nothing in a favorite says which service it
-  belongs to. The page id carries the owning module, and the site already has
-  two places that turn a module into a service: the generated sidebar's Services
-  list, and nothing else.
+  belongs to. The page id carries the owning module, and the site has one place
+  that turns a module into a service: the generated sidebar's Services list,
+  which names services rather than grouping them.
 - **What happens when the reader disagrees?** A grouping that cannot be
   overridden is a layout, not a tool. One that is only manual asks every reader
   to do setup before the view is useful.
@@ -35,9 +35,13 @@ defensible answer:
 placement wins over it.** The map is a checked-in file,
 `docs/.vitepress/theme/favorite-categories.json`: 24 AWS category names and one
 entry per package or submodule id. A page id's first dot-part is its package
-(the first `_` of a scoped name standing for `/`), a second part that starts
-lower case is its submodule, and the submodule entry is consulted before the
-package. A page the map does not cover goes to Ungrouped.
+(the first `_` of a scoped name standing for `/`). A second part that starts
+lower case is a submodule, and then `<package>.<submodule>` is the only entry
+consulted — there is no fallback to the package, so a page under a submodule the
+map does not name goes to Ungrouped even when its package is mapped. That is
+what sends the `aws-cdk-lib.interfaces.*` reference-interface pages to
+Ungrouped: `interfaces` reads as their submodule. A page whose second part
+starts upper case is a type of the package itself, and the package entry decides.
 
 A map rather than a heuristic, because the category of a service is a fact
 about AWS and not something a renderer can derive: `aws_sqs` is Application
@@ -88,10 +92,11 @@ Without the alias the reader's rename would be undone by the next page they
 starred, which reads as the view forgetting what they did.
 
 **The order is A to Z by name, Ungrouped last, rows A to Z by title.** A rule a
-reader can see beats one they have to learn: the groups are in the order of the
-map's own category list, so the view's order and the file's order are the same
-thing. Manual order is a separate feature with its own storage and its own
-interaction, and it is not in this change.
+reader can see beats one they have to learn, and it holds whoever named the
+group: a group the reader made sorts in among the map's. For map groups alone
+that order is also the order of the category list in the map file. Manual order
+is a separate feature with its own storage and its own interaction, and it is
+not in this change.
 
 **The twenty-favorite cap is gone**, with the message on the page star that
 announced it. The grouped list is the reason the cap existed, and it no longer
@@ -103,15 +108,21 @@ needs one.
   action from the reader, and the written-back array is the only migration.
 - A favorite the reader moves stops following the map, including a move to
   Ungrouped. That is the point: the map decides only what nothing else has.
+- A favorite the map placed keeps the group it was given, so a later edit that
+  moves a module to another category does not regroup it. That is the cost of
+  storing the answer, which is what makes the written-back array the whole
+  migration. A page the map cannot place keeps no `group` at all, so a category
+  added for it later does reach it on the next read.
 - Three keys hold the reader's arrangement, so clearing site data loses the
   grouping along with the favorites. They are in this browser either way.
 - The rows depend on the sidebar skeleton for their service names. When that
   fetch fails the rows still carry their titles and their groups; only the
   service word is missing.
-- The category map is a file someone has to maintain. Its coverage is a test,
-  so the maintenance surfaces as a failing build rather than as rows quietly
-  piling up in Ungrouped. The map the view ships with leaves 21 documented
-  module ids uncategorized, which the test lists by name.
+- The category map is a file someone has to maintain. Its coverage is a test
+  that runs every documented module id through the lookup the site uses, so a
+  module the lookup cannot place surfaces as a failing build rather than as rows
+  quietly piling up in Ungrouped. The map the view ships with leaves 21
+  documented module ids unplaced, which the test lists by name.
 - A group with no favorites in it exists only if the reader made or renamed it.
   A map group disappears when its last favorite goes, and comes back with the
   next page from that service.

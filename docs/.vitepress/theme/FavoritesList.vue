@@ -69,7 +69,13 @@ const collapsed = ref(true);
 const mounted = ref(false);
 const openMenu = ref<OpenMenu | null>(null);
 const nameField = ref<NameField | null>(null);
-const toast = ref<{ text: string; undo: FavoritesUndo; focus: string } | null>(null);
+const toast = ref<{
+  text: string;
+  undo: FavoritesUndo;
+  focus: string;
+  /** The store revision this offer belongs to; a later change withdraws it. */
+  revision: number;
+} | null>(null);
 const announcement = ref("");
 /** Service name per page path, from the Explorer's own Framework and Services lists. */
 const services = ref<Record<string, string>>({});
@@ -91,6 +97,12 @@ let toastLeft = TOAST_MS;
 function refresh(): void {
   entries.value = favoritesStore().list();
   groups.value = favoritesStore().grouped();
+  // Undo restores the state the action changed, so it must not survive a
+  // later change — a move, a group edit, a star on this page or in another
+  // tab — which it would otherwise throw away.
+  if (toast.value && toast.value.revision !== favoritesStore().revision()) {
+    dismissToast();
+  }
 }
 
 onMounted(() => {
@@ -288,6 +300,11 @@ function neighborOf(entry: FavoriteEntry, group: string): string | undefined {
   return rows[index + 1]?.path ?? rows[index - 1]?.path;
 }
 
+/**
+ * Focus the next row, else its group's heading, else the New group button,
+ * else the empty-state line. The last two are what catch a group that is no
+ * longer rendered because its only favorite just went.
+ */
 function focusAfter(path: string | undefined, group: string): void {
   void nextTick(() => {
     if (path && focus(`[data-fav-link="${cssEscape(path)}"]`)) {
@@ -296,12 +313,17 @@ function focusAfter(path: string | undefined, group: string): void {
     if (focus(`[data-fav-group="${cssEscape(group)}"]`)) {
       return;
     }
+    if (focus(".favorites-new-group")) {
+      return;
+    }
     focus(".favorites-empty");
   });
 }
 
 function moveEntry(entry: FavoriteEntry, group: string | null): void {
   closeMenu();
+  // A folded target would hide the row the move is about, and focus with it.
+  favoritesStore().setGroupCollapsed(group ?? UNGROUPED, false);
   favoritesStore().move(entry.path, group);
   announcement.value = `Moved ${entry.title} to ${group ?? UNGROUPED}.`;
   void nextTick(() => focus(`[data-fav-link="${cssEscape(entry.path)}"]`));
@@ -342,15 +364,16 @@ function submitName(): void {
     name,
     field.mode === "rename" ? field.target : undefined,
   );
-  if (check === "duplicate") {
-    field.error = `A group named “${name}” already exists.`;
-    return;
-  }
   if (check !== "ok") {
     field.error =
-      check === "reserved"
-        ? `“${UNGROUPED}” is reserved.`
-        : "A group name is 1 to 40 characters.";
+      check === "duplicate"
+        ? `A group named “${name}” already exists.`
+        : check === "reserved"
+          ? `“${UNGROUPED}” is reserved.`
+          : "A group name is 1 to 40 characters.";
+    // The message is a plain line under the field, which a screen reader
+    // would otherwise never reach.
+    announcement.value = field.error;
     return;
   }
   if (field.mode === "rename" && field.target) {
@@ -389,7 +412,7 @@ function removeGroup(name: string): void {
       ? ""
       : ` ${count} favorite${count === 1 ? "" : "s"} moved to ${UNGROUPED}.`;
   showToast(`Deleted group “${name}”.${moved}`, undo, name);
-  void nextTick(() => focus(`[data-fav-group="${cssEscape(UNGROUPED)}"]`));
+  focusAfter(undefined, UNGROUPED);
 }
 
 // ---------------------------------------------------------------------------
@@ -397,9 +420,17 @@ function removeGroup(name: string): void {
 // ---------------------------------------------------------------------------
 
 function showToast(text: string, undo: FavoritesUndo, focusKey: string): void {
-  toast.value = { text, undo, focus: focusKey };
+  toast.value = { text, undo, focus: focusKey, revision: favoritesStore().revision() };
   toastLeft = TOAST_MS;
   startToastTimer();
+  // The toast arrives already filled, which a live region may not announce,
+  // so the view's own polite region is what speaks it.
+  announcement.value = text;
+}
+
+function dismissToast(): void {
+  toast.value = null;
+  clearToastTimer();
 }
 
 let toastStarted = 0;
@@ -441,8 +472,7 @@ function undoLast(): void {
     return;
   }
   favoritesStore().restore(current.undo);
-  toast.value = null;
-  clearToastTimer();
+  dismissToast();
   void nextTick(() => {
     if (!focus(`[data-fav-link="${cssEscape(current.focus)}"]`)) {
       focus(`[data-fav-group="${cssEscape(current.focus)}"]`);
@@ -452,6 +482,10 @@ function undoLast(): void {
 
 /** Delete removes the focused favorite; Ctrl+Z (Cmd+Z) takes the Undo the toast offers. */
 function onViewKey(event: KeyboardEvent, entry?: FavoriteEntry): void {
+  // A name field has its own undo, and Delete there edits text.
+  if (event.target instanceof HTMLInputElement) {
+    return;
+  }
   if ((event.key === "z" || event.key === "Z") && (event.ctrlKey || event.metaKey)) {
     if (toast.value) {
       event.preventDefault();
@@ -518,10 +552,14 @@ function cssEscape(value: string): string {
             maxlength="40"
             :value="nameField.value"
             @input="nameField.value = ($event.target as HTMLInputElement).value"
+            :aria-invalid="nameField.error ? 'true' : undefined"
+            :aria-describedby="nameField.error ? 'favorites-name-error' : undefined"
             @keydown.enter.prevent="submitName"
             @keydown.esc.prevent="cancelName"
           />
-          <p v-if="nameField.error" class="favorites-name-error">{{ nameField.error }}</p>
+          <p v-if="nameField.error" id="favorites-name-error" class="favorites-name-error">
+            {{ nameField.error }}
+          </p>
         </div>
         <div v-for="group in groups" :key="group.name" class="favorites-group">
           <div class="favorites-group-head">
@@ -533,10 +571,14 @@ function cssEscape(value: string): string {
                 maxlength="40"
                 :value="nameField.value"
                 @input="nameField.value = ($event.target as HTMLInputElement).value"
+                :aria-invalid="nameField.error ? 'true' : undefined"
+                :aria-describedby="nameField.error ? 'favorites-name-error' : undefined"
                 @keydown.enter.prevent="submitName"
                 @keydown.esc.prevent="cancelName"
               />
-              <p v-if="nameField.error" class="favorites-name-error">{{ nameField.error }}</p>
+              <p v-if="nameField.error" id="favorites-name-error" class="favorites-name-error">
+                {{ nameField.error }}
+              </p>
             </template>
             <template v-else>
               <button
@@ -690,8 +732,6 @@ function cssEscape(value: string): string {
       <div
         v-if="toast"
         class="favorites-toast"
-        role="status"
-        aria-live="polite"
         @pointerenter="pauseToast"
         @pointerleave="resumeToast"
         @focusin="pauseToast"

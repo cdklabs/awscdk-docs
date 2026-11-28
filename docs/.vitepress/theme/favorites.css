@@ -277,8 +277,8 @@
   text-decoration: underline;
 }
 
-/* The service name after the title. `nowrap` on the pair of dot and first word
-   is what keeps the dot off the end of a line. */
+/* The service name after the title. The non-breaking space after the dot
+   in the template is what keeps the dot off the end of a line. */
 .favorites-service {
   font-size: 12px;
   font-weight: 400;

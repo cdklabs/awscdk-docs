@@ -197,7 +197,6 @@ test.describe('favorite pages', () => {
   });
 
   test('more than twenty pages can be favorited, with no cap message', async ({ page }) => {
-    // The cap used to refuse the twenty-first page and say so in the chip row.
     await page.goto(TOPIC_PAGE);
     await page.evaluate(() => {
       const entries = Array.from({ length: 20 }, (_, i) => ({
@@ -450,6 +449,91 @@ test.describe('grouped favorites view', () => {
       ]);
       // Focus lands on the restored row, so the keyboard stays where the reader was.
       await expect(view(page).locator('.favorites-link').first()).toBeFocused();
+    });
+
+    test('a change after a removal withdraws the Undo offer, so it cannot take that change back', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+
+      // Move another favorite while the offer is up. Undo would restore the
+      // state from before the move as well, so the offer has to go.
+      const topic = view(page).locator('.favorites-item').first();
+      await topic.hover();
+      await topic.getByRole('button', { name: 'Actions for Topic' }).click();
+      await topic.getByRole('menuitem', { name: 'Move to group…' }).click();
+      await topic.getByRole('menuitemradio', { name: 'Framework' }).click();
+
+      await expect(view(page).locator('.favorites-toast')).toHaveCount(0);
+      await expect(view(page).locator('.favorites-group-name')).toHaveText(['Framework']);
+      await expect(view(page).locator('.favorites-link')).toHaveText([
+        'Construct · constructs',
+        'Topic · SNS',
+      ]);
+    });
+
+    test('removing the only row of a group leaves focus inside the view', async ({ page }) => {
+      await openView(page);
+      // Construct is alone in Framework, so its heading goes with the row.
+      await view(page).locator('[data-fav-link$="constructs.Construct"]').focus();
+      await page.keyboard.press('Delete');
+      await expect(view(page).locator('.favorites-group-name')).toHaveText([
+        'Application integration',
+      ]);
+      expect(
+        await page.evaluate(() =>
+          document.activeElement?.closest('.favorites-section') !== null,
+        ),
+      ).toBe(true);
+    });
+
+    test('a move into a folded group unfolds it, so the row it moved is in sight', async ({ page }) => {
+      await openView(page, STARRED, {
+        'cdk-docs:favourites:collapsed-groups': JSON.stringify(['Framework']),
+      });
+      await expect(page.getByRole('list', { name: 'Framework' })).toBeHidden();
+
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Actions for Queue' }).click();
+      await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+      await row.getByRole('menuitemradio', { name: 'Framework' }).click();
+
+      await expect(page.getByRole('list', { name: 'Framework' })).toBeVisible();
+      await expect(view(page).locator('[data-fav-link$="aws_sqs.Queue"]')).toBeFocused();
+    });
+
+    test('a refused group name is announced and tied to the field', async ({ page }) => {
+      await openView(page);
+      await view(page).getByRole('button', { name: 'New group' }).click();
+      const field = view(page).getByRole('textbox', { name: 'New group name' });
+      await field.fill('Framework');
+      await field.press('Enter');
+
+      await expect(field).toHaveAttribute('aria-invalid', 'true');
+      await expect(field).toHaveAttribute('aria-describedby', 'favorites-name-error');
+      await expect(view(page).locator('.favorites-live')).toHaveText(
+        'A group named “Framework” already exists.',
+      );
+    });
+
+    test('Ctrl+Z in a name field leaves the Undo offer alone', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
+
+      await view(page).getByRole('button', { name: 'New group' }).click();
+      const field = view(page).getByRole('textbox', { name: 'New group name' });
+      await field.fill('Mine');
+      await field.press('Control+z');
+
+      // The favorite is still gone: the field's own undo is what that key is for.
+      await expect(view(page).locator('.favorites-link')).toHaveCount(2);
+      await expect(view(page).locator('.favorites-toast')).toBeVisible();
     });
 
     test('the row menu moves a favorite to another group, and the move survives a reload', async ({ page }) => {
