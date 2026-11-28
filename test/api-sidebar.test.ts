@@ -666,13 +666,17 @@ describe('Services view', () => {
     kind: kind as ApiSidebarNode['kind'],
     ...(level ? { level } : {}),
   });
-  const readme = (text: string, id: string): ApiSidebarNode => ({ text, link: `${D}${id}-readme` });
+  const readme = (text: string, id: string, labels?: Record<string, string>): ApiSidebarNode => ({
+    text,
+    ...(labels ? { labels } : {}),
+    link: `${D}${id}-readme`,
+  });
   const kindGroup = (text: string, items: ApiSidebarNode[]): ApiSidebarNode => ({ text, collapsed: true, kindGroup: true, items });
   // S3 in the shape of its generated chunk: four overview pages, then resource groups (a leaf per construct, the
   // L2 before its L1, kind groups after), then the `General` group holding only kind groups.
   const s3Items: ApiSidebarNode[] = [
     readme('Overview', 'aws-cdk-lib.aws_s3'),
-    readme('aws_s3_assets', 'aws-cdk-lib.aws_s3_assets'),
+    readme('aws_s3_assets', 'aws-cdk-lib.aws_s3_assets', { python: 'aws_cdk.aws_s3_assets', go: 'awss3assets' }),
     readme('aws_s3_deployment', 'aws-cdk-lib.aws_s3_deployment'),
     readme('aws_s3_notifications', 'aws-cdk-lib.aws_s3_notifications'),
     {
@@ -801,6 +805,9 @@ describe('Services view', () => {
       ['aws_s3_notifications', true, 0],
     ]);
     expect(modules.items![0].link).toBe(`${D}aws-cdk-lib.aws_s3_assets-readme`);
+    // The per-language labels travel with the row, so a language switch renames it as in the API view.
+    expect(modules.items![0].labels).toEqual({ python: 'aws_cdk.aws_s3_assets', go: 'awss3assets' });
+    expect(modules.items![1].labels).toBeUndefined();
     // Constructs: flat, resource by resource, the L2 before its L1, with their level tags; the count is the rows.
     expect(constructs.part).toBe(true);
     expect(constructs.count).toBe(4);
