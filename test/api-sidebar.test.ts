@@ -831,6 +831,42 @@ describe('Services view', () => {
     expect(types.items![3].items![3]).toMatchObject({ text: 'CfnBucket.PolicyProperty', label: 'PolicyProperty' });
   });
 
+  test('two nested types sharing a short label show their owner-qualified text in a merged kind group', () => {
+    const items: ApiSidebarNode[] = [
+      {
+        text: 'CfnLaunchTemplate',
+        collapsed: true,
+        items: [
+          type('CfnLaunchTemplate', 'aws-cdk-lib.aws_ec2.CfnLaunchTemplate', 'construct', 'L1'),
+          kindGroup('Others', [
+            type('CfnLaunchTemplate.BlockDeviceMappingProperty', 'aws-cdk-lib.aws_ec2.CfnLaunchTemplate.BlockDeviceMappingProperty', 'struct', undefined, 'BlockDeviceMappingProperty'),
+            type('CfnLaunchTemplate.EbsProperty', 'aws-cdk-lib.aws_ec2.CfnLaunchTemplate.EbsProperty', 'struct', undefined, 'EbsProperty'),
+          ]),
+        ],
+      },
+      {
+        text: 'CfnSpotFleet',
+        collapsed: true,
+        items: [
+          type('CfnSpotFleet', 'aws-cdk-lib.aws_ec2.CfnSpotFleet', 'construct', 'L1'),
+          kindGroup('Others', [
+            type('CfnSpotFleet.BlockDeviceMappingProperty', 'aws-cdk-lib.aws_ec2.CfnSpotFleet.BlockDeviceMappingProperty', 'struct', undefined, 'BlockDeviceMappingProperty'),
+          ]),
+        ],
+      },
+    ];
+    const others = serviceViewItems(items).find((p) => p.text === 'Types')!.items![0];
+    const shown = others.items!.map((r) => r.label ?? r.text);
+    // The colliding pair is qualified and sorted by what it shows; the lone short label stays short.
+    expect(shown).toEqual(['CfnLaunchTemplate.BlockDeviceMappingProperty', 'CfnSpotFleet.BlockDeviceMappingProperty', 'EbsProperty']);
+    expect(new Set(shown).size).toBe(shown.length);
+    expect(others.items![0].label).toBeUndefined();
+    expect(others.items![2]).toMatchObject({ text: 'CfnLaunchTemplate.EbsProperty', label: 'EbsProperty' });
+    // The flat filtered list reuses the same rows.
+    const flat = serviceViewItems(items, true).filter((r) => r.kind === 'struct').map((r) => r.label ?? r.text);
+    expect(flat).toEqual(shown);
+  });
+
   test('a Type index row is listed after the type rows of its kind group and counted by no count', () => {
     const index: ApiSidebarNode = { text: 'Type index', link: `${D}aws-cdk-lib.aws_x-readme` };
     const items: ApiSidebarNode[] = [

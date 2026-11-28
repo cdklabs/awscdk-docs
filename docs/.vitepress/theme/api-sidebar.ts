@@ -465,13 +465,26 @@ function mainOverview(overviews: readonly ApiSidebarNode[]): ApiSidebarNode | un
  * `Overview` (the main module's overview page), `Modules` (the other overview pages, named by module id with
  * the generated per-language labels, each counting the type rows of its module), `Constructs` (every construct,
  * flat, in the order of the generated service tree) and `Types` (one closed kind group per kind the service
- * has, merged across its resources, rows A to Z). A kind group's `Type index` row (a kind-less leaf docgen adds
+ * has, merged across its resources, rows A to Z by display label; two nested types that share a short label show
+ * their owner-qualified text). A kind group's `Type index` row (a kind-less leaf docgen adds
  * for types without a page of their own) is listed after the sorted type rows and left out of the type and
  * construct counts; while filtering, a service's count is its visible rows, this one included. With `flat` set
  * (the filter is active) the same rows come back as one flat list without parts or kind groups: overview,
  * modules, constructs, then the types kind by kind, so the filter prunes rows rather than groups.
  */
 export function serviceViewItems(items: readonly ApiSidebarNode[], flat = false): ApiSidebarNode[] {
+  // A short label names a nested type only under its owner's resource group, which a merged kind group has no
+  // more; rows that share one show their owner-qualified text instead, so two `BlockDeviceMappingProperty`
+  // rows read `CfnLaunchTemplate.BlockDeviceMappingProperty` and `CfnSpotFleet.BlockDeviceMappingProperty`.
+  const qualifyCollisions = (group: readonly ApiSidebarNode[]): ApiSidebarNode[] => {
+    const uses = new Map<string, number>();
+    for (const row of group) if (row.label !== undefined) uses.set(row.label, (uses.get(row.label) ?? 0) + 1);
+    return group.map((row) => {
+      if (row.label === undefined || uses.get(row.label)! < 2) return row;
+      const { label: _label, ...qualified } = row;
+      return qualified;
+    });
+  };
   const rows = serviceRows(items);
   const main = mainOverview(rows.overviews);
   const overview: ApiSidebarNode[] = main ? [{ text: 'Overview', link: main.link }] : [];
@@ -502,7 +515,7 @@ export function serviceViewItems(items: readonly ApiSidebarNode[], flat = false)
     ...[...rows.kinds.keys()].filter((kind) => !SERVICE_KIND_ORDER.includes(kind)),
   ];
   const kinds: ApiSidebarNode[] = kindNames.map((kind) => {
-    const all = rows.kinds.get(kind)!;
+    const all = qualifyCollisions(rows.kinds.get(kind)!);
     const typed = all.filter(isTypeRow).sort((a, b) => compareRowText(a.label ?? a.text, b.label ?? b.text));
     const leaves = [...typed, ...all.filter((row) => !isTypeRow(row))];
     return { text: kind, kindGroup: true, collapsed: true, count: typed.length, items: leaves };
