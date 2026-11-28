@@ -12,14 +12,13 @@
 <script setup lang="ts">
 import { onContentUpdated, useData, useRoute } from "vitepress";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { favoritesStore, apiPathFrom, MAX_FAVORITES } from "./favorites";
+import { favoritesStore, apiPathFrom } from "./favorites";
 
 const route = useRoute();
 const { page } = useData();
 
 const mounted = ref(false);
 const starred = ref(false);
-const capped = ref(false);
 // The mount point the star teleports into. Re-resolved on every content
 // update: SPA navigation replaces the rendered page and its elements.
 const barTarget = ref<HTMLElement | null>(null);
@@ -37,7 +36,6 @@ const isApiPage = computed(() => pagePath.value !== undefined);
 function refresh(): void {
   const path = pagePath.value;
   starred.value = path !== undefined && favoritesStore().isFavorite(path);
-  capped.value = false;
 }
 
 function resolveTarget(): void {
@@ -82,7 +80,6 @@ function toggle(): void {
     title: page.value.title || path,
   });
   starred.value = result.favorited;
-  capped.value = result.rejected;
 }
 </script>
 
@@ -96,10 +93,6 @@ function toggle(): void {
       class="favorite-star"
       :class="inRow ? 'in-row' : barTarget ? 'in-bar' : 'standalone'"
     >
-      <span v-if="capped" class="favorite-star-cap" role="status">
-        Favorites are limited to {{ MAX_FAVORITES }} pages — unstar one
-        first.
-      </span>
       <button
         type="button"
         class="favorite-star-button"
