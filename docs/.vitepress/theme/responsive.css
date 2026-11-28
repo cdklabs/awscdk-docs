@@ -127,7 +127,7 @@ pre.signature {
     min-width: 44px;
   }
 
-  /* Copy Markdown split button and its menu row: the chip row on type pages, doc-before elsewhere */
+  /* Copy Markdown split button and its menu row: doc-before; the type page chip row overrides the pills below */
   .copy-markdown-main,
   .copy-markdown-options {
     min-height: 44px;
@@ -138,7 +138,7 @@ pre.signature {
     min-height: 44px;
   }
 
-  /* Icon-only favorite star: the chip row on type pages, the breadcrumb bar on overviews */
+  /* Icon-only favorite star: the overview breadcrumb bar; the type page chip row overrides it below */
   .favorite-star-button {
     min-height: 44px;
     min-width: 44px;
