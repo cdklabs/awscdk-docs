@@ -5,14 +5,10 @@
 import { useRoute } from "vitepress";
 import { computed, nextTick, onMounted, ref } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
-import { explorerPreview, explorerView, railOpen, type ExplorerView } from "./explorer-preview";
+import { EXPLORER_VIEWS, explorerPreview, explorerView, railOpen } from "./explorer-preview";
 
-// The glyph and the text of each view, as the rail shows them.
-const VIEW_FACE: Record<ExplorerView, { glyph: string; label: string }> = {
-  services: { glyph: "glyph-services", label: "Services" },
-  api: { glyph: "glyph-api", label: "API" },
-  favorites: { glyph: "glyph-star", label: "Favorites" },
-};
+// The glyph and the text of the selected view, from the table the rail renders.
+const face = computed(() => EXPLORER_VIEWS.find((view) => view.value === explorerView.value) ?? EXPLORER_VIEWS[0]);
 
 const route = useRoute();
 const mounted = ref(false);
@@ -42,8 +38,8 @@ async function toggle(): Promise<void> {
     aria-controls="explorer-rail"
     @click="toggle"
   >
-    <span class="glyph explorer-views-icon" :class="VIEW_FACE[explorerView].glyph" aria-hidden="true" />
+    <span class="glyph explorer-views-icon" :class="face.glyph" aria-hidden="true" />
     <span class="explorer-views-label">Views</span>
-    <span class="explorer-views-current">{{ VIEW_FACE[explorerView].label }}</span>
+    <span class="explorer-views-current">{{ face.label }}</span>
   </button>
 </template>

@@ -16,6 +16,16 @@ import { ref } from 'vue';
 export type ExplorerPreview = 'on' | 'off';
 export type ExplorerView = 'services' | 'api' | 'favorites';
 
+/**
+ * The views in rail order, each with the text and the glyph class the rail and the phone Views button show. The
+ * one table both components read, so a new or renamed view changes in one place.
+ */
+export const EXPLORER_VIEWS: readonly { readonly value: ExplorerView; readonly label: string; readonly glyph: string }[] = [
+  { value: 'services', label: 'Services', glyph: 'glyph-services' },
+  { value: 'api', label: 'API', glyph: 'glyph-api' },
+  { value: 'favorites', label: 'Favorites', glyph: 'glyph-star' },
+];
+
 /** localStorage key holding the switch; also hard-coded in config.mts's bootstrap script. */
 export const EXPLORER_PREVIEW_KEY = 'cdk-docs-explorer-preview';
 
@@ -38,7 +48,7 @@ export const explorerView = ref<ExplorerView>(DEFAULT_EXPLORER_VIEW);
 export const railOpen = ref(false);
 
 export function isExplorerView(value: string | null): value is ExplorerView {
-  return value === 'services' || value === 'api' || value === 'favorites';
+  return EXPLORER_VIEWS.some((view) => view.value === value);
 }
 
 function applyAttributes(): void {

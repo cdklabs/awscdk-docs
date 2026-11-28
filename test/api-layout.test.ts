@@ -4,6 +4,7 @@ import { join, resolve } from 'path';
 import { gzipSync } from 'zlib';
 import { hashedAssetPath } from './hashed-assets.js';
 import { buildPackageSidebar, decodePackageModules } from '../docs/.vitepress/theme/api-sidebar-package.js';
+import { serviceViewItems } from '../docs/.vitepress/theme/api-sidebar.js';
 import { assetHash } from '../src/docgen/asset-hash.js';
 import { generateDocs } from '../src/docgen/index.js';
 import { renderExpandableProps, renderTypeMetadata, TypeMetadataRow } from '../src/docgen/layout.js';
@@ -108,11 +109,13 @@ describe('API page layout', () => {
       expect(rebuilt).toEqual(generated);
       expect(skeleton[0].items.every((s: any) => s.count === undefined)).toBe(true);
       expect(skeleton[1].items.every((s: any) => typeof s.count === 'number' && s.count >= 0)).toBe(true);
-      // The count is the number of construct rows the client lists once the chunk is open: for each Services
-      // section, the leaves outside kind groups (overview pages excluded) plus the leaves of a `Constructs` kind
-      // group (src/sidebar-rows.ts).
+      // The count is the number of construct rows the client lists once the chunk is open: the rows of the
+      // `Constructs` part the Services view builds from the generated chunk (none for a service without one).
+      // Docgen and the client share the rule (src/sidebar-rows.ts); this pins the two on the generated data.
       for (const section of skeleton[1].items) {
         const items = JSON.parse(readFileSync(join(publicDir, 'api-sidebar', 'chunks', section.chunk), 'utf-8'));
+        const listed = serviceViewItems(items).find((node: any) => node.text === 'Constructs')?.count ?? 0;
+        expect(section.count).toBe(listed);
         expect(section.count).toBe(constructCount(items));
       }
     });

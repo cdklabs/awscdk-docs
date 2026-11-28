@@ -12,13 +12,14 @@ import { useRoute } from "vitepress";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
 import { swallowEscapeRelease } from "./escape-release";
-import { explorerPreview, explorerView, railOpen, setExplorerView, type ExplorerView } from "./explorer-preview";
-
-const VIEWS: { value: ExplorerView; label: string; glyph: string }[] = [
-  { value: "services", label: "Services", glyph: "glyph-services" },
-  { value: "api", label: "API", glyph: "glyph-api" },
-  { value: "favorites", label: "Favorites", glyph: "glyph-star" },
-];
+import {
+  EXPLORER_VIEWS,
+  explorerPreview,
+  explorerView,
+  railOpen,
+  setExplorerView,
+  type ExplorerView,
+} from "./explorer-preview";
 
 const route = useRoute();
 const mounted = ref(false);
@@ -135,7 +136,7 @@ onBeforeUnmount(() => {
     <div v-if="railOpen" class="explorer-rail-scrim" @click="foldRail" />
     <nav id="explorer-rail" class="ExplorerRail" :class="{ open: railOpen }" aria-label="Sidebar views">
       <button
-        v-for="view in VIEWS"
+        v-for="view in EXPLORER_VIEWS"
         :key="view.value"
         type="button"
         class="explorer-rail-button"

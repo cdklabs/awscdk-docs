@@ -757,7 +757,7 @@ describe('Services view', () => {
     },
   ];
 
-  test('the construct rows follow one rule in docgen and the client: S3 lists four, the skeleton says four', () => {
+  test("S3's construct rows are its leaves outside kind groups plus a Constructs kind group; overviews and kinds are not", () => {
     const rows = serviceRows(s3Items);
     expect(rows.constructs.map((r) => r.text)).toEqual(['Asset', 'Bucket', 'CfnBucket', 'BucketDeployment']);
     expect(rows.overviews.map((r) => r.text)).toEqual(['Overview', 'aws_s3_assets', 'aws_s3_deployment', 'aws_s3_notifications']);
