@@ -49,8 +49,15 @@ describe('workflow credentials and permissions', () => {
 
   test('bucket and roles come from environment vars', () => {
     expect(s3Job).toContain('${{ vars.DOCS_BUCKET_NAME }}');
-    expect(s3Job).toContain('${{ vars.AWS_ROLE_TO_ASSUME_FOR_ACCOUNT }}');
-    expect(s3Job).toContain('${{ vars.PUBLISH_CDK_REF_DOCS_ROLE_ARN }}');
+  });
+
+  test('the publishing role is assumed via the account role (two-step chain)', () => {
+    // The publishing role trusts the account role, not the OIDC provider, so a direct assume fails.
+    const firstHop = s3Job.indexOf('${{ vars.AWS_ROLE_TO_ASSUME_FOR_ACCOUNT }}');
+    const secondHop = s3Job.indexOf('${{ vars.PUBLISH_CDK_REF_DOCS_ROLE_ARN }}');
+    expect(firstHop).toBeGreaterThan(-1);
+    expect(firstHop).toBeLessThan(secondHop);
+    expect(s3Job).toContain('role-chaining: true');
   });
 
   test('the credential and upload steps are unreachable off main', () => {
@@ -63,6 +70,28 @@ describe('workflow credentials and permissions', () => {
     expect(condition).toBeLessThan(s3Job.indexOf('aws-actions/configure-aws-credentials'));
     expect(condition).toBeLessThan(s3Job.indexOf('aws s3api put-object'));
     expect(s3Job.slice(jobStart, condition)).not.toContain('steps:');
+  });
+});
+
+describe('the site zip contract', () => {
+  // Config shape: the zip name is a contract between the build job and the publish job, read off both.
+  const content = readFileSync(releasePath, 'utf-8');
+  const s3Job = content.slice(content.indexOf('  release_docs_awscdk-docs:'));
+
+  test('the build job packages the verified site as the docs-site artifact', () => {
+    const buildJob = content.slice(content.indexOf('\n  build:\n'), content.indexOf('\n  deploy:\n'));
+    // Packaging comes after the build, which ends by verifying the merged site, so S3 never gets an unverified site.
+    expect(buildJob.indexOf('docs:build:ci')).toBeGreaterThan(-1);
+    expect(buildJob.indexOf('docs:build:ci')).toBeLessThan(
+      buildJob.indexOf('Package docs site for S3 publishing'),
+    );
+    expect(buildJob).toContain('cdk-docs-site.zip');
+    expect(buildJob).toContain('name: docs-site');
+  });
+
+  test('the published zip name matches what the build job packages', () => {
+    expect(s3Job).toContain('ARTIFACT: dist/cdk-docs-site.zip');
+    expect(s3Job).toContain('--body "$ARTIFACT"');
   });
 });
 

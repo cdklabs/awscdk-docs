@@ -87,11 +87,46 @@ describe('hosted path derivation', () => {
   });
 });
 
-describe('build scripts follow the hosted path', () => {
+describe('deploy workflow follows the hosted path', () => {
+  const workflow = readFileSync(
+    resolve(ROOT, '.github/workflows/deploy-and-release.yml'),
+    'utf-8',
+  );
+  const tasks = readFileSync(resolve(ROOT, '.projen/tasks.json'), 'utf-8');
+
+  /**
+   * The configured hosted path, read out of `.projenrc.ts` — the ONE place it
+   * is written down, and the source the workflow is generated from. Every
+   * expectation below derives from it, so moving the site is a one-line change
+   * plus `npx projen`: no assertion has to be hand-edited to follow it.
+   */
+  const sourceBase = readFileSync(resolve(ROOT, '.projenrc.ts'), 'utf-8')
+    .match(/const SITE_BASE = '([^']+)'/)?.[1];
+
+  /**
+   * The base the deployed build actually sets, read back out of the workflow.
+   * It must match the source: a workflow left unregenerated after SITE_BASE
+   * moved fails only at deploy time.
+   */
+  const declaredBases = [...workflow.matchAll(/DOCS_BASE: (\S+)/g)].map((m) => m[1]);
+
+  // Shape, not value: an absolute path with a trailing slash and at least one
+  // segment. A base pasted in without its slashes would corrupt every derived
+  // directory (`docs/.vitepress/distcdk/…`), and a root base would defeat the
+  // nesting this whole change exists for.
+  test('the configured hosted path is a non-root, slash-delimited base', () => {
+    expect(sourceBase).toMatch(/^\/.+\/$/);
+  });
+
+  test('the build job is told the configured hosted path', () => {
+    expect(declaredBases).toEqual([sourceBase]);
+  });
+
   // The sharded build and the verifier derive the site directory from DOCS_BASE
   // instead of a literal, so changing the hosted path in one place cannot leave
   // a step pointing at the old directory.
   test('merging, indexing and verification all use the derived site directory', () => {
+    expect(workflow).toContain('npx projen docs:build:ci');
     const shardBuild = readFileSync(resolve(ROOT, 'scripts/local-shard-build.sh'), 'utf-8');
     expect(shardBuild).toContain('REL_DIST="$(node -p "require(\'./scripts/site-paths.cjs\').distDir()")"');
     expect(shardBuild).toContain('npx pagefind --site "$REL_DIST"');
@@ -106,6 +141,18 @@ describe('build scripts follow the hosted path', () => {
   test('site verification refuses an artifact root with anything beside the hosted tree', () => {
     const verifySite = readFileSync(resolve(ROOT, 'scripts/verify-site.sh'), 'utf-8');
     expect(verifySite).toContain('[ "$(ls -A "$DIST_ROOT")" = "$ROOT_ENTRY" ] ||');
+  });
+
+  // The zip takes the WHOLE tree: that is what carries the hosted path into
+  // the artifact, and what makes the published zip contain one top-level
+  // directory instead of ~14 loose entries.
+  test('the S3 zip is packaged from the dist root', () => {
+    expect(workflow).toContain(`bash scripts/package-site.sh ${sitePaths.DIST_ROOT} `);
+  });
+
+  test('docs:merge derives the site directory instead of hardcoding the flat dist', () => {
+    expect(tasks).toContain('scripts/site-paths.cjs');
+    expect(tasks).not.toContain('merge-shards.cjs docs/.vitepress/dist');
   });
 
   test('the shard verifier looks in the site directory, the preview server at the tree root', () => {
