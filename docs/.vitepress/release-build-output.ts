@@ -17,7 +17,7 @@ export const KEPT_OUTPUT_FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 /** Drop every field of a written chunk or asset that VitePress does not read again, in place. */
-export function releaseOutput(bundle: Rollup.OutputBundle): void {
+function releaseOutput(bundle: Rollup.OutputBundle): void {
   for (const file of Object.values(bundle)) {
     const record = file as unknown as Record<string, unknown>;
     for (const key of Object.keys(record)) {

@@ -11,10 +11,10 @@ import { assertValidVersion, VERSION_PARSE_PATTERN } from './version-format.js';
 export const CDK_DIST_DIR_ENV = 'CDK_DIST_DIR';
 
 /** File naming the candidate, at the dist root. */
-export const BUILD_JSON_FILE = 'build.json';
+const BUILD_JSON_FILE = 'build.json';
 
 /** Subdirectory holding the npm tarballs. */
-export const DIST_JS_DIR = 'js';
+const DIST_JS_DIR = 'js';
 
 /** Documented at its own npm range: it releases independently of aws-cdk. */
 export const DIST_EXCLUDED_MODULES = ['constructs'];

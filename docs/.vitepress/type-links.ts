@@ -73,7 +73,7 @@ export function isFieldNameScope(scopes: readonly string[], following: string): 
 }
 
 /** A token part that must never carry a type link: literal text or a field name. */
-export function isNolinkScope(scopes: readonly string[], following: string): boolean {
+function isNolinkScope(scopes: readonly string[], following: string): boolean {
   return isLiteralScope(scopes) || isFieldNameScope(scopes, following);
 }
 

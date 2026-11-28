@@ -4,7 +4,7 @@
 import { execFileSync } from "node:child_process";
 
 /** The router's fallback fetch target, exactly as VitePress emits it in `client/app/router.js`. */
-export const HASHMAP_FETCH = "siteDataRef.value.base + 'hashmap.json'";
+const HASHMAP_FETCH = "siteDataRef.value.base + 'hashmap.json'";
 
 const ROUTER_MODULE = /[\\/]vitepress[\\/]dist[\\/]client[\\/]app[\\/]router\.js$/;
 const BUILD_ID = /^[A-Za-z0-9._-]{1,64}$/;

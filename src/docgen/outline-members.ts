@@ -78,7 +78,7 @@ export type OutlineMember =
 export type OutlineMembers = Readonly<Record<string, readonly OutlineMember[]>>;
 
 /** Frontmatter key the theme's outline component reads. */
-export const OUTLINE_MEMBERS_KEY = 'outlineMembers';
+const OUTLINE_MEMBERS_KEY = 'outlineMembers';
 
 /** The fixed-anchor sections whose rows the outline lists: the type's own properties and its methods. */
 const OUTLINE_SECTIONS: ReadonlySet<string> = new Set([SECTION_ANCHORS.properties, SECTION_ANCHORS.methods]);

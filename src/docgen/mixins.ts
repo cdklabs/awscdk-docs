@@ -46,7 +46,7 @@ const MIXIN_MARKER_NAME = 'IMixin';
  * assemblies. Resolved at build time rather than hard-coded so the rule
  * follows the marker wherever it lives (currently `constructs.IMixin`).
  */
-export function resolveMixinMarkerFqns(index: TypeIndex): Set<string> {
+function resolveMixinMarkerFqns(index: TypeIndex): Set<string> {
   const markers = new Set<string>();
   for (const { type } of index.values()) {
     if (spec.isInterfaceType(type) && !type.datatype && type.name === MIXIN_MARKER_NAME) {
@@ -164,7 +164,7 @@ export function buildMixinClassIndex(index: TypeIndex, context?: MixinRuleContex
  * Takes no closure resolver: the lineage helper it delegates to holds the per-index resolver, so a caller cannot
  * pass a resolver built against a different index.
  */
-export function buildImplementorsIndex(index: TypeIndex): Map<string, Set<string>> {
+function buildImplementorsIndex(index: TypeIndex): Map<string, Set<string>> {
   const implementors = new Map<string, Set<string>>();
   for (const { type } of index.values()) {
     if (!spec.isClassType(type)) {

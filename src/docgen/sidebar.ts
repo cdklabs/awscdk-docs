@@ -147,7 +147,7 @@ export const FRAMEWORK_SECTION = 'Framework';
 export const SERVICES_SECTION = 'Services';
 
 /** Service-level group for types not tied to a single resource. */
-export const GENERAL_GROUP = 'General';
+const GENERAL_GROUP = 'General';
 
 /** Assemblies surfaced as the dedicated `constructs` section. */
 const CONSTRUCTS_ASSEMBLIES = new Set(['constructs']);

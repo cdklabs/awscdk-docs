@@ -1018,7 +1018,7 @@ function renderTypePage(
  * Keyed on the package, not the type: a type marked experimental inside a stable package keeps its metadata row
  * and gets no banner, because the banner states a fact about the package the page belongs to.
  */
-export function renderExperimentalBanner(assembly: spec.Assembly): string[] {
+function renderExperimentalBanner(assembly: spec.Assembly): string[] {
   if (assembly.docs?.stability !== 'experimental') {
     return [];
   }
@@ -1037,7 +1037,7 @@ export function renderExperimentalBanner(assembly: spec.Assembly): string[] {
  * warning container and add the API-stability caveat. Emitted as a VitePress custom container — markdown-it syntax,
  * so no raw-HTML/Vue-compile concerns in the sharded build.
  */
-export function renderSeparateInstallAlert(assembly: spec.Assembly): string[] {
+function renderSeparateInstallAlert(assembly: spec.Assembly): string[] {
   if (assembly.name === 'aws-cdk-lib') {
     return [];
   }
@@ -1555,7 +1555,7 @@ export function closeDanglingFence(markdown: string): string {
  * blank lines that follow it, ending at the first line that is neither (usually the next `##` heading), so it can
  * never eat real prose.
  */
-export function stripInlineToc(markdown: string): string {
+function stripInlineToc(markdown: string): string {
   return tokenizeFences(markdown)
     .map((span) => {
       if (span.kind === 'code') return span.text;

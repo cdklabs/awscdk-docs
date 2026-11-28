@@ -4,7 +4,7 @@ import type { HeadConfig } from "vitepress";
 export const SITE_OVERRIDES_FILE = "site-overrides.css";
 
 /** Served path of the override stylesheet under the site base. */
-export function siteOverridesHref(base: string): string {
+function siteOverridesHref(base: string): string {
   return `${base}${SITE_OVERRIDES_FILE}`;
 }
 

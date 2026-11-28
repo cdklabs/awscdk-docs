@@ -37,13 +37,6 @@ export const FENCE_LANG: Record<Language, string> = {
   go: 'go',
 };
 
-/**
- * URL prefix of the canonical page tree. The Model B rendering model embeds every enabled language's variants in
- * one page under the `/v2/docs/…` tree, so no language ever appears in a path and the display language is
- * selected client-side (`?lang=`). It is the single declaration of that prefix and has no current readers.
- */
-export const CANONICAL_URL_PREFIX: string = DEFAULT_LANGUAGE;
-
 // ---------------------------------------------------------------------------
 // String utilities
 // ---------------------------------------------------------------------------

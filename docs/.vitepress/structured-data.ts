@@ -69,7 +69,7 @@ export function structuredDataHead(
  * JSON for an HTML script element: `<`, `>`, `&`, U+2028 and U+2029 are written as JSON `\uXXXX` escapes, so the
  * text parses to the same object and cannot close the element.
  */
-export function scriptJson(value: unknown): string {
+function scriptJson(value: unknown): string {
   return JSON.stringify(value).replace(
     /[<>&\u2028\u2029]/g,
     (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
