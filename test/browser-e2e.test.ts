@@ -98,9 +98,13 @@ describe('browser e2e suite wiring', () => {
     });
 
     test('determinism settings stay pinned', () => {
-      expect(config).toMatch(/workers: process\.env\.CI \? '25%' : undefined/);
       expect(config).toMatch(/fullyParallel: false/);
       expect(config).toMatch(/forbidOnly: !!process\.env\.CI/);
+    });
+
+    test('CI runs a fixed number of workers', () => {
+      // A fixed count keeps the CPU headroom per worker that the suite was proven stable with.
+      expect(config).toMatch(/workers: process\.env\.CI \? 8 : undefined/);
     });
   });
 

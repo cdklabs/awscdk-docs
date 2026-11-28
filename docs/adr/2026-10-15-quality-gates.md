@@ -74,17 +74,19 @@ different ports (`ERR_CONNECTION_REFUSED`). No spec may fall back to a hardcoded
 server URL — a fallback would resolve against some other server instead of failing.
 The load-bearing config fields (port strategy, reuse flag, agreement between
 reserved port and server command, absence of hardcoded spec URLs, determinism
-settings) are pinned by a unit test, each mutation-proved to fail when flipped.
+settings, CI worker count) are pinned by a unit test, each mutation-proved to fail when flipped.
 `e2e-serve.cjs` keeps a `4173` default for bare manual invocation; the suite always
 passes an explicit port.
 
 **Spec files run in parallel; tests within a file run in order.** Every test gets its
 own browser context, so localStorage and other page state never cross tests, and the
 one static server answers parallel workers without shared state. `fullyParallel` stays
-off so tests in one file keep their order. On CI the worker count is a share of the
-runner's cores rather than a fixed number, leaving each worker CPU headroom: some specs
-race a deliberately delayed fetch against a fixed assertion timeout and fail when
-workers starve each other of CPU. Locally Playwright's default worker count applies.
+off so tests in one file keep their order. The `docs:a11y` gate shares the config and
+runs the same way. On CI the worker count is a fixed number rather than a share of
+`os.cpus()`, which on the CodeBuild runner reports the host's cores, not the runner's.
+The number leaves each worker CPU headroom: some specs race a deliberately delayed
+fetch against a fixed assertion timeout and fail when workers starve each other of
+CPU. Locally Playwright's default worker count applies.
 
 ### Accessibility audit gate (`docs:a11y`)
 
