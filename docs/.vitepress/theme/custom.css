@@ -66,6 +66,12 @@
     rgba(15, 20, 26, 0.35) 50%
   );
   --vp-home-hero-image-filter: blur(44px);
+
+  /* Favorites view. `--fv-sub` carries the counts, service names, carets and
+     helper text at 8.76:1 on the sidebar; `--fv-edge` bounds the menus, the
+     toast and the name fields at 4.58:1 or more on their own backgrounds. */
+  --fv-sub: #424650;
+  --fv-edge: #656871;
 }
 
 /* ---------- Dark mode ---------- */
@@ -109,4 +115,9 @@
   --vp-button-brand-active-border: transparent;
 
   --vp-home-hero-name-background: linear-gradient(120deg, #ffb84d 30%, #ff9900);
+
+  /* Shadowed, or the light values win here too and the muted text in the
+     Favorites view goes dark on dark. 8.59:1 and 4.7:1 in this scheme. */
+  --fv-sub: #b0b0b8;
+  --fv-edge: #8c8c94;
 }
