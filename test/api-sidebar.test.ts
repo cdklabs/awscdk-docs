@@ -817,6 +817,24 @@ describe('Services view', () => {
     expect(types.items![3].items![3]).toMatchObject({ text: 'CfnBucket.PolicyProperty', label: 'PolicyProperty' });
   });
 
+  test('a Type index row is listed after the type rows of its kind group and counted by no count', () => {
+    const index: ApiSidebarNode = { text: 'Type index', link: `${D}aws-cdk-lib.aws_x-readme` };
+    const items: ApiSidebarNode[] = [
+      readme('Overview', 'aws-cdk-lib.aws_x'),
+      readme('aws_x_extra', 'aws-cdk-lib.aws_x_extra'),
+      type('Thing', 'aws-cdk-lib.aws_x.Thing', 'construct', 'L2'),
+      kindGroup('Others', [type('ZProps', 'aws-cdk-lib.aws_x.ZProps', 'struct'), index, type('AProps', 'aws-cdk-lib.aws_x_extra.AProps', 'struct')]),
+    ];
+    const parts = serviceViewItems(items);
+    const others = parts.find((n) => n.text === 'Types')!.items![0];
+    expect(others.items!.map((r) => r.text)).toEqual(['AProps', 'ZProps', 'Type index']);
+    expect(others.count).toBe(2);
+    expect(parts.find((n) => n.text === 'Types')!.count).toBe(2);
+    // The index row is no type page of any module either.
+    expect(parts.find((n) => n.text === 'Modules')!.items![0].count).toBe(1);
+    expect(serviceViewItems(items, true).map((n) => n.text)).toEqual(['Overview', 'aws_x_extra', 'Thing', 'AProps', 'ZProps', 'Type index']);
+  });
+
   test('a kind group the fixed order does not know follows the known ones, so no row is dropped', () => {
     const items: ApiSidebarNode[] = [
       type('Thing', 'aws-cdk-lib.aws_x.Thing', 'construct', 'L2'),

@@ -27,7 +27,11 @@ export interface ServiceRows<T extends SidebarRowNode> {
   readonly overviews: T[];
   /** Construct rows: every leaf outside a kind group that is not an overview, resource by resource in tree order. */
   readonly constructs: T[];
-  /** Supporting types by kind group name (`Mixins`, `Others`, ...), merged across the service's resources. */
+  /**
+   * Supporting types by kind group name (`Mixins`, `Others`, ...), merged across the service's resources. A kind
+   * group's leaves include docgen's kind-less `Type index` row for types without a page of their own; callers
+   * that count types tell it apart by its missing `kind`.
+   */
   readonly kinds: Map<string, T[]>;
 }
 
