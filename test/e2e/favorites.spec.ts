@@ -185,7 +185,7 @@ test.describe('favorite pages', () => {
     await expect(page.locator('.favorite-star')).not.toHaveClass(/in-row/);
   });
 
-  test('the star keeps a 44px target on a narrow viewport', async ({
+  test('the star keeps a 44px-tall target on a narrow viewport', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 700 });

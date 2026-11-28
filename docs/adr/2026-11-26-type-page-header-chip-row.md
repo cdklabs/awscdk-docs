@@ -77,11 +77,12 @@ divider.
 **Both chip edges are `currentColor`.** The edge is then the ink, so whatever
 clears a chip's label against its fill clears its edge against that fill too,
 and the edge needs no tuning pass of its own. Every chip's ink/fill pair is
-pinned by hex: the eight per-kind pairs in the palette, the three stability
+pinned by hex: the eight per-kind pairs in the palette, the four stability
 pairs, and the neutral pair a plain class or a level-less construct takes. The
 stability pairs take the conventional tones for what they say, amber for
-experimental, green for stable, red for deprecated, drawn from the same palette
-the kind hues come from. Amber is L1's pair in both schemes, and green shares
+experimental, green for stable, red for deprecated, and a neutral gray for
+external, which signals no level, drawn from the same palette the kind hues
+come from. Amber is L1's pair in both schemes, and green shares
 L3's fill in both, with L3's ink as well in dark mode, so an L1 or an L3 page
 can show two chips in one tone; the label and the fixed order tell them apart,
 and picking a second amber for the sake of difference would cost the convention
@@ -100,11 +101,14 @@ component mounts first. Both carry a 2px `--vp-c-brand-1` edge, replacing
 hairlines that were not visible. Below 960px the pills keep their 32px height
 rather than growing to the 44px touch floor: three 44px controls with a 2px
 edge and a bold label outweighed the title above them. The edge thins to 1.5px
-and the label to 600, and each pill reaches 44px through a transparent overlay
-outside its painted box, the way the linking stability chip does. An API page
-with no chip row — a module or submodule overview — keeps the placements it
-had: the star in the breadcrumb bar's `breadcrumb-fav`, Copy Markdown in the
-`doc-before` slot, both at the 44px box on phones.
+and the label to 600, and each pill reaches 44px tall through a transparent
+overlay outside its painted box, the way the linking stability chip does. The
+overlay adds height only: Copy Markdown keeps its own width floor, and ▾ and the
+star stay 32px wide, above the 24px minimum target size but below a 44×44 box,
+with the 8px row gap keeping the areas apart. An API page with no chip row — a
+module or submodule overview — keeps the placements it had: the star in the
+breadcrumb bar's `breadcrumb-fav`, Copy Markdown in the `doc-before` slot, both
+at the 44px box on phones.
 
 **The breadcrumb becomes plain text with drawn separators.** Body typeface,
 14px, no fill and no box. The real `.` joins stay in the DOM wrapped in a

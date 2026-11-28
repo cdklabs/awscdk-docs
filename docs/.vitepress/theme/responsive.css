@@ -146,11 +146,13 @@ pre.signature {
 
   /* On the type page row the three pills keep their desktop 32px, with a
      thinner edge and a lighter label, so the actions line stays quieter than
-     the title. They reach 44px the way the linking chip does: an overlay
+     the title. They reach 44px tall the way the linking chip does: an overlay
      outside the painted box. The inset is measured from the padding box, 29px
      inside a 1.5px edge, so 7.5px above and below reaches 44px; 0 to the sides
-     keeps the areas apart across the row's 8px gap. The same pills on guide
-     pages and the overview breadcrumb bar keep the 44px boxes above. */
+     keeps the areas apart across the row's 8px gap, so the options and star
+     targets are 32px wide, above the 24px minimum but not a 44x44 box. The
+     same pills on guide pages and the overview breadcrumb bar keep the 44px
+     boxes above. */
   .vp-doc .type-actions .copy-markdown-main,
   .vp-doc .type-actions .copy-markdown-options,
   .vp-doc .type-actions .favorite-star-button {
