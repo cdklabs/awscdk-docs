@@ -299,14 +299,15 @@ html[data-explorer-preview="on"] .favorites-empty {
   color: inherit;
 }
 
-/* Part sub-headings (Modules, Constructs, Types): not controls, so no hover and no caret; indented like the
-   group rows at their depth. The count follows the name at the regular weight. */
+/* Part sub-headings (Modules, Constructs, Types): not controls, so no hover and no caret; their left edge is the
+   indent of their depth (14px at the default density), so the text starts under the caret of the rows below.
+   The count follows the name at the regular weight. */
 .api-sidebar-part-title {
   display: flex;
   align-items: baseline;
   margin: 0;
   padding: 8px 4px 2px;
-  padding-left: calc(max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent) + 4px);
+  padding-left: calc(max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent));
   font-size: 12px;
   font-weight: 700;
   line-height: 18px;
@@ -326,7 +327,9 @@ html[data-explorer-preview="on"] .favorites-empty {
 }
 
 /* A construct row without a level tag keeps the tag's space (22px minimum tag width plus its 6px gap), so every
-   name in the Constructs list starts at the same x. */
-.api-sidebar-part[data-part="Constructs"] .api-sidebar-link > .api-sidebar-name:first-child {
+   name in the Constructs list starts at the same x. The filtered list is one flat list of rows with and without
+   tags, so there every untagged row keeps the space too. */
+.api-sidebar-part[data-part="Constructs"] .api-sidebar-link > .api-sidebar-name:first-child,
+.services-view.filtering .api-sidebar-link > .api-sidebar-name:first-child {
   margin-left: 28px;
 }

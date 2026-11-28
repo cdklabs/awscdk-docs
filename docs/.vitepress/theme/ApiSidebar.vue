@@ -700,7 +700,7 @@ watch(activePath, (next, prev) => {
 </script>
 
 <template>
-  <div v-if="isApi" ref="rootEl" class="api-sidebar" :class="{ 'services-view': servicesView }">
+  <div v-if="isApi" ref="rootEl" class="api-sidebar" :class="{ 'services-view': servicesView, filtering }">
     <p v-if="status === 'loading' || status === 'idle'" class="api-sidebar-status">
       Loading API index…
     </p>

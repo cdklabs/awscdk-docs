@@ -774,6 +774,7 @@ test.describe('explorer preview Services view', () => {
     expect(sub).toBe('#424650');
     await expect(constructs.locator('.api-sidebar-part-title')).toHaveCSS('color', 'rgb(66, 70, 80)');
     await expect(constructs.locator('.api-sidebar-part-title')).toHaveCSS('font-size', '12px');
+    await expect(constructs.locator('.api-sidebar-part-title')).toHaveCSS('padding-left', '14px');
     await expect(serviceRow(page, 'SQS').locator('.api-sidebar-text')).toHaveCSS('color', 'rgb(15, 20, 26)');
     // Closing a service hides its rows. Opening another and reloading keeps it open: the choice is stored
     // (the active page's own service re-opens on load, as the API view reveals the page).
@@ -906,9 +907,12 @@ test.describe('explorer preview Services view', () => {
     await expect(serviceRow(page, 'SQS')).toHaveAccessibleName(`SQS, ${matches} ${matches === 1 ? 'match' : 'matches'}`);
 
     // A service whose name matches keeps every row (Overview included), constructs before types; services whose
-    // rows merely mention SQS keep only those rows.
+    // rows merely mention SQS keep only those rows. In the flat list every name starts at the same x, tagged or not.
     await filter.fill('sqs');
     await expect(rows).toHaveCount(1 + sqsConstructs + sqsTypes);
+    const taggedX = (await rows.filter({ has: page.locator('.api-sidebar-level') }).first().locator('.api-sidebar-name').boundingBox())!.x;
+    const untaggedX = (await rows.filter({ hasNot: page.locator('.api-sidebar-level') }).first().locator('.api-sidebar-name').boundingBox())!.x;
+    expect(untaggedX).toBeCloseTo(taggedX, 0);
     await expect(sqs.getByRole('link', { name: 'Overview' })).toBeVisible();
     const texts = await rows.locator('.api-sidebar-name').allTextContents();
     expect(texts.indexOf('Queue')).toBeLessThan(texts.indexOf('CfnQueue'));
