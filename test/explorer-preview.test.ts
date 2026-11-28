@@ -1,5 +1,3 @@
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { jest } from '@jest/globals';
 
 // Explorer preview state module: the switch and the selected view, stored in localStorage and mirrored
@@ -57,7 +55,7 @@ describe('explorer preview state', () => {
     expect(attributes).toEqual({ 'data-explorer-preview': 'on', 'data-explorer-view': 'favorites' });
   });
 
-  test('a stored services view is read on init, survives a reload through the head script, and selects', async () => {
+  test('a stored services view is read on init and selects', async () => {
     store['cdk-docs-explorer-preview'] = 'on';
     store['cdk-docs-explorer-view'] = 'services';
     const mod = await import('../docs/.vitepress/theme/explorer-preview.js');
@@ -69,12 +67,8 @@ describe('explorer preview state', () => {
     mod.setExplorerView('services');
     expect(store['cdk-docs-explorer-view']).toBe('services');
     expect(attributes['data-explorer-view']).toBe('services');
-    // The pre-hydration script in config.mts repeats the allowed values, so a reload with the Services view
-    // stored paints it first and never flashes the API view. It accepts exactly the three views.
-    const config = readFileSync(resolve(process.cwd(), 'docs/.vitepress/config.mts'), 'utf8');
-    const script = config.match(/`;\(function \(\) \{ try \{ if \(localStorage\.getItem\("cdk-docs-explorer-preview"\)[^`]*`/)?.[0];
-    expect(script).toBeDefined();
-    expect(script).toContain('v === "favorites" || v === "services" ? v : "api"');
+    // The pre-hydration script in config.mts repeats the allowed values; test/e2e/explorer-preview.spec.ts
+    // checks the attribute it sets before any bundle runs.
   });
 
   test('unknown stored values fall back to off and the API view', async () => {

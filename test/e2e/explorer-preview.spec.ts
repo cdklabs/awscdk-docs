@@ -725,12 +725,22 @@ test.describe('explorer preview Services view', () => {
     expect(texts.indexOf('Queue')).toBeLessThan(texts.indexOf('CfnQueue'));
     await expect(sqs.getByRole('link', { name: 'Queue (L2 construct)' })).toHaveAttribute('aria-current', 'page');
     await expect(sqs.getByRole('link', { name: 'Queue (L2 construct)' }).locator('.api-sidebar-level')).toHaveAttribute('data-level', 'L2');
-    const tagged = await sqs.getByRole('link', { name: 'Queue (L2 construct)' }).locator('.api-sidebar-name').boundingBox();
-    const untagged = rows.filter({ hasNot: page.locator('.api-sidebar-level') });
-    if (await untagged.count()) {
-      const box = await untagged.first().locator('.api-sidebar-name').boundingBox();
-      expect(box!.x).toBeCloseTo(tagged!.x, 0);
-    }
+    // Every SQS construct is tagged; S3 has untagged ones (Asset, BucketDeployment), whose names start at the
+    // same x as the tagged names: the row keeps the tag's 28px.
+    await serviceRow(page, 'S3').scrollIntoViewIfNeeded();
+    await serviceRow(page, 'S3').click();
+    const s3Rows = serviceItem(page, 'S3').locator('.api-sidebar-part[data-part="Constructs"]').getByRole('link');
+    const untagged = s3Rows.filter({ hasNot: page.locator('.api-sidebar-level') });
+    const taggedS3 = s3Rows.filter({ has: page.locator('.api-sidebar-level') });
+    // The chunk is fetched on open; the rows follow.
+    await expect(untagged.first()).toBeVisible();
+    expect(await untagged.count()).toBeGreaterThan(0);
+    expect(await taggedS3.count()).toBeGreaterThan(0);
+    const taggedBox = (await taggedS3.first().locator('.api-sidebar-name').boundingBox())!;
+    const untaggedBox = (await untagged.first().locator('.api-sidebar-name').boundingBox())!;
+    expect(untaggedBox.x).toBeCloseTo(taggedBox.x, 0);
+    await serviceRow(page, 'S3').click();
+    await serviceRow(page, 'SQS').scrollIntoViewIfNeeded();
     // Types: closed kind groups with counts, in the fixed order, opening to a flat A to Z list.
     const types = sqs.locator('.api-sidebar-part[data-part="Types"]');
     const kinds = types.locator('[data-kind-group] > .api-sidebar-group');
@@ -813,8 +823,20 @@ test.describe('explorer preview Services view', () => {
     const tipBox = (await tip.boundingBox())!;
     expect(tipBox.y - (button.y + button.height)).toBeCloseTo(4, 0);
     expect(tipBox.x + tipBox.width).toBeCloseTo(button.x + button.width, 0);
+    // The pointer can cross the 4px gap onto the tooltip without hiding it (WCAG 1.4.13).
+    await page.mouse.move(tipBox.x + tipBox.width / 2, tipBox.y + 1);
+    await page.mouse.move(tipBox.x + tipBox.width / 2, tipBox.y + tipBox.height / 2);
+    await expect(tip).toBeVisible();
     await page.mouse.move(0, 0);
     await expect(tip).toBeHidden();
+    // Hover with focus elsewhere: Escape still dismisses it.
+    await page.getByPlaceholder('Filter navigation…').focus();
+    await locate(page).hover();
+    await expect(tip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tip).toBeHidden();
+    await expect(page.getByPlaceholder('Filter navigation…')).toBeFocused();
+    await page.mouse.move(0, 0);
     await locate(page).focus();
     await expect(tip).toBeVisible();
     await page.keyboard.press('Escape');
@@ -892,15 +914,15 @@ test.describe('explorer preview Services view', () => {
   test('the stored Services view survives a reload with no flash of another view', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
     await expect(page.locator('html')).toHaveAttribute('data-explorer-view', 'services');
-    const seen = await page.evaluate(() => document.documentElement.getAttribute('data-explorer-view'));
-    expect(seen).toBe('services');
     await expect(rail(page).getByRole('button', { name: 'Services' })).toHaveAttribute('aria-pressed', 'true');
-    await page.reload();
-    await dismissConsent(page);
-    // The head script sets the attribute before the app hydrates, so it is already `services` at first paint.
-    const first = await page.evaluate(() => document.documentElement.getAttribute('data-explorer-view'));
-    expect(first).toBe('services');
     await expect(page.locator('.api-sidebar.services-view')).toBeVisible();
+    // Before first paint only the inline head script in config.mts has run. With every script bundle blocked
+    // the app never starts, so the attribute can only have come from that script.
+    await page.route('**/*.js', (route) => route.abort());
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-preview', 'on');
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-view', 'services');
+    expect(await page.evaluate(() => document.querySelector('.ExplorerRail'))).toBeNull();
   });
 });
 

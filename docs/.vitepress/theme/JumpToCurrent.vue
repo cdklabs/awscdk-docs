@@ -3,10 +3,11 @@
 //
 // In the Explorer's Services view a page that is in no service (a framework or `constructs` page) has nothing to
 // locate: the control stays in place and focusable but is dimmed (`aria-disabled`, not `disabled`, so keyboard
-// focus still reaches it), activation does nothing, and a tooltip says why. The tooltip shows on hover and on
-// keyboard focus and on activation, hides on Escape and on blur, and on a touch screen it shows on tap and hides
-// on the next tap elsewhere. It is always in the DOM while the control is dimmed, so `aria-describedby` has a
-// target.
+// focus still reaches it), activation does nothing, and a tooltip says why. The tooltip shows on hover, on
+// keyboard focus and on activation; it stays while the pointer is over the control or the tooltip itself (the
+// hover handlers sit on the root that holds both, and the tooltip bridges the gap to the control), and it hides
+// on Escape from anywhere, on blur, on leaving, and on a touch screen on the next tap elsewhere (WCAG 1.4.13).
+// It is always in the DOM while the control is dimmed, so `aria-describedby` has a target.
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useData, useRoute } from "vitepress";
 import { API_ROOT } from "../../../src/site-routes";
@@ -35,7 +36,9 @@ function activate(): void {
   tipOpen.value = true;
 }
 
-function onKeydown(event: KeyboardEvent): void {
+// Escape hides the tooltip wherever focus is: a tooltip opened by hover while the filter has focus must be
+// dismissible without moving the pointer.
+function onDocumentKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape" && tipOpen.value) {
     tipOpen.value = false;
     event.stopPropagation();
@@ -50,12 +53,24 @@ function onDocumentPointerDown(event: PointerEvent): void {
   tipOpen.value = false;
 }
 
-onMounted(() => document.addEventListener("pointerdown", onDocumentPointerDown));
-onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPointerDown));
+onMounted(() => {
+  document.addEventListener("pointerdown", onDocumentPointerDown);
+  document.addEventListener("keydown", onDocumentKeydown);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", onDocumentPointerDown);
+  document.removeEventListener("keydown", onDocumentKeydown);
+});
 </script>
 
 <template>
-  <span v-if="show" ref="rootEl" class="sidebar-jump-current-root">
+  <span
+    v-if="show"
+    ref="rootEl"
+    class="sidebar-jump-current-root"
+    @mouseenter="tipOpen = true"
+    @mouseleave="tipOpen = false"
+  >
     <button
       type="button"
       class="sidebar-jump-current"
@@ -63,9 +78,6 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
       :aria-disabled="unavailable ? 'true' : undefined"
       :aria-describedby="unavailable ? TOOLTIP_ID : undefined"
       @click="activate"
-      @keydown="onKeydown"
-      @mouseenter="tipOpen = true"
-      @mouseleave="tipOpen = false"
       @focus="tipOpen = true"
       @blur="tipOpen = false"
     >
@@ -128,7 +140,9 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 
 /* Right-aligned under the button with a 4px gap, over the sidebar content.
    Hidden with `visibility`, not `display`, so it keeps its box for
-   `aria-describedby` and shows without reflow. */
+   `aria-describedby` and shows without reflow. Its `::before` fills the gap,
+   so the pointer can move from the control onto the tooltip without
+   leaving the root and hiding it. */
 .sidebar-jump-current-tip {
   position: absolute;
   top: calc(100% + 4px);
@@ -143,6 +157,15 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   white-space: nowrap;
   box-shadow: 0 4px 16px rgba(0, 7, 22, 0.22);
   visibility: hidden;
+}
+
+.sidebar-jump-current-tip::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  right: 0;
+  left: 0;
+  height: 4px;
 }
 
 .sidebar-jump-current-tip.open {

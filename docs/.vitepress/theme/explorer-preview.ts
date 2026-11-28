@@ -1,9 +1,9 @@
 // Explorer preview state, mirroring density.ts.
 //
 // The preview is an opt-in sidebar variant: a view rail at the sidebar's left edge with a Services view (one
-// A to Z list of AWS services), an API view (today's tree and filter) and a Favorites view. The top-bar gear stays. Every CSS rule that changes the
-// preview-off layout keys on two attributes on <html>, and the components read the `explorerPreview` ref, so a
-// reader who never opts in sees only the switch itself:
+// A to Z list of AWS services), an API view (today's tree and filter) and a Favorites view. The top-bar gear
+// stays. Every CSS rule that changes the preview-off layout keys on two attributes on <html>, and the
+// components read the `explorerPreview` ref, so a reader who never opts in sees only the switch itself:
 //
 // - `data-explorer-preview="on"` is present only while the preview is on.
 // - `data-explorer-view="services" | "api" | "favorites"` is present only while the preview is on.

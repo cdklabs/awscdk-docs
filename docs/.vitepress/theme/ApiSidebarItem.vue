@@ -48,7 +48,10 @@ const isGroup = computed(
 // rows, so it follows the pruned items rather than the skeleton.
 const count = computed(() => {
   if (!ctx.servicesView.value || props.node.count === undefined) return undefined;
-  if (ctx.filtering.value && isGroup.value && !props.node.kindGroup) return props.node.items?.length ?? 0;
+  if (ctx.filtering.value && isGroup.value && !props.node.kindGroup) {
+    // A name match keeps a service whose chunk is still in flight; no count until its rows are here.
+    return isUnloadedChunk(props.node) ? undefined : props.node.items?.length ?? 0;
+  }
   return props.node.count;
 });
 // A service row reads as one name with its count: `S3, 16 constructs`, or
