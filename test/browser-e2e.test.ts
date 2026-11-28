@@ -103,7 +103,7 @@ describe('browser e2e suite wiring', () => {
     });
 
     test('CI runs a fixed number of workers', () => {
-      // A fixed count keeps the CPU headroom per worker that the suite was proven stable with.
+      // A fixed count keeps each worker's CPU headroom independent of what the runner reports.
       expect(config).toMatch(/workers: process\.env\.CI \? 8 : undefined/);
     });
   });

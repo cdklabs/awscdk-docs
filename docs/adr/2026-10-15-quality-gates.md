@@ -82,11 +82,9 @@ passes an explicit port.
 own browser context, so localStorage and other page state never cross tests, and the
 one static server answers parallel workers without shared state. `fullyParallel` stays
 off so tests in one file keep their order. The `docs:a11y` gate shares the config and
-runs the same way. On CI the worker count is a fixed number rather than a share of
-`os.cpus()`, which on the CodeBuild runner reports the host's cores, not the runner's.
-The number leaves each worker CPU headroom: some specs race a deliberately delayed
-fetch against a fixed assertion timeout and fail when workers starve each other of
-CPU. Locally Playwright's default worker count applies.
+runs the same way. On CI the worker count is a fixed number, small enough that each
+worker keeps CPU headroom: some specs race a deliberately delayed fetch against a
+fixed assertion timeout and fail when workers starve each other of CPU. Locally Playwright's default worker count applies.
 
 ### Accessibility audit gate (`docs:a11y`)
 

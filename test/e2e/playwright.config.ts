@@ -47,8 +47,8 @@ export default defineConfig({
   timeout: 30_000,
   // Each test gets its own browser context, so localStorage never leaks across
   // tests, and spec files run in parallel workers against the one static server.
-  // Tests within a file stay sequential. CI uses a fixed count, not a share of
-  // os.cpus(), which reports the host's cores rather than the runner's.
+  // Tests within a file stay sequential. CI pins the worker count so each
+  // worker keeps CPU headroom.
   fullyParallel: false,
   workers: process.env.CI ? 8 : undefined,
   forbidOnly: !!process.env.CI,
