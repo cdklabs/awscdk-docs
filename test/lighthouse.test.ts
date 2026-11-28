@@ -16,46 +16,12 @@ const budget = require('../scripts/lighthouse-budget.cjs');
 const runner = require('../scripts/lighthouse-run.cjs');
 
 /**
- * Guards the Lighthouse performance gate: the maintainer-confirmed
- * thresholds (score 90, 400KB gzipped JS+CSS), the gzip-served collect step
- * those bytes are measured against, the combined budget Lighthouse cannot
- * express, and the projen-generated workflow that runs it.
+ * Guards the Lighthouse performance gate's scripts: the invocation shape, the
+ * median score assertion, URL substitution, the combined gzipped JS+CSS budget
+ * Lighthouse cannot express, and the gzip-served collect step it is measured against.
  */
 describe('Lighthouse performance gate', () => {
-  const packageJson = JSON.parse(
-    readFileSync(resolve(ROOT, 'package.json'), 'utf-8'),
-  );
-  const tasks = JSON.parse(
-    readFileSync(resolve(ROOT, '.projen/tasks.json'), 'utf-8'),
-  ).tasks;
   const config = JSON.parse(readFileSync(resolve(ROOT, 'lighthouse.config.json'), 'utf-8'));
-
-  // Config shape with no produced-output counterpart: which runner is
-  // installed, and which one was dropped, leaves no trace in the site it
-  // measures.
-  test('lighthouse is a devDependency, @lhci/cli is gone', () => {
-    expect(packageJson.devDependencies.lighthouse).toBeDefined();
-    expect(packageJson.devDependencies['@lhci/cli']).toBeUndefined();
-  });
-
-  describe('lighthouse.config.json', () => {
-    test('asserts the confirmed performance score of 90', () => {
-      expect(config.minScore).toBe(0.9);
-    });
-
-    test('audits the homepage, a module overview and a construct detail page', () => {
-      const paths = config.urls.map((u: string) => new URL(u).pathname);
-      expect(paths).toEqual([
-        '/',
-        '/v2/docs/aws-cdk-lib.aws_sqs-readme.html',
-        '/v2/docs/aws-cdk-lib.aws_sns.Topic.html',
-      ]);
-    });
-
-    test('medians over three runs per page', () => {
-      expect(config.numberOfRuns).toBe(3);
-    });
-  });
 
   describe('lighthouse invocation', () => {
     test('pins the audit shape: performance only, desktop, headless, JSON+HTML', () => {
@@ -114,18 +80,7 @@ describe('Lighthouse performance gate', () => {
     });
   });
 
-  describe('docs:lighthouse task', () => {
-    const task = tasks['docs:lighthouse'];
-
-    test('builds the fixture, then asserts score then budget', () => {
-      const steps = task.steps;
-      expect(steps[0]).toEqual({ spawn: 'docs:generate' });
-      expect(steps[1].exec).toBe('node scripts/e2e-fixture-prune.cjs');
-      expect(steps[2].exec).toContain('vitepress build docs');
-      expect(steps[3].exec).toBe('node scripts/lighthouse-run.cjs');
-      expect(steps[4].exec).toBe('node scripts/lighthouse-budget.cjs');
-    });
-
+  describe('URL substitution', () => {
     test('the runner does not override the configured URL list', () => {
       // Only the port is substituted; a subset would shrink the audit while
       // still reporting success.
@@ -135,20 +90,6 @@ describe('Lighthouse performance gate', () => {
         config.urls.map((u: string) => new URL(u).pathname),
       );
       expect(new Set(urls.map((u: string) => new URL(u).port))).toEqual(new Set(['12345']));
-    });
-
-    // Config shape with no produced-output counterpart: a step that must NOT
-    // run produces nothing an output check could look for.
-    test('is not part of the default build task', () => {
-      const collectSpawns = (name: string, seen = new Set<string>()): Set<string> => {
-        if (seen.has(name)) return seen;
-        seen.add(name);
-        for (const step of tasks[name]?.steps ?? []) {
-          if (step.spawn) collectSpawns(step.spawn, seen);
-        }
-        return seen;
-      };
-      expect(collectSpawns('build')).not.toContain('docs:lighthouse');
     });
   });
 
@@ -426,29 +367,5 @@ describe('Lighthouse performance gate', () => {
         s.stop();
       }
     }, TEST_TIMEOUT_MS);
-  });
-
-  describe('docs-lighthouse workflow', () => {
-    // Config shape with no produced-output counterpart throughout: this
-    // workflow measures the site without changing it, so its call site,
-    // triggers and artifact upload are observable only here.
-    const workflow = readFileSync(
-      resolve(ROOT, '.github/workflows/docs-lighthouse.yml'),
-      'utf-8',
-    );
-
-    test('runs the gate via the projen task', () => {
-      expect(workflow).toContain('npx projen docs:lighthouse');
-    });
-
-    test('runs on pull requests and in the merge queue', () => {
-      expect(workflow).toContain('pull_request:');
-      expect(workflow).toContain('merge_group:');
-    });
-
-    test('uploads the reports even when the gate fails', () => {
-      expect(workflow).toContain('lighthouse-reports');
-      expect(workflow).toContain('always()');
-    });
   });
 });

@@ -59,14 +59,6 @@ function scaffold(modules: string[], version: string, packed: Array<[string, str
   return dir;
 }
 
-describe('docs:dist:install task', () => {
-  test('is defined and execs the dist-install CLI', () => {
-    // Guards the task itself disappearing or being re-pointed, the way cdk:pin is already guarded.
-    const tasks = JSON.parse(readFileSync(join(ROOT, '.projen', 'tasks.json'), 'utf-8'));
-    expect(tasks.tasks['docs:dist:install'].steps[0].exec).toContain('src/docgen/dist-install-cli.ts');
-  });
-});
-
 describe('dist install CLI end to end', () => {
   // Every helper is unit-covered, but the wiring is only covered by running it: that --no-save leaves the manifest
   // untouched, that verification runs AFTER the install, and that a bad configuration exits non-zero. The

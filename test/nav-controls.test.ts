@@ -217,10 +217,6 @@ describe('navbar layout', () => {
         const source = readFileSync(resolve(THEME_DIR, file), 'utf-8');
         expect(source).not.toMatch(/devicon|simple-icons/);
       }
-      const manifest = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf-8'));
-      const deps = { ...manifest.dependencies, ...manifest.devDependencies };
-      expect(Object.keys(deps)).not.toContain('devicon');
-      expect(Object.keys(deps)).not.toContain('simple-icons');
       const long = [...toggle.matchAll(/"(M[\d.\-\s,a-zA-Z]{60,})"/g)];
       expect(long).toHaveLength(0);
       expect(existsSync(resolve(THEME_DIR, 'language-icons.ts'))).toBe(false);

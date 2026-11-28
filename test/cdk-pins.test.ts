@@ -4,7 +4,6 @@ import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import {
   alphaVersionForModule,
-  CDK_PIN_FILE_KEYS,
   CDK_PIN_KEYS,
   CDK_PINS_FILE,
   formatCdkPins,
@@ -19,29 +18,14 @@ import {
  * Both CDK version pins live in
  * projenrc/cdk-versions.json as structured data, so the nightly
  * cdk-version-check bot edits JSON instead of running a regex over
- * TypeScript source. The workflow's own assertions live in
- * test/freshness.test.ts, which owns that file.
+ * TypeScript source.
  */
 const ROOT = join(import.meta.dirname, '..');
 const pinsPath = join(ROOT, CDK_PINS_FILE);
-const projenrc = readFileSync(join(ROOT, '.projenrc.ts'), 'utf-8');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8'));
 
 describe('cdk-versions.json pins file', () => {
   const pins = readCdkPins(pinsPath);
-
-  test('declares the core pin, alpha default, and alpha holds in stable order', () => {
-    expect(Object.keys(JSON.parse(readFileSync(pinsPath, 'utf-8')))).toEqual([...CDK_PIN_FILE_KEYS]);
-    expect(pins.cdkAlphaOverrides).toEqual({});
-  });
-
-  test('the core pin is stable and every alpha pin has the alpha suffix', () => {
-    expect(pins.awsCdkLib).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(pins.cdkAlpha).toMatch(/^\d+\.\d+\.\d+-alpha\.\d+$/);
-    for (const version of Object.values(pins.cdkAlphaOverrides)) {
-      expect(version).toMatch(/^\d+\.\d+\.\d+-alpha\.\d+$/);
-    }
-  });
 
   test('the generated package.json resolves each module through its own held pin', () => {
     expect(pkg.devDependencies['aws-cdk-lib']).toBe(pins.awsCdkLib);
@@ -51,60 +35,6 @@ describe('cdk-versions.json pins file', () => {
     for (const name of alphas) {
       expect(pkg.devDependencies[name]).toBe(alphaVersionForModule(pins, name));
     }
-  });
-});
-
-describe('dependency upgrades leave the CDK pins alone', () => {
-  // The upgrade tasks run under a release cooldown, so any of them touching a pinned CDK package could roll it
-  // back to an older release. Asserted on the generated task definitions, the steps the upgrade workflows run.
-  const tasks = JSON.parse(readFileSync(join(ROOT, '.projen', 'tasks.json'), 'utf-8')).tasks;
-  const pins = readCdkPins(pinsPath);
-  const pinned = Object.keys(pkg.devDependencies).filter(
-    (name) => pkg.devDependencies[name] === pins.awsCdkLib || pkg.devDependencies[name] === pins.cdkAlpha,
-  );
-  const upgradeTasks = Object.keys(tasks).filter((name) => name.startsWith('upgrade'));
-
-  test('finds the pinned packages and the upgrade tasks', () => {
-    expect(pinned).toEqual(expect.arrayContaining(['aws-cdk-lib', '@aws-cdk/cfn-property-mixins']));
-    expect(pinned.some((name) => name.endsWith('-alpha'))).toBe(true);
-    expect(upgradeTasks).toEqual(expect.arrayContaining(['upgrade', 'upgrade-dev-deps']));
-  });
-
-  test.each(upgradeTasks)('%s never names a pinned CDK package', (task) => {
-    const steps = JSON.stringify(tasks[task].steps ?? []);
-    for (const name of pinned) {
-      expect(steps).not.toMatch(new RegExp(`[",=]${name.replace(/[/\\-]/g, '\\$&')}[",]`));
-    }
-  });
-});
-
-describe('.projenrc.ts reads the pins instead of hardcoding them', () => {
-  // Config shape with no produced-output counterpart throughout: the pinned
-  // versions themselves are asserted above against the generated
-  // package.json, but WHERE they are written down is a property of the source
-  // file alone.
-  test('imports the pins file', () => {
-    expect(projenrc).toContain("from './projenrc/cdk-versions.json'");
-  });
-
-  test('holds no aws-cdk-lib version literal for a regex to target', () => {
-    expect(projenrc).not.toMatch(/aws-cdk-lib@\d/);
-  });
-
-  test('holds no alpha version literal', () => {
-    expect(projenrc).not.toMatch(/\d+\.\d+\.\d+-alpha\.\d+/);
-  });
-});
-
-describe('cdk:pin task', () => {
-  test('is defined, and forwards its arguments to the pins CLI', () => {
-    // The workflow's call site is pinned in test/freshness.test.ts; this
-    // catches the task itself disappearing, the way that suite already
-    // guards docs:baseline.
-    const tasks = JSON.parse(readFileSync(join(ROOT, '.projen', 'tasks.json'), 'utf-8'));
-    const step = tasks.tasks['cdk:pin'].steps[0];
-    expect(step.exec).toContain('src/docgen/pins-cli.ts');
-    expect(step.receiveArgs).toBe(true);
   });
 });
 

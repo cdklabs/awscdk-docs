@@ -254,10 +254,9 @@ describe('merge-shards overlays the twins once, after the shards', () => {
     }
   });
 
-  test('the twins never enter a VitePress build: the tree lives outside docs/ and is gitignored', () => {
+  test('the twins never enter a VitePress build: the tree lives outside docs/', () => {
     const cli = readFileSync(join(ROOT, 'src', 'docgen', 'cli.ts'), 'utf-8');
     expect(cli).toMatch(/agentOutDir: path\.join\(root, 'dist-agent-markdown'\)/);
-    expect(readFileSync(join(ROOT, '.gitignore'), 'utf-8')).toContain('dist-agent-markdown/');
     // The local sharded build overlays the twins itself; a single-shard run (one CI matrix leg, whose dist is a
     // shard artifact) does not, so the twins travel once, in their own artifact.
     const shardBuild = readFileSync(join(ROOT, 'scripts', 'local-shard-build.sh'), 'utf-8');

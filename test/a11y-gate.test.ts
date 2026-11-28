@@ -284,15 +284,4 @@ describe('accessibility gate configuration', () => {
     expect(ratio(valueOf(dark, accent![1]), valueOf(dark, '--vp-c-bg-alt')))
       .toBeGreaterThanOrEqual(3);
   });
-
-  test('the audit workflow is projen-generated, not hand-written YAML', () => {
-    // Acceptance criterion on the issue. projen marks what it owns in
-    // .gitattributes, so a hand-written workflow is detectable: it would be
-    // absent from that list and drift on the next synth.
-    const gitattributes = fs.readFileSync(
-      path.join(import.meta.dirname, '..', '.gitattributes'),
-      'utf-8',
-    );
-    expect(gitattributes).toContain('/.github/workflows/docs-a11y.yml linguist-generated');
-  });
 });

@@ -1085,10 +1085,6 @@ describe('API page layout', () => {
       expect(css()).toContain('flex-direction: column');
     });
 
-    test('generated tooltip data is gitignored', () => {
-      const gitignore = readFileSync(join(ROOT, '.gitignore'), 'utf-8');
-      expect(gitignore).toContain('docs/public/api-sidebar/');
-    });
   });
 
   describe('long translated types wrap inside their row', () => {

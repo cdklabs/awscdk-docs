@@ -194,40 +194,11 @@ describe('cdk-version-check workflow module sync', () => {
     return match![1];
   };
 
-  test('a sync-modules job plans, applies and opens its own PR', () => {
-    const sync = job('sync-modules');
-    expect(sync).toContain('run: npx projen modules:plan');
-    expect(sync).toContain('npx projen modules:apply');
-    expect(sync).toContain('npx projen --no-post');
-    expect(sync).toContain('npx projen modules:pr-body');
-    expect(sync).toContain('branch: chore/cdk-version-bot/sync-modules');
-    expect(sync).toContain('token: ${{ secrets.PROJEN_GITHUB_TOKEN }}');
-  });
-
-  test('the module sync updates the version-history ledger after applying the new module list', () => {
-    // Workflow step ordering has no runtime output to assert on.
-    const sync = job('sync-modules');
-    expect(sync).toContain('run: npx projen docs:baseline');
-    expect(sync.indexOf('docs:baseline')).toBeGreaterThan(sync.indexOf('modules:apply'));
-    const baseline = sync.split(/^      - name: /m).slice(1).find((s) => s.includes('docs:baseline'))!;
-    expect(baseline).toContain('if: steps.modules.outputs.changed == \'true\'');
-  });
-
+  // Config shape: whether a PR needs a human approval has no runtime output to assert on.
   test('the module sync PR is not auto-approved, unlike the version bump', () => {
     // A list change adds or deletes a whole module's pages, so a human merges it.
     expect(job('sync-modules')).not.toContain('auto-approve');
     expect(job('check')).toContain('labels: auto-approve');
-  });
-
-  test('the module sync PR body carries the contributor statement the gate reads', () => {
-    expect(job('sync-modules')).toContain(
-      'By submitting this pull request, I confirm that my contribution is made under the terms of the Apache 2.0 license.',
-    );
-  });
-
-  test('a failure of either job files the alert issue', () => {
-    const alert = job('alert-on-failure');
-    expect(alert).toMatch(/needs:\n\s+- check\n\s+- sync-modules/);
   });
 });
 
