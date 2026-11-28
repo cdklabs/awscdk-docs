@@ -395,8 +395,10 @@ control is outside that test's enumerated selectors.
 
 Starred pages persist in `localStorage` under `cdk-docs:favourites` as a
 JSON array of `{ path, title }`, paths stored base-stripped and without
-`.html` so they survive base-path or clean-URL changes, capped at 20;
-corrupt or oversized data is discarded, never thrown. The store
+`.html` so they survive base-path or clean-URL changes; corrupt data is
+discarded, never thrown. The entries also carry an optional `group`, and the
+cap of 20 is gone, with the grouped Favorites view
+([favorites grouped by service](./2026-11-28-favorites-grouped-by-service.md)). The store
 (add/remove/toggle/subscribe) lives in
 `docs/.vitepress/theme/favorites.ts` with an injectable storage backend
 (dependency-free, unit-testable without a DOM). Two Vue components mount

@@ -1,0 +1,127 @@
+# Favorites Grouped by Service
+
+## Status
+
+Accepted
+
+## Context
+
+The Favorites view of the Explorer preview showed a flat list in stored order,
+capped at twenty pages. That is enough for a handful of favorites and stops
+working past a dozen: readers of the CDK reference think in services ("my
+queues", "my buckets"), so a flat list makes them read every row to find one.
+The cap made the problem smaller by refusing work rather than by solving it,
+and the refusal surfaced as a message on the page star.
+
+Grouping needs an answer to four questions, and each of them has more than one
+defensible answer:
+
+- **Where does a group come from?** Nothing in a favorite says which service it
+  belongs to. The page id carries the owning module, and the site already has
+  two places that turn a module into a service: the generated sidebar's Services
+  list, and nothing else.
+- **What happens when the reader disagrees?** A grouping that cannot be
+  overridden is a layout, not a tool. One that is only manual asks every reader
+  to do setup before the view is useful.
+- **Where does the arrangement live?** The stored favorites are read by the
+  preview-off sidebar, the page star and the search ranking, so a new shape
+  would have to be migrated in all four places at once.
+- **What is the order?** Any order that the reader cannot see the rule for reads
+  as no order at all.
+
+## Decision
+
+**A favorite's group comes from a fixed category map, and the reader's own
+placement wins over it.** The map is a checked-in file,
+`docs/.vitepress/theme/favorite-categories.json`: 24 AWS category names and one
+entry per package or submodule id. A page id's first dot-part is its package
+(the first `_` of a scoped name standing for `/`), a second part that starts
+lower case is its submodule, and the submodule entry is consulted before the
+package. A page the map does not cover goes to Ungrouped.
+
+A map rather than a heuristic, because the category of a service is a fact
+about AWS and not something a renderer can derive: `aws_sqs` is Application
+integration and `aws_s3` is Storage, and no spelling rule says so. A checked-in
+file rather than a generated one, because the categories are editorial and a
+build step cannot invent them. A unit test fails when a module docgen documents
+is in neither the map nor an explicit list of unmapped ids, so a new service
+cannot quietly land in Ungrouped.
+
+**The service name on a row comes from the sidebar skeleton, not from the map.**
+A row reads `Queue · SQS`, and that second word is the name the Explorer's own
+Services list shows for the entry that owns the page, matched by the longest
+module stem the entry lists. Reading the skeleton costs no request — the
+Explorer has already fetched and memoized it — and it means the two lists can
+never disagree about what a service is called: `EKS (legacy)` and `EKS V2` stay
+distinct, `aws-cdk-lib` names its own root types, and a page in neither list
+shows no service at all. Deriving a second name from the map's category would
+have produced `Queue · Application integration`, which answers a different
+question than the one a reader scanning for their queues is asking.
+
+**The group is stored on the favorite, in the array that already exists.**
+`cdk-docs:favourites` keeps its name and its shape, an array of
+`{ path, title }`, and gains one optional field: `group` is a string for the
+reader's group, `null` for Ungrouped, and absent for a favorite nothing has
+placed yet. An absent field is filled from the map on the next read and written
+back, so there is no migration step, nothing to version, and every other reader
+of the key — the preview-off sidebar, the page star, the search boost — keeps
+working on the fields it already reads. Unknown fields are dropped on read, as
+they were.
+
+Three new keys carry what does not belong on a favorite:
+`cdk-docs:favourites:groups` (names the reader made or renamed to, which is
+what keeps an empty group alive), `cdk-docs:favourites:aliases` (a map group
+name to the reader's name for it) and
+`cdk-docs:favourites:collapsed-groups` (the folded groups). Separate keys
+rather than one object, for the same reason the collapse flag already has its
+own: a key can be added without touching the shape of the favorites
+themselves. The spelling of `cdk-docs:favourites` and its prefixed keys stays
+as shipped, because renaming a stored key loses data rather than prose.
+
+**An alias is what makes a rename stick.** Renaming a group the map produces
+stores `Compute` -> `Servers`, so a Compute page favorited later joins
+`Servers` instead of recreating `Compute` beside it. Renaming again moves the
+alias, renaming back to the map's own name drops it, and deleting the group
+drops it too, so the next Compute page creates `Compute` again. Renaming a
+group the reader made stores no alias, because no map category points at it.
+Without the alias the reader's rename would be undone by the next page they
+starred, which reads as the view forgetting what they did.
+
+**The order is A to Z by name, Ungrouped last, rows A to Z by title.** A rule a
+reader can see beats one they have to learn: the groups are in the order of the
+map's own category list, so the view's order and the file's order are the same
+thing. Manual order is a separate feature with its own storage and its own
+interaction, and it is not in this change.
+
+**The twenty-favorite cap is gone**, with the message on the page star that
+announced it. The grouped list is the reason the cap existed, and it no longer
+needs one.
+
+## Consequences
+
+- Favorites stored before this change show up grouped on the next load, with no
+  action from the reader, and the written-back array is the only migration.
+- A favorite the reader moves stops following the map, including a move to
+  Ungrouped. That is the point: the map decides only what nothing else has.
+- Three keys hold the reader's arrangement, so clearing site data loses the
+  grouping along with the favorites. They are in this browser either way.
+- The rows depend on the sidebar skeleton for their service names. When that
+  fetch fails the rows still carry their titles and their groups; only the
+  service word is missing.
+- The category map is a file someone has to maintain. Its coverage is a test,
+  so the maintenance surfaces as a failing build rather than as rows quietly
+  piling up in Ungrouped. The map the view ships with leaves 21 documented
+  module ids uncategorized, which the test lists by name.
+- A group with no favorites in it exists only if the reader made or renamed it.
+  A map group disappears when its last favorite goes, and comes back with the
+  next page from that service.
+- The store grew from four operations to a dozen, and undo is a snapshot of the
+  three stored values rather than per-action inverse logic. A snapshot is what
+  makes "Undo" after a group delete restore the favorites, the group name and
+  the alias together, which three separate inverses would have to keep in step.
+
+This extends the favorites decision in
+docs/adr/2026-10-15-sidebar-navigation.md, which recorded the flat array, the
+cap and the collapse key, and the Favorites view in
+docs/adr/2026-11-26-explorer-preview-rail.md. Both stand except for the cap,
+which this removes.
