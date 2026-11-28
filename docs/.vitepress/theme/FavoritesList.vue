@@ -322,10 +322,9 @@ function focusAfter(path: string | undefined, group: string): void {
 
 function moveEntry(entry: FavoriteEntry, group: string | null): void {
   closeMenu();
-  // A folded target would hide the row the move is about, and focus with it.
-  favoritesStore().setGroupCollapsed(group ?? UNGROUPED, false);
+  // The store unfolds the target, so the row the move is about stays in sight.
   favoritesStore().move(entry.path, group);
-  announcement.value = `Moved ${entry.title} to ${group ?? UNGROUPED}.`;
+  announce(`Moved ${entry.title} to ${group ?? UNGROUPED}.`);
   void nextTick(() => focus(`[data-fav-link="${cssEscape(entry.path)}"]`));
 }
 
@@ -373,7 +372,7 @@ function submitName(): void {
           : "A group name is 1 to 40 characters.";
     // The message is a plain line under the field, which a screen reader
     // would otherwise never reach.
-    announcement.value = field.error;
+    announce(field.error);
     return;
   }
   if (field.mode === "rename" && field.target) {
@@ -394,6 +393,9 @@ function cancelName(): void {
   void nextTick(() => {
     if (field?.mode === "rename" && field.target) {
       focus(`[data-fav-group="${cssEscape(field.target)}"]`);
+    } else if (field?.target) {
+      // Opened from a row's menu, so focus goes back to that row's button.
+      focus(`[data-fav-actions="${cssEscape(field.target)}"]`);
     } else {
       focus(".favorites-new-group");
     }
@@ -424,8 +426,20 @@ function showToast(text: string, undo: FavoritesUndo, focusKey: string): void {
   toastLeft = TOAST_MS;
   startToastTimer();
   // The toast arrives already filled, which a live region may not announce,
-  // so the view's own polite region is what speaks it.
-  announcement.value = text;
+  // so the view's own polite region is what speaks it — and it names the way
+  // back, because the Undo button is several tab stops away.
+  announce(`${text} Undo is available, or press Ctrl+Z.`);
+}
+
+/**
+ * Speak a message in the view's polite region. Cleared first, so the same
+ * message twice over is two announcements rather than no change at all.
+ */
+function announce(message: string): void {
+  announcement.value = "";
+  void nextTick(() => {
+    announcement.value = message;
+  });
 }
 
 function dismissToast(): void {
@@ -564,21 +578,23 @@ function cssEscape(value: string): string {
         <div v-for="group in groups" :key="group.name" class="favorites-group">
           <div class="favorites-group-head">
             <template v-if="nameField && nameField.mode === 'rename' && nameField.target === group.name">
-              <input
-                class="favorites-name-input"
-                type="text"
-                aria-label="Group name"
-                maxlength="40"
-                :value="nameField.value"
-                @input="nameField.value = ($event.target as HTMLInputElement).value"
-                :aria-invalid="nameField.error ? 'true' : undefined"
-                :aria-describedby="nameField.error ? 'favorites-name-error' : undefined"
-                @keydown.enter.prevent="submitName"
-                @keydown.esc.prevent="cancelName"
-              />
-              <p v-if="nameField.error" id="favorites-name-error" class="favorites-name-error">
-                {{ nameField.error }}
-              </p>
+              <div class="favorites-name-field favorites-rename-field">
+                <input
+                  class="favorites-name-input"
+                  type="text"
+                  aria-label="Group name"
+                  maxlength="40"
+                  :value="nameField.value"
+                  :aria-invalid="nameField.error ? 'true' : undefined"
+                  :aria-describedby="nameField.error ? 'favorites-name-error' : undefined"
+                  @input="nameField.value = ($event.target as HTMLInputElement).value"
+                  @keydown.enter.prevent="submitName"
+                  @keydown.esc.prevent="cancelName"
+                />
+                <p v-if="nameField.error" id="favorites-name-error" class="favorites-name-error">
+                  {{ nameField.error }}
+                </p>
+              </div>
             </template>
             <template v-else>
               <button

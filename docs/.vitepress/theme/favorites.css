@@ -247,12 +247,11 @@
 }
 
 /* A row is the hover target, so its buttons appear with it. `position: relative`
-   anchors the row's own menu panel. */
-.favorites-item {
+   anchors the row's own menu panel. Scoped to the grouped view: the flat list
+   of the preview-off sidebar keeps the 8px gap its own rule gives it, which is
+   what holds its ✕ clear of the link beside it. */
+.favorites-grouped .favorites-item {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 2px;
   border-radius: 4px;
 }
@@ -389,6 +388,13 @@
 
 .favorites-name-field {
   padding: 4px 0;
+}
+
+/* A rename field sits in the heading row, which is one flex line, so the field
+   and its message need a block of their own to stack in. */
+.favorites-rename-field {
+  flex: 1;
+  min-width: 0;
 }
 
 .favorites-name-input {

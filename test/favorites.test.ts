@@ -367,7 +367,7 @@ describe('favorite pages', () => {
       ]);
     });
 
-    test('a page the map gains a category for is placed on the next read', () => {
+    test('an entry with no group is placed by the map on read', () => {
       const storage = new FakeStorage();
       // Stored with no group, as an unmapped page is.
       storage.setItem(
@@ -616,6 +616,46 @@ describe('favorite pages', () => {
       ).toEqual(['Bucket', 'Queue']);
     });
 
+    test('a reader group spelled differently in case takes in the map category', () => {
+      const { store } = withTwo();
+      store.createGroup('compute');
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_ec2.Instance', title: 'Instance' });
+      // One group, under the reader's spelling, rather than compute and Compute.
+      expect(store.grouped().map((group) => [group.name, group.entries.map((e) => e.title)]))
+        .toEqual([
+          ['Application integration', ['Queue']],
+          ['compute', ['Instance']],
+          ['Storage', ['Bucket']],
+        ]);
+    });
+
+    test('a group unfolds when a favorite lands in it, whichever path put it there', () => {
+      const { store } = withTwo();
+      store.setGroupCollapsed('Storage', true);
+      store.remove(bucket.path);
+      expect(store.isGroupCollapsed('Storage')).toBe(true);
+      // Starring an S3 page again.
+      store.add(bucket);
+      expect(store.isGroupCollapsed('Storage')).toBe(false);
+
+      store.setGroupCollapsed('Storage', true);
+      store.move(queue.path, 'Storage');
+      expect(store.isGroupCollapsed('Storage')).toBe(false);
+    });
+
+    test('a fold follows a rename and does not outlive a delete', () => {
+      const { store } = withTwo();
+      store.setGroupCollapsed('Storage', true);
+      store.renameGroup('Storage', 'Files');
+      expect(store.isGroupCollapsed('Files')).toBe(true);
+      expect(store.isGroupCollapsed('Storage')).toBe(false);
+
+      store.setGroupCollapsed('Files', true);
+      store.deleteGroup('Files');
+      // A group recreated under that name must not come back folded.
+      expect(store.isGroupCollapsed('Files')).toBe(false);
+    });
+
     test('the revision counts favorite changes, so an Undo offer can tell one happened', () => {
       const { store } = withTwo();
       const start = store.revision();
@@ -627,6 +667,21 @@ describe('favorite pages', () => {
       expect(store.revision()).toBe(afterMove);
       store.remove(queue.path);
       expect(store.revision()).toBeGreaterThan(afterMove);
+    });
+
+    test('a reload moves the revision only when it changed what Undo restores', () => {
+      const storage = new FakeStorage();
+      const store = new FavoritesStore(storage);
+      store.add(bucket);
+      const before = store.revision();
+      // What a fold in another tab looks like from here.
+      storage.setItem(COLLAPSED_GROUPS_STORAGE_KEY, JSON.stringify(['Storage']));
+      store.reload();
+      expect(store.revision()).toBe(before);
+
+      storage.setItem(STORAGE_KEY, JSON.stringify([{ path: queue.path, title: 'Queue' }]));
+      store.reload();
+      expect(store.revision()).toBeGreaterThan(before);
     });
 
     test('folding is saved per group name and defaults to open', () => {

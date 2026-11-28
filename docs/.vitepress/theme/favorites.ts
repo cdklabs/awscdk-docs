@@ -238,7 +238,7 @@ export class FavoritesStore {
    * How many times the favorites, the groups or the aliases have changed. An
    * Undo offer records this and is withdrawn once it moves, so Undo can never
    * take back a change made after the action it offers to reverse. Folding a
-   * group does not count: it changes no favorite.
+   * group does not count, here or in another tab: it changes no favorite.
    */
   revision(): number {
     return this.changes;
@@ -255,7 +255,10 @@ export class FavoritesStore {
     if (this.isFavorite(path)) {
       return false;
     }
-    this.entries = [...this.entries, this.placed({ path, title: entry.title })];
+    const placedEntry = this.placed({ path, title: entry.title });
+    this.entries = [...this.entries, placedEntry];
+    // A folded group would hide the favorite that was just added.
+    this.unfold(this.groupOf(placedEntry));
     this.persist();
     return true;
   }
@@ -374,6 +377,7 @@ export class FavoritesStore {
       return { ...entry, group: target };
     });
     if (moved) {
+      this.unfold(target ?? UNGROUPED);
       this.persist();
     }
     return moved;
@@ -403,6 +407,9 @@ export class FavoritesStore {
       ...this.groups.filter((n) => !sameName(n, from)),
       trimmed,
     ];
+    // The fold is the reader's choice about this group, so it follows the name.
+    this.collapsedGroups = this.collapsedGroups.map((n) => (n === from ? trimmed : n));
+    this.write(COLLAPSED_GROUPS_STORAGE_KEY, this.collapsedGroups);
     for (const origin of origins) {
       // Exact, not case-insensitive: renaming `Compute` to `compute` is a
       // rename, and dropping the alias there would leave the next Compute
@@ -430,6 +437,8 @@ export class FavoritesStore {
       this.groupOf(entry) === name ? { ...entry, group: null } : entry,
     );
     this.groups = this.groups.filter((n) => !sameName(n, name));
+    // Or a group recreated under the same name would come back folded.
+    this.unfold(name);
     for (const origin of this.mapOriginsOf(name)) {
       delete this.aliases[origin];
     }
@@ -464,6 +473,15 @@ export class FavoritesStore {
     return this.collapsedGroups.some((n) => n === name);
   }
 
+  /** Unfold a group, so what just landed in it is in sight. */
+  private unfold(name: string): void {
+    if (!this.collapsedGroups.includes(name)) {
+      return;
+    }
+    this.collapsedGroups = this.collapsedGroups.filter((n) => n !== name);
+    this.write(COLLAPSED_GROUPS_STORAGE_KEY, this.collapsedGroups);
+  }
+
   /** Fold or unfold a group, saved by name. */
   setGroupCollapsed(name: string, collapsed: boolean): void {
     const next = this.collapsedGroups.filter((n) => n !== name);
@@ -474,13 +492,17 @@ export class FavoritesStore {
 
   /** Re-read from storage (cross-tab `storage` event sync). */
   reload(): void {
+    // Every `cdk-docs:favourites*` key reaches here, folding included, so the
+    // revision moves only when what Undo would restore actually differs.
+    const before = JSON.stringify(this.snapshot());
     this.groups = this.readGroups();
     this.aliases = this.readAliases();
     this.collapsedGroups = this.readCollapsedGroups();
     this.entries = this.read();
     this.placeUnplaced();
-    // Another tab wrote these, which is a change like any other here.
-    this.changes += 1;
+    if (JSON.stringify(this.snapshot()) !== before) {
+      this.changes += 1;
+    }
     this.notify();
   }
 
@@ -492,10 +514,17 @@ export class FavoritesStore {
   /** The map's group for a page, under the reader's name for it when they renamed it. */
   private mappedGroup(path: string): string {
     const category = categoryFor(path);
-    if (!category) {
-      return UNGROUPED;
-    }
-    return this.aliases[category] ?? category;
+    return category ? this.mapName(category) : UNGROUPED;
+  }
+
+  /**
+   * The name a category appears under: the reader's alias when they renamed
+   * it, and the spelling of an existing group that differs only in case, so
+   * `compute` and `Compute` cannot end up side by side.
+   */
+  private mapName(category: string): string {
+    const name = this.aliases[category] ?? category;
+    return this.groups.find((existing) => sameName(existing, name)) ?? name;
   }
 
   /** Map categories whose favorites currently land in `name`, so a rename or delete can follow the alias. */
@@ -528,7 +557,7 @@ export class FavoritesStore {
     if (!category) {
       return entry;
     }
-    return { ...entry, group: this.aliases[category] ?? category };
+    return { ...entry, group: this.mapName(category) };
   }
 
   /** Give the entries the map can place their group, and write the result back once. */
