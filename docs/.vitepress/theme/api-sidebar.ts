@@ -397,7 +397,7 @@ const SERVICES_SECTION = 'Services';
 /** The main library's module prefix in page ids, dropped from module row text. */
 const CDK_LIB_PREFIX = 'aws-cdk-lib.';
 
-/** The kind groups of an open service's `Types` part, in the order they are listed. */
+/** The kind groups of an open service's `Types` part, in the order they are listed; any other kind follows them. */
 export const SERVICE_KIND_ORDER: readonly string[] = ['Mixins', 'Facades', 'Traits', 'Events', 'Others'];
 
 /** Case-insensitive A to Z, the order the generated Services section already uses. */
@@ -485,7 +485,13 @@ export function serviceViewItems(items: readonly ApiSidebarNode[], flat = false)
         count: typeIds.filter((typeId) => typeId.startsWith(`${id}.`)).length,
       };
     });
-  const kinds: ApiSidebarNode[] = SERVICE_KIND_ORDER.filter((kind) => rows.kinds.has(kind)).map((kind) => {
+  // The known kinds in their fixed order, then any kind group the generator adds later, in tree order, so no
+  // row is ever dropped.
+  const kindNames = [
+    ...SERVICE_KIND_ORDER.filter((kind) => rows.kinds.has(kind)),
+    ...[...rows.kinds.keys()].filter((kind) => !SERVICE_KIND_ORDER.includes(kind)),
+  ];
+  const kinds: ApiSidebarNode[] = kindNames.map((kind) => {
     const leaves = [...rows.kinds.get(kind)!].sort((a, b) => compareRowText(a.label ?? a.text, b.label ?? b.text));
     return { text: kind, kindGroup: true, collapsed: true, count: leaves.length, items: leaves };
   });

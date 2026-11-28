@@ -817,6 +817,20 @@ describe('Services view', () => {
     expect(types.items![3].items![3]).toMatchObject({ text: 'CfnBucket.PolicyProperty', label: 'PolicyProperty' });
   });
 
+  test('a kind group the fixed order does not know follows the known ones, so no row is dropped', () => {
+    const items: ApiSidebarNode[] = [
+      type('Thing', 'aws-cdk-lib.aws_x.Thing', 'construct', 'L2'),
+      kindGroup('Others', [type('ThingProps', 'aws-cdk-lib.aws_x.ThingProps', 'struct')]),
+      kindGroup('Widgets', [type('ZWidget', 'aws-cdk-lib.aws_x.ZWidget', 'class'), type('AWidget', 'aws-cdk-lib.aws_x.AWidget', 'class')]),
+      kindGroup('Mixins', [type('ThingMixin', 'aws-cdk-lib.aws_x.mixins.ThingMixin', 'mixin')]),
+    ];
+    const types = serviceViewItems(items).find((n) => n.text === 'Types')!;
+    expect(types.items!.map((k) => k.text)).toEqual(['Mixins', 'Others', 'Widgets']);
+    expect(types.count).toBe(4);
+    expect(types.items![2].items!.map((r) => r.text)).toEqual(['AWidget', 'ZWidget']);
+    expect(serviceViewItems(items, true).map((n) => n.text)).toEqual(['Thing', 'ThingMixin', 'ThingProps', 'AWidget', 'ZWidget']);
+  });
+
   test('parts a service lacks are left out; a lone scoped overview is the Overview', () => {
     expect(serviceViewItems(polly).map((n) => n.text)).toEqual(['Overview', 'Constructs', 'Types']);
     expect(serviceViewItems(amplify).map((n) => n.text)).toEqual(['Overview', 'Constructs']);

@@ -54,15 +54,16 @@ const count = computed(() => {
   }
   return props.node.count;
 });
-// A service row reads as one name with its count: `S3, 16 constructs`, or
-// `S3, 5 matches` while filtering. The name is composed from the row's own
-// content (the visible name, then the count with hidden text around it)
-// rather than an `aria-label`: an override would have to repeat the visible
-// text exactly, count included, to keep label-in-name (WCAG 2.5.3), and the
-// count is itself part of the visible text. Kind groups and module rows keep
-// their visible text as their name; their counts are decorative.
+// A row with a count reads as one name with it: `S3, 16 constructs` (or
+// `S3, 5 matches` while filtering), `Others, 12 types`, `aws_s3_assets, 3
+// types`. The name is composed from the row's own content (the visible name,
+// then the count with hidden text around it) rather than an `aria-label`: an
+// override would have to repeat the visible text exactly, count included, to
+// keep label-in-name (WCAG 2.5.3), and the count is itself part of the
+// visible text. Part sub-headings are not controls and keep their text.
 const countNoun = computed(() => {
-  if (count.value === undefined || props.node.kindGroup || !isGroup.value) return undefined;
+  if (count.value === undefined || props.node.part) return undefined;
+  if (props.node.kindGroup || props.node.moduleRow) return count.value === 1 ? " type" : " types";
   if (ctx.filtering.value) return count.value === 1 ? " match" : " matches";
   return count.value === 1 ? " construct" : " constructs";
 });
@@ -237,7 +238,6 @@ onBeforeUnmount(() => {
       <span v-if="countNoun !== undefined" class="api-sidebar-count"
         >{{ count }}<span class="api-sidebar-hidden">{{ countNoun }}</span></span
       >
-      <span v-else-if="count !== undefined" class="api-sidebar-count" aria-hidden="true">{{ count }}</span>
     </button>
     <a
       v-else
@@ -254,8 +254,11 @@ onBeforeUnmount(() => {
            text, so the link's visible text stays the name alone. Only leveled
            constructs render it. -->
       <span v-if="node.level" class="api-sidebar-level" aria-hidden="true" :data-level="node.level"></span
-      ><span class="api-sidebar-name">{{ label }}</span
-      ><span v-if="count !== undefined" class="api-sidebar-count" aria-hidden="true">{{ count }}</span></a
+      ><span class="api-sidebar-name"
+        >{{ label }}<span v-if="countNoun !== undefined" class="api-sidebar-hidden">,</span></span
+      ><span v-if="countNoun !== undefined" class="api-sidebar-count"
+        >{{ count }}<span class="api-sidebar-hidden">{{ countNoun }}</span></span
+      ></a
     >
 
     <!-- Collapsed subtrees are not rendered. `v-show` would create every

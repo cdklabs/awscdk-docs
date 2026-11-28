@@ -744,14 +744,15 @@ test.describe('explorer preview Services view', () => {
     // Types: closed kind groups with counts, in the fixed order, opening to a flat A to Z list.
     const types = sqs.locator('.api-sidebar-part[data-part="Types"]');
     const kinds = types.locator('[data-kind-group] > .api-sidebar-group');
-    const kindNames = await kinds.locator('.api-sidebar-text').allTextContents();
+    const kindNames = (await kinds.locator('.api-sidebar-text').allTextContents()).map((t) => t.replace(/,$/, ''));
     expect(kindNames).toContain('Others');
     const order = ['Mixins', 'Facades', 'Traits', 'Events', 'Others'];
     expect(kindNames.map((k) => order.indexOf(k))).toEqual([...kindNames.map((k) => order.indexOf(k))].sort((a, b) => a - b));
     for (const kind of await kinds.all()) await expect(kind).toHaveAttribute('aria-expanded', 'false');
     const othersItem = types.locator('[data-kind-group]').filter({ hasText: 'Others' });
     const others = othersItem.locator('> .api-sidebar-group');
-    const othersCount = Number(await others.locator('.api-sidebar-count').textContent());
+    const othersCount = await countOf(others);
+    await expect(others).toHaveAccessibleName(`Others, ${othersCount} types`);
     await others.click();
     await expect(others).toHaveAttribute('aria-expanded', 'true');
     const otherRows = othersItem.getByRole('link');
@@ -911,7 +912,7 @@ test.describe('explorer preview Services view', () => {
     await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'false');
   });
 
-  test('the stored Services view survives a reload with no flash of another view', async ({ page }) => {
+  test('the head script restores the stored Services view attribute before any bundle runs', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
     await expect(page.locator('html')).toHaveAttribute('data-explorer-view', 'services');
     await expect(rail(page).getByRole('button', { name: 'Services' })).toHaveAttribute('aria-pressed', 'true');
