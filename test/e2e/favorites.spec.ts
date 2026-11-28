@@ -870,6 +870,79 @@ test.describe('grouped favorites view', () => {
       await page.keyboard.press('Escape');
       await expect(field).toHaveCount(0);
       await expect(sidebar).toHaveClass(/open/);
+
+      // An Escape the view did not use still closes the drawer.
+      await expect(view(page).getByRole('button', { name: 'New group' })).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(sidebar).not.toHaveClass(/open/);
+    });
+
+    test('an Escape whose release never arrives does not swallow the next one', async ({ page }) => {
+      await openView(page);
+      await page.locator('.VPLocalNav button.menu').click();
+      const sidebar = page.locator('.VPSidebar');
+      const row = view(page).locator('.favorites-item').first();
+      await row.getByRole('button', { name: 'Actions for Queue' }).click();
+      await expect(row.getByRole('menu')).toBeVisible();
+
+      // The window loses focus after the press, so the release the view was
+      // waiting for never arrives.
+      await page.keyboard.down('Escape');
+      await expect(row.getByRole('menu')).toHaveCount(0);
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+      await expect(sidebar).toHaveClass(/open/);
+
+      // The reader's next Escape is their own, with nothing open to close.
+      await page.keyboard.press('Escape');
+      await expect(sidebar).not.toHaveClass(/open/);
+    });
+
+    test('a menu too tall for the room above stays below, where scrolling reaches it', async ({ page }) => {
+      await openView(page, [
+        { path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue', title: 'Queue', group: 'Queues' },
+        { path: '/v2/docs/aws-cdk-lib.aws_sns.Topic', title: 'Topic', group: 'Topics' },
+        { path: '/v2/docs/constructs.Construct', title: 'Construct', group: 'Bases' },
+        { path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', title: 'Bucket', group: 'Buckets' },
+        { path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function', group: 'Code' },
+        { path: '/v2/docs/aws-cdk-lib.aws_iam.Role', title: 'Role', group: 'Access' },
+      ]);
+      await page.locator('.VPLocalNav button.menu').click();
+
+      const row = view(page).locator('.favorites-item').last();
+      await row.getByRole('button', { name: /^Actions for / }).click();
+      await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+      const menu = row.getByRole('menu');
+      await expect(menu).toBeVisible();
+
+      // Whichever way it opened, every item of it must be inside the sidebar's
+      // scrollable content: a scroller cannot reach above its own top.
+      const sidebar = page.locator('.VPSidebar');
+      const sidebarTop = (await sidebar.boundingBox())!.y;
+      const scrollTop = await sidebar.evaluate((el) => el.scrollTop);
+      const menuBox = (await menu.boundingBox())!;
+      expect(menuBox.y - sidebarTop + scrollTop).toBeGreaterThanOrEqual(0);
+      expect(menuBox.height).toBeGreaterThan((await sidebar.boundingBox())!.height / 3);
+    });
+
+    test('a long title still leaves Undo inside the drawer', async ({ page }) => {
+      await openView(page, [
+        {
+          path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue',
+          title: 'ApplicationLoadBalancedFargateServiceWithAnEvenLongerName',
+        },
+      ]);
+      await page.locator('.VPLocalNav button.menu').click();
+
+      const row = view(page).locator('.favorites-item').first();
+      await row.getByRole('button', { name: /^Actions for / }).click();
+      await row.getByRole('menuitem', { name: 'Remove from Favorites' }).click();
+
+      const undo = view(page).getByRole('button', { name: 'Undo' });
+      await expect(undo).toBeVisible();
+      const sidebarBox = (await page.locator('.VPSidebar').boundingBox())!;
+      const undoBox = (await undo.boundingBox())!;
+      expect(undoBox.x + undoBox.width).toBeLessThanOrEqual(sidebarBox.x + sidebarBox.width);
+      expect(undoBox.x).toBeGreaterThanOrEqual(sidebarBox.x);
     });
   });
 });

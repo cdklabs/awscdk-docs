@@ -89,6 +89,15 @@ function keepEscape(event: KeyboardEvent): void {
   escapeUsed = false;
   event.stopPropagation();
 }
+
+/**
+ * Forgets a press whose release never came, which is what a window losing
+ * focus between the two leaves behind. Without this the next Escape would be
+ * swallowed and the drawer would refuse to close.
+ */
+function forgetEscape(): void {
+  escapeUsed = false;
+}
 const nameField = ref<NameField | null>(null);
 const toast = ref<{
   text: string;
@@ -135,6 +144,7 @@ onMounted(() => {
   unsubscribe = favoritesStore().subscribe(refresh);
   loadServices();
   document.addEventListener("pointerdown", onOutsidePointerDown);
+  window.addEventListener("blur", forgetEscape);
 });
 /** A tap or click outside an open menu closes it, which Escape alone cannot do on a touch screen. */
 function onOutsidePointerDown(event: PointerEvent): void {
@@ -156,6 +166,7 @@ onUnmounted(() => {
   clearToastTimer();
   if (typeof document !== "undefined") {
     document.removeEventListener("pointerdown", onOutsidePointerDown);
+    window.removeEventListener("blur", forgetEscape);
   }
 });
 
@@ -329,10 +340,12 @@ function focusFirstItem(): void {
 
 /**
  * Open the panel upwards when it would run past the bottom of the sidebar it
- * scrolls in and there is more room above, so the last rows of a long list —
+ * scrolls in and it fits in the room above, so the last rows of a long list —
  * and the taller group list on a phone — do not hide their own items below the
- * fold. A flip into even less room above would only move the problem, since a
- * scroller cannot reach content above its own top.
+ * fold. The room above counts what scrolling up can bring into view; a panel
+ * taller than that would put its first items past the top of the scroller,
+ * where nothing can reach them, so it is left below instead, where the
+ * scroller can follow it.
  *
  * Measured from the button rather than from the panel: the panel's own box
  * already carries whichever placement is current, so reading it would answer
@@ -348,8 +361,9 @@ function placeMenu(panel: HTMLElement): void {
   const box = scroller.getBoundingClientRect();
   const button = anchor.getBoundingClientRect();
   const below = box.bottom - button.bottom;
-  const above = button.top - box.top;
-  menuAbove.value = panel.offsetHeight > below && above > below;
+  const above = button.top - box.top + scroller.scrollTop;
+  // The 2px is the gap the placement leaves between panel and button.
+  menuAbove.value = panel.offsetHeight > below && panel.offsetHeight + 2 <= above;
 }
 
 // ---------------------------------------------------------------------------

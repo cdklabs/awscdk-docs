@@ -68,10 +68,12 @@ question than the one a reader scanning for their queues is asking.
 reader's group and `null` for their own move to Ungrouped. Absent means the map
 decides — when the map has a category it is written back on the next read, and
 when it has none the field stays absent and the favorite shows in Ungrouped, so
-a category added for it later still reaches it. There is no migration step,
-nothing to version, and every other reader of the key — the preview-off sidebar, the page star, the search boost — keeps
-working on the fields it already reads. Unknown fields are dropped on read, as
-they were.
+a category added for it later still reaches it. There is nothing to version and
+no migration step for the new theme: every other reader of the key — the
+preview-off sidebar, the page star, the search boost — keeps working on the
+fields it already reads, and unknown fields are dropped on read, as they were.
+A tab still running the previous theme is the exception, and the Consequences
+below say what it costs.
 
 Three new keys carry what does not belong on a favorite:
 `cdk-docs:favourites:groups` (names the reader made or renamed to, which is
@@ -124,6 +126,12 @@ back is on the screen as well as in the announcement.
   added for it later does reach it on the next read.
 - Three keys hold the reader's arrangement, so clearing site data loses the
   grouping along with the favorites. They are in this browser either way.
+- A tab still running the previous theme writes the old shape: it truncates the
+  list to twenty and drops every `group`. A reader who stars a page in such a
+  tab after a deploy loses the favorites past twenty and their own placements,
+  until that tab is reloaded. Nothing in the new theme can reach a page that is
+  already loaded, so this is the cost of removing the cap rather than something
+  to fix in code.
 - The rows depend on the sidebar skeleton for their service names. When that
   fetch fails the rows still carry their titles and their groups; only the
   service word is missing.

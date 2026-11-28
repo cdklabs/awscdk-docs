@@ -224,7 +224,11 @@
   background-color: var(--vp-c-default-soft);
 }
 
+/* A group name is a reader's own text and the field takes 40 characters, so it
+   wraps inside a word rather than reaching over the ⋯ button beside it. */
 .favorites-group-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.5;
@@ -359,6 +363,7 @@
   font-size: 14px;
   line-height: 1.5;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .favorites-menu-item:hover {
@@ -443,8 +448,12 @@
   line-height: 1.5;
 }
 
+/* The message quotes a page title or a group name, either of which can be one
+   long word. It shrinks and wraps, so Undo stays inside the sidebar. */
 .favorites-toast-text {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .favorites-undo {
