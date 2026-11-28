@@ -499,7 +499,7 @@
 
 /* Below the sidebar-drawer breakpoint the ⋯ button is always shown and the x
    is gone, so a removal goes through the menu. The buttons grow from 24 to
-   28px and take their 44px touch area from a transparent overlay, so what the
+   28px and take their 40px touch area from a transparent overlay, so what the
    reader sees stays as it is on desktop. */
 @media (max-width: 959px) {
   .favorites-grouped .favorites-actions {

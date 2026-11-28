@@ -70,6 +70,25 @@ const mounted = ref(false);
 const openMenu = ref<OpenMenu | null>(null);
 /** Whether the open menu panel had to flip above its button for want of room below. */
 const menuAbove = ref(false);
+
+/**
+ * Whether the view has just used an Escape. The sidebar closes the phone
+ * drawer on the key's *release*, so swallowing the keydown is not enough.
+ */
+let escapeUsed = false;
+
+/**
+ * Keeps the Escape that closed a menu or a name field from also closing the
+ * drawer the view sits in. An Escape the view did not use still reaches the
+ * sidebar, so a reader with nothing open can still close the drawer with it.
+ */
+function keepEscape(event: KeyboardEvent): void {
+  if (!escapeUsed) {
+    return;
+  }
+  escapeUsed = false;
+  event.stopPropagation();
+}
 const nameField = ref<NameField | null>(null);
 const toast = ref<{
   text: string;
@@ -274,6 +293,10 @@ function onMenuKey(event: KeyboardEvent, key: string): void {
     items[items.length - 1]?.focus();
   } else if (event.key === "Escape") {
     event.preventDefault();
+    // Kept from the sidebar, which would otherwise close the whole phone
+    // drawer the menu sits in.
+    event.stopPropagation();
+    escapeUsed = true;
     if (openMenu.value?.level === "groups") {
       showMenuLevel();
     } else {
@@ -306,8 +329,10 @@ function focusFirstItem(): void {
 
 /**
  * Open the panel upwards when it would run past the bottom of the sidebar it
- * scrolls in, so the last rows of a long list — and the taller group list on a
- * phone — do not hide their own items below the fold.
+ * scrolls in and there is more room above, so the last rows of a long list —
+ * and the taller group list on a phone — do not hide their own items below the
+ * fold. A flip into even less room above would only move the problem, since a
+ * scroller cannot reach content above its own top.
  *
  * Measured from the button rather than from the panel: the panel's own box
  * already carries whichever placement is current, so reading it would answer
@@ -320,8 +345,11 @@ function placeMenu(panel: HTMLElement): void {
     menuAbove.value = false;
     return;
   }
-  const room = scroller.getBoundingClientRect().bottom;
-  menuAbove.value = anchor.getBoundingClientRect().bottom + panel.offsetHeight > room;
+  const box = scroller.getBoundingClientRect();
+  const button = anchor.getBoundingClientRect();
+  const below = box.bottom - button.bottom;
+  const above = button.top - box.top;
+  menuAbove.value = panel.offsetHeight > below && above > below;
 }
 
 // ---------------------------------------------------------------------------
@@ -430,6 +458,12 @@ function submitName(): void {
   }
   nameField.value = null;
   void nextTick(() => focus(`[data-fav-group="${cssEscape(name)}"]`));
+}
+
+/** Escape in a name field: the view takes the key, so the drawer keeps it. */
+function cancelNameByKey(): void {
+  escapeUsed = true;
+  cancelName();
 }
 
 function cancelName(): void {
@@ -605,6 +639,7 @@ function cssEscape(value: string): string {
     :class="{ 'favorites-grouped': viewShown }"
     aria-label="Favorites"
     @keydown="onViewKey($event)"
+    @keyup.esc="keepEscape($event)"
   >
     <template v-if="viewShown">
       <div class="favorites-view-head">
@@ -638,7 +673,7 @@ function cssEscape(value: string): string {
             :aria-invalid="nameField.error ? 'true' : undefined"
             :aria-describedby="nameField.error ? 'favorites-name-error' : undefined"
             @keydown.enter.prevent="submitName"
-            @keydown.esc.prevent="cancelName"
+            @keydown.esc.prevent.stop="cancelNameByKey"
           />
           <p v-if="nameField.error" id="favorites-name-error" class="favorites-name-error">
             {{ nameField.error }}
@@ -658,7 +693,7 @@ function cssEscape(value: string): string {
                   :aria-describedby="nameField.error ? 'favorites-name-error' : undefined"
                   @input="nameField.value = ($event.target as HTMLInputElement).value"
                   @keydown.enter.prevent="submitName"
-                  @keydown.esc.prevent="cancelName"
+                  @keydown.esc.prevent.stop="cancelNameByKey"
                 />
                 <p v-if="nameField.error" id="favorites-name-error" class="favorites-name-error">
                   {{ nameField.error }}
@@ -829,7 +864,15 @@ function cssEscape(value: string): string {
         @focusout="holdToast('focus', false)"
       >
         <span class="favorites-toast-text">{{ toast.text }}</span>
-        <button type="button" class="favorites-undo" @click="undoLast">Undo</button>
+        <button
+          type="button"
+          class="favorites-undo"
+          aria-keyshortcuts="Control+Z Meta+Z"
+          @click="undoLast"
+        >
+          Undo
+        </button>
+        <kbd class="favorites-toast-key" aria-hidden="true">Ctrl+Z</kbd>
       </div>
       <span class="favorites-live" role="status" aria-live="polite">{{ announcement }}</span>
     </template>

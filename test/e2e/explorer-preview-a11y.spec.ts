@@ -76,14 +76,20 @@ async function openGroupMenu(page: Page): Promise<void> {
   await expect(head.getByRole('menu')).toBeVisible();
 }
 
-/** Waits for the sidebar's own transitions, so a click does not chase a moving button. */
+/** Waits for the sidebar's own transitions and scrolling, so a click does not chase a moving button. */
 async function settle(page: Page): Promise<void> {
+  const sidebar = page.locator('.VPSidebar');
   await expect
-    .poll(() =>
-      page
-        .locator('.VPSidebar')
-        .evaluate((el) => el.getAnimations({ subtree: true }).length === 0),
-    )
+    .poll(() => sidebar.evaluate((el) => el.getAnimations({ subtree: true }).length === 0))
+    .toBe(true);
+  let last = -1;
+  await expect
+    .poll(async () => {
+      const top = await sidebar.evaluate((el) => el.scrollTop);
+      const same = top === last;
+      last = top;
+      return same;
+    })
     .toBe(true);
 }
 
@@ -96,6 +102,13 @@ async function refuseGroupName(page: Page): Promise<void> {
   await field.fill(taken!.trim());
   await field.press('Enter');
   await expect(section.locator('.favorites-name-error')).toBeVisible();
+}
+
+/** The Favorites view inside the phone drawer, which holds the sidebar below 960px. */
+async function openDrawer(page: Page): Promise<void> {
+  await open(page, { [VIEW_KEY]: 'favorites' });
+  await page.locator('.VPLocalNav button.menu').click();
+  await expect(page.locator('.favorites-static-heading')).toBeVisible();
 }
 
 /**
@@ -173,19 +186,31 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
   test.describe('phone', () => {
     test.use({ viewport: { width: 375, height: 760 } });
 
-    test('the Favorites view with a row menu open has no critical or serious violations at 375px', async ({
+    // Split in two, so the per-test budget holds: the phone drawer is slower
+    // to settle than the desktop sidebar, and each audit is a scan of its own.
+    test('the Favorites view and both menu levels have no critical or serious violations at 375px', async ({
       page,
     }) => {
-      // One scan here: the markup of the view and its menus does not change
-      // with the viewport, the desktop pass audits every state of it, and what
-      // the phone does change — the sizes and the menu width — is measured in
-      // `a11y-target-size.spec.ts`. A second scan at this width does not fit
-      // the suite's time budget.
-      await open(page, { [VIEW_KEY]: 'favorites' });
-      await page.locator('.VPLocalNav button.menu').click();
-      await expect(page.locator('.favorites-static-heading')).toBeVisible();
+      await openDrawer(page);
+      await audit(page, 'the Favorites view at 375px');
       await openRowMenu(page);
       await audit(page, 'the Favorites view with a row menu open at 375px');
+      await openMoveLevel(page);
+      await audit(page, 'the Favorites view with the Move to group list open at 375px');
+    });
+
+    test('a group menu, a refused name and the Undo toast have no critical or serious violations at 375px', async ({
+      page,
+    }) => {
+      await openDrawer(page);
+      await openGroupMenu(page);
+      await audit(page, 'the Favorites view with a group menu open at 375px');
+      await page.keyboard.press('Escape');
+      await refuseGroupName(page);
+      await audit(page, 'the Favorites view with a refused group name at 375px');
+      await page.keyboard.press('Escape');
+      await showToast(page);
+      await audit(page, 'the Favorites view with the Undo toast showing at 375px');
     });
 
     test('the unfolded rail and the Views button have no critical or serious violations', async ({ page }) => {

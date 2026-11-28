@@ -103,6 +103,14 @@ not in this change.
 announced it. The grouped list is the reason the cap existed, and it no longer
 needs one.
 
+**The view keeps the Escape it uses.** Escape closes an open menu or a name
+field, and the sidebar closes the phone drawer when the key is released, so a
+reader on a phone would lose the whole drawer to the key that closed a menu.
+The view swallows that release only when it used the key; an Escape with
+nothing open still closes the drawer. The Undo toast shows `Ctrl+Z` beside its
+button and the button names the shortcut in `aria-keyshortcuts`, so the way
+back is on the screen as well as in the announcement.
+
 ## Consequences
 
 - Favorites stored before this change show up grouped on the next load, with no

@@ -745,6 +745,49 @@ test.describe('grouped favorites view', () => {
       expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(rowBox.y + 2);
     });
 
+    test('a tall menu with no room above it stays below its button', async ({ page }) => {
+      // A short viewport again, but opened from the first row, where the room
+      // above is the smaller side. The group list is taller than either side,
+      // so flipping it up would put its last items above the top of the
+      // sidebar, which no amount of scrolling reaches.
+      await page.setViewportSize({ width: 1280, height: 360 });
+      await openView(page, [
+        { path: '/v2/docs/aws-cdk-lib.aws_sqs.Queue', title: 'Queue', group: 'Queues' },
+        { path: '/v2/docs/aws-cdk-lib.aws_sns.Topic', title: 'Topic', group: 'Topics' },
+        { path: '/v2/docs/constructs.Construct', title: 'Construct', group: 'Bases' },
+        { path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', title: 'Bucket', group: 'Buckets' },
+        { path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function', group: 'Code' },
+        { path: '/v2/docs/aws-cdk-lib.aws_iam.Role', title: 'Role', group: 'Access' },
+      ]);
+      const row = view(page).locator('.favorites-item').first();
+      await row.getByRole('button', { name: /^Actions for / }).focus();
+      await page.keyboard.press('ArrowDown');
+      await row.getByRole('menuitem', { name: 'Move to group…' }).click();
+      const menu = row.getByRole('menu');
+      await expect(menu).toBeVisible();
+      await expect(menu).not.toHaveClass(/favorites-menu-above/);
+
+      const sidebarTop = (await page.locator('.VPSidebar').boundingBox())!.y;
+      expect((await menu.boundingBox())!.y).toBeGreaterThanOrEqual(sidebarTop);
+    });
+
+    test('the toast shows the Undo shortcut and names it on the button', async ({ page }) => {
+      await openView(page);
+      const row = view(page).locator('.favorites-item').first();
+      await row.hover();
+      await row.getByRole('button', { name: /^Remove/ }).click();
+
+      const toast = view(page).locator('.favorites-toast');
+      await expect(toast).toBeVisible();
+      await expect(toast.locator('.favorites-toast-key')).toHaveText('Ctrl+Z');
+      await expect(toast.getByRole('button', { name: 'Undo' })).toHaveAttribute(
+        'aria-keyshortcuts',
+        'Control+Z Meta+Z',
+      );
+      // Hidden from a screen reader, which hears the shortcut from the button.
+      await expect(toast.locator('.favorites-toast-key')).toHaveAttribute('aria-hidden', 'true');
+    });
+
     test('the row menu opens from the keyboard and Escape returns focus to its button', async ({ page }) => {
       await openView(page);
       const row = view(page).locator('.favorites-item').first();
@@ -805,6 +848,28 @@ test.describe('grouped favorites view', () => {
       await expect(view(page).locator('.favorites-link')).toHaveCount(2);
       // Using a menu does not fold the drawer away under the reader.
       await expect(view(page).locator('.favorites-toast')).toBeVisible();
+    });
+
+    test('Escape closes a menu or a name field and leaves the drawer open', async ({ page }) => {
+      await openView(page);
+      await page.locator('.VPLocalNav button.menu').click();
+      const sidebar = page.locator('.VPSidebar');
+      await expect(sidebar).toHaveClass(/open/);
+
+      const row = view(page).locator('.favorites-item').first();
+      const actions = row.getByRole('button', { name: 'Actions for Queue' });
+      await actions.click();
+      await expect(row.getByRole('menu')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(row.getByRole('menu')).toHaveCount(0);
+      await expect(sidebar).toHaveClass(/open/);
+
+      await view(page).getByRole('button', { name: 'New group' }).click();
+      const field = view(page).getByRole('textbox', { name: 'New group name' });
+      await expect(field).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(field).toHaveCount(0);
+      await expect(sidebar).toHaveClass(/open/);
     });
   });
 });
