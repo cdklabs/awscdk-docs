@@ -97,8 +97,8 @@ export interface ApiSidebarNode {
   readonly chunk?: string;
   /**
    * A number shown at the row's right edge. On a Services section of the served skeleton, docgen's construct
-   * count (`src/sidebar-rows.ts`); on the rows the Services view derives (`servicesViewTree`), the row count of a
-   * part, a kind group or a module. Absent everywhere else.
+   * count (`src/sidebar-rows.ts`); on the rows the Services view derives (`servicesViewTree`), the row count of
+   * the `Constructs` and `Types` parts and of a kind group, and a module row's type count. Absent everywhere else.
    */
   readonly count?: number;
   /**
