@@ -391,7 +391,7 @@ control is outside that test's enumerated selectors.
 
 ### Client-side favorite pages
 
-*With the Explorer preview on, the Favorites view replaces this section: its list is always open and shows an empty-state line with zero favorites; see [Explorer preview](./2026-11-26-explorer-preview-rail.md).*
+*With the Explorer preview on, the Favorites view replaces this section: its list is always open and shows a two-line empty state with zero favorites; see [Explorer preview](./2026-11-26-explorer-preview-rail.md).*
 
 Starred pages persist in `localStorage` under `cdk-docs:favourites` as a
 JSON array of `{ path, title }`, paths stored base-stripped and without

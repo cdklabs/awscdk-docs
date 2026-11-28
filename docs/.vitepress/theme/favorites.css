@@ -462,7 +462,20 @@
   background-color: var(--vp-c-default-soft);
 }
 
-/* The move announcement: read by a screen reader, never painted. */
+/* The shortcut beside Undo, so a sighted keyboard user sees the way back the
+   live region names. */
+.favorites-toast-key {
+  flex: none;
+  padding: 1px 4px;
+  border: 1px solid var(--fv-edge);
+  border-radius: 4px;
+  color: var(--fv-sub);
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* The view's polite live region: read by a screen reader, never painted. */
 .favorites-live {
   position: absolute;
   width: 1px;
@@ -510,14 +523,17 @@
     position: relative;
   }
 
-  /* `inset: -10px -8px` on a 28px button reaches 44px tall, and the extra
-     8px a side keeps a finger off the row beside it. */
+  /* `inset: -6px -8px` on a 28px button reaches the row's own 40px and no
+     further. A 44px area would reach 2px into the rows either side, and the
+     later row in the DOM would win that band, so a finger at the bottom of one
+     row would open the next row's menu. The 8px a side is free: nothing else
+     is beside the button. */
   .favorites-grouped .favorites-actions::before,
   .favorites-grouped .favorites-new-group::before,
   .favorites-grouped .favorites-undo::before {
     content: '';
     position: absolute;
-    inset: -10px -8px;
+    inset: -6px -8px;
   }
 
   .favorites-grouped .favorites-link,

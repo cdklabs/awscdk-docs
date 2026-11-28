@@ -65,10 +65,11 @@ question than the one a reader scanning for their queues is asking.
 **The group is stored on the favorite, in the array that already exists.**
 `cdk-docs:favourites` keeps its name and its shape, an array of
 `{ path, title }`, and gains one optional field: `group` is a string for the
-reader's group, `null` for Ungrouped, and absent for a favorite nothing has
-placed yet. An absent field is filled from the map on the next read and written
-back, so there is no migration step, nothing to version, and every other reader
-of the key — the preview-off sidebar, the page star, the search boost — keeps
+reader's group and `null` for their own move to Ungrouped. Absent means the map
+decides — when the map has a category it is written back on the next read, and
+when it has none the field stays absent and the favorite shows in Ungrouped, so
+a category added for it later still reaches it. There is no migration step,
+nothing to version, and every other reader of the key — the preview-off sidebar, the page star, the search boost — keeps
 working on the fields it already reads. Unknown fields are dropped on read, as
 they were.
 

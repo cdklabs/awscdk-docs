@@ -8,8 +8,10 @@ import categories from "./favorite-categories.json";
  * A starred page. `path` is the base-stripped route (no `.html`).
  *
  * `group` is the reader's own placement and wins over the category map: a
- * string is that group, `null` is Ungrouped, and an absent field means nothing
- * has placed the entry yet, so the map decides and the answer is stored.
+ * string is that group and `null` is their own move to Ungrouped. An absent
+ * field means the map decides; when the map has a category it is written back
+ * on the next read, and when it has none the field stays absent and the
+ * favorite shows in Ungrouped, so a category added later still reaches it.
  */
 export interface FavoriteEntry {
   path: string;
@@ -197,7 +199,7 @@ export interface FavoriteGroup {
 /** Why a group name was refused. `ok` means it can be used. */
 export type GroupNameCheck = "ok" | "empty" | "reserved" | "too-long" | "duplicate";
 
-/** What an action changed, so it can be put back exactly as it was. */
+/** The favorites, reader groups and aliases an action changed, which Undo puts back; folds are not part of it. */
 export interface FavoritesUndo {
   entries: readonly FavoriteEntry[];
   groups: readonly string[];

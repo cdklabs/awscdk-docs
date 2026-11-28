@@ -167,13 +167,14 @@ test.describe('target size (WCAG 2.5.8) @a11y', () => {
       const menu = await scan('.favorites-menu');
       expect(menu, `target-size violations in the row menu at ${width}px:\n${menu}`).toBe('');
 
-      // Below 960px the 44px target comes from an overlay, which axe reads
-      // from the box, so the overlay's own height is measured here.
+      // Below 960px the touch area comes from an overlay, which axe reads from
+      // the box, so the overlay's own height is measured here. It matches the
+      // row's 40px rather than 44px, which would overlap the rows either side.
       if (width < 960) {
         const overlay = await row
           .getByRole('button', { name: /^Actions for / })
           .evaluate((el) => getComputedStyle(el, '::before').height);
-        expect(parseFloat(overlay)).toBeGreaterThanOrEqual(44);
+        expect(parseFloat(overlay)).toBeGreaterThanOrEqual(40);
       }
     });
   }

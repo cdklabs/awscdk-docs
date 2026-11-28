@@ -789,12 +789,15 @@ test.describe('grouped favorites view', () => {
       await expect(row.getByRole('button', { name: /^Remove/ })).toBeHidden();
       const box = (await actions.boundingBox())!;
       expect(box.height).toBeCloseTo(28, 0);
-      // The 44px target comes from an overlay, so it cannot be read from the box.
+      // The touch area comes from an overlay, so it cannot be read from the
+      // box. It matches the row's own 40px: a 44px area would reach into the
+      // rows either side, and the later one in the DOM would take that band,
+      // so a finger at the edge of one row would open the next row's menu.
       expect(
         parseFloat(
           await actions.evaluate((el) => getComputedStyle(el, '::before').height),
         ),
-      ).toBeGreaterThanOrEqual(44);
+      ).toBeGreaterThanOrEqual(40);
 
       await actions.click();
       await expect(row.getByRole('menuitem', { name: 'Remove from Favorites' })).toBeVisible();

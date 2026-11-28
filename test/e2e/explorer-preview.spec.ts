@@ -113,7 +113,9 @@ test.describe('explorer preview on desktop', () => {
     await section.getByRole('button', { name: 'Remove Topic from Favorites' }).click();
     await section.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
     await expect(section.getByRole('heading', { name: 'Favorites (0)' })).toBeVisible();
-    await expect(section.locator('.favorites-empty')).toContainText('No favorites yet.');
+    await expect(section.locator('.favorites-empty')).toHaveText(
+      /No favorites yet\.\s*Select the star \(☆\) on an API page to add it\./,
+    );
   });
 
   test('the switch and the view the reader chose survive a reload, and the head script sets both attributes first', async ({
