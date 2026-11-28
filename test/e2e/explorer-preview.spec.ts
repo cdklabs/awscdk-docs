@@ -931,6 +931,24 @@ test.describe('explorer preview Services view', () => {
     await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'false');
   });
 
+  test('with the package nav style stored, the Services view still opens services from their chunks', async ({ page }) => {
+    // The Services view always uses the service style's stores and chunk lookup; the stored package style
+    // applies to the API view alone.
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services', 'cdk-docs-nav-style': 'package' });
+    await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(list(page).getByRole('link', { name: 'Queue (L2 construct)' })).toBeVisible();
+    await serviceRow(page, 'SNS').click();
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(list(page).getByRole('link', { name: 'Topic (L2 construct)' })).toBeVisible();
+    await page.reload();
+    await dismissConsent(page);
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(list(page).getByRole('link', { name: 'Topic (L2 construct)' })).toBeVisible();
+    // The API view comes up in the stored package style.
+    await rail(page).getByRole('button', { name: 'API' }).click();
+    await expect(page.getByRole('navigation', { name: 'API reference navigation' }).getByRole('button', { name: 'API Reference' })).toBeVisible();
+  });
+
   test('the Services view keeps its own per-route scroll memory, apart from the API view\'s', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
     await expect(list(page)).toBeVisible();
