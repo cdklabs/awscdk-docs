@@ -47,7 +47,7 @@ describe('workflow credentials and permissions', () => {
     expect(s3Job).toContain('aws-actions/configure-aws-credentials');
   });
 
-  test('bucket and roles come from environment vars', () => {
+  test('the bucket comes from an environment var', () => {
     expect(s3Job).toContain('${{ vars.DOCS_BUCKET_NAME }}');
   });
 
@@ -139,7 +139,7 @@ describe('the documented version is parsed before any S3 write', () => {
   });
 });
 
-describe('latest marker never moves backwards', () => {
+describe('the embedded marker comparison agrees with compareVersionsDesc', () => {
   const content = readFileSync(releasePath, 'utf-8');
   const s3Job = content.slice(content.indexOf('  release_docs_awscdk-docs:'));
 

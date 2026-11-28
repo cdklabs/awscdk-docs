@@ -16,10 +16,9 @@ const budget = require('../scripts/lighthouse-budget.cjs');
 const runner = require('../scripts/lighthouse-run.cjs');
 
 /**
- * Guards the Lighthouse performance gate: the maintainer-confirmed
- * thresholds (score 90, 400KB gzipped JS+CSS), the gzip-served collect step
- * those bytes are measured against, the combined budget Lighthouse cannot
- * express, and the projen-generated workflow that runs it.
+ * Guards the Lighthouse performance gate's scripts: the invocation shape, the
+ * median score assertion, URL substitution, the combined gzipped JS+CSS budget
+ * Lighthouse cannot express, and the gzip-served collect step it is measured against.
  */
 describe('Lighthouse performance gate', () => {
   const config = JSON.parse(readFileSync(resolve(ROOT, 'lighthouse.config.json'), 'utf-8'));
