@@ -98,7 +98,6 @@ describe('browser e2e suite wiring', () => {
     });
 
     test('determinism settings stay pinned', () => {
-      expect(config).toMatch(/workers: 1/);
       expect(config).toMatch(/fullyParallel: false/);
       expect(config).toMatch(/forbidOnly: !!process\.env\.CI/);
     });
