@@ -39,7 +39,9 @@ function activate(): void {
 // Escape hides the tooltip wherever focus is: a tooltip opened by hover while the filter has focus must be
 // dismissible without moving the pointer.
 function onDocumentKeydown(event: KeyboardEvent): void {
-  if (event.key === "Escape" && tipOpen.value) {
+  // Only while a tooltip is on screen: the live control sets `tipOpen` on hover and focus too, with nothing
+  // rendered, and an Escape swallowed then would stop the search dialog from closing.
+  if (event.key === "Escape" && unavailable.value && tipOpen.value) {
     tipOpen.value = false;
     event.stopPropagation();
   }
@@ -130,12 +132,16 @@ onBeforeUnmount(() => {
 }
 
 /* Nothing to locate: dimmed, still focusable, and no hover accent. A dimmed
-   control is exempt from the contrast rule. */
+   control is exempt from the contrast rule. Only the contents are dimmed, so
+   the focus ring keeps its full strength. */
 .sidebar-jump-current.unavailable,
 .sidebar-jump-current.unavailable:hover {
-  opacity: 0.6;
   cursor: not-allowed;
   color: var(--vp-c-text-2);
+}
+
+.sidebar-jump-current.unavailable > * {
+  opacity: 0.6;
 }
 
 /* Right-aligned under the button with a 4px gap, over the sidebar content.

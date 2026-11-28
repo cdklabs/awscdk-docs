@@ -117,7 +117,31 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
   });
 
   test.describe('phone', () => {
-    test.use({ viewport: { width: 375, height: 760 } });
+    test.use({ viewport: { width: 375, height: 760 }, hasTouch: true });
+
+    // The Services view in the drawer: 44px rows with counts, the Views button reading Services, and the dimmed
+    // Locate tooltip in the drawer header, in both modes.
+    for (const [mode, stored] of [
+      ['light', {}],
+      ['dark', { 'vitepress-theme-appearance': 'dark' }],
+    ] as const) {
+      test(`the Services view in the drawer in ${mode} mode has no critical or serious violations`, async ({ page }) => {
+        await open(page, { ...stored, [VIEW_KEY]: 'services' });
+        if (mode === 'dark') await expect(page.locator('html')).toHaveClass(/dark/);
+        await page.locator('.VPLocalNav button.menu').click();
+        const list = page.getByRole('navigation', { name: 'Services', exact: true });
+        await expect(list.getByRole('button', { name: /^SQS, / })).toHaveAttribute('aria-expanded', 'true');
+        await expect(page.getByRole('button', { name: /^Views/ })).toContainText('Services');
+        await audit(page, `the Services view in the drawer in ${mode} mode`, true);
+        await page.goto(CONSTRUCT_PAGE);
+        await page.locator('.VPLocalNav button.menu').click();
+        const locate = page.locator('button.sidebar-jump-current');
+        await expect(locate).toHaveAttribute('aria-disabled', 'true');
+        await locate.tap({ force: true });
+        await expect(page.getByRole('tooltip')).toBeVisible();
+        await audit(page, `the dimmed Locate control with its tooltip in the drawer in ${mode} mode`, true);
+      });
+    }
 
     test('the unfolded rail and the Views button have no critical or serious violations', async ({ page }) => {
       await open(page, {});

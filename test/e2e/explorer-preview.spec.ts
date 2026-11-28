@@ -809,7 +809,8 @@ test.describe('explorer preview Services view', () => {
     // A route change to a page in no service dims the control; the tooltip shows on hover and on focus.
     await page.goto(CONSTRUCT_PAGE);
     await expect(locate(page)).toHaveAttribute('aria-disabled', 'true');
-    await expect(locate(page)).toHaveCSS('opacity', '0.6');
+    await expect(locate(page).locator('.sidebar-jump-current-text')).toHaveCSS('opacity', '0.6');
+    await expect(locate(page)).toHaveCSS('opacity', '1');
     await expect(locate(page)).toHaveCSS('cursor', 'not-allowed');
     // Hidden with `visibility`, so it is in the DOM for `aria-describedby` before it shows.
     const tip = page.getByRole('tooltip', { includeHidden: true });
