@@ -724,6 +724,8 @@ test.describe('explorer preview Services view', () => {
     const texts = await rows.locator('.api-sidebar-name').allTextContents();
     expect(texts.indexOf('Queue')).toBeLessThan(texts.indexOf('CfnQueue'));
     await expect(sqs.getByRole('link', { name: 'Queue (L2 construct)' })).toHaveAttribute('aria-current', 'page');
+    // The service row holds the current page through its Constructs part, so its guide carries the accent.
+    await expect(sqs).toHaveAttribute('data-active-parent', '');
     await expect(sqs.getByRole('link', { name: 'Queue (L2 construct)' }).locator('.api-sidebar-level')).toHaveAttribute('data-level', 'L2');
     // Every SQS construct is tagged; S3 has untagged ones (Asset, BucketDeployment), whose names start at the
     // same x as the tagged names: the row keeps the tag's 28px.
@@ -841,6 +843,11 @@ test.describe('explorer preview Services view', () => {
     await page.mouse.move(0, 0);
     await locate(page).focus();
     await expect(tip).toBeVisible();
+    // Each trigger holds on its own: the pointer passing over and leaving does not hide a tooltip the focused
+    // control still owes.
+    await locate(page).hover();
+    await page.mouse.move(0, 0);
+    await expect(tip).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(tip).toBeHidden();
     // Still focusable, and activation does nothing but show why: no service opens, the tooltip shows. (`force`:
@@ -948,6 +955,26 @@ test.describe('explorer preview Services view on a phone', () => {
   test.use({ viewport: { width: 375, height: 760 } });
 
   const list = (page: Page) => page.getByRole('navigation', { name: 'Services', exact: true });
+
+  test('Escape on the dimmed Locate control hides its tooltip and leaves the drawer open with focus in place', async ({
+    page,
+  }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' }, false, CONSTRUCT_PAGE);
+    await page.locator('.VPLocalNav button.menu').click();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+    const locate = page.locator('button.sidebar-jump-current');
+    await expect(locate).toHaveAttribute('aria-disabled', 'true');
+    await locate.focus();
+    const tip = page.getByRole('tooltip', { includeHidden: true });
+    await expect(tip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tip).toBeHidden();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+    await expect(locate).toBeFocused();
+    // With the tooltip gone, the next Escape is the drawer's.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.VPSidebar')).not.toHaveClass(/\bopen\b/);
+  });
 
   test('the Views button reads Services, picking it folds the rail, and rows are 44px drawer rows', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });

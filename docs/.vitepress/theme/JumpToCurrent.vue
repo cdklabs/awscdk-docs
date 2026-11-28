@@ -12,6 +12,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useData, useRoute } from "vitepress";
 import { API_ROOT } from "../../../src/site-routes";
 import { normalizePath } from "./api-sidebar";
+import { swallowEscapeRelease } from "./escape-release";
 import { jumpToCurrentUnavailable, requestJumpToCurrent } from "./sidebar-jump";
 
 const route = useRoute();
@@ -23,8 +24,19 @@ const show = computed(() => activePath.value.startsWith(API_ROOT.replace(/^\//, 
 const unavailable = computed(() => jumpToCurrentUnavailable.value);
 
 const TOOLTIP_ID = "sidebar-jump-current-tip";
-const tipOpen = ref(false);
 const rootEl = ref<HTMLElement | null>(null);
+// Each trigger on its own, so the tooltip stays while any of them holds (WCAG 1.4.13): the pointer leaving does
+// not hide a tooltip the focused control still owes, and blur does not hide one the pointer still hovers.
+const hovered = ref(false);
+const focused = ref(false);
+const activated = ref(false);
+const tipOpen = computed(() => hovered.value || focused.value || activated.value);
+
+function dismiss(): void {
+  hovered.value = false;
+  focused.value = false;
+  activated.value = false;
+}
 
 function activate(): void {
   if (!unavailable.value) {
@@ -32,27 +44,35 @@ function activate(): void {
     return;
   }
   // Activation on a dimmed control shows why it does nothing (hover and focus have usually opened the tooltip
-  // already; a toggle would close it right there). Escape, blur, mouseleave and a tap elsewhere hide it.
-  tipOpen.value = true;
+  // already; a toggle would close it right there). Escape, blur, leaving and a tap elsewhere hide it.
+  activated.value = true;
+}
+
+function onBlur(): void {
+  focused.value = false;
+  // An activation belongs to the focused control; leaving it ends the activation too.
+  activated.value = false;
 }
 
 // Escape hides the tooltip wherever focus is: a tooltip opened by hover while the filter has focus must be
-// dismissible without moving the pointer.
+// dismissible without moving the pointer. The release is stopped too, or in the drawer the same Escape would
+// close the drawer and move focus out of it.
 function onDocumentKeydown(event: KeyboardEvent): void {
-  // Only while a tooltip is on screen: the live control sets `tipOpen` on hover and focus too, with nothing
-  // rendered, and an Escape swallowed then would stop the search dialog from closing.
+  // Only while a tooltip is on screen: the live control records hover and focus too, with nothing rendered,
+  // and an Escape swallowed then would stop the search dialog from closing.
   if (event.key === "Escape" && unavailable.value && tipOpen.value) {
-    tipOpen.value = false;
+    dismiss();
     event.stopPropagation();
+    swallowEscapeRelease();
   }
 }
 
-// A tap (or click) anywhere outside the control hides a tooltip a tap opened.
+// A tap (or click) anywhere outside the control hides the tooltip.
 function onDocumentPointerDown(event: PointerEvent): void {
   if (!tipOpen.value) return;
   const target = event.target as Node | null;
   if (rootEl.value && target && rootEl.value.contains(target)) return;
-  tipOpen.value = false;
+  dismiss();
 }
 
 onMounted(() => {
@@ -70,8 +90,8 @@ onBeforeUnmount(() => {
     v-if="show"
     ref="rootEl"
     class="sidebar-jump-current-root"
-    @mouseenter="tipOpen = true"
-    @mouseleave="tipOpen = false"
+    @mouseenter="hovered = true"
+    @mouseleave="hovered = false"
   >
     <button
       type="button"
@@ -80,8 +100,8 @@ onBeforeUnmount(() => {
       :aria-disabled="unavailable ? 'true' : undefined"
       :aria-describedby="unavailable ? TOOLTIP_ID : undefined"
       @click="activate"
-      @focus="tipOpen = true"
-      @blur="tipOpen = false"
+      @focus="focused = true"
+      @blur="onBlur"
     >
       <span class="glyph glyph-locate jump-to-current-glyph" aria-hidden="true" />
       <span class="sidebar-jump-current-text">Locate current page</span>

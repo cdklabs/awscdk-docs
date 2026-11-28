@@ -11,6 +11,7 @@
 import { useRoute } from "vitepress";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
+import { swallowEscapeRelease } from "./escape-release";
 import { explorerPreview, explorerView, railOpen, setExplorerView, type ExplorerView } from "./explorer-preview";
 
 const VIEWS: { value: ExplorerView; label: string; glyph: string }[] = [
@@ -43,23 +44,8 @@ function foldRail(): void {
   views()?.focus();
 }
 
-// VitePress closes the whole drawer when Escape is released. Focus has moved by then, so the Escape keyup is
-// stopped at the window, in the capture phase, ahead of VitePress's own listener. Other keys (a modifier
-// released first, say) pass through and leave the listener in place for the Escape release. If the window
-// loses focus before the release, the release never arrives here, so a blur removes the listener too.
-function swallowEscapeRelease(): void {
-  const done = (): void => {
-    window.removeEventListener("keyup", onKeyup, { capture: true });
-    window.removeEventListener("blur", done);
-  };
-  const onKeyup = (event: KeyboardEvent): void => {
-    if (event.key !== "Escape") return;
-    event.stopPropagation();
-    done();
-  };
-  window.addEventListener("keyup", onKeyup, { capture: true });
-  window.addEventListener("blur", done);
-}
+// VitePress closes the whole drawer when Escape is released, so the Escape keyup is stopped at the window
+// (escape-release.ts) once the keydown has folded the rail.
 
 // Escape folds the rail wherever focus is: the Views button and the tree behind the scrim must not leave the
 // rail unfolded when VitePress closes the drawer.

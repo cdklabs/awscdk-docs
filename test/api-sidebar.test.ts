@@ -857,6 +857,10 @@ describe('Services view', () => {
     ]);
     const byName = filterSidebarTree(servicesViewTree(skeleton, true), ['polly'], matches);
     expect(byName[0].items!.length).toBe(serviceViewItems(polly, true).length);
+    // The flat list has no kind group or resource rows, so their names are not terms here (the ADR records it).
+    expect(filterSidebarTree(servicesViewTree(skeleton, true), ['others'], matches)).toEqual([]);
+    expect(filterSidebarTree(servicesViewTree(skeleton, true), ['s3', 'facades'], matches)).toEqual([]);
+    expect(filterSidebarTree(servicesViewTree(skeleton, true), ['s3', 'facade'], matches)[0].items!.map((n) => n.text)).toEqual(['BucketFacade']);
   });
 
   test('serviceForPath names the service owning a page, and none for a framework page', () => {

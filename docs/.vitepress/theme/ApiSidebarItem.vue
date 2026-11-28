@@ -105,15 +105,14 @@ const active = computed(() =>
 );
 // An open group whose own child list holds the active page link. The
 // stylesheet accents this group's nesting guide line, so only the innermost
-// group around the current page is marked.
-const activeParent = computed(
-  () =>
-    isGroup.value &&
-    open.value &&
-    (props.node.items ?? []).some(
-      (child) => !child.section && isActiveLink(child.link, ctx.activePath.value, ctx.base.value),
-    ),
-);
+// group around the current page is marked. A part (Services view) adds a
+// heading but no group, so a link inside a part counts for the service row.
+const holdsActive = (child: ApiSidebarNode): boolean =>
+  !child.section &&
+  (child.part
+    ? (child.items ?? []).some((row) => isActiveLink(row.link, ctx.activePath.value, ctx.base.value))
+    : isActiveLink(child.link, ctx.activePath.value, ctx.base.value));
+const activeParent = computed(() => isGroup.value && open.value && (props.node.items ?? []).some(holdsActive));
 
 function onToggle() {
   // The root decides where the toggle lands: the filter session's fold set
