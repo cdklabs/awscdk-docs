@@ -40,8 +40,8 @@ const CDK_ALPHA_PACKAGES = ['@aws-cdk/mixins-preview'];
 // @aws-cdk/cloud-assembly-schema is re-exported as the aws-cdk-lib `cloud_assembly_schema` submodule, so
 // documenting the standalone package would duplicate its pages.
 
-// The project type supplies `typescript`. Held at its current major until the typescript-eslint and ts-jest peer
-// ranges accept the next one.
+// The project type supplies `typescript`. Held below the newest TypeScript the typescript-eslint and ts-jest peer
+// ranges accept.
 const project = new CdkTypeScriptProject({
   name: '@cdklabs/awscdk-docs',
   private: true,
@@ -190,8 +190,8 @@ project.package.addPackageResolutions('@sentry/node@file:projenrc/stubs/sentry-n
 project.eslint?.allowDevDeps('src/**');
 
 // Projen's ESLint component supplies `eslint`, held at its current major until eslint-plugin-import's peer range
-// accepts the next one. For this plugin the component asks for an older major. A later request for the same dependency replaces it; without a
-// version, projen keeps the range in package.json.
+// accepts the next one. For @stylistic/eslint-plugin the component asks for an older major. A later request for the
+// same dependency replaces it; without a version, projen keeps the range in package.json.
 project.addDevDeps('@stylistic/eslint-plugin');
 // Requires a space between `catch` and its parameter; the other function-paren cases stay unchecked.
 project.eslint?.addRules({
