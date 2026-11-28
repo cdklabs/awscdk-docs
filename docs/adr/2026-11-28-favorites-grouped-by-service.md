@@ -149,6 +149,12 @@ may already be resting on.
   module the lookup cannot place surfaces as a failing build rather than as rows
   quietly piling up in Ungrouped. The map the view ships with leaves 21
   documented module ids unplaced, which the test lists by name.
+- That test can hold back a CDK version bump. The only writer of the module
+  ledger is the nightly refresh, so the release that first documents a new
+  service module fails the build until the map names it or the unplaced list
+  does. The cost is deliberate: a new service arrives with its category
+  decided. The nightly refresh is where that edit happens, which the versions
+  record in docs/adr/2026-10-15-versions-and-history.md now says.
 - A group with no favorites in it exists only if the reader made or renamed it.
   A map group disappears when its last favorite goes, and comes back with the
   next page from that service.

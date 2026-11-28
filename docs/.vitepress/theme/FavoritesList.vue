@@ -209,6 +209,16 @@ function serviceOf(entry: FavoriteEntry): string | undefined {
   return sectionsLoaded ? serviceNameFor(entry.path, sectionsLoaded) : undefined;
 }
 
+/**
+ * The row's name for a control or a message. Two favorites can carry the same
+ * title — a `CfnStage` from two API Gateway modules, say — so the service goes
+ * in the name a screen reader reads, not only in the row's own text.
+ */
+function rowName(entry: FavoriteEntry): string {
+  const service = serviceOf(entry);
+  return service ? `${entry.title} (${service})` : entry.title;
+}
+
 function linkFor(entry: FavoriteEntry): string {
   return pageHref(entry.path);
 }
@@ -376,7 +386,7 @@ function removeEntry(entry: FavoriteEntry): void {
   const undo = favoritesStore().snapshot();
   closeMenu();
   favoritesStore().remove(entry.path);
-  showToast(`Removed “${entry.title}” from Favorites.`, undo, entry.path);
+  showToast(`Removed “${rowName(entry)}” from Favorites.`, undo, entry.path);
   focusAfter(neighbor, group);
 }
 
@@ -810,7 +820,7 @@ function cssEscape(value: string): string {
                 type="button"
                 class="favorites-actions"
                 :data-fav-actions="entry.path"
-                :aria-label="`Actions for ${entry.title}`"
+                :aria-label="`Actions for ${rowName(entry)}`"
                 aria-haspopup="menu"
                 :aria-expanded="menuOpen('row', entry.path)"
                 @click="toggleFor('row', entry.path)"
@@ -822,7 +832,7 @@ function cssEscape(value: string): string {
               <button
                 type="button"
                 class="favorites-remove"
-                :aria-label="`Remove ${entry.title} from Favorites`"
+                :aria-label="`Remove ${rowName(entry)} from Favorites`"
                 @click="removeEntry(entry)"
                 @keydown="onViewKey($event, entry)"
               >
@@ -835,8 +845,8 @@ function cssEscape(value: string): string {
                 role="menu"
                 :aria-label="
                   openMenu?.level === 'groups'
-                    ? `Move ${entry.title} to group`
-                    : `Actions for ${entry.title}`
+                    ? `Move ${rowName(entry)} to group`
+                    : `Actions for ${rowName(entry)}`
                 "
                 @keydown="onMenuKey($event, entry.path)"
               >

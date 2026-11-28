@@ -412,6 +412,44 @@ test.describe('grouped favorites view', () => {
       ]);
     });
 
+    test('two favorites with one title have controls that name their services', async ({ page }) => {
+      await openView(page, [
+        { path: '/v2/docs/aws-cdk-lib.aws_sqs.CfnQueue', title: 'CfnQueue' },
+        { path: '/v2/docs/aws-cdk-lib.aws_sns.CfnQueue', title: 'CfnQueue' },
+      ]);
+      const rows = view(page).locator('.favorites-item');
+      await expect(rows).toHaveCount(2);
+      await rows.first().hover();
+
+      // Both rows sit in Application integration with the same title, so the
+      // service is what tells their buttons apart.
+      // Same title, so the stored order decides which row comes first.
+      for (const [service, index] of [
+        ['SQS', 0],
+        ['SNS', 1],
+      ] as const) {
+        const row = rows.nth(index);
+        await expect(
+          row.getByRole('button', { name: `Actions for CfnQueue (${service})`, exact: true }),
+        ).toHaveCount(1);
+        await expect(
+          row.getByRole('button', {
+            name: `Remove CfnQueue (${service}) from Favorites`,
+            exact: true,
+          }),
+        ).toHaveCount(1);
+      }
+
+      await rows.first().getByRole('button', { name: /^Actions for / }).click();
+      await expect(
+        rows.first().getByRole('menu', { name: 'Actions for CfnQueue (SQS)', exact: true }),
+      ).toBeVisible();
+      await rows.first().getByRole('menuitem', { name: 'Move to group…' }).click();
+      await expect(
+        rows.first().getByRole('menu', { name: 'Move CfnQueue (SQS) to group', exact: true }),
+      ).toBeVisible();
+    });
+
     test('an unmapped page lands in Ungrouped, which sorts last', async ({ page }) => {
       await openView(page, [
         ...STARRED,
@@ -431,10 +469,11 @@ test.describe('grouped favorites view', () => {
       await openView(page);
       const row = view(page).locator('.favorites-item').first();
       await row.hover();
-      await row.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+      await row.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
 
       const toast = view(page).locator('.favorites-toast');
-      await expect(toast).toHaveText(/Removed “Queue” from Favorites\./);
+      // The service is in the message too: two favorites can share a title.
+      await expect(toast).toHaveText(/Removed “Queue \(SQS\)” from Favorites\./);
       await expect(view(page).getByRole('heading', { name: 'Favorites (2)' })).toBeVisible();
       await expect(view(page).locator('.favorites-link')).toHaveText([
         'Topic · SNS',
@@ -455,7 +494,7 @@ test.describe('grouped favorites view', () => {
       await openView(page);
       const row = view(page).locator('.favorites-item').first();
       await row.hover();
-      await row.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+      await row.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
       await expect(view(page).locator('.favorites-toast')).toBeVisible();
 
       // Move another favorite while the offer is up. Undo would restore the
@@ -523,7 +562,7 @@ test.describe('grouped favorites view', () => {
       await openView(page);
       const row = view(page).locator('.favorites-item').first();
       await row.hover();
-      await row.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+      await row.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
       await expect(view(page).locator('.favorites-toast')).toBeVisible();
 
       await view(page).getByRole('button', { name: 'New group' }).click();
@@ -681,7 +720,7 @@ test.describe('grouped favorites view', () => {
       await openView(page);
       const row = view(page).locator('.favorites-item').first();
       await row.hover();
-      await row.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+      await row.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
       const toast = view(page).locator('.favorites-toast');
       await expect(toast).toBeVisible();
 

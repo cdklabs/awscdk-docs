@@ -1,7 +1,7 @@
 // Client-side "favorite" pages. Users star API pages; stars persist in
 // localStorage, surface in a sidebar section, and boost search results.
 // Dependency-free (no vitepress imports) so the logic is testable under Jest.
-import { API_ROOT } from "../../../src/site-routes";
+import { API_DOCS_ROOT, API_ROOT } from "../../../src/site-routes";
 import categories from "./favorite-categories.json";
 
 /**
@@ -120,12 +120,12 @@ const CATEGORY_MAP: Readonly<Record<string, string>> = categories.map;
  * documentation page, such as the API front page.
  */
 export function pageId(path: string): string | undefined {
-  const match = /\/docs\/([^/]+?)(?:\.html)?$/.exec(normalizePath(path));
-  if (!match) {
+  const normalized = normalizePath(path);
+  if (!normalized.startsWith(API_DOCS_ROOT)) {
     return undefined;
   }
-  const id = match[1].replace(/-readme$/, "");
-  return id === "" ? undefined : id;
+  const id = normalized.slice(API_DOCS_ROOT.length).replace(/-readme$/, "");
+  return id === "" || id.includes("/") ? undefined : id;
 }
 
 /**

@@ -110,8 +110,8 @@ test.describe('explorer preview on desktop', () => {
     await expect(page.locator('.favorites-section')).toHaveCount(0);
     await rail(page).getByRole('button', { name: 'Favorites' }).click();
 
-    await section.getByRole('button', { name: 'Remove Topic from Favorites' }).click();
-    await section.getByRole('button', { name: 'Remove Queue from Favorites' }).click();
+    await section.getByRole('button', { name: 'Remove Topic (SNS) from Favorites' }).click();
+    await section.getByRole('button', { name: 'Remove Queue (SQS) from Favorites' }).click();
     await expect(section.getByRole('heading', { name: 'Favorites (0)' })).toBeVisible();
     await expect(section.locator('.favorites-empty')).toHaveText(
       /No favorites yet\.\s*Select the star \(☆\) on an API page to add it\./,
