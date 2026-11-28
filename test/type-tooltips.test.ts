@@ -230,7 +230,7 @@ describe('API type hover tooltips', () => {
     expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('a scroll caused by keyboard focus keeps the tooltip and moves it with the link', async () => {
+  test('scrolls soon after a focus move keep the tooltip and move it with the link; later ones hide it', async () => {
     jest.useFakeTimers({ doNotFake: ['setImmediate'] });
     try {
       await install();
@@ -241,13 +241,13 @@ describe('API type hover tooltips', () => {
       expect(tooltip()!.getAttribute('aria-hidden')).toBe('false');
 
       anchor.box = { top: 300, bottom: 320, left: 100, height: 20 };
-      jest.advanceTimersByTime(100);
+      jest.advanceTimersByTime(400);
       dom.dispatch('window:scroll', content);
       expect(tooltip()!.getAttribute('aria-hidden')).toBe('false');
       expect(tooltip()!.style.top).toBe('328px');
 
-      // Once the focus scroll settles, a reader's scroll hides the tooltip as before.
-      jest.advanceTimersByTime(200);
+      // Scrolling does not extend the window, so a reader's scroll after it hides the tooltip as before.
+      jest.advanceTimersByTime(100);
       dom.dispatch('window:scroll', null);
       expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
     } finally {

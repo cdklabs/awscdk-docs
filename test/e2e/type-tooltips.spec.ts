@@ -194,6 +194,7 @@ test.describe('type tooltips on keyboard focus', () => {
     const tooltip = page.locator('#api-type-tooltip');
     await expect(tooltip).toBeVisible({ timeout: 15_000 });
     await expect(link).toBeInViewport();
+    await expect(tooltip).toBeInViewport();
     // Placed against the link's position after the focus scroll, not before it.
     await expect
       .poll(async () => {

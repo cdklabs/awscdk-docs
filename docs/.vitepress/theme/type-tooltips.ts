@@ -27,11 +27,11 @@ let summariesAsset = "";
 let loading: Promise<SummaryMap> | undefined;
 let tooltip: HTMLElement | undefined;
 let currentAnchor: HTMLAnchorElement | undefined;
-// Set while the scroll that a keyboard focus move causes is still running.
+// Set for a short time after a keyboard focus move, while the scroll that move causes may still arrive.
 let focusScrollTimer: ReturnType<typeof setTimeout> | undefined;
 
-// A focus scroll counts as settled after this long without a scroll event.
-const FOCUS_SCROLL_SETTLE_MS = 150;
+// How long after a focus move a scroll counts as caused by that move.
+const FOCUS_SCROLL_MS = 500;
 
 function loadSummaries(): Promise<SummaryMap> {
   const asset = apiSidebarAsset(summariesAsset);
@@ -111,7 +111,7 @@ function show(anchor: HTMLAnchorElement, entry: TypeSummary): void {
   anchor.setAttribute("aria-describedby", TOOLTIP_ID);
 }
 
-/** Position the tooltip below `anchor`, inside the viewport. */
+/** Position the tooltip below `anchor`, kept inside the viewport horizontally. */
 function place(anchor: HTMLAnchorElement): void {
   const el = ensureTooltip();
   const rect = anchor.getBoundingClientRect();
@@ -127,10 +127,10 @@ function endFocusScroll(): void {
   focusScrollTimer = undefined;
 }
 
-/** Open (or extend) the window in which scrolls come from the focus move, not the reader. */
-function extendFocusScroll(): void {
+/** Open the window in which scrolls come from the focus move, not the reader. */
+function startFocusScroll(): void {
   clearTimeout(focusScrollTimer);
-  focusScrollTimer = setTimeout(endFocusScroll, FOCUS_SCROLL_SETTLE_MS);
+  focusScrollTimer = setTimeout(endFocusScroll, FOCUS_SCROLL_MS);
 }
 
 function hide(): void {
@@ -161,12 +161,13 @@ function handleEnter(event: Event): void {
   });
 }
 
-// Focusing a link outside the viewport scrolls it into view after `focusin`. That scroll keeps the tooltip.
+// Focusing a link outside the viewport scrolls it into view, and the `scroll` event fires after `focusin`. The
+// browser has already moved the page by then, so the link's position cannot tell whether that event is coming.
 function handleFocus(event: Event): void {
   const previous = currentAnchor;
   handleEnter(event);
   if (currentAnchor && currentAnchor !== previous) {
-    extendFocusScroll();
+    startFocusScroll();
   }
 }
 
@@ -179,7 +180,8 @@ function handleLeave(event: Event): void {
 
 // Hide on scroll, but only when the scrolled element can displace the tooltip's
 // anchor: the document itself, or an ancestor of the anchor. The sidebar is an
-// independent scroller whose scroll never moves a hovered content link.
+// independent scroller whose scroll never moves a hovered content link. A scroll that a
+// keyboard focus move causes moves the tooltip with the link instead.
 function handleScroll(event: Event): void {
   const target = event.target as Node | null;
   if (
@@ -189,7 +191,6 @@ function handleScroll(event: Event): void {
     target.contains(currentAnchor)
   ) {
     if (currentAnchor && focusScrollTimer !== undefined) {
-      extendFocusScroll();
       if (tooltip?.getAttribute("aria-hidden") === "false") {
         place(currentAnchor);
       }
