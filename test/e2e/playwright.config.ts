@@ -45,11 +45,12 @@ export default defineConfig({
   testDir: import.meta.dirname,
   outputDir: path.join(import.meta.dirname, 'test-results'),
   timeout: 30_000,
-  // The suite mutates localStorage; contexts are isolated per test, but the
-  // static server is shared and single-threaded, so run one worker and keep
-  // tests within a file sequential — deterministic over marginally slower.
+  // Each test gets its own browser context, so localStorage never leaks across
+  // tests, and spec files run in parallel workers against the one static server.
+  // Tests within a file stay sequential. CI uses a quarter of the runner's cores,
+  // leaving timing-sensitive specs CPU headroom; locally Playwright's default applies.
   fullyParallel: false,
-  workers: 1,
+  workers: process.env.CI ? '25%' : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI
