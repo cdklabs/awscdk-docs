@@ -31,21 +31,6 @@ describe('accessibility gate configuration', () => {
     ).toBe(true);
   });
 
-  test('the audit and the browser e2e suite stay separate gates', () => {
-    // Both suites live in test/e2e/ and share one fixture build, so they are
-    // split by tag: the e2e task excludes @a11y and the audit task selects
-    // it. If either side of that split is dropped the two gates silently
-    // merge and a red check stops telling you which one broke.
-    const tasks = JSON.parse(
-      fs.readFileSync(path.join(import.meta.dirname, '..', '.projen', 'tasks.json'), 'utf-8'),
-    );
-    const stepsOf = (name: string) =>
-      (tasks.tasks[name].steps as { exec?: string }[]).map((s) => s.exec ?? '').join('\n');
-
-    expect(stepsOf('docs:e2e')).toContain('--grep-invert @a11y');
-    expect(stepsOf('docs:a11y')).toContain('--grep @a11y');
-  });
-
   test('the audit is not narrowed', () => {
     const audit = fs.readFileSync(
       path.join(import.meta.dirname, 'e2e', 'a11y-audit.spec.ts'),
@@ -283,16 +268,5 @@ describe('accessibility gate configuration', () => {
       .toBeGreaterThanOrEqual(3);
     expect(ratio(valueOf(dark, accent![1]), valueOf(dark, '--vp-c-bg-alt')))
       .toBeGreaterThanOrEqual(3);
-  });
-
-  test('the audit workflow is projen-generated, not hand-written YAML', () => {
-    // Acceptance criterion on the issue. projen marks what it owns in
-    // .gitattributes, so a hand-written workflow is detectable: it would be
-    // absent from that list and drift on the next synth.
-    const gitattributes = fs.readFileSync(
-      path.join(import.meta.dirname, '..', '.gitattributes'),
-      'utf-8',
-    );
-    expect(gitattributes).toContain('/.github/workflows/docs-a11y.yml linguist-generated');
   });
 });

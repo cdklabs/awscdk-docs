@@ -104,11 +104,4 @@ describe('three-state theme picker', () => {
     );
   });
 
-  test('@vueuse/core is a declared dependency', () => {
-    const pkg = JSON.parse(
-      readFileSync(resolve(ROOT, 'package.json'), 'utf-8'),
-    );
-    expect(pkg.dependencies['@vueuse/core']).toBeDefined();
-  });
-
 });

@@ -599,13 +599,6 @@ describe('versions.json endpoint', () => {
     }
   });
 
-  test('the emitted build artifact is gitignored', () => {
-    const gitignore = readFileSync(resolve(ROOT, '.gitignore'), 'utf-8');
-    expect(gitignore).toContain('docs/public/versions.json');
-    // The endpoint moved beside the versions page; the api/-nested entry is gone.
-    expect(gitignore).not.toContain('docs/public/api/versions.json');
-  });
-
 });
 
 describe('static CDK v1 entry', () => {

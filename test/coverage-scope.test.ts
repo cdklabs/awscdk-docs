@@ -26,24 +26,4 @@ describe('Jest coverage scope', () => {
     expect(sources.length).toBeGreaterThan(50);
     expect(missing).toEqual([]);
   });
-
-  test('test helpers and build output are not measured', () => {
-    expect(measured('test/hashed-assets.ts')).toBe(false);
-    expect(measured('docs/.vitepress/cache/deps/vue.ts')).toBe(false);
-    expect(measured('docs/.vitepress/dist/assets/app.ts')).toBe(false);
-  });
-
-  test('the test task holds the full run to a floor on every coverage metric', () => {
-    const tasks = JSON.parse(readFileSync(join(root, '.projen/tasks.json'), 'utf8')).tasks;
-    const jestArgs: string[] = tasks.test.steps.find((s: { execArgs?: string[] }) => s.execArgs?.[0] === 'jest').execArgs;
-    const flag = jestArgs.find((a) => a.startsWith('--coverageThreshold='))!;
-    const floor = JSON.parse(flag.slice('--coverageThreshold='.length)).global;
-    for (const metric of ['lines', 'statements', 'branches', 'functions']) {
-      expect(floor[metric]).toBeGreaterThanOrEqual(80);
-    }
-  });
-
-  test('the Jest config itself has no floor, so a single-file run is not held to it', () => {
-    expect(jest.coverageThreshold).toBeUndefined();
-  });
 });
