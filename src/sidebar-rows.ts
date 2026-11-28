@@ -25,7 +25,10 @@ export interface SidebarRowNode {
 export interface ServiceRows<T extends SidebarRowNode> {
   /** Overview pages: the leaves at the service's top level that are readmes (no `kind`). In tree order. */
   readonly overviews: T[];
-  /** Construct rows: every leaf outside a kind group that is not an overview, resource by resource in tree order. */
+  /**
+   * Construct rows: every leaf outside a kind group that is not an overview, plus the leaves of the `Constructs`
+   * kind group, resource by resource in tree order.
+   */
   readonly constructs: T[];
   /**
    * Supporting types by kind group name (`Mixins`, `Others`, ...), merged across the service's resources. A kind

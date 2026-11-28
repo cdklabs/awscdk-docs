@@ -1959,7 +1959,7 @@ describe('section modules and splitSidebarChunks', () => {
     expect(services.find((s) => s.text === 'SNS')!.count).toBe(1);
     expect(framework.every((s) => s.count === undefined)).toBe(true);
     // The count is the number of construct rows the client lists once the chunk is open: the leaves outside
-    // kind groups, overview pages excluded.
+    // kind groups (overview pages excluded) plus the leaves of a `Constructs` kind group.
     const s3 = chunks.find((c) => c.chunk === 's3')!.items;
     expect(constructCount(s3)).toBe(3);
     expect(s3[0]).toEqual({ text: 'Overview', link: expect.any(String) });

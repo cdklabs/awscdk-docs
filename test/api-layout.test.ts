@@ -109,7 +109,8 @@ describe('API page layout', () => {
       expect(skeleton[0].items.every((s: any) => s.count === undefined)).toBe(true);
       expect(skeleton[1].items.every((s: any) => typeof s.count === 'number' && s.count >= 0)).toBe(true);
       // The count is the number of construct rows the client lists once the chunk is open: for each Services
-      // section, the leaves outside kind groups, overview pages excluded (src/sidebar-rows.ts).
+      // section, the leaves outside kind groups (overview pages excluded) plus the leaves of a `Constructs` kind
+      // group (src/sidebar-rows.ts).
       for (const section of skeleton[1].items) {
         const items = JSON.parse(readFileSync(join(publicDir, 'api-sidebar', 'chunks', section.chunk), 'utf-8'));
         expect(section.count).toBe(constructCount(items));
