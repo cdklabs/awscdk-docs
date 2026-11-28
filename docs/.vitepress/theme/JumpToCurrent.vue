@@ -4,8 +4,9 @@
 // In the Explorer's Services view a page that is in no service (a framework or `constructs` page) has nothing to
 // locate: the control stays in place and focusable but is dimmed (`aria-disabled`, not `disabled`, so keyboard
 // focus still reaches it), activation does nothing, and a tooltip says why. The tooltip shows on hover and on
-// keyboard focus, hides on Escape and on blur, and on a touch screen it shows on tap and hides on the next tap
-// elsewhere. It is always in the DOM while the control is dimmed, so `aria-describedby` has a target.
+// keyboard focus and on activation, hides on Escape and on blur, and on a touch screen it shows on tap and hides
+// on the next tap elsewhere. It is always in the DOM while the control is dimmed, so `aria-describedby` has a
+// target.
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useData, useRoute } from "vitepress";
 import { API_ROOT } from "../../../src/site-routes";
@@ -29,8 +30,9 @@ function activate(): void {
     requestJumpToCurrent();
     return;
   }
-  // A tap on a touch screen has no hover: the tap toggles the tooltip instead.
-  tipOpen.value = !tipOpen.value;
+  // Activation on a dimmed control shows why it does nothing (hover and focus have usually opened the tooltip
+  // already; a toggle would close it right there). Escape, blur, mouseleave and a tap elsewhere hide it.
+  tipOpen.value = true;
 }
 
 function onKeydown(event: KeyboardEvent): void {

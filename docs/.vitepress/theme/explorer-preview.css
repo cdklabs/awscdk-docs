@@ -254,7 +254,8 @@ html[data-explorer-preview="on"] .favorites-empty {
  * tree with `.services-view` on its root), so density, indent, guide lines, sticky headings and level tags come
  * from api-sidebar.css unchanged. The rules here are what differs: the quieter `--explorer-sub` ink on everything
  * but the service names and the active row, the counts at the right edge, the part sub-headings, the mono module
- * rows, the tag space on untagged construct rows, and the phone touch areas.
+ * rows and the tag space on untagged construct rows. Below 960px the rows are drawer rows like the API view's and
+ * take the 44px height from responsive.css.
  */
 
 /* Row text, carets and kind group names use `--explorer-sub` (7:1 or more in both modes); service names keep
@@ -328,29 +329,4 @@ html[data-explorer-preview="on"] .favorites-empty {
    name in the Constructs list starts at the same x. */
 .api-sidebar-part[data-part="Constructs"] .api-sidebar-link > .api-sidebar-name:first-child {
   margin-left: 28px;
-}
-
-/* Phones: rows keep their desktop height and reach 44px of touch height through a transparent overlay centered
-   on the row (`::after`; `::before` draws the nesting guide). Service rows are already positioned (sticky). */
-@media (max-width: 959px) {
-  .VPSidebar .services-view .api-sidebar-group,
-  .VPSidebar .services-view .api-sidebar-link {
-    min-height: 0;
-  }
-
-  .services-view .api-sidebar-link,
-  .services-view .api-sidebar-item[data-kind-group] > .api-sidebar-group {
-    position: relative;
-  }
-
-  .services-view .api-sidebar-group::after,
-  .services-view .api-sidebar-link::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    right: 0;
-    left: 0;
-    height: max(44px, 100%);
-    transform: translateY(-50%);
-  }
 }

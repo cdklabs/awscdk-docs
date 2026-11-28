@@ -767,13 +767,17 @@ test.describe('explorer preview Services view', () => {
     await dismissConsent(page);
     await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
     await expect(list(page).getByRole('link', { name: 'Topic (L2 construct)' })).toBeVisible();
+    // The Services view's SNS key is not the API view's: with SNS open here, the API view's SNS under its
+    // Services heading is still closed, and coming back finds SNS still open.
+    await rail(page).getByRole('button', { name: 'API' }).click();
+    const apiSns = page.getByRole('navigation', { name: 'API reference navigation' }).getByRole('button', { name: 'SNS' });
+    await expect(apiSns).toHaveAttribute('aria-expanded', 'false');
+    await rail(page).getByRole('button', { name: 'Services' }).click();
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
     await serviceRow(page, 'SNS').click();
     await page.reload();
     await dismissConsent(page);
     await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'false');
-    // The API view's own S3 key is untouched by the Services view's: SNS is still closed there under Services.
-    await rail(page).getByRole('button', { name: 'API' }).click();
-    await expect(page.getByRole('navigation', { name: 'API reference navigation' }).getByRole('button', { name: 'SNS' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('Locate current page opens the service and selects the row; on a page in no service it is dimmed with a tooltip', async ({
@@ -815,11 +819,15 @@ test.describe('explorer preview Services view', () => {
     await expect(tip).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(tip).toBeHidden();
-    // Still focusable, and activation does nothing: no service opens. (`force`: Playwright treats
-    // `aria-disabled` as disabled and would otherwise wait for the control to become enabled.)
+    // Still focusable, and activation does nothing but show why: no service opens, the tooltip shows. (`force`:
+    // Playwright treats `aria-disabled` as disabled and would otherwise wait for the control to become enabled.)
     await expect(locate(page)).toBeFocused();
     await locate(page).click({ force: true });
+    await expect(tip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tip).toBeHidden();
     await page.keyboard.press('Enter');
+    await expect(tip).toBeVisible();
     await expect(list(page).locator(':scope > .api-sidebar-list > .api-sidebar-item > .api-sidebar-group[aria-expanded="true"]')).toHaveCount(0);
     // The API view has no dimmed state on the same page.
     await rail(page).getByRole('button', { name: 'API' }).click();
@@ -896,12 +904,28 @@ test.describe('explorer preview Services view', () => {
   });
 });
 
+test.describe('explorer preview Services view with touch', () => {
+  test.use({ viewport: { width: 1280, height: 900 }, hasTouch: true });
+
+  test('a tap on the dimmed Locate control shows the tooltip, and a tap elsewhere hides it', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' }, false, CONSTRUCT_PAGE);
+    const locate = page.locator('button.sidebar-jump-current');
+    await expect(locate).toHaveAttribute('aria-disabled', 'true');
+    const tip = page.getByRole('tooltip', { includeHidden: true });
+    await expect(tip).toBeHidden();
+    await locate.tap({ force: true });
+    await expect(tip).toBeVisible();
+    await page.locator('.vp-doc h1').tap();
+    await expect(tip).toBeHidden();
+  });
+});
+
 test.describe('explorer preview Services view on a phone', () => {
   test.use({ viewport: { width: 375, height: 760 } });
 
   const list = (page: Page) => page.getByRole('navigation', { name: 'Services', exact: true });
 
-  test('the Views button reads Services, picking it folds the rail, and rows reach 44px without growing', async ({ page }) => {
+  test('the Views button reads Services, picking it folds the rail, and rows are 44px drawer rows', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
     await page.locator('.VPLocalNav button.menu').click();
     const views = page.getByRole('button', { name: /^Views/ });
@@ -915,28 +939,26 @@ test.describe('explorer preview Services view on a phone', () => {
     await expect(views.locator('.explorer-views-icon')).toHaveClass(/glyph-services/);
     await expect(list(page)).toBeVisible();
 
-    // Visible sizes stay as on desktop (no 44px row), while the overlay gives 44px of touch height.
+    // The rows are drawer rows like the API view's: 44px tall from responsive.css, with no overlay, so a tap near a
+    // row's bottom edge and a tap on the boundary between two construct rows both land on the upper row.
     const sqs = list(page).getByRole('button', { name: /^SQS, / });
     await sqs.scrollIntoViewIfNeeded();
     const sqsBox = (await sqs.boundingBox())!;
-    expect(sqsBox.height).toBeLessThan(40);
-    const overlay = await sqs.evaluate((el) => {
-      const after = getComputedStyle(el, '::after');
-      return { height: after.height, position: after.position, top: after.top };
-    });
-    expect(overlay.position).toBe('absolute');
-    expect(parseFloat(overlay.height)).toBeGreaterThanOrEqual(44);
-    const link = list(page).getByRole('link', { name: 'Queue (L2 construct)' });
-    await link.scrollIntoViewIfNeeded();
-    const linkBox = (await link.boundingBox())!;
-    expect(linkBox.height).toBeLessThan(40);
-    const linkOverlay = await link.evaluate((el) => parseFloat(getComputedStyle(el, '::after').height));
-    expect(linkOverlay).toBeGreaterThanOrEqual(44);
-    // A tap 5px above the painted row still lands on the row: the overlay is the hit target.
-    const hit = await page.evaluate(
-      ([x, y]) => document.elementFromPoint(x, y)?.closest('a.api-sidebar-link')?.textContent?.trim() ?? null,
-      [linkBox.x + linkBox.width / 2, linkBox.y - 5] as const,
-    );
-    expect(hit).toContain('Queue');
+    expect(sqsBox.height).toBeGreaterThanOrEqual(44);
+    const queue = list(page).getByRole('link', { name: 'Queue (L2 construct)' });
+    const cfnQueue = list(page).getByRole('link', { name: 'CfnQueue (L1 construct)' });
+    await queue.scrollIntoViewIfNeeded();
+    const queueBox = (await queue.boundingBox())!;
+    const cfnBox = (await cfnQueue.boundingBox())!;
+    expect(queueBox.height).toBeGreaterThanOrEqual(44);
+    expect(cfnBox.y).toBeGreaterThanOrEqual(queueBox.y + queueBox.height);
+    const hitAt = (x: number, y: number) =>
+      page.evaluate(
+        ([px, py]) => document.elementFromPoint(px, py)?.closest('a.api-sidebar-link')?.getAttribute('href') ?? null,
+        [x, y] as const,
+      );
+    expect(await hitAt(queueBox.x + queueBox.width / 2, queueBox.y + queueBox.height - 3)).toContain('aws_sqs.Queue.html');
+    expect(await hitAt(queueBox.x + queueBox.width / 2, cfnBox.y - 1)).toContain('aws_sqs.Queue.html');
+    expect(await hitAt(cfnBox.x + cfnBox.width / 2, cfnBox.y + 3)).toContain('aws_sqs.CfnQueue.html');
   });
 });
