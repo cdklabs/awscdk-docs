@@ -685,7 +685,9 @@ test.describe('grouped favorites view', () => {
       const toast = view(page).locator('.favorites-toast');
       await expect(toast).toBeVisible();
 
-      // Held while the pointer is over it.
+      // Held while the pointer is over it, with focus out of the view, so the
+      // pointer is the only hold left. The removal leaves focus on a row.
+      await page.locator('#explorer-rail button').first().focus();
       await toast.hover();
       await page.clock.runFor(9000);
       await expect(toast).toBeVisible();
@@ -710,7 +712,17 @@ test.describe('grouped favorites view', () => {
 
     test('a replacement offer keeps the holds the one before it had', async ({ page }) => {
       await page.clock.install();
-      await openView(page);
+      // A short viewport with a long list, so the sidebar scrolls and the
+      // sticky toast stays where it is when a row goes: the pointer resting on
+      // it is still on it afterwards, which is the case under test.
+      await page.setViewportSize({ width: 1280, height: 400 });
+      await openView(page, [
+        ...STARRED,
+        { path: '/v2/docs/aws-cdk-lib.aws_s3.Bucket', title: 'Bucket' },
+        { path: '/v2/docs/aws-cdk-lib.aws_lambda.Function', title: 'Function' },
+        { path: '/v2/docs/aws-cdk-lib.aws_iam.Role', title: 'Role' },
+        { path: '/v2/docs/aws-cdk-lib.aws_ecs.Cluster', title: 'Cluster' },
+      ]);
       const row = view(page).locator('.favorites-item').first();
       await row.hover();
       await row.getByRole('button', { name: /^Remove/ }).click();
@@ -722,7 +734,13 @@ test.describe('grouped favorites view', () => {
       await toast.hover();
       await view(page).locator('.favorites-link').first().focus();
       await page.keyboard.press('Delete');
-      await expect(view(page).locator('.favorites-link')).toHaveCount(1);
+      await expect(view(page).locator('.favorites-link')).toHaveCount(5);
+      // The shorter list must not have moved the toast out from under it.
+      expect(await toast.evaluate((el) => el.matches(':hover'))).toBe(true);
+
+      // Focus leaves the view, so the pointer is the only hold the new offer
+      // can be keeping.
+      await page.locator('#explorer-rail button').first().focus();
       await page.clock.runFor(9000);
       await expect(toast).toBeVisible();
     });
@@ -849,6 +867,40 @@ test.describe('grouped favorites view', () => {
       await row.hover();
       await expect(actions).toHaveCSS('opacity', '1');
     });
+
+    test('the group carets meet 3:1 against the sidebar in both themes', async ({ page }) => {
+      await openView(page);
+      const caret = view(page).locator('.favorites-group-toggle .favorites-caret').first();
+      await expect(caret).toBeVisible();
+
+      // Measured on the rendered page: a token name says nothing about what
+      // the glyph ends up painted with.
+      const ratio = () =>
+        caret.evaluate((el) => {
+          const channels = (value: string) =>
+            (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+          const luminance = (value: string) =>
+            channels(value)
+              .map((channel) => {
+                const unit = channel / 255;
+                return unit <= 0.04045 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+              })
+              .reduce((sum, linear, index) => sum + [0.2126, 0.7152, 0.0722][index] * linear, 0);
+          const ink = luminance(getComputedStyle(el).color);
+          let surface: Element | null = el;
+          let paint = getComputedStyle(el).backgroundColor;
+          while (surface && paint === 'rgba(0, 0, 0, 0)') {
+            surface = surface.parentElement;
+            if (surface) paint = getComputedStyle(surface).backgroundColor;
+          }
+          const behind = luminance(paint);
+          return (Math.max(ink, behind) + 0.05) / (Math.min(ink, behind) + 0.05);
+        });
+
+      expect(await ratio()).toBeGreaterThanOrEqual(3);
+      await page.evaluate(() => document.documentElement.classList.add('dark'));
+      expect(await ratio()).toBeGreaterThanOrEqual(3);
+    });
   });
 
   test.describe('phone', () => {
@@ -880,6 +932,18 @@ test.describe('grouped favorites view', () => {
           await actions.evaluate((el) => getComputedStyle(el, '::before').height),
         ),
       ).toBeGreaterThanOrEqual(40);
+
+      // On the left the overlay stops at the 2px gap, so the end of the row
+      // link still belongs to the link rather than to the menu button.
+      const actionsBox = (await actions.boundingBox())!;
+      const onTheLink = await page.evaluate(
+        ([x, y]) => {
+          const hit = document.elementFromPoint(x, y);
+          return hit?.closest('.favorites-link') !== null;
+        },
+        [actionsBox.x - 3, actionsBox.y + actionsBox.height / 2] as const,
+      );
+      expect(onTheLink).toBe(true);
 
       await actions.click();
       await expect(row.getByRole('menuitem', { name: 'Remove from Favorites' })).toBeVisible();

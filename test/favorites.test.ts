@@ -654,6 +654,22 @@ describe('favorite pages', () => {
       expect(store.groupNames()).not.toContain('Storage');
     });
 
+    test('a rename that changes only the case goes through', () => {
+      const { store } = withTwo();
+      expect(store.renameGroup('Storage', 'storage')).toBeDefined();
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Application integration',
+        'storage',
+      ]);
+      // The alias points at the new spelling, so the next S3 page joins it
+      // instead of recreating the map's own.
+      store.add({ path: '/v2/docs/aws-cdk-lib.aws_s3.CfnBucket', title: 'CfnBucket' });
+      expect(store.grouped().map((group) => group.name)).toEqual([
+        'Application integration',
+        'storage',
+      ]);
+    });
+
     test('a fold follows a rename and does not outlive a delete', () => {
       const { store } = withTwo();
       store.setGroupCollapsed('Storage', true);

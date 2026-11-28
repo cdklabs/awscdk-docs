@@ -396,7 +396,7 @@ export class FavoritesStore {
     const trimmed = to.trim();
     // The same name is no rename: storing it would turn a group the map
     // produced into one of the reader's own, which outlives its last favorite.
-    // Exact, so the case-only rename below still goes through.
+    // Exact, so a rename that changes only the case still goes through.
     if (trimmed === from) {
       return undefined;
     }
@@ -419,9 +419,8 @@ export class FavoritesStore {
     this.collapsedGroups = this.collapsedGroups.map((n) => (n === from ? trimmed : n));
     this.write(COLLAPSED_GROUPS_STORAGE_KEY, this.collapsedGroups);
     for (const origin of origins) {
-      // Exact, not case-insensitive: renaming `Compute` to `compute` is a
-      // rename, and dropping the alias there would leave the next Compute
-      // page in a second group spelled the other way.
+      // Exact, so a case-only rename keeps an alias, pointing at the new
+      // spelling.
       if (origin === trimmed) {
         delete this.aliases[origin];
       } else {

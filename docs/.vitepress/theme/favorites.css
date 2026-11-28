@@ -99,6 +99,12 @@
   transform: rotate(90deg);
 }
 
+/* The grouped view's own carets, on the muted token the counts and service
+   names use. The preview-off section keeps the lighter one. */
+.favorites-grouped .favorites-caret {
+  color: var(--fv-sub);
+}
+
 .favorites-heading {
   margin: 0;
   font-size: 13px;
@@ -532,17 +538,24 @@
     position: relative;
   }
 
-  /* `inset: -6px -8px` on a 28px button reaches the row's own 40px and no
+  /* `-6px` top and bottom on a 28px button reaches the row's own 40px and no
      further. A 44px area would reach 2px into the rows either side, and the
      later row in the DOM would win that band, so a finger at the bottom of one
-     row would open the next row's menu. The 8px a side is free: nothing else
-     is beside the button. */
-  .favorites-grouped .favorites-actions::before,
+     row would open the next row's menu. */
   .favorites-grouped .favorites-new-group::before,
   .favorites-grouped .favorites-undo::before {
     content: '';
     position: absolute;
     inset: -6px -8px;
+  }
+
+  /* The ⋯ button sits 2px from the row link and the group toggle, so its own
+     overlay stops at that gap on the left. Reaching 8px there would put a tap
+     on the end of the link, or of the toggle, into the menu instead. */
+  .favorites-grouped .favorites-actions::before {
+    content: '';
+    position: absolute;
+    inset: -6px -8px -6px -2px;
   }
 
   .favorites-grouped .favorites-link,
