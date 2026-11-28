@@ -29,12 +29,21 @@
   }
 }
 
-/* The 392px title lane leaves the top bar row 72px less room than the 320px lane. From 960px to 1119px the
+/* The 392px title lane leaves the top bar row 72px less room than the 320px lane. From 960px to 1135px the
    version badge drops out of the bar with the preview on, which frees room so the gear's right edge stays
-   at its usual distance from the viewport edge. The Versions link next to it leads to the same page. */
-@media (min-width: 960px) and (max-width: 1119px) {
+   at its usual distance from the viewport edge and the language tabs keep at least 8px from the search.
+   The Versions link next to it leads to the same page. */
+@media (min-width: 960px) and (max-width: 1135px) {
   html[data-explorer-preview="on"] .VPNavBar .content-body > .version-badge {
     display: none;
+  }
+}
+
+/* From 1280px the search shows its label; for the first few pixels the tabs give up 2px of side padding each
+   so they keep at least 8px from the search. */
+@media (min-width: 1280px) and (max-width: 1295px) {
+  html[data-explorer-preview="on"] {
+    --tab-pad: 12px;
   }
 }
 
