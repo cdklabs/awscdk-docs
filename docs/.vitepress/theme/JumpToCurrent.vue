@@ -4,10 +4,11 @@
 // In the Explorer's Services view a page that is in no service (a framework or `constructs` page) has nothing to
 // locate: the control stays in place and focusable but is dimmed (`aria-disabled`, not `disabled`, so keyboard
 // focus still reaches it), activation does nothing, and a tooltip says why. The tooltip shows on hover, on
-// keyboard focus and on activation; it stays while the pointer is over the control or the tooltip itself (the
-// hover handlers sit on the root that holds both, and the tooltip bridges the gap to the control), and it hides
-// on Escape from anywhere, on blur, on leaving, and on a touch screen on the next tap elsewhere (WCAG 1.4.13).
-// It is always in the DOM while the control is dimmed, so `aria-describedby` has a target.
+// keyboard focus and on activation; it stays while the pointer is over the control or the tooltip (the hover
+// handlers sit on the root that holds both, and the tooltip bridges the gap to the control), or the control has
+// focus, or it was activated (each trigger is tracked on its own), and it hides on Escape from anywhere, on a
+// tap elsewhere, and once no trigger holds (WCAG 1.4.13). It is always in the DOM while the control is dimmed,
+// so `aria-describedby` has a target.
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useData, useRoute } from "vitepress";
 import { API_ROOT } from "../../../src/site-routes";
@@ -43,8 +44,8 @@ function activate(): void {
     requestJumpToCurrent();
     return;
   }
-  // Activation on a dimmed control shows why it does nothing (hover and focus have usually opened the tooltip
-  // already; a toggle would close it right there). Escape, blur, leaving and a tap elsewhere hide it.
+  // Activation on a dimmed control opens the tooltip; Escape, blur and a tap elsewhere hide it. Leaving alone
+  // does not, since the activation still holds it.
   activated.value = true;
 }
 

@@ -463,7 +463,7 @@ function mainOverview(overviews: readonly ApiSidebarNode[]): ApiSidebarNode | un
 /**
  * The rows of one open service, as the Services view lists them. In order, each part only when it has rows:
  * `Overview` (the main module's overview page), `Modules` (the other overview pages, named by module id, each
- * counting the type rows of its module), `Constructs` (every construct, flat, in the order of today's tree) and
+ * counting the type rows of its module), `Constructs` (every construct, flat, in the order of the generated service tree) and
  * `Types` (one closed kind group per kind the service has, merged across its resources, rows A to Z). With `flat`
  * set (the filter is active) the same rows come back as one flat list without parts or kind groups: overview,
  * modules, constructs, then the types kind by kind, so the filter prunes rows rather than groups.

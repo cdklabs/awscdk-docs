@@ -697,7 +697,7 @@ test.describe('explorer preview Services view', () => {
     expect(names[0].localeCompare('EKS (legacy)', undefined, { sensitivity: 'base' })).toBeLessThan(0);
     // Every closed row shows a count from the skeleton: no chunk is fetched for it.
     await expect(list(page).locator(':scope > .api-sidebar-list > .api-sidebar-item > .api-sidebar-group .api-sidebar-count')).toHaveCount(names.length);
-    // The active page's service opens on load (the route's ancestors open as in today's tree); the others are closed
+    // The active page's service opens on load (the route's ancestors open, as in the API view); the others are closed
     // and show their construct count from the skeleton, as `Name, N constructs`.
     await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'true');
     await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'false');
@@ -741,6 +741,13 @@ test.describe('explorer preview Services view', () => {
     const taggedBox = (await taggedS3.first().locator('.api-sidebar-name').boundingBox())!;
     const untaggedBox = (await untagged.first().locator('.api-sidebar-name').boundingBox())!;
     expect(untaggedBox.x).toBeCloseTo(taggedBox.x, 0);
+    // S3 has other overview pages: the Modules part is a list named Modules whose links read as module id and
+    // type count, in the code font.
+    const modules = serviceItem(page, 'S3').locator('.api-sidebar-part[data-part="Modules"]');
+    await expect(modules.getByRole('list', { name: 'Modules' })).toBeVisible();
+    await expect(modules.getByRole('link').first()).toHaveAccessibleName(/^aws_s3_\w+, \d+ types?$/);
+    await expect(modules.getByRole('link').first().locator('.api-sidebar-name')).toHaveCSS('font-size', '13px');
+    await expect(modules.getByRole('link').first()).toHaveAttribute('href', /aws-cdk-lib\.aws_s3_\w+-readme/);
     await serviceRow(page, 'S3').click();
     await serviceRow(page, 'SQS').scrollIntoViewIfNeeded();
     // Types: closed kind groups with counts, in the fixed order, opening to a flat A to Z list.
@@ -769,7 +776,7 @@ test.describe('explorer preview Services view', () => {
     await expect(constructs.locator('.api-sidebar-part-title')).toHaveCSS('font-size', '12px');
     await expect(serviceRow(page, 'SQS').locator('.api-sidebar-text')).toHaveCSS('color', 'rgb(15, 20, 26)');
     // Closing a service hides its rows. Opening another and reloading keeps it open: the choice is stored
-    // (the active page's own service re-opens on load, as today's tree reveals the page).
+    // (the active page's own service re-opens on load, as the API view reveals the page).
     await serviceRow(page, 'SQS').click();
     await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'false');
     await expect(sqs.locator('.api-sidebar-part')).toHaveCount(0);

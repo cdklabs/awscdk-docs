@@ -1,7 +1,7 @@
 /**
  * The rows of one service in the generated API sidebar, read the way the Explorer's Services view lists them.
  *
- * A service's chunk (`docs/public/api-sidebar/chunks/<service>`) is today's tree for that service: its overview
+ * A service's chunk (`docs/public/api-sidebar/chunks/<service>`) is the generated tree for that service: its overview
  * pages first, then one group per resource (a leaf per construct, plus kind groups for the supporting types) or,
  * for a service with a single resource, the constructs and kind groups directly. This module flattens that tree
  * into three lists under one rule, shared by docgen (which writes each service's construct count into the served

@@ -717,7 +717,7 @@ watch(activePath, (next, prev) => {
     </p>
     <!-- The Services view lists the services themselves as the roots, at the
          depth they have under the API view's Services heading, so their rows
-         indent as in today's tree. -->
+         indent as they do there. -->
     <nav v-else class="api-sidebar-nav" :aria-label="servicesView ? 'Services' : 'API reference navigation'">
       <ul class="api-sidebar-list">
         <ApiSidebarItem

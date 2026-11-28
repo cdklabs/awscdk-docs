@@ -87,6 +87,13 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
         const list = page.getByRole('navigation', { name: 'Services', exact: true });
         await expect(list.getByRole('button', { name: /^SQS, / })).toHaveAttribute('aria-expanded', 'true');
         await audit(page, `the Services view with SQS open in ${mode} mode`, true);
+        // S3 has a Modules part (module links with counts), which SQS lacks.
+        const s3 = list.getByRole('button', { name: /^S3, / });
+        await s3.scrollIntoViewIfNeeded();
+        await s3.click();
+        await expect(list.locator('.api-sidebar-part[data-part="Modules"]').getByRole('link').first()).toBeVisible();
+        await audit(page, `the Services view with S3 open in ${mode} mode`, true);
+        await s3.click();
         const others = list.locator('.api-sidebar-part[data-part="Types"] [data-kind-group] > .api-sidebar-group').filter({ hasText: 'Others' });
         await others.click();
         await expect(others).toHaveAttribute('aria-expanded', 'true');
