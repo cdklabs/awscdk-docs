@@ -248,3 +248,88 @@ html[data-explorer-preview="on"] .favorites-empty {
     color: var(--vp-c-brand-2);
   }
 }
+
+/*
+ * Services view: one A to Z list of services in the API sidebar's own markup (ApiSidebar.vue renders the derived
+ * tree with `.services-view` on its root), so density, indent, guide lines, sticky headings and level tags come
+ * from api-sidebar.css unchanged. The rules here are what differs: the quieter `--explorer-sub` ink on everything
+ * but the service names and the active row, the counts at the right edge, the part sub-headings, the mono module
+ * rows and the tag space on untagged construct rows. Below 960px the rows are drawer rows like the API view's and
+ * take the 44px height from responsive.css.
+ */
+
+/* Row text, carets and kind group names use `--explorer-sub` (7:1 or more in both modes); service names keep
+   `--vp-c-text-1` from the group rule, the active row keeps its accent, hover keeps brand-1. */
+.services-view .api-sidebar-link,
+.services-view .api-sidebar-caret,
+.services-view .api-sidebar-item[data-kind-group] > .api-sidebar-group {
+  color: var(--explorer-sub);
+}
+
+.services-view .api-sidebar-link:hover,
+.services-view .api-sidebar-item[data-kind-group] > .api-sidebar-group:hover {
+  color: var(--vp-c-brand-1);
+}
+
+.services-view .api-sidebar-link.active {
+  color: var(--vp-c-brand-2);
+}
+
+/* Text that is part of a row's accessible name but not painted: the comma after a service row's name and the
+   noun after its count, so the row reads `S3, 16 constructs`. Kept inline (no positioning) so the name has no
+   extra spaces. */
+.api-sidebar-hidden {
+  font-size: 0;
+  line-height: 0;
+}
+
+/* The count at a row's right edge: a closed service's constructs, a kind group's or a module's rows, or the
+   matches while filtering. Tabular figures so the column of numbers lines up. */
+.api-sidebar-count {
+  flex: none;
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--explorer-sub);
+}
+
+.api-sidebar-link.active .api-sidebar-count {
+  color: inherit;
+}
+
+/* Part sub-headings (Modules, Constructs, Types): not controls, so no hover and no caret; their left edge is the
+   indent of their depth (14px at the default density), so the text starts under the caret of the rows below.
+   The count follows the name at the regular weight. */
+.api-sidebar-part-title {
+  display: flex;
+  align-items: baseline;
+  margin: 0;
+  padding: 8px 4px 2px;
+  padding-left: calc(max(var(--api-sidebar-depth) - 1, 0) * var(--density-sidebar-indent));
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  color: var(--explorer-sub);
+}
+
+.api-sidebar-part-title .api-sidebar-count {
+  margin-left: 6px;
+  padding-left: 0;
+  font-size: 12px;
+}
+
+/* Module rows are named by module id, in the code font. */
+.api-sidebar-module .api-sidebar-name {
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+}
+
+/* A construct row without a level tag keeps the tag's space (22px minimum tag width plus its 6px gap), so every
+   name in the Constructs list starts at the same x. The filtered list is one flat list of rows with and without
+   tags, so there every untagged row keeps the space too. */
+.api-sidebar-part[data-part="Constructs"] .api-sidebar-link > .api-sidebar-name:first-child,
+.services-view.filtering .api-sidebar-link > .api-sidebar-name:first-child {
+  margin-left: 28px;
+}

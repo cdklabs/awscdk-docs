@@ -5,7 +5,15 @@
 import { useRoute } from "vitepress";
 import { computed, nextTick, onMounted, ref } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
-import { explorerPreview, explorerView, railOpen } from "./explorer-preview";
+import { DEFAULT_EXPLORER_VIEW, EXPLORER_VIEWS, explorerPreview, explorerView, railOpen } from "./explorer-preview";
+
+// The glyph and the text of the selected view, from the table the rail renders; an unknown view reads as the
+// default one, which is what the sidebar shows for it.
+const face = computed(
+  () =>
+    EXPLORER_VIEWS.find((view) => view.value === explorerView.value) ??
+    EXPLORER_VIEWS.find((view) => view.value === DEFAULT_EXPLORER_VIEW)!,
+);
 
 const route = useRoute();
 const mounted = ref(false);
@@ -35,12 +43,8 @@ async function toggle(): Promise<void> {
     aria-controls="explorer-rail"
     @click="toggle"
   >
-    <span
-      class="glyph explorer-views-icon"
-      :class="explorerView === 'favorites' ? 'glyph-star' : 'glyph-api'"
-      aria-hidden="true"
-    />
+    <span class="glyph explorer-views-icon" :class="face.glyph" aria-hidden="true" />
     <span class="explorer-views-label">Views</span>
-    <span class="explorer-views-current">{{ explorerView === "favorites" ? "Favorites" : "API" }}</span>
+    <span class="explorer-views-current">{{ face.label }}</span>
   </button>
 </template>

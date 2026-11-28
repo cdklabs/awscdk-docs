@@ -16,3 +16,10 @@ export const jumpToCurrentRequest = ref(0);
 export function requestJumpToCurrent(): void {
   jumpToCurrentRequest.value += 1;
 }
+
+/**
+ * Whether the control has nothing to locate: in the Explorer's Services view, the current page is in no service
+ * (a framework or `constructs` page). The sidebar sets it from the loaded skeleton and the route; the control
+ * renders dimmed with a tooltip and activation does nothing. False in every other view.
+ */
+export const jumpToCurrentUnavailable = ref(false);

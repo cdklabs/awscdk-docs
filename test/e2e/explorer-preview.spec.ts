@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CFN_QUEUE_PAGE, QUEUE_PAGE, SKILLS_PAGE, VERSIONS_PAGE } from './fixture.js';
+import { CFN_QUEUE_PAGE, CONSTRUCT_PAGE, QUEUE_PAGE, QUEUE_PROPS_PAGE, SKILLS_PAGE, SQS_OVERVIEW_PAGE, VERSIONS_PAGE } from './fixture.js';
 
 const PREVIEW_KEY = 'cdk-docs-explorer-preview';
 const VIEW_KEY = 'cdk-docs-explorer-view';
@@ -52,7 +52,7 @@ test.describe('explorer preview on desktop', () => {
 
     await expect(page.locator('.VPNavBar .settings-trigger')).toBeVisible();
     await expect(rail(page)).toBeVisible();
-    await expect(rail(page).getByRole('button')).toHaveText(['API', 'Favorites']);
+    await expect(rail(page).getByRole('button')).toHaveText(['Services', 'API', 'Favorites']);
     await expect(rail(page).getByRole('button', { name: 'Settings' })).toHaveCount(0);
     await expect(rail(page).getByRole('button', { name: 'API' })).toHaveAttribute('aria-pressed', 'true');
     await expect(rail(page).getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'false');
@@ -273,7 +273,8 @@ test.describe('explorer preview on desktop', () => {
     const selected = await colors('API');
     expect(selected.marker, 'the selected marker is not transparent').not.toMatch(/, 0\)$/);
     expect(selected.marker, 'the selected marker differs from the rail background').not.toBe(selected.background);
-    expect((await colors('Favorites')).marker, 'the other button has no marker').toMatch(/, 0\)$/);
+    expect((await colors('Favorites')).marker, 'the other buttons have no marker').toMatch(/, 0\)$/);
+    expect((await colors('Services')).marker, 'the other buttons have no marker').toMatch(/, 0\)$/);
     await page.locator('.VPNavBar .settings-trigger').click();
     const panel = page.locator('#settings-menu-panel');
     // The pressed switch segment stands out from the panel,
@@ -398,7 +399,9 @@ test.describe('explorer preview on desktop', () => {
 
   test('each rail button is a Tab stop in order', async ({ page }) => {
     await open(page, { [PREVIEW_KEY]: 'on' });
-    await rail(page).getByRole('button', { name: 'API' }).focus();
+    await rail(page).getByRole('button', { name: 'Services' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(rail(page).getByRole('button', { name: 'API' })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(rail(page).getByRole('button', { name: 'Favorites' })).toBeFocused();
   });
@@ -532,7 +535,7 @@ test.describe('explorer preview on a phone', () => {
     await page.keyboard.press('Tab');
     await expect(rail(page).getByRole('button', { name: 'Favorites' })).toBeFocused();
     await page.keyboard.press('Tab');
-    await expect(rail(page).getByRole('button', { name: 'API' })).toBeFocused();
+    await expect(rail(page).getByRole('button', { name: 'Services' })).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(rail(page).getByRole('button', { name: 'Favorites' })).toBeFocused();
     await expect(rail(page)).toBeVisible();
@@ -640,5 +643,431 @@ test.describe('explorer preview on a phone', () => {
     await expect(outside).toBeFocused();
     const covered = page.locator('.VPSidebar .sidebar-header, .VPSidebar .api-sidebar');
     expect(await covered.evaluateAll((els) => els.some((el) => (el as HTMLElement).inert))).toBe(false);
+  });
+});
+
+// The Services view: one A to Z list of the services, each open one listing Overview, Modules, Constructs and
+// Types (docs/adr/2026-11-28-explorer-services-view.md). The fixture keeps the complete sidebar skeleton and
+// chunks (every service) while its pages are pruned to SNS, SQS, Codestar and the framework.
+test.describe('explorer preview Services view', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  const list = (page: Page) => page.getByRole('navigation', { name: 'Services', exact: true });
+  // The service rows: the list's own items, not the rows nested under an open service.
+  const rootItems = (page: Page) => list(page).locator(':scope > .api-sidebar-list > .api-sidebar-item');
+  const rootNames = (page: Page) =>
+    list(page).locator(':scope > .api-sidebar-list > .api-sidebar-item > .api-sidebar-group .api-sidebar-text');
+  // A service row's name span ends with a comma and its count with a noun, both unpainted (font-size 0) but part
+  // of the text, so the row reads `S3, 16 constructs`; the painted parts are read through these.
+  const paintedNames = async (page: Page) => (await rootNames(page).allTextContents()).map((t) => t.replace(/,$/, ''));
+  const countOf = async (row: ReturnType<Page['locator']>) => Number.parseInt((await row.locator('.api-sidebar-count').textContent()) ?? '', 10);
+  const serviceItem = (page: Page, name: string) =>
+    rootItems(page).filter({ has: page.getByRole('button', { name: new RegExp(`^${name}, `) }) });
+  const serviceRow = (page: Page, name: string) => list(page).getByRole('button', { name: new RegExp(`^${name}, `) });
+  const locate = (page: Page) => page.locator('button.sidebar-jump-current');
+
+  test('the rail lists Services first with its glyph; selecting it shows one A to Z list with counts', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    const services = rail(page).getByRole('button', { name: 'Services' });
+    await expect(rail(page).getByRole('button')).toHaveText(['Services', 'API', 'Favorites']);
+    await expect(services).toHaveAttribute('aria-pressed', 'false');
+    const box = await services.boundingBox();
+    expect(box!.width).toBe(64);
+    expect(box!.height).toBe(56);
+    // The glyph is the 2x2 grid of rounded squares, inlined as a mask like the other glyphs.
+    await expect(services.locator('.glyph')).toHaveClass(/glyph-services/);
+    expect(await services.locator('.glyph').evaluate((el) => getComputedStyle(el).maskImage)).toMatch(/rect.*rx='1.5'/);
+
+    await services.click();
+    await expect(services).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate((key) => window.localStorage.getItem(key), VIEW_KEY)).toBe('services');
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-view', 'services');
+    // The filter and Locate stay; the API view's section titles and Framework section are gone.
+    await expect(page.getByPlaceholder('Filter navigation…')).toBeVisible();
+    await expect(locate(page)).toBeVisible();
+    await expect(page.locator('.api-sidebar.services-view')).toBeVisible();
+    await expect(page.locator('.api-sidebar-section-title')).toHaveCount(0);
+    // One list: the Services section's rows, A to Z case-insensitive, EKS as two plain rows, no Framework row.
+    const names = await paintedNames(page);
+    expect(names.length).toBeGreaterThan(300);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })));
+    expect(names).toEqual(expect.arrayContaining(['EKS (legacy)', 'EKS V2', 'SNS', 'SQS']));
+    expect(names).not.toContain('aws-cdk-lib');
+    expect(names).not.toContain('constructs');
+    expect(names[0].localeCompare('EKS (legacy)', undefined, { sensitivity: 'base' })).toBeLessThan(0);
+    // Every closed row shows a count from the skeleton: no chunk is fetched for it.
+    await expect(list(page).locator(':scope > .api-sidebar-list > .api-sidebar-item > .api-sidebar-group .api-sidebar-count')).toHaveCount(names.length);
+    // The active page's service opens on load (the route's ancestors open, as in the API view); the others are closed
+    // and show their construct count from the skeleton, as `Name, N constructs`.
+    await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'false');
+    const snsCount = await countOf(serviceRow(page, 'SNS'));
+    expect(snsCount).toBeGreaterThan(0);
+    await expect(serviceRow(page, 'SNS')).toHaveAccessibleName(`SNS, ${snsCount} constructs`);
+    await expect(serviceRow(page, 'SNS').locator('.api-sidebar-count')).toHaveCSS('font-variant-numeric', 'tabular-nums');
+  });
+
+  test('an open service lists Overview, Constructs and Types; the count equals the Constructs rows', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
+    const sqs = serviceItem(page, 'SQS');
+    await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'true');
+    const parts = sqs.locator('.api-sidebar-part');
+    await expect(parts.locator('.api-sidebar-part-name')).toHaveText(['Constructs', 'Types']);
+    await expect(sqs.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', new RegExp(SQS_OVERVIEW_PAGE.replace('.html', '')));
+    const constructs = sqs.locator('.api-sidebar-part[data-part="Constructs"]');
+    await expect(constructs.getByRole('list', { name: 'Constructs' })).toBeVisible();
+    const rows = constructs.getByRole('link');
+    const count = await countOf(serviceRow(page, 'SQS'));
+    await expect(rows).toHaveCount(count);
+    await expect(constructs.locator('.api-sidebar-part-title .api-sidebar-count')).toHaveText(String(count));
+    // The L2 before its L1, the current page selected, tags on leveled rows, and an untagged row keeps the tag's space.
+    const texts = await rows.locator('.api-sidebar-name').allTextContents();
+    expect(texts.indexOf('Queue')).toBeLessThan(texts.indexOf('CfnQueue'));
+    await expect(sqs.getByRole('link', { name: 'Queue (L2 construct)' })).toHaveAttribute('aria-current', 'page');
+    // The service row holds the current page through its Constructs part, so its guide carries the accent.
+    await expect(sqs).toHaveAttribute('data-active-parent', '');
+    await expect(sqs.getByRole('link', { name: 'Queue (L2 construct)' }).locator('.api-sidebar-level')).toHaveAttribute('data-level', 'L2');
+    // Every SQS construct is tagged; S3 has untagged ones (Asset, BucketDeployment), whose names start at the
+    // same x as the tagged names: the row keeps the tag's 28px.
+    await serviceRow(page, 'S3').scrollIntoViewIfNeeded();
+    await serviceRow(page, 'S3').click();
+    const s3Rows = serviceItem(page, 'S3').locator('.api-sidebar-part[data-part="Constructs"]').getByRole('link');
+    const untagged = s3Rows.filter({ hasNot: page.locator('.api-sidebar-level') });
+    const taggedS3 = s3Rows.filter({ has: page.locator('.api-sidebar-level') });
+    // The chunk is fetched on open; the rows follow.
+    await expect(untagged.first()).toBeVisible();
+    expect(await untagged.count()).toBeGreaterThan(0);
+    expect(await taggedS3.count()).toBeGreaterThan(0);
+    const taggedBox = (await taggedS3.first().locator('.api-sidebar-name').boundingBox())!;
+    const untaggedBox = (await untagged.first().locator('.api-sidebar-name').boundingBox())!;
+    expect(untaggedBox.x).toBeCloseTo(taggedBox.x, 0);
+    // S3 has other overview pages: the Modules part is a list named Modules whose links read as module id and
+    // type count, in the code font.
+    const modules = serviceItem(page, 'S3').locator('.api-sidebar-part[data-part="Modules"]');
+    await expect(modules.getByRole('list', { name: 'Modules' })).toBeVisible();
+    await expect(modules.getByRole('link').first()).toHaveAccessibleName(/^aws_s3_\w+, \d+ types?$/);
+    await expect(modules.getByRole('link').first().locator('.api-sidebar-name')).toHaveCSS('font-size', '13px');
+    await expect(modules.getByRole('link').first()).toHaveAttribute('href', /aws-cdk-lib\.aws_s3_\w+-readme/);
+    await serviceRow(page, 'S3').click();
+    await serviceRow(page, 'SQS').scrollIntoViewIfNeeded();
+    // Types: closed kind groups with counts, in the fixed order, opening to a flat A to Z list.
+    const types = sqs.locator('.api-sidebar-part[data-part="Types"]');
+    const kinds = types.locator('[data-kind-group] > .api-sidebar-group');
+    const kindNames = (await kinds.locator('.api-sidebar-text').allTextContents()).map((t) => t.replace(/,$/, ''));
+    expect(kindNames).toContain('Others');
+    const order = ['Mixins', 'Facades', 'Traits', 'Events', 'Others'];
+    expect(kindNames.map((k) => order.indexOf(k))).toEqual([...kindNames.map((k) => order.indexOf(k))].sort((a, b) => a - b));
+    for (const kind of await kinds.all()) await expect(kind).toHaveAttribute('aria-expanded', 'false');
+    const othersItem = types.locator('[data-kind-group]').filter({ hasText: 'Others' });
+    const others = othersItem.locator('> .api-sidebar-group');
+    const othersCount = await countOf(others);
+    await expect(others).toHaveAccessibleName(`Others, ${othersCount} types`);
+    await others.click();
+    await expect(others).toHaveAttribute('aria-expanded', 'true');
+    const otherRows = othersItem.getByRole('link');
+    await expect(otherRows).toHaveCount(othersCount);
+    const names = await otherRows.locator('.api-sidebar-name').allTextContents();
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })));
+    expect(names).toContain('QueueProps');
+    // The sub-headings and counts use the view's quieter ink; the service name keeps text-1.
+    const sub = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--explorer-sub').trim());
+    expect(sub).toBe('#424650');
+    await expect(constructs.locator('.api-sidebar-part-title')).toHaveCSS('color', 'rgb(66, 70, 80)');
+    await expect(constructs.locator('.api-sidebar-part-title')).toHaveCSS('font-size', '12px');
+    await expect(constructs.locator('.api-sidebar-part-title')).toHaveCSS('padding-left', '14px');
+    await expect(serviceRow(page, 'SQS').locator('.api-sidebar-text')).toHaveCSS('color', 'rgb(15, 20, 26)');
+    // Closing a service hides its rows. Opening another and reloading keeps it open: the choice is stored
+    // (the active page's own service re-opens on load, as the API view reveals the page).
+    await serviceRow(page, 'SQS').click();
+    await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'false');
+    await expect(sqs.locator('.api-sidebar-part')).toHaveCount(0);
+    await serviceRow(page, 'SNS').click();
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(list(page).getByRole('link', { name: 'Topic (L2 construct)' })).toBeVisible();
+    await page.reload();
+    await dismissConsent(page);
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(list(page).getByRole('link', { name: 'Topic (L2 construct)' })).toBeVisible();
+    // The Services view's SNS key is not the API view's: with SNS open here, the API view's SNS under its
+    // Services heading is still closed, and coming back finds SNS still open.
+    await rail(page).getByRole('button', { name: 'API' }).click();
+    const apiSns = page.getByRole('navigation', { name: 'API reference navigation' }).getByRole('button', { name: 'SNS' });
+    await expect(apiSns).toHaveAttribute('aria-expanded', 'false');
+    await rail(page).getByRole('button', { name: 'Services' }).click();
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
+    await serviceRow(page, 'SNS').click();
+    await page.reload();
+    await dismissConsent(page);
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('Locate current page opens the service and selects the row; on a page in no service it is dimmed with a tooltip', async ({
+    page,
+  }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' }, false, QUEUE_PROPS_PAGE);
+    await expect(locate(page)).not.toHaveAttribute('aria-disabled', /.*/);
+    // Fold the service, then Locate: the service opens, its Types group too, and the row is selected and focused.
+    await serviceRow(page, 'SQS').click();
+    await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'false');
+    await locate(page).click();
+    await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'true');
+    const row = list(page).getByRole('link', { name: 'QueueProps', exact: true });
+    await expect(row).toHaveAttribute('aria-current', 'page');
+    await expect(row).toBeFocused();
+    await expect(row).toBeInViewport();
+
+    // A route change to a page in no service dims the control; the tooltip shows on hover and on focus.
+    await page.goto(CONSTRUCT_PAGE);
+    await expect(locate(page)).toHaveAttribute('aria-disabled', 'true');
+    await expect(locate(page).locator('.sidebar-jump-current-text')).toHaveCSS('opacity', '0.6');
+    await expect(locate(page)).toHaveCSS('opacity', '1');
+    await expect(locate(page)).toHaveCSS('cursor', 'not-allowed');
+    // Hidden with `visibility`, so it is in the DOM for `aria-describedby` before it shows.
+    const tip = page.getByRole('tooltip', { includeHidden: true });
+    await expect(tip).toHaveText('This page is not in Services');
+    await expect(tip).toBeHidden();
+    await expect(locate(page)).toHaveAttribute('aria-describedby', await tip.getAttribute('id'));
+    await locate(page).hover();
+    await expect(tip).toBeVisible();
+    await expect(tip).toHaveCSS('font-size', '12px');
+    await expect(tip).toHaveCSS('border-radius', '6px');
+    const button = (await locate(page).boundingBox())!;
+    const tipBox = (await tip.boundingBox())!;
+    expect(tipBox.y - (button.y + button.height)).toBeCloseTo(4, 0);
+    expect(tipBox.x + tipBox.width).toBeCloseTo(button.x + button.width, 0);
+    // The pointer can cross the 4px gap onto the tooltip without hiding it (WCAG 1.4.13).
+    await page.mouse.move(tipBox.x + tipBox.width / 2, tipBox.y + 1);
+    await page.mouse.move(tipBox.x + tipBox.width / 2, tipBox.y + tipBox.height / 2);
+    await expect(tip).toBeVisible();
+    await page.mouse.move(0, 0);
+    await expect(tip).toBeHidden();
+    // Hover with focus elsewhere: Escape still dismisses it.
+    await page.getByPlaceholder('Filter navigation…').focus();
+    await locate(page).hover();
+    await expect(tip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tip).toBeHidden();
+    await expect(page.getByPlaceholder('Filter navigation…')).toBeFocused();
+    await page.mouse.move(0, 0);
+    await locate(page).focus();
+    await expect(tip).toBeVisible();
+    // Each trigger holds on its own: the pointer passing over and leaving does not hide a tooltip the focused
+    // control still owes.
+    await locate(page).hover();
+    await page.mouse.move(0, 0);
+    await expect(tip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tip).toBeHidden();
+    // Still focusable, and activation does nothing but show why: no service opens, the tooltip shows. (`force`:
+    // Playwright treats `aria-disabled` as disabled and would otherwise wait for the control to become enabled.)
+    await expect(locate(page)).toBeFocused();
+    await locate(page).click({ force: true });
+    await expect(tip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tip).toBeHidden();
+    await page.keyboard.press('Enter');
+    await expect(tip).toBeVisible();
+    await expect(list(page).locator(':scope > .api-sidebar-list > .api-sidebar-item > .api-sidebar-group[aria-expanded="true"]')).toHaveCount(0);
+    // The API view has no dimmed state on the same page.
+    await rail(page).getByRole('button', { name: 'API' }).click();
+    await expect(locate(page)).not.toHaveAttribute('aria-disabled', /.*/);
+    await expect(page.getByRole('tooltip', { includeHidden: true })).toHaveCount(0);
+  });
+
+  test('the filter keeps the services with matches, open and flat, with the match count; a name match keeps every row', async ({
+    page,
+  }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
+    const filter = page.getByPlaceholder('Filter navigation…');
+    const names = rootNames(page);
+    const all = await names.count();
+    // SQS is open for the active page: its full row count is Overview plus its constructs and its types.
+    const sqs = serviceItem(page, 'SQS');
+    const sqsConstructs = await countOf(serviceRow(page, 'SQS'));
+    const sqsTypes = Number(await sqs.locator('.api-sidebar-part[data-part="Types"] .api-sidebar-part-title .api-sidebar-count').textContent());
+    await filter.fill('queueprops');
+    // Only services with a matching row stay, each open, flat (no parts, no kind groups), in A to Z order, and the
+    // count on each is its matching rows.
+    await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'true');
+    await expect.poll(() => names.count()).toBeLessThan(all / 4);
+    const kept = await paintedNames(page);
+    expect(kept).toContain('SQS');
+    expect(kept).toEqual([...kept].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })));
+    await expect(list(page).locator('.api-sidebar-part')).toHaveCount(0);
+    await expect(list(page).locator('[data-kind-group]')).toHaveCount(0);
+    for (const row of await rootItems(page).all()) {
+      await expect(row.locator('> .api-sidebar-group')).toHaveAttribute('aria-expanded', 'true');
+      const count = await countOf(row.locator('> .api-sidebar-group'));
+      await expect(row.getByRole('link')).toHaveCount(count);
+    }
+    const rows = sqs.getByRole('link');
+    const matches = await rows.count();
+    expect(matches).toBeGreaterThanOrEqual(1);
+    for (const text of await rows.locator('.api-sidebar-name').allTextContents()) expect(text.toLowerCase()).toContain('queueprops');
+    await expect(serviceRow(page, 'SQS')).toHaveAccessibleName(`SQS, ${matches} ${matches === 1 ? 'match' : 'matches'}`);
+
+    // A service whose name matches keeps every row (Overview included), constructs before types; services whose
+    // rows merely mention SQS keep only those rows. In the flat list every name starts at the same x, tagged or not.
+    await filter.fill('sqs');
+    await expect(rows).toHaveCount(1 + sqsConstructs + sqsTypes);
+    const taggedX = (await rows.filter({ has: page.locator('.api-sidebar-level') }).first().locator('.api-sidebar-name').boundingBox())!.x;
+    const untaggedX = (await rows.filter({ hasNot: page.locator('.api-sidebar-level') }).first().locator('.api-sidebar-name').boundingBox())!.x;
+    expect(untaggedX).toBeCloseTo(taggedX, 0);
+    await expect(sqs.getByRole('link', { name: 'Overview' })).toBeVisible();
+    const texts = await rows.locator('.api-sidebar-name').allTextContents();
+    expect(texts.indexOf('Queue')).toBeLessThan(texts.indexOf('CfnQueue'));
+    expect(texts.indexOf('CfnQueue')).toBeLessThan(texts.indexOf('QueueProps'));
+    expect(await countOf(serviceRow(page, 'SQS'))).toBe(texts.length);
+    expect(await paintedNames(page)).toContain('Lambda');
+    for (const text of await serviceItem(page, 'Lambda').getByRole('link').locator('.api-sidebar-name').allTextContents()) {
+      expect(text.toLowerCase()).toContain('sqs');
+    }
+
+    await filter.fill('zzzzzz');
+    await expect(page.locator('.api-sidebar-status').filter({ hasText: 'No matching entries' })).toBeVisible();
+    await filter.fill('');
+    // Every chunk is loaded now, so the whole list is rebuilt with parts once the filter ends.
+    await expect.poll(() => names.count(), { timeout: 20_000 }).toBe(all);
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('with the package nav style stored, the Services view still opens services from their chunks', async ({ page }) => {
+    // The Services view always uses the service style's stores and chunk lookup; the stored package style
+    // applies to the API view alone.
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services', 'cdk-docs-nav-style': 'package' });
+    await expect(serviceRow(page, 'SQS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(list(page).getByRole('link', { name: 'Queue (L2 construct)' })).toBeVisible();
+    await serviceRow(page, 'SNS').click();
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(list(page).getByRole('link', { name: 'Topic (L2 construct)' })).toBeVisible();
+    await page.reload();
+    await dismissConsent(page);
+    await expect(serviceRow(page, 'SNS')).toHaveAttribute('aria-expanded', 'true');
+    await expect(list(page).getByRole('link', { name: 'Topic (L2 construct)' })).toBeVisible();
+    // The API view comes up in the stored package style.
+    await rail(page).getByRole('button', { name: 'API' }).click();
+    await expect(page.getByRole('navigation', { name: 'API reference navigation' }).getByRole('button', { name: 'API Reference' })).toBeVisible();
+  });
+
+  test('the Services view keeps its own per-route scroll memory, apart from the API view\'s', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
+    await expect(list(page)).toBeVisible();
+    // The on-load reveal scrolls the active row into view first; scroll away once it has landed.
+    await expect(list(page).getByRole('link', { name: 'Queue (L2 construct)' })).toBeInViewport();
+    const sidebar = page.locator('.VPSidebar');
+    const settled = async () => {
+      const before = await sidebar.evaluate((el) => el.scrollTop);
+      await page.waitForTimeout(400);
+      return (await sidebar.evaluate((el) => el.scrollTop)) === before;
+    };
+    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
+    await sidebar.evaluate((el) => (el.scrollTop = 200));
+    await expect.poll(() => sidebar.evaluate((el) => el.scrollTop)).toBe(200);
+    const stored = (key: string) =>
+      page.evaluate((k) => {
+        const raw = window.sessionStorage.getItem(k);
+        const entries: [string, number][] = raw ? JSON.parse(raw) : [];
+        return entries.find(([path]) => path.endsWith('aws_sqs.Queue'))?.[1];
+      }, key);
+    // The rAF-throttled save lands in the Services view's own store, not the API view's.
+    await expect.poll(() => stored('cdk-docs-sidebar-scroll:services')).toBe(200);
+    expect(await stored('cdk-docs-sidebar-scroll')).toBeUndefined();
+    await page.reload();
+    await dismissConsent(page);
+    await expect(list(page)).toBeVisible();
+    await expect.poll(() => sidebar.evaluate((el) => el.scrollTop), { timeout: 10_000 }).toBe(200);
+  });
+
+  test('the head script restores the stored Services view attribute before any bundle runs', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' });
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-view', 'services');
+    await expect(rail(page).getByRole('button', { name: 'Services' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.api-sidebar.services-view')).toBeVisible();
+    // Before first paint only the inline head script in config.mts has run. With every script bundle blocked
+    // the app never starts, so the attribute can only have come from that script.
+    await page.route('**/*.js', (route) => route.abort());
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-preview', 'on');
+    await expect(page.locator('html')).toHaveAttribute('data-explorer-view', 'services');
+    expect(await page.evaluate(() => document.querySelector('.ExplorerRail'))).toBeNull();
+  });
+});
+
+test.describe('explorer preview Services view with touch', () => {
+  test.use({ viewport: { width: 1280, height: 900 }, hasTouch: true });
+
+  test('a tap on the dimmed Locate control shows the tooltip, and a tap elsewhere hides it', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' }, false, CONSTRUCT_PAGE);
+    const locate = page.locator('button.sidebar-jump-current');
+    await expect(locate).toHaveAttribute('aria-disabled', 'true');
+    const tip = page.getByRole('tooltip', { includeHidden: true });
+    await expect(tip).toBeHidden();
+    await locate.tap({ force: true });
+    await expect(tip).toBeVisible();
+    await page.locator('.vp-doc h1').tap();
+    await expect(tip).toBeHidden();
+  });
+});
+
+test.describe('explorer preview Services view on a phone', () => {
+  test.use({ viewport: { width: 375, height: 760 } });
+
+  const list = (page: Page) => page.getByRole('navigation', { name: 'Services', exact: true });
+
+  test('Escape on the dimmed Locate control hides its tooltip and leaves the drawer open with focus in place', async ({
+    page,
+  }) => {
+    await open(page, { [PREVIEW_KEY]: 'on', [VIEW_KEY]: 'services' }, false, CONSTRUCT_PAGE);
+    await page.locator('.VPLocalNav button.menu').click();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+    const locate = page.locator('button.sidebar-jump-current');
+    await expect(locate).toHaveAttribute('aria-disabled', 'true');
+    await locate.focus();
+    const tip = page.getByRole('tooltip', { includeHidden: true });
+    await expect(tip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tip).toBeHidden();
+    await expect(page.locator('.VPSidebar')).toHaveClass(/\bopen\b/);
+    await expect(locate).toBeFocused();
+    // With the tooltip gone, the next Escape is the drawer's.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.VPSidebar')).not.toHaveClass(/\bopen\b/);
+  });
+
+  test('the Views button reads Services, picking it folds the rail, and rows are 44px drawer rows', async ({ page }) => {
+    await open(page, { [PREVIEW_KEY]: 'on' });
+    await page.locator('.VPLocalNav button.menu').click();
+    const views = page.getByRole('button', { name: /^Views/ });
+    await expect(views).toContainText('API');
+    await views.click();
+    await expect(rail(page).getByRole('button')).toHaveText(['Services', 'API', 'Favorites']);
+    await rail(page).getByRole('button', { name: 'Services' }).click();
+    await expect(rail(page)).toBeHidden();
+    await expect(views).toBeFocused();
+    await expect(views).toContainText('Services');
+    await expect(views.locator('.explorer-views-icon')).toHaveClass(/glyph-services/);
+    await expect(list(page)).toBeVisible();
+
+    // The rows are drawer rows like the API view's: 44px tall from responsive.css, with no overlay, so a tap near a
+    // row's bottom edge and a tap on the boundary between two construct rows both land on the upper row.
+    const sqs = list(page).getByRole('button', { name: /^SQS, / });
+    await sqs.scrollIntoViewIfNeeded();
+    const sqsBox = (await sqs.boundingBox())!;
+    expect(sqsBox.height).toBeGreaterThanOrEqual(44);
+    const queue = list(page).getByRole('link', { name: 'Queue (L2 construct)' });
+    const cfnQueue = list(page).getByRole('link', { name: 'CfnQueue (L1 construct)' });
+    await queue.scrollIntoViewIfNeeded();
+    const queueBox = (await queue.boundingBox())!;
+    const cfnBox = (await cfnQueue.boundingBox())!;
+    expect(queueBox.height).toBeGreaterThanOrEqual(44);
+    expect(cfnBox.y).toBeGreaterThanOrEqual(queueBox.y + queueBox.height);
+    const hitAt = (x: number, y: number) =>
+      page.evaluate(
+        ([px, py]) => document.elementFromPoint(px, py)?.closest('a.api-sidebar-link')?.getAttribute('href') ?? null,
+        [x, y] as const,
+      );
+    expect(await hitAt(queueBox.x + queueBox.width / 2, queueBox.y + queueBox.height - 3)).toContain('aws_sqs.Queue.html');
+    expect(await hitAt(queueBox.x + queueBox.width / 2, cfnBox.y - 1)).toContain('aws_sqs.Queue.html');
+    expect(await hitAt(cfnBox.x + cfnBox.width / 2, cfnBox.y + 3)).toContain('aws_sqs.CfnQueue.html');
   });
 });

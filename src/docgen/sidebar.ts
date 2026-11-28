@@ -12,6 +12,7 @@ import { FRAMEWORK_NAV, FrameworkNav } from './framework-nav.js';
 import { DEFAULT_LANGUAGE, Language, translateTypeName } from './languages.js';
 import { assemblyDocId, moduleReadmeLink } from './links.js';
 import { byLevelThenName } from './ordering.js';
+import { constructCount } from '../sidebar-rows.js';
 
 export interface SidebarItem {
   readonly text: string;
@@ -61,6 +62,11 @@ export interface SidebarItem {
 
   /** In the served skeleton, the chunk file (`api-sidebar/chunks/<chunk>`) holding this section's `items`. */
   readonly chunk?: string;
+  /**
+   * In the served skeleton, the number of construct rows of a Services section (see `src/sidebar-rows.ts`), so the
+   * Explorer's Services view shows it on a closed row without loading the chunk. Services sections only.
+   */
+  readonly count?: number;
   readonly items?: SidebarItem[];
 }
 
@@ -765,7 +771,9 @@ export function splitSidebarChunks(
       const { items, ...rest } = section;
       const chunk = uniqueChunkName(section.text, used);
       chunks.push({ chunk, items: items ?? [] });
-      return { ...rest, chunk };
+      // A service row in the Explorer's Services view shows its construct count while closed, before its chunk is
+      // fetched, so the skeleton carries the count under the same rule the client lists the rows by.
+      return root.text === SERVICES_SECTION ? { ...rest, chunk, count: constructCount(items ?? []) } : { ...rest, chunk };
     }),
   }));
   const compactModules = encodePackageSidebarModules(packageModules, skeleton);

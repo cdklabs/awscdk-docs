@@ -4,9 +4,11 @@ import { join, resolve } from 'path';
 import { gzipSync } from 'zlib';
 import { hashedAssetPath } from './hashed-assets.js';
 import { buildPackageSidebar, decodePackageModules } from '../docs/.vitepress/theme/api-sidebar-package.js';
+import { serviceViewItems } from '../docs/.vitepress/theme/api-sidebar.js';
 import { assetHash } from '../src/docgen/asset-hash.js';
 import { generateDocs } from '../src/docgen/index.js';
 import { renderExpandableProps, renderTypeMetadata, TypeMetadataRow } from '../src/docgen/layout.js';
+import { constructCount } from '../src/sidebar-rows.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -94,15 +96,28 @@ describe('API page layout', () => {
       const sections = [...skeleton[0].items, ...skeleton[1].items];
       expect(sections.every((s: any) => s.items === undefined && typeof s.chunk === 'string')).toBe(true);
       expect(new Set(sections.map((s: any) => s.chunk)).size).toBe(sections.length);
-      // Putting every chunk back yields exactly the canonical tree.
+      // Putting every chunk back yields exactly the canonical tree. The skeleton's own additions come off first:
+      // the package table on the first root, and the construct `count` on every Services section (the Explorer's
+      // Services view shows it on a closed row); Framework sections carry none.
       const rebuilt = skeleton.map(({ packageModules: _packageModules, ...root }: any) => ({
         ...root,
-        items: root.items.map(({ chunk, ...section }: any) => ({
+        items: root.items.map(({ chunk, count: _count, ...section }: any) => ({
           ...section,
           items: JSON.parse(readFileSync(join(publicDir, 'api-sidebar', 'chunks', chunk), 'utf-8')),
         })),
       }));
       expect(rebuilt).toEqual(generated);
+      expect(skeleton[0].items.every((s: any) => s.count === undefined)).toBe(true);
+      expect(skeleton[1].items.every((s: any) => typeof s.count === 'number' && s.count >= 0)).toBe(true);
+      // The count is the number of construct rows the client lists once the chunk is open: the rows of the
+      // `Constructs` part the Services view builds from the generated chunk (none for a service without one).
+      // Docgen and the client share the rule (src/sidebar-rows.ts); this pins the two on the generated data.
+      for (const section of skeleton[1].items) {
+        const items = JSON.parse(readFileSync(join(publicDir, 'api-sidebar', 'chunks', section.chunk), 'utf-8'));
+        const listed = serviceViewItems(items).find((node: any) => node.text === 'Constructs')?.count ?? 0;
+        expect(section.count).toBe(listed);
+        expect(section.count).toBe(constructCount(items));
+      }
     });
 
     test('the package view regroups every generated page exactly once', () => {

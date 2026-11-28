@@ -55,6 +55,22 @@ describe('explorer preview state', () => {
     expect(attributes).toEqual({ 'data-explorer-preview': 'on', 'data-explorer-view': 'favorites' });
   });
 
+  test('a stored services view is read on init and selects', async () => {
+    store['cdk-docs-explorer-preview'] = 'on';
+    store['cdk-docs-explorer-view'] = 'services';
+    const mod = await import('../docs/.vitepress/theme/explorer-preview.js');
+    expect(mod.isExplorerView('services')).toBe(true);
+    mod.initExplorerPreview();
+    expect(mod.explorerView.value).toBe('services');
+    expect(attributes['data-explorer-view']).toBe('services');
+    mod.setExplorerView('api');
+    mod.setExplorerView('services');
+    expect(store['cdk-docs-explorer-view']).toBe('services');
+    expect(attributes['data-explorer-view']).toBe('services');
+    // The pre-hydration script in config.mts repeats the allowed values; test/e2e/explorer-preview.spec.ts
+    // checks the attribute it sets before any bundle runs.
+  });
+
   test('unknown stored values fall back to off and the API view', async () => {
     store['cdk-docs-explorer-preview'] = 'yes';
     store['cdk-docs-explorer-view'] = 'tree';

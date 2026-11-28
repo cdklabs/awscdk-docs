@@ -198,7 +198,9 @@ VitePress sidebar shell:
   `docs/public/api-sidebar/`.
 - Docgen emits (`splitSidebarChunks`) a **skeleton** (`sidebar.<hash>.js`):
   both roots and every section node with its text, collapse state, and a
-  `modules` list of page-id stems (`<docId>[.<submodule>]`) it owns — but
+  `modules` list of page-id stems (`<docId>[.<submodule>]`) it owns, and,
+  on each Services section, a `count` of its construct rows (see the
+  [Services view ADR](./2026-11-28-explorer-services-view.md)) — but
   no `items`; each section names its `chunk` instead. Each section's
   `items` live in `chunks/<name>.<hash>.js`. The canonical
   `docs/v2/sidebar.json` stays the full tree; the split is serving-only.
@@ -388,6 +390,10 @@ button overhangs the header, meeting WCAG 2.5.8's 24px minimum; the 44px floor
 `test/responsive.test.ts` sets for drawer/nav controls cannot be honored
 here without reinstating the route-dependent height difference, and the
 control is outside that test's enumerated selectors.
+
+*With the Explorer preview's Services view showing, the control is dimmed
+(`aria-disabled`, with a tooltip) on a page that is in no service, and
+activation does nothing; see the [Services view ADR](./2026-11-28-explorer-services-view.md).*
 
 ### Client-side favorite pages
 

@@ -14,6 +14,8 @@ import {
   normalizePath,
   preOpenedRootKeys,
   retainedGroupKeys,
+  serviceForPath,
+  servicesViewTree,
   unloadedChunkForKey,
   withChunk,
   type ApiSidebarNode,
@@ -24,8 +26,9 @@ import { splitTerms, termRank } from "./filterSymbols";
 import { pageHref } from "./page-href";
 import { activeLanguage, initLanguageState } from "./language-state";
 import { initNavStyle, navStyle, styleStorageKey, type NavStyle } from "./nav-style";
+import { explorerPreview, explorerView } from "./explorer-preview";
 import { sidebarFilterQuery, toggleFilterCollapsed } from "./sidebar-filter";
-import { jumpToCurrentRequest } from "./sidebar-jump";
+import { jumpToCurrentRequest, jumpToCurrentUnavailable } from "./sidebar-jump";
 import { animateScrollTop } from "./smooth-scroll";
 import { enclosingStickyHeight, StickyHeadings } from "./sidebar-sticky";
 import { createCollapseMemory, effectiveExpanded, EXPANDED_STORE_KEY } from "./sidebar-collapse";
@@ -79,7 +82,7 @@ function ensurePackageTree() {
 }
 function schedulePackageRebuild() {
   packageStale = true;
-  if (navStyle.value !== "package") return;
+  if (styleKey.value !== "package") return;
   if (packageCooldown !== undefined) return;
   rebuildPackageTree();
   packageCooldown = setTimeout(() => {
@@ -87,14 +90,35 @@ function schedulePackageRebuild() {
     if (packageStale) schedulePackageRebuild();
   }, PACKAGE_REBUILD_COOLDOWN_MS);
 }
-const tree = computed(() => (navStyle.value === "package" ? packageTree.value : serviceTree.value));
+// The Explorer preview's Services view: one A to Z list of the generated tree's
+// services, each open one listing its rows by part (api-sidebar.ts,
+// docs/adr/2026-11-28-explorer-services-view.md). Derived from the same
+// skeleton and chunks as the service tree, so it fetches nothing of its own.
+// Gated on mount like the rail, so the server render is the API view. While
+// the filter is active the rows come back flat, so the filter prunes rows.
+const mounted = ref(false);
+const servicesView = computed(
+  () => mounted.value && explorerPreview.value === "on" && explorerView.value === "services",
+);
+const servicesTree = computed(() =>
+  servicesView.value ? servicesViewTree(serviceTree.value, filtering.value) : [],
+);
+const tree = computed(() => {
+  if (servicesView.value) return servicesTree.value;
+  return navStyle.value === "package" ? packageTree.value : serviceTree.value;
+});
+// The style whose open set and stores the showing tree uses. The Services
+// view keys its services at the root (`S3`) and the API view keys them under
+// `Services`, so both live in the service style's store without a clash,
+// and the package style never applies to the Services view.
+const styleKey = computed<NavStyle>(() => (servicesView.value ? "service" : navStyle.value));
 const status = ref<"idle" | "loading" | "ready" | "error">("idle");
 // One open set per style: the two trees share no group keys, and a reader
 // who folds a package must find it folded when they come back to that style.
 const expandedByStyle = ref<Record<NavStyle, Set<string>>>({ service: new Set(), package: new Set() });
-const expanded = computed(() => expandedByStyle.value[navStyle.value]);
+const expanded = computed(() => expandedByStyle.value[styleKey.value]);
 function setExpanded(next: Set<string>) {
-  expandedByStyle.value = { ...expandedByStyle.value, [navStyle.value]: next };
+  expandedByStyle.value = { ...expandedByStyle.value, [styleKey.value]: next };
 }
 const rootEl = ref<HTMLElement | null>(null);
 
@@ -108,7 +132,7 @@ const collapseMemories = {
   service: createCollapseMemory(localStore, styleStorageKey(EXPANDED_STORE_KEY, "service")),
   package: createCollapseMemory(localStore, styleStorageKey(EXPANDED_STORE_KEY, "package")),
 };
-const collapseMemory = computed(() => collapseMemories[navStyle.value]);
+const collapseMemory = computed(() => collapseMemories[styleKey.value]);
 // Which styles have had their store pruned and defaults applied this session.
 const initializedStyles = new Set<NavStyle>();
 
@@ -121,7 +145,12 @@ const scrollMemories = {
   service: createScrollMemory(sessionStore, styleStorageKey(SCROLL_STORE_KEY, "service")),
   package: createScrollMemory(sessionStore, styleStorageKey(SCROLL_STORE_KEY, "package")),
 };
-const scrollMemory = computed(() => scrollMemories[navStyle.value]);
+// The Services view is a third list, so it keeps a third store: a position
+// saved in it points nowhere useful in the API view's trees and the reverse.
+const servicesScrollMemory = createScrollMemory(sessionStore, `${SCROLL_STORE_KEY}:services`);
+const scrollMemory = computed(() =>
+  servicesView.value ? servicesScrollMemory : scrollMemories[navStyle.value],
+);
 let scrollContainer: HTMLElement | null = null;
 let lastSidebarScroll = 0; // performance.now() of the last sidebar scroll
 let traversal = false; // set by popstate, consumed by the route watcher
@@ -278,7 +307,7 @@ function flashActive(active: HTMLElement) {
 function syncActive() {
   if (status.value !== "ready") return;
   // A preload may have left the package tree stale; the active page's leaf must be in it.
-  if (navStyle.value === "package") ensurePackageTree();
+  if (styleKey.value === "package") ensurePackageTree();
   const ancestors = activeAncestorKeys(tree.value, activePath.value, base.value);
   if (ancestors.size === 0) return;
   const next = new Set(expanded.value);
@@ -329,10 +358,16 @@ function unloadedPackageChunks(key: string, rebuild = true): string[] {
   return (entry?.chunks ?? []).filter((name) => !chunkItems.has(name));
 }
 
+// The chunk a service-style key still misses: a section of the API view's
+// tree, or a service of the Services view (the same chunk file either way).
+function unloadedServiceChunk(key: string): string | undefined {
+  return unloadedChunkForKey(serviceTree.value, key) ?? unloadedChunkForKey(servicesTree.value, key);
+}
+
 // The chunk files a group in the showing style needs but does not have yet.
 function unloadedChunks(key: string, rebuild: boolean): string[] {
-  if (navStyle.value === "package") return unloadedPackageChunks(key, rebuild);
-  const chunk = unloadedChunkForKey(serviceTree.value, key);
+  if (styleKey.value === "package") return unloadedPackageChunks(key, rebuild);
+  const chunk = unloadedServiceChunk(key);
   return chunk ? [chunk] : [];
 }
 
@@ -350,15 +385,18 @@ function loadOpenPackageChunks() {
 // closed headings are preloaded, so without this its child list would render
 // empty under an open caret.
 function loadOpenServiceChunks() {
+  // Only the showing list: the store also holds the other view's open groups (the API view's under
+  // `Services`, the Services view's at the root), whose chunks this view never shows.
+  const showing = servicesView.value ? servicesTree.value : serviceTree.value;
   for (const key of expandedByStyle.value.service) {
-    const chunk = unloadedChunkForKey(serviceTree.value, key);
+    const chunk = unloadedChunkForKey(showing, key);
     if (chunk) loadChunk(chunk).catch(() => undefined);
   }
 }
 
 // The open groups of the active style fetch any chunk they still miss.
 function loadOpenChunks() {
-  if (navStyle.value === "package") loadOpenPackageChunks();
+  if (styleKey.value === "package") loadOpenPackageChunks();
   else loadOpenServiceChunks();
 }
 
@@ -381,9 +419,14 @@ function initStyle(style: NavStyle) {
   const memory = collapseMemories[style];
   if (style === "package") ensurePackageTree();
   const styleTree = style === "package" ? packageTree.value : serviceTree.value;
-  const live = style === "package"
-    ? groupKeys(styleTree)
-    : retainedGroupKeys(styleTree, memory.entries().map(([key]) => key));
+  const stored = memory.entries().map(([key]) => key);
+  const live = style === "package" ? groupKeys(styleTree) : retainedGroupKeys(styleTree, stored);
+  // The service store also holds the Services view's keys (a service at the
+  // root, its parts and their kind groups under it), which the API view's tree
+  // does not have.
+  if (style === "service") {
+    for (const key of retainedGroupKeys(servicesViewTree(serviceTree.value), stored)) live.add(key);
+  }
   memory.prune(live);
   expandedByStyle.value = {
     ...expandedByStyle.value,
@@ -407,7 +450,7 @@ function ensureLoaded() {
       return loadActiveChunk();
     })
     .then(() => {
-      initStyle(navStyle.value);
+      initStyle(styleKey.value);
       status.value = "ready";
       // A query typed while the skeleton was in flight is already filtering.
       if (filtering.value) loadAllChunks();
@@ -431,7 +474,7 @@ function preload(key: string) {
 // Whether a heading's group still misses a chunk. Before the sidebar is ready nothing is known, so it counts.
 // The service style checks its own node in the item, so only a package entry is looked up here.
 function needsChunks(key: string): boolean {
-  if (status.value !== "ready" || filtering.value || navStyle.value !== "package") return true;
+  if (status.value !== "ready" || filtering.value || styleKey.value !== "package") return true;
   return unloadedPackageChunks(key, false).length > 0;
 }
 
@@ -527,16 +570,18 @@ function toggle(key: string) {
   for (const name of unloadedChunks(key, true)) loadChunk(name).catch(() => undefined);
 }
 
-// A style switch regroups the data already here: no new skeleton, no new
-// status. The new style gets its defaults and stored choices on first use,
-// the active page is revealed in it, and the packages it has open fetch any
-// chunk they still miss.
-watch(navStyle, () => {
+// A style or view switch regroups the data already here: no new skeleton, no
+// new status. The new style gets its defaults and stored choices on first
+// use, the active page is revealed in it, and the packages it has open fetch
+// any chunk they still miss. The Services view and the API view share the
+// service style, so a switch between them reveals the page and loads what
+// the open services need without re-initializing the store.
+watch([navStyle, servicesView], () => {
   // Folds made while filtering belong to the tree they were made in.
   filterCollapsed.value = new Set();
   if (status.value !== "ready") return;
-  if (navStyle.value === "package") ensurePackageTree();
-  initStyle(navStyle.value);
+  if (styleKey.value === "package") ensurePackageTree();
+  initStyle(styleKey.value);
   syncActive();
   loadOpenChunks();
   nextTick(() => {
@@ -544,6 +589,20 @@ watch(navStyle, () => {
     if (container) scrollActiveIntoView(container);
   });
 });
+
+// "Locate current page" has a target only when the Services view can show the
+// page: a page in no service (framework, `constructs`) dims the control. In
+// every other view the control is always live.
+watch(
+  [servicesView, status, activePath, serviceTree],
+  () => {
+    jumpToCurrentUnavailable.value =
+      servicesView.value &&
+      status.value === "ready" &&
+      serviceForPath(serviceTree.value, activePath.value, DOCS_PREFIX) === undefined;
+  },
+  { immediate: true },
+);
 
 // The display language is the shared client-side language selection
 // driving every LanguageTabs group. Item labels flip with it in place;
@@ -560,9 +619,11 @@ provide("apiSidebar", {
   displayLang: activeLanguage,
   sticky,
   findScrollContainer,
+  servicesView,
 });
 
 onMounted(() => {
+  mounted.value = true;
   // Idempotent; the sidebar renders on pages without any LanguageTabs
   // group, so it must hydrate the shared language selection itself.
   initLanguageState();
@@ -573,6 +634,7 @@ onMounted(() => {
   ensureLoaded();
 });
 onUnmounted(() => {
+  jumpToCurrentUnavailable.value = false;
   window.removeEventListener("popstate", onPopState);
   sticky.detach();
   if (packageCooldown !== undefined) clearTimeout(packageCooldown);
@@ -597,7 +659,7 @@ watch(filtering, (active) => {
 });
 // "Locate current page": unfold and reveal an off-screen entry, or flash an entry that is already visible.
 watch(jumpToCurrentRequest, () => {
-  if (!isApi.value || status.value !== "ready") return;
+  if (!isApi.value || status.value !== "ready" || jumpToCurrentUnavailable.value) return;
   const container = findScrollContainer();
   const active = container?.querySelector<HTMLElement>(".api-sidebar-link.active");
   if (container && active) {
@@ -647,7 +709,7 @@ watch(activePath, (next, prev) => {
 </script>
 
 <template>
-  <div v-if="isApi" ref="rootEl" class="api-sidebar">
+  <div v-if="isApi" ref="rootEl" class="api-sidebar" :class="{ 'services-view': servicesView, filtering }">
     <p v-if="status === 'loading' || status === 'idle'" class="api-sidebar-status">
       Loading API index…
     </p>
@@ -662,14 +724,17 @@ watch(activePath, (next, prev) => {
     >
       No matching entries
     </p>
-    <nav v-else class="api-sidebar-nav" aria-label="API reference navigation">
+    <!-- The Services view lists the services themselves as the roots, at the
+         depth they have under the API view's Services heading, so their rows
+         indent as they do there. -->
+    <nav v-else class="api-sidebar-nav" :aria-label="servicesView ? 'Services' : 'API reference navigation'">
       <ul class="api-sidebar-list">
         <ApiSidebarItem
           v-for="node in displayTree"
           :key="node.text"
           :node="node"
           :parent-key="''"
-          :depth="0"
+          :depth="servicesView ? 1 : 0"
         />
       </ul>
     </nav>

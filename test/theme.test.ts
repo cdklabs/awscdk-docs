@@ -119,6 +119,16 @@ describe('CDK brand theme', () => {
 
       const AA = 4.5;
 
+      // The Explorer's Services view paints its counts, sub-headings, kind group names, carets and row text in
+      // `--explorer-sub`. It is painted only in the sidebar, whose surface is `--vp-c-bg-alt`, and the view's
+      // target there is 7:1 (AAA) in both modes: 8.76:1 light, 7.48:1 dark.
+      test.each([
+        ['light', () => lightBlock],
+        ['dark', () => darkBlock],
+      ])('%s mode: --explorer-sub reaches 7:1 on the sidebar surface', (_mode, block) => {
+        expect(contrast(cssVar(block(), '--explorer-sub'), cssVar(block(), '--vp-c-bg-alt'))).toBeGreaterThanOrEqual(7);
+      });
+
       test('light mode: body text on page background', () => {
         expect(
           contrast(cssVar(lightBlock, '--vp-c-text-1'), cssVar(lightBlock, '--vp-c-bg')),

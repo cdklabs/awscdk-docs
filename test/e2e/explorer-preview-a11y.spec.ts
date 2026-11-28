@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { FAILING_IMPACTS, QUEUE_PAGE } from './fixture.js';
+import { CONSTRUCT_PAGE, FAILING_IMPACTS, QUEUE_PAGE } from './fixture.js';
 
 const PREVIEW_KEY = 'cdk-docs-explorer-preview';
 const VIEW_KEY = 'cdk-docs-explorer-view';
@@ -13,14 +13,15 @@ const FAVORITES = [
 // view, the phone rail and Views button, and dark mode. Scoped to the top bar and the sidebar without its tree,
 // so the audit stays quick and never meets the vendored code-token colors. The Pagefind search button is left out:
 // below 768px it has no accessible name with the preview off too, and it is not part of this feature.
-async function audit(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
+async function audit(page: Page, label: string, withTree = false): Promise<void> {
+  let builder = new AxeBuilder({ page })
     .options({ rules: { 'label-content-name-mismatch': { enabled: true } } })
     .include('.VPNav')
     .include('.VPSidebar')
-    .exclude('.api-sidebar')
-    .exclude('.nav-search-btn-wait')
-    .analyze();
+    .exclude('.nav-search-btn-wait');
+  // The Services view IS the tree, so its audits keep `.api-sidebar` in.
+  if (!withTree) builder = builder.exclude('.api-sidebar');
+  const results = await builder.analyze();
   const failing = results.violations.filter(
     (v) => v.impact && (FAILING_IMPACTS as readonly string[]).includes(v.impact),
   );
@@ -74,6 +75,42 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
       await audit(page, 'the empty Favorites view');
     });
 
+    // The Services view with the active page's service open, a kind group open, the filter active, and the dimmed
+    // Locate control with its tooltip showing (docs/adr/2026-11-28-explorer-services-view.md).
+    for (const [mode, stored] of [
+      ['light', {}],
+      ['dark', { 'vitepress-theme-appearance': 'dark' }],
+    ] as const) {
+      test(`the Services view in ${mode} mode has no critical or serious violations`, async ({ page }) => {
+        await open(page, { ...stored, [VIEW_KEY]: 'services' });
+        if (mode === 'dark') await expect(page.locator('html')).toHaveClass(/dark/);
+        const list = page.getByRole('navigation', { name: 'Services', exact: true });
+        await expect(list.getByRole('button', { name: /^SQS, / })).toHaveAttribute('aria-expanded', 'true');
+        await audit(page, `the Services view with SQS open in ${mode} mode`, true);
+        // S3 has a Modules part (module links with counts), which SQS lacks.
+        const s3 = list.getByRole('button', { name: /^S3, / });
+        await s3.scrollIntoViewIfNeeded();
+        await s3.click();
+        await expect(list.locator('.api-sidebar-part[data-part="Modules"]').getByRole('link').first()).toBeVisible();
+        await audit(page, `the Services view with S3 open in ${mode} mode`, true);
+        await s3.click();
+        const others = list.locator('.api-sidebar-part[data-part="Types"] [data-kind-group] > .api-sidebar-group').filter({ hasText: 'Others' });
+        await others.click();
+        await expect(others).toHaveAttribute('aria-expanded', 'true');
+        await audit(page, `the Services view with a kind group open in ${mode} mode`, true);
+        await page.getByPlaceholder('Filter navigation…').fill('queue');
+        await expect(list.getByRole('button', { name: /^SQS, \d+ match/ })).toBeVisible();
+        await audit(page, `the filtered Services view in ${mode} mode`, true);
+        await page.getByPlaceholder('Filter navigation…').fill('');
+        await page.goto(CONSTRUCT_PAGE);
+        const locate = page.locator('button.sidebar-jump-current');
+        await expect(locate).toHaveAttribute('aria-disabled', 'true');
+        await locate.hover();
+        await expect(page.getByRole('tooltip')).toBeVisible();
+        await audit(page, `the dimmed Locate control with its tooltip in ${mode} mode`, true);
+      });
+    }
+
     test('dark mode has no critical or serious violations', async ({ page }) => {
       await open(page, { 'vitepress-theme-appearance': 'dark', [VIEW_KEY]: 'favorites' });
       await expect(page.locator('html')).toHaveClass(/dark/);
@@ -87,7 +124,31 @@ test.describe('explorer preview accessibility audit (axe-core) @a11y', () => {
   });
 
   test.describe('phone', () => {
-    test.use({ viewport: { width: 375, height: 760 } });
+    test.use({ viewport: { width: 375, height: 760 }, hasTouch: true });
+
+    // The Services view in the drawer: 44px rows with counts, the Views button reading Services, and the dimmed
+    // Locate tooltip in the drawer header, in both modes.
+    for (const [mode, stored] of [
+      ['light', {}],
+      ['dark', { 'vitepress-theme-appearance': 'dark' }],
+    ] as const) {
+      test(`the Services view in the drawer in ${mode} mode has no critical or serious violations`, async ({ page }) => {
+        await open(page, { ...stored, [VIEW_KEY]: 'services' });
+        if (mode === 'dark') await expect(page.locator('html')).toHaveClass(/dark/);
+        await page.locator('.VPLocalNav button.menu').click();
+        const list = page.getByRole('navigation', { name: 'Services', exact: true });
+        await expect(list.getByRole('button', { name: /^SQS, / })).toHaveAttribute('aria-expanded', 'true');
+        await expect(page.getByRole('button', { name: /^Views/ })).toContainText('Services');
+        await audit(page, `the Services view in the drawer in ${mode} mode`, true);
+        await page.goto(CONSTRUCT_PAGE);
+        await page.locator('.VPLocalNav button.menu').click();
+        const locate = page.locator('button.sidebar-jump-current');
+        await expect(locate).toHaveAttribute('aria-disabled', 'true');
+        await locate.tap({ force: true });
+        await expect(page.getByRole('tooltip')).toBeVisible();
+        await audit(page, `the dimmed Locate control with its tooltip in the drawer in ${mode} mode`, true);
+      });
+    }
 
     test('the unfolded rail and the Views button have no critical or serious violations', async ({ page }) => {
       await open(page, {});

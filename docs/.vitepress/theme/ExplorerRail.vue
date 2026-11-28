@@ -1,22 +1,25 @@
 <script setup lang="ts">
-// Explorer rail: a 72px column at the sidebar's left edge with the API and Favorites views, and nothing else.
-// It renders only while the Explorer preview is on and the page has the API sidebar, and it is a plain
-// disclosure of two views, not a tablist: each view is a <button> with aria-pressed.
+// Explorer rail: a 72px column at the sidebar's left edge with the Services, API and Favorites views, and nothing
+// else. It renders only while the Explorer preview is on and the page has the API sidebar, and it is a plain
+// disclosure of views, not a tablist: each view is a <button> with aria-pressed.
 //
 // Below 960px the rail stays hidden until ExplorerViewsButton.vue unfolds it over a scrim; picking a view,
 // Escape from anywhere, a route change, a tap on the scrim or moving keyboard focus out of the rail folds it
 // again. The scrim keeps pointers off the tree behind it. The covered controls (the Views button, the filter,
 // the Favorites list and the tree) are `inert` while the rail is unfolded, so they leave the accessibility tree
-// and the tab order too, and Tab wraps between the two view buttons. The focus rule below is the fallback.
+// and the tab order too, and Tab wraps between the first and last view button. The focus rule below is the fallback.
 import { useRoute } from "vitepress";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { API_ROOT } from "../../../src/site-routes";
-import { explorerPreview, explorerView, railOpen, setExplorerView, type ExplorerView } from "./explorer-preview";
-
-const VIEWS: { value: ExplorerView; label: string; glyph: string }[] = [
-  { value: "api", label: "API", glyph: "glyph-api" },
-  { value: "favorites", label: "Favorites", glyph: "glyph-star" },
-];
+import { swallowEscapeRelease } from "./escape-release";
+import {
+  EXPLORER_VIEWS,
+  explorerPreview,
+  explorerView,
+  railOpen,
+  setExplorerView,
+  type ExplorerView,
+} from "./explorer-preview";
 
 const route = useRoute();
 const mounted = ref(false);
@@ -42,23 +45,8 @@ function foldRail(): void {
   views()?.focus();
 }
 
-// VitePress closes the whole drawer when Escape is released. Focus has moved by then, so the Escape keyup is
-// stopped at the window, in the capture phase, ahead of VitePress's own listener. Other keys (a modifier
-// released first, say) pass through and leave the listener in place for the Escape release. If the window
-// loses focus before the release, the release never arrives here, so a blur removes the listener too.
-function swallowEscapeRelease(): void {
-  const done = (): void => {
-    window.removeEventListener("keyup", onKeyup, { capture: true });
-    window.removeEventListener("blur", done);
-  };
-  const onKeyup = (event: KeyboardEvent): void => {
-    if (event.key !== "Escape") return;
-    event.stopPropagation();
-    done();
-  };
-  window.addEventListener("keyup", onKeyup, { capture: true });
-  window.addEventListener("blur", done);
-}
+// VitePress closes the whole drawer when Escape is released, so the Escape keyup is stopped at the window
+// (escape-release.ts) once the keydown has folded the rail.
 
 // Escape folds the rail wherever focus is: the Views button and the tree behind the scrim must not leave the
 // rail unfolded when VitePress closes the drawer.
@@ -148,7 +136,7 @@ onBeforeUnmount(() => {
     <div v-if="railOpen" class="explorer-rail-scrim" @click="foldRail" />
     <nav id="explorer-rail" class="ExplorerRail" :class="{ open: railOpen }" aria-label="Sidebar views">
       <button
-        v-for="view in VIEWS"
+        v-for="view in EXPLORER_VIEWS"
         :key="view.value"
         type="button"
         class="explorer-rail-button"

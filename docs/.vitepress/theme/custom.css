@@ -66,6 +66,11 @@
     rgba(15, 20, 26, 0.35) 50%
   );
   --vp-home-hero-image-filter: blur(44px);
+
+  /* Explorer preview, Services view: counts, sub-headings, kind group names, carets and row text. Painted only in
+     the sidebar: quieter than the service names (`--vp-c-text-1`) and still 8.76:1 on the sidebar surface
+     (`--vp-c-bg-alt`), where `--vp-c-text-2` is 5.21:1. Pinned at 7:1 in test/theme.test.ts. */
+  --explorer-sub: #424650;
 }
 
 /* ---------- Dark mode ---------- */
@@ -109,4 +114,7 @@
   --vp-button-brand-active-border: transparent;
 
   --vp-home-hero-name-background: linear-gradient(120deg, #ffb84d 30%, #ff9900);
+
+  /* 7.48:1 on the sidebar surface, where `--vp-c-text-2` is 6.45:1. */
+  --explorer-sub: #a4a4ad;
 }

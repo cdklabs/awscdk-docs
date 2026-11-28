@@ -49,7 +49,7 @@ describe('JumpToCurrent control', () => {
 
 describe('ApiSidebar jump handling', () => {
   test('watches the shared request signal', () => {
-    expect(sidebar).toContain('import { jumpToCurrentRequest } from "./sidebar-jump"');
+    expect(sidebar).toContain('import { jumpToCurrentRequest, jumpToCurrentUnavailable } from "./sidebar-jump"');
     expect(sidebar).toContain('watch(jumpToCurrentRequest,');
   });
 
