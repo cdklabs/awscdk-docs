@@ -160,7 +160,7 @@ with class `.glyph .glyph-<name>` carries the mask; `background-color:
 currentColor` paints it, so each glyph follows the theme. `glyphs.css` declares
 one `url("./icons/<name>.svg")` per glyph and Vite inlines each small file as a
 data URI into the single hashed stylesheet, fetched once with the CSS instead of
-riding inline on every one of the ~23,600 pages. A mask uses the image's alpha
+riding inline on every one of the tens of thousands of pages. A mask uses the image's alpha
 only, so a glyph needing more than one color cannot be a mask and would return
 to inline SVG. The landing-page Lucide icons (page content) and VitePress's own
 search-button glyph stay inline.

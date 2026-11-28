@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The CDK API reference is a large static site — ~21k pages across the
+The CDK API reference is a large static site — tens of thousands of pages across the
 `aws-cdk-lib` services plus hand-written pages — published as a versioned zip. It
 must render multi-language code examples, support fast client-side search, and
 stay cheap to build and contribute to. Two forces shape every decision here:
@@ -44,7 +44,7 @@ payload trimming), not a rendering-mode one.
 ### Sharded production build
 
 The full SPA build holds Rollup's entire per-page chunk graph in memory at once;
-that graph is superlinear (~n^1.3) in chunk count, so the full site needs ~30 GB
+that graph is superlinear (~n^1.3) in chunk count, so the full site needs tens of GB
 and OOMs every standard CI runner. Raising the heap ceiling is a dead end.
 Instead, build the site in parallel disjoint **shards** and merge the dist
 trees, so no single process holds the whole graph.
@@ -76,7 +76,7 @@ trees, so no single process holds the whole graph.
 - **Verify the deploy contract** (`scripts/verify-site.sh`, run at the end of
   every full build). The merged tree must contain `index.html`,
   `hashmap.json`, and `pagefind/`, carry nothing but the hosted-path root at the
-  artifact root, and hold **at least 20,000 HTML pages** — a render worker can
+  artifact root, and hold **at least the HTML page floor in `scripts/verify-site.sh`** — a render worker can
   OOM without failing its exit code, so the floor catches dropped pages. The
   guard runs only after every shard succeeded.
 
@@ -180,7 +180,7 @@ The cache lives for one shard's build and captures all its intra-shard repeats.
   `docs:generate` directly but are still caught by `npx projen build`, which CI
   runs first.
 - **`vite.build.reportCompressedSize: false`**: Vite gzips every emitted asset
-  only to log its compressed size — pure waste across ~21k pages.
+  only to log its compressed size — pure waste across tens of thousands of pages.
 - **Release each page's template AST once compiled**
   (`docs/.vitepress/vue-compiler.ts`, passed as the Vue plugin's `compiler`).
   The Vue plugin caches every page's SFC descriptor for the whole build, and
@@ -236,7 +236,7 @@ Node tests can load the gate without touching `window`. See
 
 - The deploy build no longer OOMs: each shard bundles a bounded graph, shards
   run in parallel, and the heaviest-shard wall time and peak memory drop sharply
-  versus a single ~30 GB build. Re-enabling more languages means more shards,
+  versus a single whole-site build. Re-enabling more languages means more shards,
   not a bigger process.
 - Shard-to-service mapping is build-internal and not stable as content grows; a
   service may move shards between commits, and nothing depends on that mapping.

@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The reference is a large generated corpus (~23,600 pages) served under a
+The reference is a large generated corpus (tens of thousands of pages) served under a
 version-scoped sub-path of `docs.aws.amazon.com` (`/cdk/api/v2/…`), built as
 parallel VitePress shards and merged by `scripts/merge-shards.cjs`. Making it
 discoverable to both search crawlers and reading agents requires machine

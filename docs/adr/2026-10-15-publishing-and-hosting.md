@@ -196,8 +196,8 @@ own directory-based URL grammar (Python `/api/v2/python/aws_cdk.aws_s3/`, Java
 `…/services/s3/package-summary.html`, .NET `…/api/Amazon.CDK.AWS.S3.Bucket.html`).
 These addresses have real external links, but the site serves one canonical
 page per symbol with client-side language selection, so there is no
-per-language page tree — emitting one would be three more copies of a ~23k-page
-tree the sharded build cannot absorb. The serving host redirects these
+per-language page tree — emitting one would be three more copies of a
+tens-of-thousands-of-pages tree the sharded build cannot absorb. The serving host redirects these
 addresses to the canonical pages; the site itself carries no redirect layer.
 
 ## Consequences
@@ -222,7 +222,7 @@ addresses to the canonical pages; the site itself carries no redirect layer.
 - **Emit real per-language pages** (as done for the TypeScript shape, which was
   a rename). Per-language pages are duplication the sharded build cannot
   absorb; a spike measured 2,910 pages against 586 on the same fixture.
-- **One redirect stub per symbol per language** — ~23k pages × 3 languages of
+- **One redirect stub per symbol per language** — every page × 3 languages of
   tiny files.
 - **A client-side redirect on the 404 page** — it answers HTTP 404 first, so
   crawlers and clients without JavaScript never see the redirect.

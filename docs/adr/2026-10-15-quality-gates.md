@@ -18,8 +18,8 @@ needs an automated control over the licenses its dependency tree pulls in. Jest 
 files a test imports, so untested files dropped out of the report, and no coverage number
 failed the build.
 
-Three environment constraints shape the browser gates: the full site is ~21k
-pages built in memory-hungry shards and cannot be audited whole or rebuilt per
+Three environment constraints shape the browser gates: the full site is tens of
+thousands of pages built in memory-hungry shards and cannot be audited whole or rebuilt per
 run; CI runners have no system Chrome; and this is a projen project, so tasks,
 dependencies, and workflows are declared in `.projenrc.ts`, never hand-written.
 

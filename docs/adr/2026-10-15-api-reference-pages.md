@@ -66,7 +66,7 @@ and search filters per page, then routes by kind:
 Type references in property tables render as markdown links when the target
 has a documented page (`linkFor` over a global FQN → link map), falling back
 to plain code spans. Page count reaches the full type count of documented
-assemblies (~23k pages for the shipped corpus); generation is one memoized
+assemblies (tens of thousands of pages for the shipped corpus); generation is one memoized
 pass per type and VitePress build time is the practical scaling limit.
 
 ### Construct detection and L1/L2/L3 classification
@@ -819,7 +819,7 @@ outline, only overview pages suppress it.
 ## Consequences
 
 - Every jsii type is deep-linkable, cross-referenced, and Pagefind-indexed;
-  build output grows to the full type count (~23k pages) and VitePress build
+  build output grows to the full type count (tens of thousands of pages) and VitePress build
   time scales linearly, the practical ceiling.
 - Type pages open with breadcrumb, H1, a kind + stability chip row carrying the
   page actions, a divider, one prose description, one hierarchy block, an

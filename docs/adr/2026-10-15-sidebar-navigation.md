@@ -6,8 +6,8 @@ Accepted
 
 ## Context
 
-The API reference documents on the order of ~27.5k types across ~320
-sections. The sidebar is the primary map of that corpus. Readers navigate by
+The API reference documents tens of thousands of types across hundreds
+of sections. The sidebar is the primary map of that corpus. Readers navigate by
 what they know — the AWS service — not by npm packaging, which leaks an
 implementation detail (which package a type ships in) that readers do not
 care about. The site is statically generated and published as static files,
@@ -188,7 +188,7 @@ each tier, applied to sidebar leaf lists and, within each kind group, to module 
 ### Lazy loading, skeleton + per-section chunks, content-hashed
 
 VitePress server-renders the configured sidebar into the HTML of every page
-it applies to. A full ~27.5k-entry tree on every API page is O(n²) HTML, so
+it applies to. A full tree of every type on every API page is O(n²) HTML, so
 the tree is generated once and loaded on demand, keeping the native
 VitePress sidebar shell:
 

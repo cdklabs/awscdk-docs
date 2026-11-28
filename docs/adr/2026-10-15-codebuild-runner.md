@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The full site cannot be built by one VitePress process: Rollup's chunk graph for ~21k pages needs ~30 GB, so the
+The full site cannot be built by one VitePress process: Rollup's chunk graph for the full page tree needs tens of GB, so the
 build is split into page-balanced shards and merged afterwards
 ([site generator and build](./2026-10-15-site-generator-and-build.md)). GitHub-hosted runners carry 16 GB, which
 forces one runner per shard: a 52-leg matrix where every leg checks out, installs and generates the docs only to
@@ -41,7 +41,7 @@ Build the site in a single `build` job on a self-hosted AWS CodeBuild runner. Th
   carries a fixed cost, so more shards lower the per-shard peak but lengthen the build.
 - **One job, end to end.** The job generates the docs once, builds and merges every shard, indexes the site with
   Pagefind, verifies it and packages the site as the versioned S3 zip with `scripts/package-site.sh`. Packaging
-  fails when the zip exceeds 900 MB. The publish job depends on `build` directly
+  fails when the zip exceeds `MAX_ZIP_MB` in that script. The publish job depends on `build` directly
   ([publishing and hosting](./2026-10-15-publishing-and-hosting.md)).
 - **Required check.** The job is named `build-docs`, and that is the required status check, so a failed shard fails
   it directly with the shard's log tail and nothing downstream can be skipped into a pass. The name keeps it apart

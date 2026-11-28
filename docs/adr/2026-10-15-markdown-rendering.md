@@ -9,7 +9,7 @@ Accepted
 Generated type pages mix two kinds of content: structured jsii metadata
 (signatures, type references) that docgen renders itself, and upstream
 README prose pulled verbatim from `aws-cdk-lib` and `@aws-cdk/*-alpha`.
-Both must render correctly and safely across a ~21.9k-page tree served
+Both must render correctly and safely across a tree of tens of thousands of pages served
 from either a domain root (`base: /`) or a sub-path, while remaining
 cheap to generate and easy to unit-test. Docstrings and type names
 originate upstream, so every interpolation into generated HTML is an XSS
@@ -171,7 +171,7 @@ language. Render them as equations (parity with github.com):
   and `markdown.math: true` in `config.mts`. MathJax3 typesets at build
   time into static SVG — SSR-safe, no per-page client runtime, important
   for artifact size. (Client-side KaTeX, rejected, would add a runtime to
-  all ~21.9k pages for math that appears on a handful.)
+  every page for math that appears on a handful.)
 - Bridge GitHub syntax in the docgen README path (`convertMathFences` in
   `src/docgen/index.ts`, inside `prepareReadme`): a `math` info-string
   fence becomes a `$$…$$` display block; a `` $`expr`$ `` span becomes
