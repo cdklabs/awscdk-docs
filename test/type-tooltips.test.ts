@@ -230,6 +230,56 @@ describe('API type hover tooltips', () => {
     expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
   });
 
+  test('a scroll caused by keyboard focus keeps the tooltip and moves it with the link', async () => {
+    jest.useFakeTimers({ doNotFake: ['setImmediate'] });
+    try {
+      await install();
+      const anchor = link(`/cdk/api${QUEUE}.html`);
+      dom.dispatch('focusin', anchor);
+      dom.dispatch('window:scroll', null);
+      await flush();
+      expect(tooltip()!.getAttribute('aria-hidden')).toBe('false');
+
+      anchor.box = { top: 300, bottom: 320, left: 100, height: 20 };
+      jest.advanceTimersByTime(100);
+      dom.dispatch('window:scroll', content);
+      expect(tooltip()!.getAttribute('aria-hidden')).toBe('false');
+      expect(tooltip()!.style.top).toBe('328px');
+
+      // Once the focus scroll settles, a reader's scroll hides the tooltip as before.
+      jest.advanceTimersByTime(200);
+      dom.dispatch('window:scroll', null);
+      expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('hovering a link after a focus move ends the focus scroll, so a scroll hides the tooltip', async () => {
+    await install();
+    dom.dispatch('focusin', link(`/cdk/api${QUEUE}.html`));
+    await hover(link('/cdk/api/v2/docs/aws-cdk-lib.Duration.html'));
+
+    dom.dispatch('window:scroll', null);
+    expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('Escape hides the open tooltip; other keys and an Escape with nothing open do nothing', async () => {
+    await install();
+    dom.dispatch('keydown', null, { key: 'Escape' });
+    expect(tooltip()).toBeUndefined();
+
+    const anchor = link(`/cdk/api${QUEUE}.html`);
+    dom.dispatch('focusin', anchor);
+    await flush();
+    dom.dispatch('keydown', anchor, { key: 'Tab' });
+    expect(tooltip()!.getAttribute('aria-hidden')).toBe('false');
+
+    dom.dispatch('keydown', anchor, { key: 'Escape' });
+    expect(tooltip()!.getAttribute('aria-hidden')).toBe('true');
+    expect(anchor.hasAttribute('aria-describedby')).toBe(false);
+  });
+
   test('a failed or missing summaries file shows no tooltip', async () => {
     fetchMock.mockResolvedValue({ ok: false, json: async () => SUMMARIES });
     await install();

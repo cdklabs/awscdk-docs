@@ -27,6 +27,11 @@ let summariesAsset = "";
 let loading: Promise<SummaryMap> | undefined;
 let tooltip: HTMLElement | undefined;
 let currentAnchor: HTMLAnchorElement | undefined;
+// Set while the scroll that a keyboard focus move causes is still running.
+let focusScrollTimer: ReturnType<typeof setTimeout> | undefined;
+
+// A focus scroll counts as settled after this long without a scroll event.
+const FOCUS_SCROLL_SETTLE_MS = 150;
 
 function loadSummaries(): Promise<SummaryMap> {
   const asset = apiSidebarAsset(summariesAsset);
@@ -101,17 +106,35 @@ function show(anchor: HTMLAnchorElement, entry: TypeSummary): void {
     el.append(summary);
   }
 
+  place(anchor);
+  el.setAttribute("aria-hidden", "false");
+  anchor.setAttribute("aria-describedby", TOOLTIP_ID);
+}
+
+/** Position the tooltip below `anchor`, inside the viewport. */
+function place(anchor: HTMLAnchorElement): void {
+  const el = ensureTooltip();
   const rect = anchor.getBoundingClientRect();
   el.style.top = `${rect.bottom + 8}px`;
   el.style.left = "0px"; // reset before measuring width
   const width = el.offsetWidth;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
   el.style.left = `${left}px`;
-  el.setAttribute("aria-hidden", "false");
-  anchor.setAttribute("aria-describedby", TOOLTIP_ID);
+}
+
+function endFocusScroll(): void {
+  clearTimeout(focusScrollTimer);
+  focusScrollTimer = undefined;
+}
+
+/** Open (or extend) the window in which scrolls come from the focus move, not the reader. */
+function extendFocusScroll(): void {
+  clearTimeout(focusScrollTimer);
+  focusScrollTimer = setTimeout(endFocusScroll, FOCUS_SCROLL_SETTLE_MS);
 }
 
 function hide(): void {
+  endFocusScroll();
   currentAnchor?.removeAttribute("aria-describedby");
   currentAnchor = undefined;
   tooltip?.setAttribute("aria-hidden", "true");
@@ -128,6 +151,7 @@ function handleEnter(event: Event): void {
     hide();
     return;
   }
+  endFocusScroll();
   currentAnchor = anchor;
   void loadSummaries().then((summaries) => {
     const entry = summaries[key];
@@ -135,6 +159,15 @@ function handleEnter(event: Event): void {
       show(anchor, entry);
     }
   });
+}
+
+// Focusing a link outside the viewport scrolls it into view after `focusin`. That scroll keeps the tooltip.
+function handleFocus(event: Event): void {
+  const previous = currentAnchor;
+  handleEnter(event);
+  if (currentAnchor && currentAnchor !== previous) {
+    extendFocusScroll();
+  }
 }
 
 function handleLeave(event: Event): void {
@@ -155,6 +188,20 @@ function handleScroll(event: Event): void {
     !(target instanceof Element) ||
     target.contains(currentAnchor)
   ) {
+    if (currentAnchor && focusScrollTimer !== undefined) {
+      extendFocusScroll();
+      if (tooltip?.getAttribute("aria-hidden") === "false") {
+        place(currentAnchor);
+      }
+      return;
+    }
+    hide();
+  }
+}
+
+// Escape dismisses an open tooltip and leaves focus where it is.
+function handleKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape" && currentAnchor) {
     hide();
   }
 }
@@ -169,8 +216,9 @@ export function installTypeTooltips(asset: string): void {
   }
   summariesAsset = asset;
   document.addEventListener("mouseover", handleEnter, { passive: true });
-  document.addEventListener("focusin", handleEnter);
+  document.addEventListener("focusin", handleFocus);
   document.addEventListener("mouseout", handleLeave, { passive: true });
   document.addEventListener("focusout", handleLeave);
+  document.addEventListener("keydown", handleKeydown);
   window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
 }

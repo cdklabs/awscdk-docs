@@ -88,15 +88,13 @@ test.describe('type hover tooltips', () => {
   });
 });
 
-// Previews also open on keyboard focus (`focusin`) and close when focus leaves the link (`focusout`).
-// Keyboard focus that scrolls the page does not show a preview yet (see the fixme below).
+// Previews also open on keyboard focus (`focusin`), close when focus leaves the link (`focusout`) and close on Escape.
 test.describe('type tooltips on keyboard focus', () => {
   const METRIC_OPTIONS = '.VPDoc a[href$="/aws-cdk-lib.aws_cloudwatch.MetricOptions.html"]';
 
   /**
    * Move focus onto `link` with the Tab key, from the link just before it.
-   * The link is scrolled into view first, so the focus move itself does not
-   * scroll the page: a scroll hides the preview (see the hover tests above).
+   * The link is scrolled into view first, so the focus move itself does not scroll the page.
    */
   async function tabTo(page: Page, link: Locator): Promise<void> {
     await link.scrollIntoViewIfNeeded();
@@ -171,8 +169,7 @@ test.describe('type tooltips on keyboard focus', () => {
     await expect(link).not.toHaveAttribute('aria-describedby', /./);
   });
 
-  test.fixme('Escape hides the tooltip while the link keeps focus', async ({ page }) => {
-    // No key handler exists: Escape leaves the tooltip open (WCAG 1.4.13 asks for dismissal).
+  test('Escape hides the tooltip while the link keeps focus', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     const link = page.locator(METRIC_OPTIONS).first();
     await tabTo(page, link);
@@ -184,8 +181,7 @@ test.describe('type tooltips on keyboard focus', () => {
     await expect(link).toBeFocused();
   });
 
-  test.fixme('tabbing to a type link below the fold shows its tooltip', async ({ page }) => {
-    // The scroll that focus causes fires after `focusin`, and the scroll handler hides the pending preview.
+  test('tabbing to a type link below the fold shows its tooltip below the link', async ({ page }) => {
     await page.goto(TOPIC_PAGE);
     const link = page.locator(METRIC_OPTIONS).last();
     await expect(link).not.toBeInViewport();
@@ -195,6 +191,15 @@ test.describe('type tooltips on keyboard focus', () => {
     });
     await page.keyboard.press('Tab');
     await expect(link).toBeFocused();
-    await expect(page.locator('#api-type-tooltip')).toBeVisible({ timeout: 15_000 });
+    const tooltip = page.locator('#api-type-tooltip');
+    await expect(tooltip).toBeVisible({ timeout: 15_000 });
+    await expect(link).toBeInViewport();
+    // Placed against the link's position after the focus scroll, not before it.
+    await expect
+      .poll(async () => {
+        const [linkBox, tipBox] = await Promise.all([link.boundingBox(), tooltip.boundingBox()]);
+        return Math.round(tipBox!.y - (linkBox!.y + linkBox!.height));
+      })
+      .toBe(8);
   });
 });
