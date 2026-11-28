@@ -241,12 +241,19 @@ describe('Restore GitHub Releases + slim release job', () => {
   });
 
   // Config shape: which runs get canceled only plays out in a CI run.
-  test('a new PR push cancels the superseded build while main runs queue', () => {
-    const docsBuild = readFileSync(resolve(ROOT, '.github/workflows/docs-build.yml'), 'utf-8');
-    expect(docsBuild).toContain(
-      '\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n' +
-        "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n",
-    );
+  test.each(['docs-build', 'docs-e2e', 'docs-a11y', 'docs-lighthouse', 'docs-agent-readiness'])(
+    'a new PR push cancels the superseded %s run while other runs queue',
+    (name) => {
+      const workflow = readFileSync(resolve(ROOT, `.github/workflows/${name}.yml`), 'utf-8');
+      expect(workflow).toContain(
+        '\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n' +
+          "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n",
+      );
+    },
+  );
+
+  // Config shape: which runs get canceled only plays out in a CI run.
+  test('main deploy runs never cancel each other', () => {
     const content = readFileSync(workflowPath, 'utf-8');
     expect(content).toContain(
       '\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: false\n',

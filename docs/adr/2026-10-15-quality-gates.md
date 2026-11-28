@@ -222,8 +222,12 @@ the two groups above, so a new source directory cannot fall outside the scope un
 
 Each browser gate has its own projen-generated workflow — `docs-e2e`, `docs-a11y`,
 `docs-lighthouse` — on `pull_request`, `merge_group`, and `workflow_dispatch`; the first two
-install their own Chromium. `dependency-review` runs on `pull_request` and `merge_group`.
-None is a required check unless the team opts in via branch protection.
+install their own Chromium. `docs-agent-readiness` runs on the same triggers. These four
+share `docs-build`'s concurrency setting: one group per workflow and ref, canceled in progress
+only for `pull_request` runs, so a new push to a pull request stops the run for its previous
+commit while merge queue and manual runs keep queueing. `dependency-review` runs on
+`pull_request` and `merge_group`. None is a required check unless the team opts in via branch
+protection.
 
 ## Consequences
 

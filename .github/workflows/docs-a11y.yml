@@ -35,3 +35,6 @@ jobs:
           name: a11y-report
           path: test/e2e/playwright-report
           retention-days: 7
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
