@@ -372,6 +372,13 @@ project.gitignore.addPatterns(
 // PR before/after evidence goes in the PR body via GitHub's upload, never the repo tree (AGENTS.md rule 9).
 project.gitignore.addPatterns('screenshots/');
 
+// One group per ref, so PR runs are independent of each other. A new push to a PR supersedes its running run,
+// so cancel it rather than delay the latest commit; merge queue runs keep queueing.
+const PR_SUPERSEDING_CONCURRENCY = {
+  'group': '${{ github.workflow }}-${{ github.ref }}',
+  'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
+};
+
 // Dedicated e2e workflow (projen-generated), separate from the sharded docs build. Playwright installs its own
 // Chromium (--with-deps), so no system browser is needed on the runner. Not a required check unless the team
 // opts in via branch protection.
@@ -705,12 +712,9 @@ const addDocsBuildJob = (workflow: github.GithubWorkflow) => workflow.addJob('bu
 addDocsBuildJob(docsBuildWorkflow);
 addDocsBuildJob(combined);
 
-// One group per ref, so PR builds run independently of each other. A new push to a PR supersedes its running
-// build, so cancel it rather than delay the latest commit; merge queue runs keep queueing.
-docsBuildWorkflow.file!.addOverride('concurrency', {
-  'group': '${{ github.workflow }}-${{ github.ref }}',
-  'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
-});
+for (const workflow of [docsBuildWorkflow, docsE2eWorkflow, docsA11yWorkflow, lighthouseWorkflow, agentReadinessWorkflow]) {
+  workflow.file!.addOverride('concurrency', PR_SUPERSEDING_CONCURRENCY);
+}
 
 // `release` runs on main only, including dry runs, which are dispatched on main.
 combined.file!.addOverride('jobs.release.if', "github.ref == 'refs/heads/main'");
